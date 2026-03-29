@@ -1,0 +1,151 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import 'package:flutter/foundation.dart';
+
+enum AbilityType { horn, special, trait, knell }
+
+@immutable
+class CombatStats {
+  final double attack;
+  final double health;
+  final double maxHealth;
+  final double speed; // seconds per attack
+  final double movement; // meters per second
+  final double distance; // attack range
+  final double defense;
+  final double accuracy;
+  final int cost; // AP cost to summon
+  final bool isFlying;
+  final int swarmSize; // 0 if single unit, >0 for swarms
+  final double radius; // Physics radius for collision
+  final String? damageFormula; // e.g. "4d6+2"
+
+  const CombatStats({
+    required this.attack,
+    required this.health,
+    required this.maxHealth,
+    required this.speed,
+    required this.movement,
+    required this.distance,
+    this.defense = 0,
+    required this.accuracy,
+    required this.cost,
+    this.isFlying = false,
+    this.swarmSize = 0,
+    this.radius = 1.5,
+    this.damageFormula,
+  });
+
+  CombatStats copyWith({
+    double? attack,
+    double? health,
+    double? maxHealth,
+    double? speed,
+    double? movement,
+    double? distance,
+    double? defense,
+    double? accuracy,
+    int? cost,
+    bool? isFlying,
+    int? swarmSize,
+    double? radius,
+    String? damageFormula,
+  }) {
+    return CombatStats(
+      attack: attack ?? this.attack,
+      health: health ?? this.health,
+      maxHealth: maxHealth ?? this.maxHealth,
+      speed: speed ?? this.speed,
+      movement: movement ?? this.movement,
+      distance: distance ?? this.distance,
+      defense: defense ?? this.defense,
+      accuracy: accuracy ?? this.accuracy,
+      cost: cost ?? this.cost,
+      isFlying: isFlying ?? this.isFlying,
+      swarmSize: swarmSize ?? this.swarmSize,
+      radius: radius ?? this.radius,
+      damageFormula: damageFormula ?? this.damageFormula,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'attack': attack,
+    'health': health,
+    'maxHealth': maxHealth,
+    'speed': speed,
+    'movement': movement,
+    'distance': distance,
+    'defense': defense,
+    'accuracy': accuracy,
+    'cost': cost,
+    'isFlying': isFlying,
+    'swarmSize': swarmSize,
+    'radius': radius,
+    'damageFormula': damageFormula,
+  };
+
+  factory CombatStats.fromJson(Map<String, dynamic> json) => CombatStats(
+    attack: (json['attack'] as num).toDouble(),
+    health: (json['health'] as num).toDouble(),
+    maxHealth: (json['maxHealth'] as num).toDouble(),
+    speed: (json['speed'] as num).toDouble(),
+    movement: (json['movement'] as num).toDouble(),
+    distance: (json['distance'] as num).toDouble(),
+    defense: (json['defense'] as num? ?? 0).toDouble(),
+    accuracy: (json['accuracy'] as num).toDouble(),
+    cost: json['cost'] as int,
+    isFlying: json['isFlying'] as bool? ?? false,
+    swarmSize: json['swarmSize'] as int? ?? 0,
+    radius: (json['radius'] as num? ?? 1.5).toDouble(),
+    damageFormula: json['damageFormula'] as String?,
+  );
+}
+
+@immutable
+class Ability {
+  final String id;
+  final String name;
+  final AbilityType type;
+  final String description;
+  final double? chargeTime; // For special attacks
+  final Map<String, dynamic> effectData;
+
+  const Ability({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.description,
+    this.chargeTime,
+    this.effectData = const {},
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'type': type.name,
+    'description': description,
+    'chargeTime': chargeTime,
+    'effectData': effectData,
+  };
+
+  factory Ability.fromJson(Map<String, dynamic> json) => Ability(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    type: AbilityType.values.byName(json['type'] as String),
+    description: json['description'] as String,
+    chargeTime: (json['chargeTime'] as num?)?.toDouble(),
+    effectData: json['effectData'] as Map<String, dynamic>? ?? {},
+  );
+}
