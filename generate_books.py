@@ -1,3 +1,18 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import random
 
 categories = [
@@ -36,6 +51,21 @@ vocab = {
 
 unique_books = set()
 output = []
+
+output.append("// Copyright 2026 Google LLC")
+output.append("//")
+output.append("// Licensed under the Apache License, Version 2.0 (the \"License\");")
+output.append("// you may not use this file except in compliance with the License.")
+output.append("// You may obtain a copy of the License at")
+output.append("//")
+output.append("//      http://www.apache.org/licenses/LICENSE-2.0")
+output.append("//")
+output.append("// Unless required by applicable law or agreed to in writing, software")
+output.append("// distributed under the License is distributed on an \"AS IS\" BASIS,")
+output.append("// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.")
+output.append("// See the License for the specific language governing permissions and")
+output.append("// limitations under the License.")
+output.append("")
 
 output.append("enum BookCategory {")
 output.append("  " + ", ".join(categories))

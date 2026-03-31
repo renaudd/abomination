@@ -54,4 +54,8 @@ Contributions are welcome! Whether it's fixing NPC pathfinding bugs, adding new 
 
 This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for more information.
 
+<<<<<<< Updated upstream
 Carl Spitzweg's "Der Maler im Garten" (1860) is included as a work in the public domain.
+=======
+The game is inspired by Mary Shelley's Frankenstein (1818) and includes Carl Spitzweg's "Der Maler im Garten" (1860).
+>>>>>>> Stashed changes
