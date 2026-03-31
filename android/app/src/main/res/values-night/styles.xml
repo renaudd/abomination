@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<<<<<<< Updated upstream
-=======
 <!--
 Copyright 2026 Google LLC
 
@@ -16,7 +14,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
->>>>>>> Stashed changes
 <resources>
     <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is on -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">

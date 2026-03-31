@@ -298,7 +298,7 @@ class TaskResultGenerator {
           if (lootType == 0) {
             lootMsg = "found some exquisite jewelry.";
           } else if (lootType == 1) {
-            lootMsg = "intercepted a confidential letter.";
+            lootMsg = "intercepted a letter.";
 
           } else {
             lootMsg = "stole some valuable research notes.";

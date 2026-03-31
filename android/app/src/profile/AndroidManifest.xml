@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 <!--
 Copyright 2026 Google LLC
 
@@ -16,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
->>>>>>> Stashed changes
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The INTERNET permission is required for development. Specifically,
          the Flutter tool needs it to communicate with the running application
