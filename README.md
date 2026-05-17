@@ -1,6 +1,6 @@
-# FrankensteinOSS
+# Abomination
 
-**FrankensteinOSS** is a mad scientist management simulator built with Flutter. Set in a rural Swiss manor in the 1860s, the game challenges players to balance traditional manor management with dark, experimental science. 
+**Abomination** is a mad scientist management simulator built with Flutter. Set in a rural Swiss manor in the 1860s, the game challenges players to balance traditional manor management with dark, experimental science. 
 
 ## 🦇 Game Overview
 
@@ -29,7 +29,7 @@
 1. Clone the project repository and navigate into the directory:
    ```bash
    git clone <repository-url>
-   cd frankensteinoss
+   cd abomination
    ```
 
 2. Fetch package dependencies:

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frankensteinoss/services/combat_manager.dart';
-import 'package:frankensteinoss/services/combat_unit_factory.dart';
+import 'package:abomination/services/combat_manager.dart';
+import 'package:abomination/services/combat_unit_factory.dart';
 
 void main() {
   group('Giles Execute Ability Tests', () {

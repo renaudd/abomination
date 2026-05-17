@@ -53,136 +53,161 @@ class CharacterPortraitDialog extends StatelessWidget {
         final mood = _getMoodDescription(liveNpc);
         final moodColor = _getMoodColor(liveNpc);
 
-        return Dialog(
-          backgroundColor: const Color(0xFF1E1A15),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          child: DefaultTabController(
-            length: 2,
-            child: Container(
-              width: 450,
-              height: 600,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFC4B89B), width: 1),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header with Portrait and Basic Info
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
-                          ),
-                          color: Colors.black26,
-                        ),
-                        child: Center(
-                          child: CharacterBlobRenderer(
-                            npc: liveNpc,
-                            size: 80,
-                            isIdle: true,
-                          ),
+        return GestureDetector(
+          onTap: () => Navigator.pop(context),
+          behavior: HitTestBehavior.opaque,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: GestureDetector(
+              onTap: () {}, // Prevent tap from closing when touching the content area
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Protruding Tabs
+                    TabBar(
+                      isScrollable: true,
+                      dividerColor: Colors.transparent,
+                      indicator: const BoxDecoration(
+                        color: Color(0xFF1E1A15),
+                        border: Border(
+                          top: BorderSide(color: Color(0xFFC4B89B)),
+                          left: BorderSide(color: Color(0xFFC4B89B)),
+                          right: BorderSide(color: Color(0xFFC4B89B)),
                         ),
                       ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              liveNpc.name.toUpperCase(),
-                              style: GoogleFonts.playfairDisplay(
-                                color: const Color(0xFFE5D5B0),
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            Text(
-                              liveNpc.status == NPCStatus.zombie
-                                  ? "${liveNpc.role} (REANIMATED)".toUpperCase()
-                                  : liveNpc.role.toUpperCase(),
-                              style: GoogleFonts.oldStandardTt(
-                                color: liveNpc.status == NPCStatus.zombie
-                                    ? const Color(0xFF7A9E7E)
-                                    : const Color(
-                                        0xFFC4B89B,
-                                      ).withValues(alpha: 0.7),
-                                fontSize: 12,
-                                letterSpacing: 1,
-                                fontWeight: liveNpc.status == NPCStatus.zombie
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: moodColor.withValues(alpha: 0.5),
-                                ),
-                                color: moodColor.withValues(alpha: 0.1),
-                              ),
-                              child: Text(
-                                mood,
-                                style: GoogleFonts.outfit(
-                                  color: moodColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      labelColor: const Color(0xFFE5D5B0),
+                      unselectedLabelColor: Colors.white24,
+                      tabAlignment: TabAlignment.center,
+                      labelStyle: GoogleFonts.playfairDisplay(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  TabBar(
-                    indicatorColor: const Color(0xFFC4B89B),
-                    labelColor: const Color(0xFFE5D5B0),
-                    unselectedLabelColor: Colors.white24,
-                    labelStyle: GoogleFonts.playfairDisplay(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                    tabs: const [
-                      Tab(text: "STATUS"),
-                      Tab(text: "SOCIAL"),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _buildStatusTab(context, liveNpc, state),
-                        _buildSocialTab(context, liveNpc, state),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      tabs: const [
+                        Tab(text: "  STATUS  "),
+                        Tab(text: "  SOCIAL  "),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "CLOSE",
-                      style: GoogleFonts.oldStandardTt(
-                        color: const Color(0xFFC4B89B),
+                    // Main Panel
+                    Container(
+                      constraints: BoxConstraints(
+                        maxWidth: 600, // 50% more horizontal space
+                        maxHeight: MediaQuery.of(context).size.height * 0.72, // 10% less height
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1A15),
+                        border: Border.all(color: const Color(0xFFC4B89B), width: 1),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Compressed Header
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                // Smaller Portrait
+                                Container(
+                                  width: 60,
+                                  height: 72,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
+                                    ),
+                                    color: Colors.black26,
+                                  ),
+                                  child: Center(
+                                    child: CharacterBlobRenderer(
+                                      npc: liveNpc,
+                                      size: 50,
+                                      isIdle: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                // Name and Info on one line
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          liveNpc.name.toUpperCase(),
+                                          style: GoogleFonts.playfairDisplay(
+                                            color: const Color(0xFFE5D5B0),
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        children: [
+                                          Text(
+                                            liveNpc.status == NPCStatus.zombie
+                                                ? "${liveNpc.role} (REANIMATED)".toUpperCase()
+                                                : liveNpc.role.toUpperCase(),
+                                            style: GoogleFonts.oldStandardTt(
+                                              color: liveNpc.status == NPCStatus.zombie
+                                                  ? const Color(0xFF7A9E7E)
+                                                  : const Color(0xFFC4B89B).withValues(alpha: 0.7),
+                                              fontSize: 10,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              border: Border.all(color: moodColor.withValues(alpha: 0.3)),
+                                              color: moodColor.withValues(alpha: 0.1),
+                                            ),
+                                            child: Text(
+                                              mood,
+                                              style: GoogleFonts.outfit(
+                                                color: moodColor,
+                                                fontSize: 8,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1, color: Colors.white10),
+                          // Content
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: TabBarView(
+                                children: [
+                                  _buildStatusTab(context, liveNpc, state),
+                                  _buildSocialTab(context, liveNpc, state),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -199,25 +224,25 @@ class CharacterPortraitDialog extends StatelessWidget {
           liveNpc.energy / 100,
           Colors.blueAccent,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _buildStatBar(
           "DIGESTION",
           liveNpc.digestion / 100,
           Colors.deepOrangeAccent,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _buildStatBar(
           "FULLNESS",
           (100 - liveNpc.hunger) / 100,
           Colors.greenAccent,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _buildStatBar(
           "SATISFACTION",
           liveNpc.satisfaction / 100,
           Colors.amberAccent,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _buildStatBar(
           "CLEANLINESS",
           liveNpc.cleanliness / 100,
@@ -249,6 +274,112 @@ class CharacterPortraitDialog extends StatelessWidget {
         _buildUpcomingSection(liveNpc, state),
         const SizedBox(height: 24),
         _buildHousingSection(context, liveNpc, state),
+        const SizedBox(height: 24),
+        _buildProficienciesSection(liveNpc, state),
+      ],
+    );
+  }
+
+  Widget _buildProficienciesSection(NPC liveNpc, GameState state) {
+    final proficiencies = liveNpc.proficiencies.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value)); // Sort by XP descending
+
+    if (proficiencies.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader("PROFICIENCIES"),
+          const SizedBox(height: 12),
+          Text(
+            "NO DEVELOPED PROFICIENCIES",
+            style: GoogleFonts.oldStandardTt(
+              color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader("PROFICIENCIES"),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: proficiencies.map((e) {
+            final level = liveNpc.metadata['proficiency_level_${e.key}'] as int? ?? 0;
+            String levelText = "NOVICE";
+            if (level >= 8) {
+              levelText = "EXPERT";
+            } else if (level >= 5) {
+              levelText = "PROFESSIONAL";
+            } else if (level >= 2) {
+              levelText = "ADEPT";
+            }
+            final requiredXp = state.getRequiredXP(level);
+            final currentXp = e.value;
+            final progress = (currentXp / requiredXp).clamp(0.0, 1.0);
+
+            return Container(
+              width: 140, // Fixed width for better grid layout
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFC4B89B).withValues(alpha: 0.05),
+                border: Border.all(
+                  color: const Color(0xFFC4B89B).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.key.toUpperCase(),
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        level > 0 ? "LVL $level $levelText" : levelText,
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
+                          fontSize: 8,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      if (level < 10)
+                        Text(
+                          "${currentXp.toInt()} / $requiredXp XP",
+                          style: GoogleFonts.outfit(
+                            color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
+                            fontSize: 8,
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (level < 10) ...[
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.white12,
+                      color: const Color(0xFFC4B89B),
+                      minHeight: 2,
+                    ),
+                  ]
+                ],
+              ),
+            );
+          }).toList(),
+        ),
       ],
     );
   }
@@ -777,7 +908,7 @@ class CharacterPortraitDialog extends StatelessWidget {
       title,
       style: GoogleFonts.playfairDisplay(
         color: const Color(0xFFC4B89B),
-        fontSize: 10,
+        fontSize: 8,
         fontWeight: FontWeight.bold,
         letterSpacing: 2,
       ),
@@ -795,7 +926,7 @@ class CharacterPortraitDialog extends StatelessWidget {
               label,
               style: GoogleFonts.outfit(
                 color: const Color(0xFFC4B89B),
-                fontSize: 9,
+                fontSize: 8,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
               ),

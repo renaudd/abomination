@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frankensteinoss/state/game_state.dart';
-import 'package:frankensteinoss/models/experiment.dart';
+import 'package:abomination/state/game_state.dart';
+import 'package:abomination/models/experiment.dart';
 
 void main() {
   test('Experiment progress decrements during GameState tick', () {

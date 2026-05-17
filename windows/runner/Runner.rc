@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.rend.abomination" "\0"
-            VALUE "FileDescription", "FrankensteinOSS" "\0"
+            VALUE "FileDescription", "Abomination" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "FrankensteinOSS" "\0"
+            VALUE "InternalName", "Abomination" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.rend.abomination. All rights reserved." "\0"
             VALUE "OriginalFilename", "abomination.exe" "\0"
-            VALUE "ProductName", "FrankensteinOSS" "\0"
+            VALUE "ProductName", "Abomination" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

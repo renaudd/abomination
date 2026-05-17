@@ -13,12 +13,12 @@
 // limitations under the License.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frankensteinoss/models/npc.dart';
-import 'package:frankensteinoss/models/relationship.dart';
-import 'package:frankensteinoss/models/body_part.dart';
-import 'package:frankensteinoss/models/schedule.dart';
-import 'package:frankensteinoss/models/diet.dart';
-import 'package:frankensteinoss/services/social_service.dart';
+import 'package:abomination/models/npc.dart';
+import 'package:abomination/models/relationship.dart';
+import 'package:abomination/models/body_part.dart';
+import 'package:abomination/models/schedule.dart';
+import 'package:abomination/models/diet.dart';
+import 'package:abomination/services/social_service.dart';
 
 void main() {
   group('Relationship Model', () {

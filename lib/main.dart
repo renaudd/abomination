@@ -15,13 +15,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'state/game_state.dart';
 import 'services/audio_service.dart';
 import 'services/game_engine.dart';
-import 'ui/screens/main_menu_screen.dart';
+import 'ui/screens/loading_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
 
   final audioService = AudioService();
   await audioService.initialize();
@@ -38,18 +44,18 @@ void main() async {
         ChangeNotifierProvider.value(value: gameState),
         Provider.value(value: gameEngine),
       ],
-      child: const FrankensteinOssApp(),
+      child: const AbominationApp(),
     ),
   );
 }
 
-class FrankensteinOssApp extends StatelessWidget {
-  const FrankensteinOssApp({super.key});
+class AbominationApp extends StatelessWidget {
+  const AbominationApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FrankensteinOSS',
+      title: 'Abomination',
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF1A1612), // Deep wood shadow
@@ -69,7 +75,7 @@ class FrankensteinOssApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainMenuScreen(),
+      home: const LoadingScreen(),
     );
   }
 }

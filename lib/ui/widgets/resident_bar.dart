@@ -22,6 +22,7 @@ import '../../state/game_state.dart';
 import '../../services/task_service.dart';
 import 'character_blob_renderer.dart';
 import '../../models/npc_intent.dart';
+import '../../models/contract.dart';
 
 class ResidentBar extends StatefulWidget {
   final NPC npc;
@@ -35,13 +36,20 @@ class ResidentBar extends StatefulWidget {
 class _ResidentBarState extends State<ResidentBar> {
   int _activeTabIndex = 0;
 
-  final List<String> _tabs = [
-    "Stats",
-    "Relations",
-    "Schedule",
-    "Combat",
-    "Records",
-  ];
+  late final List<String> _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = [
+      "Stats",
+      "Relations",
+      "Schedule",
+      "Combat",
+      "Records",
+      if (!widget.npc.isPlayer) "Contract",
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +404,12 @@ class _ResidentBarState extends State<ResidentBar> {
           case 3: // Combat
             return _buildCombatTab(inkColor);
           case 4: // Records
-            return _buildRecordsTab(inkColor);
+            return _buildRecordsTab(inkColor, state);
+          case 5: // Contract
+            if (!widget.npc.isPlayer) {
+              return _buildContractTab(inkColor, state);
+            }
+            return Container();
           default:
             return Container();
         }
@@ -556,33 +569,51 @@ class _ResidentBarState extends State<ResidentBar> {
     bool invert = false,
   }) {
     double displayValue = invert ? (1.0 - value) : value;
-    return Tooltip(
-      message: "$label: ${(value * 100).toInt()}%",
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: inkColor.withValues(alpha: 0.6)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Container(
-                height: 6, // Slightly taller for better visibility
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: inkColor.withValues(alpha: 0.3),
-                    width: 0.5,
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF1E1A15),
+            duration: const Duration(seconds: 2),
+            content: Text(
+              "$label: ${(value * 100).toInt()}%",
+              style: GoogleFonts.playfairDisplay(
+                color: const Color(0xFFE5D5B0),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
+      child: Tooltip(
+        message: "$label: ${(value * 100).toInt()}%",
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Row(
+            children: [
+              Icon(icon, size: 14, color: inkColor.withValues(alpha: 0.6)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  height: 6, // Slightly taller for better visibility
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: inkColor.withValues(alpha: 0.3),
+                      width: 0.5,
+                    ),
                   ),
-                ),
-                child: LinearProgressIndicator(
-                  value: displayValue.clamp(0.0, 1.0),
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    barColor.withValues(alpha: 0.7),
+                  child: LinearProgressIndicator(
+                    value: displayValue.clamp(0.0, 1.0),
+                    backgroundColor: Colors.transparent,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      barColor.withValues(alpha: 0.7),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -596,28 +627,46 @@ class _ResidentBarState extends State<ResidentBar> {
   ) {
     // Recalibrate to 0-10 scale (where 3 is normal, 6+ is superhuman)
     final int displayValue = (value * 10).toInt();
-    return Tooltip(
-      message: "$label: $displayValue",
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 8,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.05),
-              border: Border.all(color: inkColor.withValues(alpha: 0.2)),
-            ),
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              width: 8,
-              height: 120 * value.clamp(0.0, 1.0),
-              color: inkColor.withValues(alpha: 0.8),
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF1E1A15),
+            duration: const Duration(seconds: 2),
+            content: Text(
+              "$label: $displayValue",
+              style: GoogleFonts.playfairDisplay(
+                color: const Color(0xFFE5D5B0),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Icon(icon, size: 14, color: inkColor.withValues(alpha: 0.7)),
-        ],
+        );
+      },
+      child: Tooltip(
+        message: "$label: $displayValue",
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 8,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.05),
+                border: Border.all(color: inkColor.withValues(alpha: 0.2)),
+              ),
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                width: 8,
+                height: 120 * value.clamp(0.0, 1.0),
+                color: inkColor.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Icon(icon, size: 14, color: inkColor.withValues(alpha: 0.7)),
+          ],
+        ),
       ),
     );
   }
@@ -773,7 +822,84 @@ class _ResidentBarState extends State<ResidentBar> {
     );
   }
 
-  Widget _buildRecordsTab(Color inkColor) {
+  Widget _buildContractTab(Color inkColor, GameState state) {
+    final contract = state.contracts.firstWhereOrNull((c) => c.npcId == widget.npc.id && c.isActive);
+
+    if (contract == null) {
+      return Center(
+        child: Text(
+          "No formal agreement.",
+          style: GoogleFonts.oldStandardTt(
+            color: inkColor.withValues(alpha: 0.5),
+            fontSize: 14,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            contract.type.displayName.toUpperCase(),
+            style: GoogleFonts.playfairDisplay(
+              color: inkColor,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            contract.description,
+            style: GoogleFonts.oldStandardTt(
+              color: inkColor.withValues(alpha: 0.8),
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  // Example modification
+                  final newTerms = Map<String, dynamic>.from(contract.terms);
+                  newTerms['modified'] = true;
+                  state.proposeContractModification(contract.id, newTerms, isFavorable: true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("${widget.npc.name}'s terms modified.")),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: inkColor,
+                  foregroundColor: const Color(0xFFE5D5B0),
+                ),
+                child: Text("Propose Modification", style: GoogleFonts.oswald(fontSize: 10)),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () {
+                  state.terminateContract(contract.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Contract with ${widget.npc.name} terminated.")),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red[800],
+                  side: BorderSide(color: Colors.red[800]!),
+                ),
+                child: Text("Terminate", style: GoogleFonts.oswald(fontSize: 10)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordsTab(Color inkColor, GameState state) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -824,8 +950,133 @@ class _ResidentBarState extends State<ResidentBar> {
           ),
           const SizedBox(height: 16),
           _buildRecordGrid(inkColor),
+          const SizedBox(height: 16),
+          _buildProficienciesList(inkColor, state),
         ],
       ),
+    );
+  }
+
+  Widget _buildProficienciesList(Color inkColor, GameState state) {
+    final proficiencies = widget.npc.proficiencies.entries
+        .where((e) => e.value > 0)
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    if (proficiencies.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Proficiencies",
+            style: GoogleFonts.playfairDisplay(
+              color: inkColor,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "NO DEVELOPED PROFICIENCIES",
+            style: GoogleFonts.oldStandardTt(
+              color: inkColor.withValues(alpha: 0.4),
+              fontSize: 10,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Proficiencies",
+          style: GoogleFonts.playfairDisplay(
+            color: inkColor,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: proficiencies.map((e) {
+            final level = widget.npc.metadata['proficiency_level_${e.key}'] as int? ?? 0;
+            String levelText = "NOVICE";
+            if (level >= 8) {
+              levelText = "EXPERT";
+            } else if (level >= 5) {
+              levelText = "PROFESSIONAL";
+            } else if (level >= 2) {
+              levelText = "ADEPT";
+            }
+
+            final requiredXp = state.getRequiredXP(level);
+            final currentXp = e.value;
+            final progress = (currentXp / requiredXp).clamp(0.0, 1.0);
+
+            return Container(
+              width: 140, // Fixed width
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.03),
+                border: Border.all(
+                  color: inkColor.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.key.toUpperCase(),
+                    style: GoogleFonts.oldStandardTt(
+                      color: inkColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        level > 0 ? "LVL $level $levelText" : levelText,
+                        style: GoogleFonts.outfit(
+                          color: inkColor.withValues(alpha: 0.7),
+                          fontSize: 8,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      if (level < 10)
+                        Text(
+                          "${currentXp.toInt()} / $requiredXp XP",
+                          style: GoogleFonts.outfit(
+                            color: inkColor.withValues(alpha: 0.5),
+                            fontSize: 8,
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (level < 10) ...[
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: inkColor.withValues(alpha: 0.1),
+                      color: inkColor.withValues(alpha: 0.6),
+                      minHeight: 2,
+                    ),
+                  ]
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 

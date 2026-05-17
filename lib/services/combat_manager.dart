@@ -490,7 +490,8 @@ class CombatManager extends ChangeNotifier {
         final dy = target.y - c.y;
         final dist = sqrt(dx * dx + dy * dy);
 
-        if (dist > 1.5) {
+        final tStats = target.npc.combatStats!;
+        if (dist > stats.radius + tStats.radius + 2.5) {
           final moveDist =
               stats.movement *
               dt *
@@ -504,7 +505,6 @@ class CombatManager extends ChangeNotifier {
           return; // Skip normal targeting/movement while in special state
         } else {
           // 3. Close enough to EXECUTE
-          final tStats = target.npc.combatStats!;
           target.npc = target.npc.copyWith(
             combatStats: tStats.copyWith(health: 0),
           );

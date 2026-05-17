@@ -17,7 +17,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import '../widgets/hamlet_hotspot.dart';
-import 'combat_screen.dart';
+import '../widgets/encounter_dialog.dart';
 
 class HamletScreen extends StatefulWidget {
   const HamletScreen({super.key});
@@ -33,9 +33,10 @@ class _HamletScreenState extends State<HamletScreen> {
     if (state.pendingCombatEncounter && !_isNavigatingToCombat) {
       _isNavigatingToCombat = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CombatScreen()),
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const EncounterDialog(),
         ).then((_) {
           _isNavigatingToCombat = false;
         });
@@ -449,6 +450,15 @@ class _HamletScreenState extends State<HamletScreen> {
                     fontSize: 10,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  'WAGES: ${npc.monthlySalary} CHF / MONTH',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B),
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
               ],
             ),
           ),
@@ -464,7 +474,7 @@ class _HamletScreenState extends State<HamletScreen> {
               ),
             ),
             child: Text(
-              'HIRE (10 CHF)',
+              'HIRE (${npc.hiringFee} CHF)',
               style: GoogleFonts.playfairDisplay(
                 color: const Color(0xFFE5D5B0),
                 fontSize: 10,

@@ -80,109 +80,111 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B), width: 1),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "PREPARE EXPEDITION",
-                  style: GoogleFonts.playfairDisplay(
-                    color: const Color(0xFFE5D5B0),
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                Text(
-                  "DESTINATION: ${widget.destinationId.toUpperCase()}",
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
-                    fontSize: 12,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // NPC Selector (Locked to Player)
-                _sectionHeader("EXPEDITION LEADER"),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFC4B89B),
-                    child: Icon(Icons.stars, color: Colors.black),
-                  ),
-                  title: Text(
-                    "ALPHONSE",
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "PREPARE EXPEDITION",
                     style: GoogleFonts.playfairDisplay(
                       color: const Color(0xFFE5D5B0),
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
                     ),
                   ),
-                  subtitle: Text(
-                    "MASTER OF THE MANOR",
+                  Text(
+                    "DESTINATION: ${widget.destinationId.toUpperCase()}",
                     style: GoogleFonts.oldStandardTt(
                       color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
-                      fontSize: 10,
+                      fontSize: 12,
+                      letterSpacing: 1,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 24),
 
-                const SizedBox(height: 24),
-
-                // Resource Selector
-                _sectionHeader("PACK SUPPLIES"),
-                ..._selectedResources.keys.map(
-                  (res) => _buildResourceSlider(state, res),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Escort Selector
-                _sectionHeader("ESCORT ROSTER (12 SLOTS)"),
-                _buildEscortGrid(state),
-
-                const SizedBox(height: 32),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        "CANCEL",
-                        style: GoogleFonts.oldStandardTt(color: Colors.white24),
+                  // NPC Selector (Locked to Player)
+                  _sectionHeader("EXPEDITION LEADER"),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFC4B89B),
+                      child: Icon(Icons.stars, color: Colors.black),
+                    ),
+                    title: Text(
+                      "ALPHONSE",
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: availableNpcs.isEmpty
-                          ? null
-                          : () {
-                              state.startJourney(
-                                _selectedNpcId!,
-                                widget.destinationId,
-                                _selectedResources,
-                                _escortIds,
-                              );
-                              Navigator.pop(context);
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFC4B89B),
-                        foregroundColor: Colors.black,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                      ),
-                      child: Text(
-                        "DEPART",
-                        style: GoogleFonts.playfairDisplay(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    subtitle: Text(
+                      "MASTER OF THE MANOR",
+                      style: GoogleFonts.oldStandardTt(
+                        color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
+                        fontSize: 10,
                       ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Resource Selector
+                  _sectionHeader("PACK SUPPLIES"),
+                  ..._selectedResources.keys.map(
+                    (res) => _buildResourceSlider(state, res),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Escort Selector
+                  _sectionHeader("ESCORT ROSTER (12 SLOTS)"),
+                  _buildEscortGrid(state),
+
+                  const SizedBox(height: 32),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          "CANCEL",
+                          style: GoogleFonts.oldStandardTt(color: Colors.white24),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: availableNpcs.isEmpty
+                            ? null
+                            : () {
+                                state.startJourney(
+                                  _selectedNpcId!,
+                                  widget.destinationId,
+                                  _selectedResources,
+                                  _escortIds,
+                                );
+                                Navigator.pop(context);
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC4B89B),
+                          foregroundColor: Colors.black,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                        ),
+                        child: Text(
+                          "DEPART",
+                          style: GoogleFonts.playfairDisplay(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );

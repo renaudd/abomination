@@ -19,13 +19,77 @@ import '../../state/game_state.dart';
 import '../widgets/resident_bar.dart';
 
 class ResidentsPanel extends StatelessWidget {
-  const ResidentsPanel({super.key});
+  final bool isTab;
+  const ResidentsPanel({super.key, this.isTab = false});
 
   @override
   Widget build(BuildContext context) {
     const Color parchmentBg = Color(0xFFE5D5B0);
     const Color brassColor = Color(0xFFC4B89B);
     const Color darkWood = Color(0xFF1A1612);
+
+    final content = Stack(
+      children: [
+        // Background "Journal" texture or just dark wood
+        Container(color: darkWood),
+
+        Column(
+          children: [
+            // Header description area
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: parchmentBg.withValues(alpha: 0.1),
+                border: Border.all(color: brassColor.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                "DETAILED ROSTER OF ALL SPECIMENS AND STAFF CURRENTLY DOMICILED WITHIN THE MANOR. ENTRIES INCLUDE VITAL SIGNS, BEHAVIORAL INTENTS, AND COMBAT READINESS.",
+                style: GoogleFonts.oldStandardTt(
+                  color: brassColor.withValues(alpha: 0.7),
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                  letterSpacing: 1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+            Expanded(
+              child: Consumer<GameState>(
+                builder: (context, state, child) {
+                  final residents = state.npcs
+                      .where((n) => n.isResident)
+                      .toList();
+
+                  if (residents.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "THE LOGS ARE EMPTY.",
+                        style: GoogleFonts.playfairDisplay(
+                          color: brassColor.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    itemCount: residents.length,
+                    itemBuilder: (context, index) {
+                      return ResidentBar(npc: residents[index]);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    if (isTab) return content;
 
     return Scaffold(
       backgroundColor: darkWood,
@@ -68,66 +132,7 @@ class ResidentsPanel extends StatelessWidget {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Background "Journal" texture or just dark wood
-          Container(color: darkWood),
-
-          Column(
-            children: [
-              // Header description area
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: parchmentBg.withValues(alpha: 0.1),
-                  border: Border.all(color: brassColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  "DETAILED ROSTER OF ALL SPECIMENS AND STAFF CURRENTLY DOMICILED WITHIN THE MANOR. ENTRIES INCLUDE VITAL SIGNS, BEHAVIORAL INTENTS, AND COMBAT READINESS.",
-                  style: GoogleFonts.oldStandardTt(
-                    color: brassColor.withValues(alpha: 0.7),
-                    fontSize: 10,
-                    fontStyle: FontStyle.italic,
-                    letterSpacing: 1,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-
-              Expanded(
-                child: Consumer<GameState>(
-                  builder: (context, state, child) {
-                    final residents = state.npcs
-                        .where((n) => n.isResident)
-                        .toList();
-
-                    if (residents.isEmpty) {
-                      return Center(
-                        child: Text(
-                          "THE LOGS ARE EMPTY.",
-                          style: GoogleFonts.playfairDisplay(
-                            color: brassColor.withValues(alpha: 0.3),
-                          ),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: residents.length,
-                      itemBuilder: (context, index) {
-                        return ResidentBar(npc: residents[index]);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      body: content,
     );
   }
 }

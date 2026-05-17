@@ -18,7 +18,6 @@ import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
 import '../../services/combat_manager.dart';
 import '../../models/npc.dart';
-import '../../services/combat_unit_service.dart';
 import '../../services/combat_unit_factory.dart';
 import '../../state/game_state.dart';
 import '../widgets/character_blob_renderer.dart';
@@ -51,7 +50,15 @@ class _CombatScreenState extends State<CombatScreen>
         state.simulationAiDeck!,
       );
     } else {
-      _combatManager.prepareDeck(CombatUnitService.getInitialDeck());
+      final player = state.npcs.firstWhere((n) => n.isPlayer);
+      final travelingCompanions = state.npcs.where((n) => 
+        !n.isPlayer && 
+        n.worldDestinationId == player.worldDestinationId &&
+        n.worldDepartureId == player.worldDepartureId &&
+        n.worldTravelProgress < 1.0
+      ).toList();
+
+      _combatManager.prepareDeck(travelingCompanions);
     }
 
     // Always spawn Player Goalie
@@ -75,13 +82,26 @@ class _CombatScreenState extends State<CombatScreen>
     );
 
     if (!isSimulation) {
-      // Add some initial variety for player to see in normal mode
-      _combatManager.spawnUnit(
-        CombatUnitFactory.createGoon(),
-        CombatSide.enemy,
-        x: 160.0,
-        y: 20.0,
-      );
+      if (state.pendingEncounterEnemies != null) {
+        double currentY = 20.0;
+        for (var enemy in state.pendingEncounterEnemies!) {
+          _combatManager.spawnUnit(
+            enemy,
+            CombatSide.enemy,
+            x: 160.0,
+            y: currentY,
+          );
+          currentY += 15.0; // Spacing them out
+        }
+      } else {
+        // Add some initial variety for player to see in normal mode
+        _combatManager.spawnUnit(
+          CombatUnitFactory.createGoon(),
+          CombatSide.enemy,
+          x: 160.0,
+          y: 20.0,
+        );
+      }
     }
 
     _combatManager.startCombat();
@@ -201,7 +221,7 @@ class _CombatScreenState extends State<CombatScreen>
               onPressed: () {
                 final state = Provider.of<GameState>(context, listen: false);
                 state.addResources(_combatManager.accumulatedLoot);
-                state.pendingCombatEncounter = false;
+                state.clearEncounterState();
                 Navigator.pop(context);
               },
               child: Text(
@@ -277,7 +297,7 @@ class _CombatScreenState extends State<CombatScreen>
               onPressed: () {
                 // Load save logic would go here
                 final state = Provider.of<GameState>(context, listen: false);
-                state.pendingCombatEncounter = false;
+                state.clearEncounterState();
                 Navigator.pop(context);
               },
             ),
@@ -286,7 +306,7 @@ class _CombatScreenState extends State<CombatScreen>
               label: 'ACCEPT FATE (QUIT)',
               onPressed: () {
                 final state = Provider.of<GameState>(context, listen: false);
-                state.pendingCombatEncounter = false;
+                state.clearEncounterState();
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
             ),

@@ -27,13 +27,13 @@ class ManorProjection {
 
   // Base offset to center the manor
   static const double centerX = 576.0;
-  static const double groundLevelY = 520.0;
+  static const double groundLevelY = 560.0;
 
   /// Projects a logical coordinate (x grid, floor, layer) to an Offset.
   /// x: horizontal grid position (0 is center)
   /// floor: vertical floor (0 is ground, negative is basement)
   /// layer: depth layer (0 is the manor cross-section, 1 is the environment)
-  static Offset project(double x, int floor, int layer, {double scale = 1.0}) {
+  static Offset project(double x, num floor, int layer, {double scale = 1.0}) {
     // 1. Calculate base 2D position on the cross-section plane
     double px = centerX + (x * blockWidth);
     double py = groundLevelY - (floor * blockHeight);
@@ -48,7 +48,7 @@ class ManorProjection {
   /// Returns the Rect for a room's front face
   static Rect getRoomRect(
     double x,
-    int floor,
+    num floor,
     int layer, {
     double widthBlocks = 1.0,
     double scale = 1.0,

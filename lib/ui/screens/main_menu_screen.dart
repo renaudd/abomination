@@ -68,9 +68,9 @@ class MainMenuScreen extends StatelessWidget {
 
                 // Title
                 Text(
-                  'FRANKENSTEINOSS',
+                  'ABOMINATION',
                   style: GoogleFonts.playfairDisplay(
-                    fontSize: 48, // Slightly smaller to fit longer text
+                    fontSize: 36, // Slightly smaller to fit longer text
                     fontWeight: FontWeight.w900,
                     letterSpacing: 8,
                     color: const Color(0xFFE5D5B0),
@@ -87,7 +87,7 @@ class MainMenuScreen extends StatelessWidget {
                 Text(
                   'non satis scire',
                   style: GoogleFonts.oldStandardTt(
-                    fontSize: 20,
+                    fontSize: 14,
                     fontStyle: FontStyle.italic,
                     letterSpacing: 2,
                     color: const Color(0xFFC4B89B),
@@ -106,7 +106,7 @@ class MainMenuScreen extends StatelessWidget {
                   );
                 }),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 FutureBuilder<bool>(
                   future: Future.wait([
@@ -149,9 +149,11 @@ class MainMenuScreen extends StatelessWidget {
                   },
                 ),
 
+                const SizedBox(height: 12),
+
                 _buildMenuButton(context, 'OPTIONS', null),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 _buildMenuButton(context, 'COMBAT SIMULATOR', () {
                   Navigator.push(
@@ -167,7 +169,7 @@ class MainMenuScreen extends StatelessWidget {
                 const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text(
-                    'Copyright 2026 Google LLC',
+                    'Copyright 2026 Dashiell Renaud',
                     style: TextStyle(
                       color: Colors.white24,
                       fontSize: 12,
@@ -189,8 +191,8 @@ class MainMenuScreen extends StatelessWidget {
     VoidCallback? onPressed,
   ) {
     return SizedBox(
-      width: 280,
-      height: 50,
+      width: 240,
+      height: 40,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
@@ -203,13 +205,18 @@ class MainMenuScreen extends StatelessWidget {
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           backgroundColor: Colors.black.withValues(alpha: 0.4),
         ),
-        child: Text(
-          label,
-          style: GoogleFonts.playfairDisplay(
-            color: onPressed != null ? const Color(0xFFE5D5B0) : Colors.white12,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2.5,
-            fontSize: 16,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: GoogleFonts.playfairDisplay(
+              color: onPressed != null
+                  ? const Color(0xFFE5D5B0)
+                  : Colors.white12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2.5,
+              fontSize: 16,
+            ),
           ),
         ),
       ),

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -74,8 +73,10 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
-                const SizedBox(height: 40),
-                Expanded(child: _buildSceneContent()),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: SingleChildScrollView(child: _buildSceneContent()),
+                ),
                 _buildFooter(),
               ],
             ),
@@ -131,7 +132,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           () => _selectDeath(DeathCause.trainCrash),
         ),
         _optionButton(
-          "MURDER.",
+          "MURDER-SUICIDE.",
           () => _selectDeath(DeathCause.murderSuicide),
         ),
         _optionButton(
@@ -165,15 +166,19 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sceneText(reaction),
-        const SizedBox(height: 20),
-        _sceneText("Leaving you, Master..."),
-        const SizedBox(height: 20),
-        _inputField("FIRST NAME", _firstNameController),
         const SizedBox(height: 12),
-        _inputField("LAST NAME", _lastNameController),
+        _sceneText("Leaving you, Master..."),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _inputField("FIRST NAME", _firstNameController)),
+            const SizedBox(width: 12),
+            Expanded(child: _inputField("LAST NAME", _lastNameController)),
+          ],
+        ),
         const SizedBox(height: 12),
         _sceneText("as Junker of..."),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _inputField("ESTATE NAME", _estateNameController),
       ],
     );
@@ -230,12 +235,12 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           isSelected: _gilesTrait == GilesTrait.endsMeet,
         ),
         _optionButton(
-          "STAYING QUIET.",
+          "KEEPING HIS MOUTH SHUT.",
           () => _selectGiles(GilesTrait.silent),
           isSelected: _gilesTrait == GilesTrait.silent,
         ),
         _optionButton(
-          "KEEPING THE PLACE CLEAN.",
+          "NOT SHUFFLING HIS FEET.",
           () => _selectGiles(GilesTrait.shuffle),
           isSelected: _gilesTrait == GilesTrait.shuffle,
         ),
@@ -254,9 +259,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         _sceneText(intro),
         const SizedBox(height: 40),
         _optionButton(
-          "FREEDOM.",
-          () => _selectObjective(LifeObjective.freedom),
-          isSelected: _objective == LifeObjective.freedom,
+          "WOMEN.",
+          () => _selectObjective(LifeObjective.women),
+          isSelected: _objective == LifeObjective.women,
         ),
         _optionButton(
           "MONEY.",
@@ -301,9 +306,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       text,
       style: GoogleFonts.playfairDisplay(
         color: const Color(0xFFE5D5B0),
-        fontSize: 24,
+        fontSize: 12,
         fontWeight: FontWeight.bold,
-        height: 1.4,
+        height: 1.3,
       ),
     );
   }
@@ -311,13 +316,18 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
   Widget _inputField(String label, TextEditingController controller) {
     return TextField(
       controller: controller,
-      style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B)),
+      style: GoogleFonts.oldStandardTt(
+        color: const Color(0xFFC4B89B),
+        fontSize: 13,
+      ),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: GoogleFonts.playfairDisplay(
           color: Colors.white24,
-          fontSize: 10,
+          fontSize: 11,
         ),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 8),
         enabledBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.white10),
         ),
@@ -334,12 +344,12 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
     bool isSelected = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 6.0),
       child: InkWell(
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
           decoration: BoxDecoration(
             border: Border.all(
               color: isSelected ? const Color(0xFFC4B89B) : Colors.white10,
@@ -352,9 +362,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
             label,
             style: GoogleFonts.playfairDisplay(
               color: isSelected ? const Color(0xFFE5D5B0) : Colors.white38,
-              fontSize: 14,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
-              letterSpacing: 2,
+              letterSpacing: 1,
             ),
           ),
         ),

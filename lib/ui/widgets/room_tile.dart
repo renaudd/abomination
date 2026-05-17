@@ -14,6 +14,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../state/game_state.dart';
 import '../../models/room.dart';
 import '../../models/npc.dart';
 
@@ -33,6 +35,12 @@ class RoomTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = Provider.of<GameState>(context);
+    final String? prodText = state.getLastProductionText(room.id);
+    final DateTime? prodTime = state.getLastProductionTime(room.id);
+    final bool showProductionFlash = prodTime != null && 
+                                     DateTime.now().difference(prodTime) < const Duration(seconds: 2);
+
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -53,11 +61,14 @@ class RoomTile extends StatelessWidget {
             ),
           ),
 
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
             width: double.infinity,
             height: double.infinity,
             decoration: BoxDecoration(
-              color: room.name == 'Excavation Node' ? Colors.transparent : _getRoomBackgroundColor(room.type, room.isRestored),
+              color: showProductionFlash 
+                  ? const Color(0xFFC4B89B).withValues(alpha: 0.8) 
+                  : (room.name == 'Excavation Node' ? Colors.transparent : _getRoomBackgroundColor(room.type, room.isRestored)),
               border: Border.all(
                 color: room.name == 'Excavation Node' 
                     ? const Color(0xFFC4B89B).withValues(alpha: 0.05)
@@ -90,6 +101,27 @@ class RoomTile extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                // Production Flash Overlay
+                if (showProductionFlash && prodText != null)
+                  Positioned.fill(
+                    child: Center(
+                      child: Text(
+                        prodText,
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            const Shadow(
+                              color: Colors.black,
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
 
                 // Content
                 Padding(

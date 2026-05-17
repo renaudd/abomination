@@ -18,6 +18,7 @@ import '../../models/room.dart';
 import '../../models/game_item.dart';
 import '../../models/dish.dart';
 import '../../state/game_state.dart';
+import '../../util/name_formatter.dart';
 
 class LedgerItem {
   final IconData icon;
@@ -58,7 +59,7 @@ class RoomLedger extends StatelessWidget {
     for (var item in room.inventory) {
       items.add(LedgerItem(
         icon: _getIconForItem(item),
-        name: item.name,
+        name: NameFormatter.formatItemName(item.name),
         age: item.getDisplayAge(state.currentDate),
         quality: item.displayQuality.name.toUpperCase(),
         quantity: item.quantity,
@@ -80,7 +81,7 @@ class RoomLedger extends StatelessWidget {
         final first = entry.value.first;
         items.add(LedgerItem(
           icon: Icons.restaurant,
-          name: entry.key,
+          name: NameFormatter.formatItemName(entry.key),
           age: first.getDisplayAge(state.currentDate),
           quality: first.quality.name.toUpperCase(),
           quantity: entry.value.length,
@@ -88,26 +89,6 @@ class RoomLedger extends StatelessWidget {
           details: first.type.name.toUpperCase(),
           value: first.value,
         ));
-      }
-      
-      // Also include core resources as ledger entries if they have values
-      final coreSupplies = [
-        'flour_spelt', 'flour_durum', 'meat_beef', 'meat_chicken', 'eggs', 'salt'
-      ];
-      for (var key in coreSupplies) {
-        final count = state.resources[key] ?? 0;
-        if (count > 0) {
-          items.add(LedgerItem(
-            icon: Icons.inventory_2,
-            name: key.replaceFirst('meat_', '').replaceFirst('flour_', '').toUpperCase(),
-            age: '-',
-            quality: 'COMMON',
-            quantity: count.round(),
-            weight: 0.5, // Standard unit weight
-            details: 'RAW MATERIAL',
-            value: 2,
-          ));
-        }
       }
     }
 
@@ -208,7 +189,7 @@ class RoomLedger extends StatelessWidget {
         label,
         style: GoogleFonts.playfairDisplay(
           color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.bold,
           letterSpacing: 1,
         ),
@@ -224,11 +205,11 @@ class RoomLedger extends StatelessWidget {
         style: isBold 
           ? GoogleFonts.oswald(
               color: const Color(0xFFE5D5B0),
-              fontSize: 12,
+              fontSize: 14,
             )
           : GoogleFonts.oldStandardTt(
               color: const Color(0xFFC4B89B),
-              fontSize: 11,
+              fontSize: 13,
             ),
       ),
     );

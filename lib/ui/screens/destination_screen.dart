@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
-import 'combat_screen.dart';
+import '../widgets/encounter_dialog.dart';
 
 class DestinationScreen extends StatefulWidget {
   final String destinationId;
@@ -33,11 +33,16 @@ class _DestinationScreenState extends State<DestinationScreen> {
     if (state.pendingCombatEncounter && !_isNavigatingToCombat) {
       _isNavigatingToCombat = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CombatScreen()),
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const EncounterDialog(),
         ).then((_) {
-          _isNavigatingToCombat = false;
+          if (mounted) {
+            setState(() {
+              _isNavigatingToCombat = false;
+            });
+          }
         });
       });
     }

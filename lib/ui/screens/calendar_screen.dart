@@ -20,7 +20,8 @@ import '../../state/game_state.dart';
 import '../widgets/horizontal_schedule_editor.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final bool isTab;
+  const CalendarScreen({super.key, this.isTab = false});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -39,25 +40,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1E1A15),
-      appBar: AppBar(
-        title: Text(
-          'CHRONICLE OF TIME',
-          style: GoogleFonts.playfairDisplay(
-            color: const Color(0xFFE5D5B0),
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: Consumer<GameState>(
-        builder: (context, state, child) {
-          return Padding(
-            padding: const EdgeInsets.all(24.0),
+    final content = Consumer<GameState>(
+      builder: (context, state, child) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -104,14 +90,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     },
                   ),
                 ),
-                const SizedBox(height: 16),
-                _buildInstructions(),
               ],
             ),
           );
         },
-      ),
-    );
+      );
+
+      if (widget.isTab) return content;
+      
+      return Scaffold(
+        backgroundColor: const Color(0xFF1E1A15),
+        appBar: AppBar(
+          title: Text(
+            'CHRONICLE OF TIME',
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0),
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        body: content,
+      );
   }
 
   Widget _buildDayPicker() {
@@ -143,45 +146,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
       }),
-    );
-  }
-
-  Widget _buildInstructions() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black12,
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _instructionRow(Icons.touch_app, "TAP A BLOCK TO REASSIGN THAT HOUR"),
-          const SizedBox(height: 8),
-          _instructionRow(
-            Icons.unfold_more,
-            "DRAG SIDE HANDLES TO STRETCH BLOCKS",
-          ),
-          const SizedBox(height: 8),
-          _instructionRow(
-            Icons.nightlight_round,
-            "GUARDING IS MORE EFFECTIVE AT NIGHT",
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _instructionRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: const Color(0xFFC4B89B)),
-        const SizedBox(width: 12),
-        Text(
-          text,
-          style: GoogleFonts.oldStandardTt(fontSize: 10, color: Colors.white38),
-        ),
-      ],
     );
   }
 }

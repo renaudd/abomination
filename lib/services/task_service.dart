@@ -102,6 +102,7 @@ enum TaskType {
   experiment,
   operation,
   relax,
+  collectPayment,
 }
 
 
@@ -278,6 +279,8 @@ extension TaskTypeExtensions on TaskType {
         return 'Operation';
       case TaskType.relax:
         return 'Relax';
+      case TaskType.collectPayment:
+        return 'Collect Wages';
     }
   }
 }
@@ -359,6 +362,121 @@ class TaskService {
         type == TaskType.harvestCrops ||
         type == TaskType.rest ||
         type == TaskType.eat;
+  }
+
+  static String? getProficiency(TaskType type) {
+    switch (type) {
+      case TaskType.prepareMeals:
+      case TaskType.cook:
+      case TaskType.refineFood:
+        return 'Cooking';
+      case TaskType.butcherAnimals:
+      case TaskType.hunt:
+        return 'Hunting';
+      case TaskType.plantCrops:
+      case TaskType.waterCrops:
+      case TaskType.tillSoil:
+      case TaskType.fertilizeSoil:
+      case TaskType.careForCrops:
+      case TaskType.harvestCrops:
+      case TaskType.harvestCabbage:
+      case TaskType.harvestGrain:
+        return 'Farming';
+      case TaskType.surgery:
+      case TaskType.surgicalOperation:
+      case TaskType.surgicalCombination:
+      case TaskType.vivisection:
+      case TaskType.dissect:
+      case TaskType.operation:
+        return 'Surgery';
+      case TaskType.cleanRoom:
+      case TaskType.cleanDish:
+      case TaskType.discardTrash:
+      case TaskType.discardSpoiledFood:
+        return 'Cleaning';
+      case TaskType.construction:
+      case TaskType.restoreRoom:
+      case TaskType.setupWorkshop:
+      case TaskType.setupBrewery:
+      case TaskType.setupDistillery:
+      case TaskType.setupGranary:
+        return 'Construction';
+      case TaskType.brew:
+      case TaskType.distill:
+        return 'Brewing';
+      case TaskType.research:
+      case TaskType.study:
+      case TaskType.archiveResearch:
+      case TaskType.transcribeNotes:
+      case TaskType.deprivationStudy:
+      case TaskType.puzzleStudy:
+      case TaskType.observeExperiment:
+      case TaskType.experiment:
+        return 'Research';
+      case TaskType.careForInjured:
+      case TaskType.careForSick:
+      case TaskType.stopBleeding:
+      case TaskType.diagnoseIllness:
+      case TaskType.treatIllness:
+      case TaskType.checkBedridden:
+      case TaskType.clinicalTrial:
+        return 'Medicine';
+      case TaskType.paint:
+        return 'Painting';
+      case TaskType.writeNovel:
+      case TaskType.writePoetry:
+        return 'Writing';
+      case TaskType.sculpt:
+        return 'Sculpture';
+      case TaskType.collectEggs:
+      case TaskType.deliverEggs:
+      case TaskType.interactAnimals:
+      case TaskType.guardCoop:
+      case TaskType.breedingAttempt:
+        return 'Ranching';
+      case TaskType.mining:
+      case TaskType.excavate:
+        return 'Mining';
+      case TaskType.invention:
+      case TaskType.manufacturing:
+      case TaskType.blacksmithing:
+      case TaskType.processTimber:
+        return 'Manufacturing';
+      case TaskType.refineNonLiving:
+      case TaskType.refineLifeForm:
+      case TaskType.refinePlantFungus:
+      case TaskType.recombineSpecimen:
+        return 'Chemistry';
+      case TaskType.trainCreature:
+        return 'Therapy';
+      default:
+        return null;
+    }
+  }
+
+  static bool isPhysicallyStrenuous(TaskType type) {
+    switch (type) {
+      case TaskType.mining:
+      case TaskType.excavate:
+      case TaskType.construction:
+      case TaskType.restoreRoom:
+      case TaskType.strengthLabor:
+      case TaskType.processTimber:
+      case TaskType.tillSoil:
+      case TaskType.harvestCrops:
+      case TaskType.harvestGrain:
+      case TaskType.setupBrewery:
+      case TaskType.setupDistillery:
+      case TaskType.setupGranary:
+      case TaskType.setupWorkshop:
+      case TaskType.hauling:
+      case TaskType.blacksmithing:
+      case TaskType.guardCoop:
+      case TaskType.defendManor:
+        return true;
+      default:
+        return false;
+    }
   }
 
   static TaskMetadata getMetadata(TaskType type) {
@@ -674,6 +792,13 @@ class TaskService {
           relevantAttributes: ['temperament'],
           possibleOutcomes: ["Restored focus", "Improved morale"],
         );
+      case TaskType.collectPayment:
+        return const TaskMetadata(
+          explanation: "Collecting daily wages from the Master of the Manor.",
+          typicalDuration: "2 Minutes",
+          relevantAttributes: [],
+          possibleOutcomes: ["Received salary", "Reduced funds"],
+        );
       // Fallback for others
       default:
         return const TaskMetadata(
@@ -948,6 +1073,8 @@ class TaskService {
         return "Perform operation";
       case TaskType.relax:
         return "Relax and restore focus";
+      case TaskType.collectPayment:
+        return "Collect wages from the Study";
     }
   }
 }

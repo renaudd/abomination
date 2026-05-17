@@ -15,9 +15,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:frankensteinoss/state/game_state.dart';
-import 'package:frankensteinoss/ui/screens/study_screen.dart';
-import 'package:frankensteinoss/models/game_item.dart';
+import 'package:abomination/state/game_state.dart';
+import 'package:abomination/ui/screens/study_screen.dart';
+import 'package:abomination/models/game_item.dart';
 
 void main() {
   testWidgets('StudyScreen should not have overflow with many items', (

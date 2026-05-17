@@ -21,7 +21,8 @@ import '../../models/npc.dart';
 import 'responsibility_detail_screen.dart';
 
 class ResponsibilityGridScreen extends StatelessWidget {
-  const ResponsibilityGridScreen({super.key});
+  final bool isTab;
+  const ResponsibilityGridScreen({super.key, this.isTab = false});
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +30,43 @@ class ResponsibilityGridScreen extends StatelessWidget {
       builder: (context, state, child) {
         final npcs = state.npcs.where((n) => n.isResident).toList();
         final categories = ResponsibilityCategory.values;
+
+        final content = Row(
+          children: [
+            // Character Column (Fixed)
+            _buildCharacterHeader(npcs),
+            // Category Grid (Scrollable)
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Column(
+                  children: [
+                    _buildGridHeader(context, categories),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Table(
+                          defaultColumnWidth: const FixedColumnWidth(120),
+                          children: npcs
+                              .map(
+                                (npc) => _buildRow(
+                                  context,
+                                  state,
+                                  npc,
+                                  categories,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+
+        if (isTab) return content;
 
         return Scaffold(
           backgroundColor: const Color(0xFF1A1612),
@@ -42,40 +80,7 @@ class ResponsibilityGridScreen extends StatelessWidget {
               ),
             ),
           ),
-          body: Row(
-            children: [
-              // Character Column (Fixed)
-              _buildCharacterHeader(npcs),
-              // Category Grid (Scrollable)
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Column(
-                    children: [
-                      _buildGridHeader(context, categories),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Table(
-                            defaultColumnWidth: const FixedColumnWidth(120),
-                            children: npcs
-                                .map(
-                                  (npc) => _buildRow(
-                                    context,
-                                    state,
-                                    npc,
-                                    categories,
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          body: content,
         );
       },
     );
@@ -102,7 +107,7 @@ class ResponsibilityGridScreen extends StatelessWidget {
             child: ListView.builder(
               itemCount: npcs.length,
               itemBuilder: (context, index) => Container(
-                height: 60,
+                height: 44,
                 alignment: Alignment.centerLeft,
                 padding: const EdgeInsets.only(left: 16),
                 decoration: const BoxDecoration(
@@ -112,7 +117,7 @@ class ResponsibilityGridScreen extends StatelessWidget {
                   npcs[index].name,
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -188,7 +193,7 @@ class ResponsibilityGridScreen extends StatelessWidget {
         final stars = npc.responsibilities[cat] ?? 0;
         return TableCell(
           child: Container(
-            height: 60,
+            height: 44,
             decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: Colors.white10),
@@ -201,7 +206,7 @@ class ResponsibilityGridScreen extends StatelessWidget {
                 child: Text(
                   '$stars',
                   style: GoogleFonts.oswald(
-                    fontSize: 16,
+                    fontSize: 20,
                     color: stars == 0 ? Colors.white30 : const Color(0xFFE5D5B0),
                     fontWeight: stars > 0 ? FontWeight.bold : FontWeight.normal,
                   ),

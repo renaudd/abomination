@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'npc_intent.dart';
 import 'body_part.dart';
 import 'schedule.dart';
@@ -87,13 +88,16 @@ class NPCTrait {
   );
 }
 
-enum HairStyle { none, short, long, messy, bob, bald }
+enum HairStyle { none, short, long, messy, bob, bald, curly, ponytail }
 
 enum FacialHairStyle { none, beard, mustache, goatee, stubble }
+
+enum BodyType { slim, average, heavy, muscular }
 
 class NPCAppearance {
   final HairStyle hairStyle;
   final FacialHairStyle facialHairStyle;
+  final BodyType bodyType;
   final Color bodyColor;
   final Color hairColor;
   final Color outfitColor;
@@ -102,6 +106,7 @@ class NPCAppearance {
   NPCAppearance({
     required this.hairStyle,
     required this.facialHairStyle,
+    this.bodyType = BodyType.average,
     required this.bodyColor,
     required this.hairColor,
     required this.outfitColor,
@@ -111,6 +116,7 @@ class NPCAppearance {
   Map<String, dynamic> toJson() => {
     'hairStyle': hairStyle.index,
     'facialHairStyle': facialHairStyle.index,
+    'bodyType': bodyType.index,
     'bodyColor': bodyColor.toARGB32(),
     'hairColor': hairColor.toARGB32(),
     'outfitColor': outfitColor.toARGB32(),
@@ -120,6 +126,7 @@ class NPCAppearance {
   factory NPCAppearance.fromJson(Map<String, dynamic> json) => NPCAppearance(
     hairStyle: HairStyle.values[json['hairStyle'] as int],
     facialHairStyle: FacialHairStyle.values[json['facialHairStyle'] as int],
+    bodyType: json['bodyType'] != null ? BodyType.values[json['bodyType'] as int] : BodyType.average,
     bodyColor: Color(json['bodyColor'] as int),
     hairColor: Color(json['hairColor'] as int),
     outfitColor: Color(json['outfitColor'] as int),
@@ -129,24 +136,51 @@ class NPCAppearance {
   factory NPCAppearance.defaultButler() => NPCAppearance(
     hairStyle: HairStyle.short,
     facialHairStyle: FacialHairStyle.mustache,
+    bodyType: BodyType.average,
     bodyColor: const Color(0xFFFFDBAC),
     hairColor: const Color(0xFFE8E8E8),
     outfitColor: const Color(0xFF4A5D6B), // Slate Grey/Blue (more visible)
   );
 
   factory NPCAppearance.random() {
+    final skinTones = [
+      const Color(0xFFFFDBAC),
+      const Color(0xFFF1C27D),
+      const Color(0xFFE0AC69),
+      const Color(0xFF8D5524),
+      const Color(0xFFC68642),
+    ];
+    final hairColors = [
+      const Color(0xFF4B3621), // Brown
+      const Color(0xFF090806), // Black
+      const Color(0xFFE6BE8A), // Blonde
+      const Color(0xFFA52A2A), // Red
+      const Color(0xFFE8E8E8), // Grey
+    ];
+    final outfitColors = [
+      Colors.brown.shade800,
+      Colors.blueGrey.shade700,
+      Colors.green.shade900,
+      Colors.grey.shade800,
+      const Color(0xFF4A4E69),
+      const Color(0xFF556B2F),
+    ];
+    final random = math.Random();
+    
     return NPCAppearance(
-      hairStyle: HairStyle.short,
-      facialHairStyle: FacialHairStyle.none,
-      bodyColor: const Color(0xFFFFDBAC),
-      hairColor: const Color(0xFF4B3621),
-      outfitColor: const Color(0xFF556B2F),
+      hairStyle: HairStyle.values[random.nextInt(HairStyle.values.length)],
+      facialHairStyle: FacialHairStyle.values[random.nextInt(FacialHairStyle.values.length)],
+      bodyType: BodyType.values[random.nextInt(BodyType.values.length)],
+      bodyColor: skinTones[random.nextInt(skinTones.length)],
+      hairColor: hairColors[random.nextInt(hairColors.length)],
+      outfitColor: outfitColors[random.nextInt(outfitColors.length)],
     );
   }
 
   NPCAppearance copyWith({
     HairStyle? hairStyle,
     FacialHairStyle? facialHairStyle,
+    BodyType? bodyType,
     Color? bodyColor,
     Color? hairColor,
     Color? outfitColor,
@@ -155,6 +189,7 @@ class NPCAppearance {
     return NPCAppearance(
       hairStyle: hairStyle ?? this.hairStyle,
       facialHairStyle: facialHairStyle ?? this.facialHairStyle,
+      bodyType: bodyType ?? this.bodyType,
       bodyColor: bodyColor ?? this.bodyColor,
       hairColor: hairColor ?? this.hairColor,
       outfitColor: outfitColor ?? this.outfitColor,
@@ -231,6 +266,10 @@ class NPC {
   final String? worldDepartureId; // Starting point for current journey leg
   final double worldTravelProgress; // 0.0 to 1.0
 
+  // Hiring
+  final int hiringFee;
+  final int monthlySalary;
+
   // Visuals
   final NPCAppearance appearance;
   final List<String> equippedVisuals;
@@ -241,7 +280,7 @@ class NPC {
   final ChefSkills chefStats;
   final Map<String, double> dishExperience;
   final Map<String, double> statExperience;
-  final Map<String, double> taskMastery;
+  final Map<String, double> proficiencies;
   final List<NPCIntent> intentQueue;
   final int? lastScheduledHour;
   final List<String> consumedDishes;
@@ -314,6 +353,8 @@ class NPC {
     this.worldDestinationId,
     this.worldDepartureId,
     this.worldTravelProgress = 0.0,
+    this.hiringFee = 10,
+    this.monthlySalary = 10,
     required this.appearance,
     this.equippedVisuals = const [],
     this.isResident = true,
@@ -321,7 +362,7 @@ class NPC {
     ChefSkills? chefStats,
     this.dishExperience = const {},
     this.statExperience = const {},
-    this.taskMastery = const {},
+    this.proficiencies = const {},
     this.intentQueue = const [],
     this.lastScheduledHour,
     this.consumedDishes = const [],
@@ -412,6 +453,8 @@ class NPC {
     String? worldDestinationId,
     String? worldDepartureId,
     double? worldTravelProgress,
+    int? hiringFee,
+    int? monthlySalary,
     NPCAppearance? appearance,
     List<String>? equippedVisuals,
     String? assignedRoomId,
@@ -420,7 +463,7 @@ class NPC {
     ChefSkills? chefStats,
     Map<String, double>? dishExperience,
     Map<String, double>? statExperience,
-    Map<String, double>? taskMastery,
+    Map<String, double>? proficiencies,
     List<NPCIntent>? intentQueue,
     int? lastScheduledHour,
     List<String>? consumedDishes,
@@ -501,6 +544,8 @@ class NPC {
           : (worldDestinationId ?? this.worldDestinationId),
       worldDepartureId: worldDepartureId ?? this.worldDepartureId,
       worldTravelProgress: worldTravelProgress ?? this.worldTravelProgress,
+      hiringFee: hiringFee ?? this.hiringFee,
+      monthlySalary: monthlySalary ?? this.monthlySalary,
       appearance: appearance ?? this.appearance,
       equippedVisuals: equippedVisuals ?? this.equippedVisuals,
       isResident: isResident ?? this.isResident,
@@ -508,7 +553,7 @@ class NPC {
       chefStats: chefStats ?? this.chefStats,
       dishExperience: dishExperience ?? this.dishExperience,
       statExperience: statExperience ?? this.statExperience,
-      taskMastery: taskMastery ?? this.taskMastery,
+      proficiencies: proficiencies ?? this.proficiencies,
       intentQueue: intentQueue ?? this.intentQueue,
       lastScheduledHour: lastScheduledHour ?? this.lastScheduledHour,
       consumedDishes: consumedDishes ?? this.consumedDishes,
@@ -562,6 +607,8 @@ class NPC {
       traits: [
         NPCTrait(id: 'loyal', name: 'Loyal', group: 'character'),
         NPCTrait(id: 'hardworking', name: 'Hardworking', group: 'character'),
+        NPCTrait(id: 'proficiency_Cleaning_2', name: 'Adept Cleaning', group: 'skill'),
+        NPCTrait(id: 'proficiency_Cooking_1', name: 'Novice Cooking', group: 'skill'),
       ],
       bodyParts: [
         BodyPart(type: BodyPartType.head, health: 100, maxHealth: 100),
@@ -606,6 +653,16 @@ class NPC {
           effectData: {'threshold': 0.5, 'type': 'interrupt_kill'},
         ),
       ],
+      proficiencies: {
+        'Cleaning': 20.0, // 100 total (level 0: 40, level 1: 40, remaining 20)
+        'Cooking': 0.0,   // 40 total (level 0: 40, remaining 0)
+        'Accounting': 20.0,
+      },
+      metadata: {
+        'proficiency_level_Cleaning': 2,
+        'proficiency_level_Cooking': 1,
+        'proficiency_level_Accounting': 0,
+      },
     );
   }
 
@@ -652,6 +709,8 @@ class NPC {
     'worldDestinationId': worldDestinationId,
     'worldDepartureId': worldDepartureId,
     'worldTravelProgress': worldTravelProgress,
+    'hiringFee': hiringFee,
+    'monthlySalary': monthlySalary,
     'appearance': appearance.toJson(),
     'equippedVisuals': equippedVisuals,
     'assignedRoomId': assignedRoomId,
@@ -661,7 +720,7 @@ class NPC {
     'chefStats': chefStats.toJson(),
     'dishExperience': dishExperience,
     'statExperience': statExperience,
-    'taskMastery': taskMastery,
+    'proficiencies': proficiencies,
     'intentQueue': intentQueue.map((i) => i.toJson()).toList(),
     'lastScheduledHour': lastScheduledHour,
     'consumedDishes': consumedDishes,
@@ -742,6 +801,8 @@ class NPC {
     worldDepartureId: json['worldDepartureId'] as String?,
     worldTravelProgress:
         (json['worldTravelProgress'] as num?)?.toDouble() ?? 0.0,
+    hiringFee: json['hiringFee'] as int? ?? 10,
+    monthlySalary: json['monthlySalary'] as int? ?? (json['dailySalary'] as int? ?? 10),
     appearance: json['appearance'] != null
         ? NPCAppearance.fromJson(json['appearance'] as Map<String, dynamic>)
         : NPCAppearance.random(),
@@ -761,8 +822,8 @@ class NPC {
     statExperience: Map<String, double>.from(
       json['statExperience'] as Map? ?? {},
     ),
-    taskMastery: Map<String, double>.from(
-      json['taskMastery'] as Map? ?? {},
+    proficiencies: Map<String, double>.from(
+      json['proficiencies'] as Map? ?? json['taskMastery'] as Map? ?? {},
     ),
     intentQueue: (json['intentQueue'] as List? ?? [])
         .map((i) => NPCIntent.fromJson(i as Map<String, dynamic>))

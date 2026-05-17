@@ -17,200 +17,68 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import '../../models/objective.dart';
-import '../../models/npc.dart';
 
-class JournalDialog extends StatelessWidget {
-  const JournalDialog({super.key});
+class JournalContent extends StatefulWidget {
+  const JournalContent({super.key});
+
+  @override
+  State<JournalContent> createState() => _JournalContentState();
+}
+
+class _JournalContentState extends State<JournalContent> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<GameState>().clearUnreadObjectives();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(0xFF241F1A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(32.0),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: const Color(0xFFC4B89B).withValues(alpha: 0.4),
-            width: 2,
-          ),
-        ),
-        child: Consumer<GameState>(
-          builder: (context, state, child) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'MASTER\'S JOURNAL',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 4,
-                        color: const Color(0xFFE5D5B0),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Color(0xFFC4B89B)),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const Divider(color: Colors.white10, height: 32),
-                Expanded(
-                  child: Row(
+    return Consumer<GameState>(
+      builder: (context, state, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Current Objectives
                       Expanded(
                         flex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionHeader('ACTIVE OBJECTIVES'),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: ListView(
-                                children: state.objectives
-                                    .where((o) => !o.isCompleted)
-                                    .map((o) => _buildObjectiveItem(o))
-                                    .toList(),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            _buildSectionHeader('COMPLETED GOALS'),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: ListView(
-                                children: state.objectives
-                                    .where((o) => o.isCompleted)
-                                    .map(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionHeader('ACTIVE OBJECTIVES'),
+                              const SizedBox(height: 16),
+                              ...state.objectives
+                                  .where((o) => !o.isCompleted)
+                                  .map((o) => _buildObjectiveItem(o)),
+                              const SizedBox(height: 24),
+                              _buildSectionHeader('COMPLETED GOALS'),
+                              const SizedBox(height: 16),
+                              ...state.objectives
+                                  .where((o) => o.isCompleted)
+                                  .map(
                                       (o) =>
-                                          _buildObjectiveItem(o, isDone: true),
-                                    )
-                                    .toList(),
-                              ),
+                                        _buildObjectiveItem(o, isDone: true),
+                                  ),
+                              ],
                             ),
-                            const SizedBox(height: 24),
-                            _buildSectionHeader('FORCES & CONSTRUCTS'),
-                            const SizedBox(height: 16),
-                            if (state.npcs
-                                .where((n) => n.status == NPCStatus.zombie)
-                                .isEmpty)
-                              Text(
-                                'NO COMBAT UNITS AVAILABLE.',
-                                style: GoogleFonts.oldStandardTt(
-                                  color: Colors.white12,
-                                  fontSize: 12,
-                                ),
-                              )
-                            else
-                              Expanded(
-                                child: ListView(
-                                  children: state.npcs
-                                      .where(
-                                        (n) => n.status == NPCStatus.zombie,
-                                      )
-                                      .map((n) => _buildForceItem(n))
-                                      .toList(),
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
-                      const VerticalDivider(color: Colors.white10, width: 48),
-                      // Discoveries & Research
-                      Expanded(
-                        flex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionHeader('SCIENTIFIC DISCOVERIES'),
-                            const SizedBox(height: 16),
-                            if (state.unlockedDiscoveries.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 20,
-                                ),
-                                child: Text(
-                                  'NO SIGNIFICANT BREAKTHROUGHS YET.',
-                                  style: GoogleFonts.oldStandardTt(
-                                    color: Colors.white12,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              )
-                            else
-                              ...state.unlockedDiscoveries.map(
-                                (d) => _buildDiscoveryItem(d),
-                              ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              color: Colors.black.withValues(alpha: 0.3),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'RESEARCH STANDING:',
-                                    style: GoogleFonts.playfairDisplay(
-                                      color: const Color(0xFFC4B89B),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ...[
-                                    'Anatomy',
-                                    'Zoology',
-                                    'Medicine',
-                                    'Chemistry',
-                                  ].map(
-                                    (discipline) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 4),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            discipline.toUpperCase(),
-                                            style: GoogleFonts.oldStandardTt(
-                                              color: const Color(0xFFE5D5B0),
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          Text(
-                                            state
-                                                .getKnowledgeLevel(discipline)
-                                                .toStringAsFixed(1),
-                                            style: GoogleFonts.oldStandardTt(
-                                              color: const Color(0xFFC4B89B),
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
+                ],
+              );
           },
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildSectionHeader(String title) {
@@ -272,58 +140,6 @@ class JournalDialog extends StatelessWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDiscoveryItem(String id) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 14),
-          const SizedBox(width: 12),
-          Text(
-            id.replaceAll('_', ' ').toUpperCase(),
-            style: GoogleFonts.oldStandardTt(
-              color: const Color(0xFFE5D5B0),
-              fontSize: 13,
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildForceItem(NPC npc) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.bolt, color: Colors.blueAccent, size: 14),
-          const SizedBox(width: 12),
-          Text(
-            npc.name.toUpperCase(),
-            style: GoogleFonts.oldStandardTt(
-              color: const Color(0xFFE5D5B0),
-              fontSize: 12,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            "LV. ${(npc.stats['strength'] ?? 5) ~/ 10}",
-            style: GoogleFonts.oldStandardTt(
-              color: Colors.white24,
-              fontSize: 10,
-            ),
-          ),
         ],
       ),
     );

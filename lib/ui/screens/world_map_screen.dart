@@ -21,8 +21,7 @@ import '../widgets/prepare_journey_dialog.dart';
 import 'hamlet_screen.dart';
 import 'destination_screen.dart';
 import 'regional_map_screen.dart';
-import '../widgets/time_speed_controls.dart';
-import 'combat_screen.dart';
+import '../widgets/encounter_dialog.dart';
 import '../../models/npc.dart';
 
 class WorldMapScreen extends StatefulWidget {
@@ -33,6 +32,8 @@ class WorldMapScreen extends StatefulWidget {
 }
 
 class _WorldMapScreenState extends State<WorldMapScreen> {
+  bool _timeControlsExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -64,9 +65,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           );
         }
       } else if (state.pendingCombatEncounter) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CombatScreen()),
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const EncounterDialog(),
         );
       }
     });
@@ -96,50 +98,50 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFFE5D5B0)),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          _buildClockWidget(context),
+        ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF241F1A),
-          image: DecorationImage(
-            image: const AssetImage(
-              'assets/images/Carl_Spitzweg_-_Der_Maler_im_Garten.jpg',
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withValues(alpha: 0.9),
-              BlendMode.darken,
-            ),
-          ),
-        ),
-        child: Stack(
-          children: [
-            // Parchment Overlay Effect
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFE5D5B0).withValues(alpha: 0.05),
-                      Colors.black.withValues(alpha: 0.4),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Map Content (Strategic Layout)
-            Center(
-              child: AspectRatio(
-                aspectRatio: 0.8,
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Stack(
-                    children: [
-                      // River (Visual Representation)
+      body: Stack(
+        children: [
+          // Zoomable Map Content
+          Positioned.fill(
+            child: InteractiveViewer(
+              minScale: 0.1,
+              maxScale: 3.0,
+              constrained: false,
+              child: SizedBox(
+                width: 1200,
+                height: 800,
+                child: Stack(
+                  children: [
+                    // Background Image
+                    Positioned.fill(
+                      child: Image.asset(
+                        'assets/images/rolle_area.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Text(
+                              'MAP IMAGE NOT FOUND',
+                              style: GoogleFonts.oldStandardTt(color: Colors.redAccent),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    
+                    // Map Content (Strategic Layout)
+                    Positioned.fill(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Stack(
+                          children: [
+                            // River (Visual Representation)
                       Positioned(
-                        top: 100,
+                        top: 80,
                         right: 0,
-                        bottom: 0,
+                        bottom: 40,
                         width: 40,
                         child: Container(
                           decoration: BoxDecoration(
@@ -158,7 +160,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       // Locations
                       Positioned(
                         top: 20,
-                        left: 40,
+                        left: 140,
                         child: Consumer<GameState>(
                           builder: (context, state, child) {
                             final someoneThere = state.npcs.any(
@@ -181,8 +183,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       ),
 
                       Positioned(
-                        top: 200,
-                        left: 100,
+                        top: 120,
+                        left: 280,
                         child: LocationTile(
                           name: 'THE MANOR',
                           icon: Icons.castle,
@@ -193,8 +195,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       ),
 
                       Positioned(
-                        top: 350,
-                        left: 30,
+                        bottom: 264,
+                        left: 650,
                         child: Consumer<GameState>(
                           builder: (context, state, child) {
                             final someoneThere = state.npcs.any(
@@ -237,7 +239,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       ..._buildTravelingNpcs(context),
 
                       Positioned(
-                        top: 220,
+                        top: 60,
                         right: 60,
                         child: Consumer<GameState>(
                           builder: (context, state, child) {
@@ -260,8 +262,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         ),
                       ),
                       Positioned(
-                        bottom: 50,
-                        right: 20,
+                        bottom: 264,
+                        right: 650,
                         child: Consumer<GameState>(
                           builder: (context, state, child) {
                             final someoneThere = state.npcs.any(
@@ -284,8 +286,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       ),
 
                       Positioned(
-                        bottom: 120,
-                        right: -20,
+                        bottom: 40,
+                        left: 40,
                         child: LocationTile(
                           name: 'ROAD TO GENEVA',
                           icon: Icons.map_outlined,
@@ -305,42 +307,110 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   ),
                 ),
               ),
-            ),
-
-            // Map Legend/Footer
-            Positioned(
-              bottom: 24,
-              left: 24,
-              right: 24,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-                  ),
-                  color: Colors.black.withValues(alpha: 0.3),
-                ),
-                child: Column(
-                  children: [
-                    const TimeSpeedControls(),
-                    const Divider(color: Colors.white10),
-                    Text(
-                      'CANTON OF VAUD, NEUTRAL SWITZERLAND - 1860',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.playfairDisplay(
-                        color: const Color(0xFFC4B89B),
-                        fontSize: 10,
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
+          ),
+      // Time Controls Overlay
+          if (_timeControlsExpanded)
+            Positioned(
+              top: 0,
+              right: 16,
+              child: Consumer<GameState>(
+                builder: (context, state, child) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1612).withValues(alpha: 0.9),
+                      border: Border.all(
+                        color: const Color(0xFFC4B89B).withValues(alpha: 0.3),
+                      ),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _speedIcon(context, state, GameSpeed.paused, Icons.pause, 'PAUSE'),
+                        _speedIcon(context, state, GameSpeed.slow, Icons.play_arrow_outlined, 'SLOW'),
+                        _speedIcon(context, state, GameSpeed.normal, Icons.play_arrow, 'NORMAL'),
+                        _speedIcon(context, state, GameSpeed.fast, Icons.fast_forward, 'FAST'),
+                        _speedIcon(context, state, GameSpeed.superFast, Icons.bolt, 'LIGHTNING'),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
+    );
+  }
+
+  Widget _speedIcon(
+    BuildContext context,
+    GameState state,
+    GameSpeed speed,
+    IconData icon,
+    String tooltip,
+  ) {
+    final isSelected = state.speed == speed;
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        icon: Icon(
+          icon,
+          color: isSelected ? const Color(0xFFE5D5B0) : Colors.white24,
+          size: 20,
+        ),
+        onPressed: () {
+          state.setSpeed(speed);
+          setState(() => _timeControlsExpanded = false);
+        },
       ),
+    );
+  }
+
+  Widget _buildClockWidget(BuildContext context) {
+    return Consumer<GameState>(
+      builder: (context, state, child) {
+        return InkWell(
+          onTap: () {
+            setState(() {
+              _timeControlsExpanded = !_timeControlsExpanded;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  state.currentDate.formattedDate.toUpperCase(),
+                  style: GoogleFonts.playfairDisplay(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    letterSpacing: 1.2,
+                    color: const Color(0xFFE5D5B0),
+                  ),
+                ),
+                Text(
+                  state.currentDate.formattedTime,
+                  style: GoogleFonts.oswald(
+                    color: const Color(0xFFC4B89B),
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -362,13 +432,22 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
     if (travelingNpcs.isEmpty) return [];
 
-    // Map location IDs to screen coordinates
+    final size = MediaQuery.of(context).size;
+    // Map view height is screen height minus AppBar (kToolbarHeight usually 56) and top padding
+    final stackHeight = size.height - kToolbarHeight - MediaQuery.of(context).padding.top;
+    final stackWidth = size.width;
+
+    // Center offset for the location tiles (approx 75 width, 40 height)
+    const dx = 75.0;
+    const dy = 40.0;
+
+    // Map location IDs to screen coordinates to match the Positioned logic in _buildLocations
     final Map<String, Offset> coords = {
-      'manor': const Offset(100, 200),
-      'hamlet': const Offset(30, 350),
-      'mountains': const Offset(40, 20),
-      'woods': const Offset(300, 220),
-      'river': const Offset(340, 450),
+      'manor': const Offset(280 + dx, 120 + dy),
+      'mountains': const Offset(140 + dx, 20 + dy),
+      'hamlet': Offset(650 + dx, stackHeight - 264 - dy),
+      'woods': Offset(stackWidth - 60 - dx, 60 + dy),
+      'river': Offset(stackWidth - 650 - dx, stackHeight - 264 - dy),
     };
 
     // Group NPCs into parties based on their travel metadata

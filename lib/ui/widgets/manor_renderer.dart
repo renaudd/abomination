@@ -42,7 +42,7 @@ class ManorRenderer extends StatelessWidget {
 
   // Logical coordinate space: we'll determine height based on max floor/min floor
   static const double baseWidth = 1100;
-  static const double baseHeight = 1260; // Truncated from 1600 to bound to Floor -4
+  static const double baseHeight = 1300; // Truncated from 1600 to bound to Floor -4
 
   Rect _getRoomRect(String roomId, {double scale = 1.0}) {
     final gridInfo = ManorLayout.grid[roomId];

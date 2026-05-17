@@ -86,49 +86,51 @@ class _BaseSaveLoadDialog extends StatelessWidget {
             color: const Color(0xFFC4B89B).withValues(alpha: 0.3),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 3,
-                color: const Color(0xFFE5D5B0),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Divider(color: Colors.white10),
-            const SizedBox(height: 24),
-            ...List.generate(SaveService.maxSlots, (index) {
-              final slot = index + 1;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _SlotButton(
-                  slot: slot,
-                  actionLabel: actionLabel,
-                  onPressed: () => onSlotSelected(slot),
-                  requireExistence: requireExistence,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 3,
+                  color: const Color(0xFFE5D5B0),
                 ),
-              );
-            }),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'CANCEL',
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFFC4B89B),
-                    letterSpacing: 2,
+              ),
+              const SizedBox(height: 8),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 24),
+              ...List.generate(SaveService.maxSlots, (index) {
+                final slot = index + 1;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _SlotButton(
+                    slot: slot,
+                    actionLabel: actionLabel,
+                    onPressed: () => onSlotSelected(slot),
+                    requireExistence: requireExistence,
+                  ),
+                );
+              }),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'CANCEL',
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFFC4B89B),
+                      letterSpacing: 2,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -78,11 +78,11 @@ class CharacterBlobRenderer extends StatelessWidget {
               // Body (Rounded Rect)
               _buildAnimatedContainer(
                 child: Container(
-                  width: size * 0.5,
-                  height: size * 0.45,
+                  width: _getBodyWidth(appearance.bodyType, size),
+                  height: _getBodyHeight(appearance.bodyType, size),
                   decoration: BoxDecoration(
                     color: appearance.outfitColor,
-                    borderRadius: BorderRadius.circular(size * 0.15),
+                    borderRadius: BorderRadius.circular(_getBodyRadius(appearance.bodyType, size)),
                     border: Border.all(color: Colors.black12, width: 0.5),
                   ),
                 ),
@@ -160,6 +160,33 @@ class CharacterBlobRenderer extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  double _getBodyWidth(BodyType type, double size) {
+    switch (type) {
+      case BodyType.slim: return size * 0.4;
+      case BodyType.heavy: return size * 0.65;
+      case BodyType.muscular: return size * 0.6;
+      case BodyType.average: return size * 0.5;
+    }
+  }
+
+  double _getBodyHeight(BodyType type, double size) {
+    switch (type) {
+      case BodyType.muscular: return size * 0.4;
+      case BodyType.slim: return size * 0.45;
+      case BodyType.heavy: return size * 0.45;
+      case BodyType.average: return size * 0.45;
+    }
+  }
+
+  double _getBodyRadius(BodyType type, double size) {
+    switch (type) {
+      case BodyType.muscular: return size * 0.05; // more square
+      case BodyType.heavy: return size * 0.2; // more round
+      case BodyType.slim: return size * 0.15;
+      case BodyType.average: return size * 0.15;
+    }
   }
 
   Widget _buildSwarm(NPC npc, double size) {
@@ -595,7 +622,9 @@ class CharacterBlobRenderer extends StatelessWidget {
   }) {
     if (isBack &&
         appearance.hairStyle != HairStyle.long &&
-        appearance.hairStyle != HairStyle.bob) {
+        appearance.hairStyle != HairStyle.bob &&
+        appearance.hairStyle != HairStyle.ponytail &&
+        appearance.hairStyle != HairStyle.curly) {
       return const SizedBox.shrink();
     }
 
@@ -632,6 +661,29 @@ class CharacterBlobRenderer extends StatelessWidget {
         height = size * 0.18;
         top = -size * 0.05;
         width = size * 0.45;
+        break;
+      case HairStyle.curly:
+        if (isBack) {
+          height = size * 0.3;
+          top = 0;
+          width = size * 0.55;
+          borderRadius = BorderRadius.circular(size * 0.15);
+        } else {
+          height = size * 0.2;
+          width = size * 0.5;
+          top = -size * 0.05;
+          borderRadius = BorderRadius.circular(size * 0.1);
+        }
+        break;
+      case HairStyle.ponytail:
+        if (isBack) {
+          height = size * 0.35;
+          width = size * 0.15;
+          top = size * 0.05;
+          borderRadius = BorderRadius.circular(size * 0.05);
+        } else {
+          height = size * 0.15;
+        }
         break;
       default:
         break;

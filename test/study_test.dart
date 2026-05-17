@@ -13,10 +13,10 @@
 // limitations under the License.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frankensteinoss/state/game_state.dart';
-import 'package:frankensteinoss/services/task_service.dart';
-import 'package:frankensteinoss/models/npc_intent.dart';
-import 'package:frankensteinoss/models/game_item.dart';
+import 'package:abomination/state/game_state.dart';
+import 'package:abomination/services/task_service.dart';
+import 'package:abomination/models/npc_intent.dart';
+import 'package:abomination/models/game_item.dart';
 
 void main() {
   group('Study & Science Mechanics', () {

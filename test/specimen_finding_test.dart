@@ -13,10 +13,10 @@
 // limitations under the License.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frankensteinoss/models/npc.dart';
-import 'package:frankensteinoss/services/task_service.dart';
-import 'package:frankensteinoss/services/task_result_generator.dart';
-import 'package:frankensteinoss/util/manor_layout.dart';
+import 'package:abomination/models/npc.dart';
+import 'package:abomination/services/task_service.dart';
+import 'package:abomination/services/task_result_generator.dart';
+import 'package:abomination/util/manor_layout.dart';
 
 void main() {
   group('Manor Layout Refinement', () {

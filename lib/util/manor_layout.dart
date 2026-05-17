@@ -41,7 +41,7 @@ class ManorLayout {
 
   // Logical grid coordinates (x, y relative to manor center)
   // Manor width is 6 blocks (-3 to 3 range, centered at -0.5)
-  static final Map<String, (double x, int floor, int layer, double width)>
+  static final Map<String, (double x, num floor, int layer, double width)>
   grid = {
     // Attic (Size 2)
     'attic_1': (-1.5, 2, 0, 2.0),
@@ -93,12 +93,12 @@ class ManorLayout {
     // External (Layer 1 is "surface/environs")
     'chicken_coop': (3.8, 0, 1, 1.5),
     'toolshed': (3.8, 1, 1, 1.2),
-    'lot_garden': (-5.0, 1, 1, 2.0),
+    'lot_garden': (-5.0, 1.25, 1, 2.0),
     'lot_building_1': (-5.0, 0, 1, 2.0),
-    'vegetable_garden': (-3.0, 2, 1, 2.0),
-    'field_2': (-1.0, 2, 1, 2.0),
-    'field_3': (1.0, 2, 1, 2.0),
-    'field_4': (3.0, 2, 1, 2.0),
+    'vegetable_garden': (-3.0, 2.25, 1, 2.0),
+    'field_2': (-1.0, 2.25, 1, 2.0),
+    'field_3': (1.0, 2.25, 1, 2.0),
+    'field_4': (3.0, 2.25, 1, 2.0),
     'road': (-5.0, -1, 1, 2.0),
   };
 

@@ -148,6 +148,7 @@ class TaskCategoryMapping {
       case TaskType.writePoetry:
       case TaskType.writeNovel:
       case TaskType.relax:
+      case TaskType.collectPayment:
         return null;
     }
   }

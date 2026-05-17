@@ -45,15 +45,42 @@ class NPCGenerator {
     final profession = _generateProfession(gender, age);
     final appearance = _generateAppearance(gender, age);
     final orientation = _generateOrientation(gender);
+    final background = _pickOne([
+      'Noble',
+      'Merchant',
+      'Peasant',
+      'Scholar',
+      'Soldier',
+      'Criminal',
+    ]);
 
-    return NPC(
-      id: _uuid.v4(),
-      name: name,
-      role: profession,
-      age: age,
-      specimenType: 'Human',
-      gender: gender,
-      group: group,
+      // Base compensation structure
+      int fee = 5 + _random.nextInt(15);
+      // Base monthly salary is 10 for unskilled. The range will be around 8 to 15.
+      int salary = 8 + _random.nextInt(4); // 8-11 base
+
+      if (profession == 'Doctor' || profession == 'Psychologist' || profession == 'Engineer') {
+        fee += 10;
+        salary += 4; // 12-15
+      } else if (profession == 'Laborer' || profession == 'Thief') {
+        fee -= 2;
+        salary -= 1; // 7-10
+      }
+      if (age > 40) {
+        fee += 5;
+        salary += 1;
+      }
+
+      return NPC(
+        id: _uuid.v4(),
+        name: name,
+        role: profession,
+        age: age,
+        specimenType: 'Human',
+        gender: gender,
+        group: group,
+        hiringFee: fee.clamp(5, 50),
+        monthlySalary: salary.clamp(5, 20),
       nationality: nationality,
       religion: religion,
       stats: stats,
@@ -66,6 +93,7 @@ class NPCGenerator {
       sexualOrientation: orientation,
       appearance: appearance,
       isResident: true,
+      proficiencies: _generateProficiencies(age, background, profession),
       chefStats: ChefSkills(
         knifeSkills: 10 + _random.nextInt(40),
         fireSkills: 10 + _random.nextInt(40),
@@ -81,14 +109,7 @@ class NPCGenerator {
         'Lausanne',
         'Lucerne',
       ]),
-      background: _pickOne([
-        'Noble',
-        'Merchant',
-        'Peasant',
-        'Scholar',
-        'Soldier',
-        'Criminal',
-      ]),
+      background: background,
       combatStats: _generateCombatStats(profession, age),
       abilities: _generateRefugeeAbilities(profession),
     );
@@ -149,6 +170,7 @@ class NPCGenerator {
     return NPCAppearance(
       hairStyle: hairStyle,
       facialHairStyle: facialHairStyle,
+      bodyType: _pickOne(BodyType.values),
       bodyColor: _pickOne(skinTones),
       hairColor: hairColor,
       outfitColor: _pickOne(outfitColors),
@@ -282,6 +304,94 @@ class NPCGenerator {
       'Doctor',
       'Florist',
     ]);
+  }
+
+  static Map<String, double> _generateProficiencies(int age, String background, String profession) {
+    final proficiencies = <String, double>{};
+    
+    // Base amount of total experience points based on age
+    int totalXpToDistribute = 0;
+    if (age > 15) totalXpToDistribute += (age - 15) * 10;
+    if (totalXpToDistribute > 400) totalXpToDistribute = 400; // Cap at max age benefit
+    
+    void addXp(String prof, double xp) {
+      proficiencies[prof] = (proficiencies[prof] ?? 0.0) + xp;
+    }
+    
+    // Background bonuses
+    switch (background) {
+      case 'Noble':
+      case 'Merchant':
+        addXp('Research', 40.0);
+        addXp('Writing', 20.0);
+        break;
+      case 'Peasant':
+        addXp('Farming', 40.0);
+        addXp('Cooking', 20.0);
+        addXp('Cleaning', 20.0);
+        break;
+      case 'Scholar':
+        addXp('Research', 80.0);
+        addXp('Medicine', 20.0);
+        break;
+      case 'Soldier':
+      case 'Criminal':
+        addXp('Hunting', 40.0);
+        addXp('Surgery', 10.0);
+        break;
+    }
+    
+    // Profession specific
+    String? primaryProficiency;
+    switch (profession) {
+      case 'Surgeon':
+      case 'Doctor':
+        primaryProficiency = 'Surgery';
+        addXp('Medicine', 40.0);
+        break;
+      case 'Farmer':
+      case 'Horticulturalist':
+      case 'Florist':
+        primaryProficiency = 'Farming';
+        break;
+      case 'Brewer':
+      case 'Distiller':
+        primaryProficiency = 'Brewing';
+        break;
+      case 'Carpenter':
+      case 'Blacksmith':
+      case 'Clockmaker':
+      case 'Jeweler':
+      case 'Inventor':
+        primaryProficiency = 'Construction';
+        addXp('Manufacturing', 40.0);
+        break;
+      case 'Cook':
+        primaryProficiency = 'Cooking';
+        break;
+      case 'Journalist':
+        primaryProficiency = 'Writing';
+        break;
+      case 'Psychologist':
+        primaryProficiency = 'Research';
+        addXp('Therapy', 40.0);
+        break;
+    }
+
+    if (primaryProficiency != null) {
+        addXp(primaryProficiency, totalXpToDistribute * 0.7);
+        totalXpToDistribute = (totalXpToDistribute * 0.3).toInt();
+    }
+    
+    // Distribute remaining points randomly among a few common proficiencies
+    final common = ['Cooking', 'Cleaning', 'Farming', 'Hunting', 'Construction'];
+    while (totalXpToDistribute > 0) {
+       int amount = min(20, totalXpToDistribute);
+       addXp(_pickOne(common), amount.toDouble());
+       totalXpToDistribute -= amount;
+    }
+
+    return proficiencies;
   }
 
   static List<BodyPart> _generateBodyParts() {
