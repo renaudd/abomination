@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
@@ -27,6 +28,7 @@ class IntroductionScreen extends StatefulWidget {
 
 class _IntroductionScreenState extends State<IntroductionScreen> {
   int _currentScene = 1;
+  late final FocusNode _introFocusNode;
 
   // Selections
   DeathCause? _deathCause;
@@ -45,9 +47,83 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    _introFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _introFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _triggerOptionByIndex(int index) {
+    switch (_currentScene) {
+      case 1:
+        if (index >= 0 && index < DeathCause.values.length) {
+          _selectDeath(DeathCause.values[index]);
+        }
+        break;
+      case 3:
+        final ages = [15, 25, 35, 45];
+        if (index >= 0 && index < ages.length) {
+          _selectAge(ages[index]);
+        }
+        break;
+      case 4:
+        if (index >= 0 && index < GilesTrait.values.length) {
+          _selectGiles(GilesTrait.values[index]);
+        }
+        break;
+      case 5:
+        if (index >= 0 && index < LifeObjective.values.length) {
+          _selectObjective(LifeObjective.values[index]);
+        }
+        break;
+      case 6:
+        if (index == 0) {
+          _finish(context);
+        }
+        break;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1612),
+    return KeyboardListener(
+      focusNode: _introFocusNode,
+      autofocus: true,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
+          final key = event.physicalKey;
+          if (key == PhysicalKeyboardKey.keyB) {
+            if (_currentScene > 1) {
+              setState(() {
+                _currentScene--;
+                _introFocusNode.requestFocus();
+              });
+            }
+          } else if (key == PhysicalKeyboardKey.keyN) {
+            if (_currentScene < 6 && _currentScene != 1) {
+              setState(() {
+                _currentScene++;
+                _introFocusNode.requestFocus();
+              });
+            }
+          } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
+            _triggerOptionByIndex(0);
+          } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2) {
+            _triggerOptionByIndex(1);
+          } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3) {
+            _triggerOptionByIndex(2);
+          } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4) {
+            _triggerOptionByIndex(3);
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1A1612),
       body: Stack(
         children: [
           // Background Spitzweg Image
@@ -83,8 +159,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHeader() {
     return Text(
@@ -126,18 +203,22 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         _optionButton(
           "TERRIBLE DISEASE.",
           () => _selectDeath(DeathCause.disease),
+          index: 0,
         ),
         _optionButton(
           "TRAIN CRASH.",
           () => _selectDeath(DeathCause.trainCrash),
+          index: 1,
         ),
         _optionButton(
           "MURDER-SUICIDE.",
           () => _selectDeath(DeathCause.murderSuicide),
+          index: 2,
         ),
         _optionButton(
           "MISUNDERSTANDING.",
           () => _selectDeath(DeathCause.misunderstanding),
+          index: 3,
         ),
       ],
     );
@@ -194,21 +275,25 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           "15 YEARS OLD.",
           () => _selectAge(15),
           isSelected: _age == 15,
+          index: 0,
         ),
         _optionButton(
           "25 YEARS OLD.",
           () => _selectAge(25),
           isSelected: _age == 25,
+          index: 1,
         ),
         _optionButton(
           "35 YEARS OLD.",
           () => _selectAge(35),
           isSelected: _age == 35,
+          index: 2,
         ),
         _optionButton(
           "45 YEARS OLD.",
           () => _selectAge(45),
           isSelected: _age == 45,
+          index: 3,
         ),
       ],
     );
@@ -228,21 +313,25 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           "GIVING SAGE ADVICE.",
           () => _selectGiles(GilesTrait.sage),
           isSelected: _gilesTrait == GilesTrait.sage,
+          index: 0,
         ),
         _optionButton(
           "MAKING ENDS MEET.",
           () => _selectGiles(GilesTrait.endsMeet),
           isSelected: _gilesTrait == GilesTrait.endsMeet,
+          index: 1,
         ),
         _optionButton(
           "KEEPING HIS MOUTH SHUT.",
           () => _selectGiles(GilesTrait.silent),
           isSelected: _gilesTrait == GilesTrait.silent,
+          index: 2,
         ),
         _optionButton(
           "NOT SHUFFLING HIS FEET.",
           () => _selectGiles(GilesTrait.shuffle),
           isSelected: _gilesTrait == GilesTrait.shuffle,
+          index: 3,
         ),
       ],
     );
@@ -262,21 +351,25 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           "WOMEN.",
           () => _selectObjective(LifeObjective.women),
           isSelected: _objective == LifeObjective.women,
+          index: 0,
         ),
         _optionButton(
           "MONEY.",
           () => _selectObjective(LifeObjective.money),
           isSelected: _objective == LifeObjective.money,
+          index: 1,
         ),
         _optionButton(
           "FAME.",
           () => _selectObjective(LifeObjective.fame),
           isSelected: _objective == LifeObjective.fame,
+          index: 2,
         ),
         _optionButton(
           "SCIENCE.",
           () => _selectObjective(LifeObjective.science),
           isSelected: _objective == LifeObjective.science,
+          index: 3,
         ),
       ],
     );
@@ -295,6 +388,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
             "BEGIN THE WORK",
             () => _finish(context),
             isSelected: true,
+            index: 0,
           ),
         ),
       ],
@@ -342,7 +436,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
     String label,
     VoidCallback onTap, {
     bool isSelected = false,
+    int? index,
   }) {
+    final displayLabel = label;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
       child: InkWell(
@@ -359,7 +455,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
                 : Colors.transparent,
           ),
           child: Text(
-            label,
+            displayLabel,
             style: GoogleFonts.playfairDisplay(
               color: isSelected ? const Color(0xFFE5D5B0) : Colors.white38,
               fontSize: 11,
@@ -412,6 +508,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
     setState(() {
       _age = age;
       _currentScene = 4;
+      _introFocusNode.requestFocus();
     });
   }
 
@@ -419,6 +516,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
     setState(() {
       _gilesTrait = trait;
       _currentScene = 5;
+      _introFocusNode.requestFocus();
     });
   }
 
@@ -426,6 +524,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
     setState(() {
       _objective = objective;
       _currentScene = 6;
+      _introFocusNode.requestFocus();
     });
   }
 

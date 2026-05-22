@@ -16,10 +16,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:collection/collection.dart';
 import 'state/game_state.dart';
 import 'services/audio_service.dart';
 import 'services/game_engine.dart';
 import 'ui/screens/loading_screen.dart';
+import 'ui/screens/records_screen.dart';
+import 'ui/screens/world_map_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,13 +52,103 @@ void main() async {
   );
 }
 
-class AbominationApp extends StatelessWidget {
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+class AbominationApp extends StatefulWidget {
   const AbominationApp({super.key});
 
   @override
+  State<AbominationApp> createState() => _AbominationAppState();
+}
+
+class _AbominationAppState extends State<AbominationApp> {
+  late final FocusNode _globalFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _globalFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _globalFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = Provider.of<GameState>(context, listen: false);
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Abomination',
+      builder: (context, child) {
+        return KeyboardListener(
+          focusNode: _globalFocusNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent) {
+              final key = event.physicalKey;
+
+              // Skip hotkeys if typing in a text field
+              final primaryFocus = FocusManager.instance.primaryFocus;
+              if (primaryFocus != null && primaryFocus.context != null) {
+                final hasTextFocus = primaryFocus.context!.findAncestorWidgetOfExactType<EditableText>() != null;
+                if (hasTextFocus) return;
+              }
+
+              // Skip speed adjustments and global navigations if a dialogue or decision-based encounter is active!
+              final bool isEncounterActive = state.pendingCombatEncounter || state.pendingEncounterData != null;
+              if (isEncounterActive) {
+                return;
+              }
+
+               // Numeric speed keys are only active when the clock is not paused.
+              // During combat, encounters, dialogue, or menus, the clock is paused so numbers won't affect it!
+              if (state.speed != GameSpeed.paused) {
+                if (key == PhysicalKeyboardKey.digit0 || key == PhysicalKeyboardKey.numpad0) {
+                  state.setSpeed(GameSpeed.paused);
+                } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
+                  state.setSpeed(GameSpeed.slow);
+                } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2) {
+                  state.setSpeed(GameSpeed.normal);
+                } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3) {
+                  state.setSpeed(GameSpeed.fast);
+                } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4) {
+                  state.setSpeed(GameSpeed.superFast);
+                }
+              }
+
+              final player = state.npcs.firstWhereOrNull((n) => n.isPlayer);
+              final bool isAtManor = player != null && 
+                  (player.worldTravelProgress == 0.0 || player.worldTravelProgress >= 1.0) &&
+                  state.simulationPlayerDeck == null;
+
+              if (isAtManor) {
+                if (key == PhysicalKeyboardKey.keyU) {
+                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
+                } else if (key == PhysicalKeyboardKey.keyO) {
+                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
+                  navigatorKey.currentState?.push(
+                    MaterialPageRoute(builder: (context) => const RecordsScreen()),
+                  );
+                } else if (key == PhysicalKeyboardKey.keyP) {
+                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
+                  navigatorKey.currentState?.push(
+                    MaterialPageRoute(builder: (context) => const WorldMapScreen()),
+                  );
+                } else if (key == PhysicalKeyboardKey.keyI) {
+                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
+                  navigatorKey.currentState?.push(
+                    MaterialPageRoute(builder: (context) => const RecordsScreen()),
+                  );
+                }
+              }
+            }
+          },
+          child: child!,
+        );
+      },
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF1A1612), // Deep wood shadow

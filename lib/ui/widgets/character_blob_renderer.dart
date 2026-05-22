@@ -22,6 +22,7 @@ class CharacterBlobRenderer extends StatelessWidget {
   final bool isWalking;
   final bool isIdle;
   final double bubbleOffset;
+  final bool showSpeechBubble;
 
   const CharacterBlobRenderer({
     super.key,
@@ -30,6 +31,7 @@ class CharacterBlobRenderer extends StatelessWidget {
     this.isWalking = false,
     this.isIdle = true,
     this.bubbleOffset = 0,
+    this.showSpeechBubble = true,
   });
 
   @override
@@ -94,6 +96,11 @@ class CharacterBlobRenderer extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
+                    // Hair (Back)
+                    if (appearance.hairStyle != HairStyle.none &&
+                        appearance.hairStyle != HairStyle.bald)
+                      _buildHair(appearance, size, isBack: true),
+
                     // Skin
                     Container(
                       width: size * (npc.role == 'Bruiser' ? 0.45 : 0.4),
@@ -104,11 +111,6 @@ class CharacterBlobRenderer extends StatelessWidget {
                         border: Border.all(color: Colors.black12, width: 0.5),
                       ),
                     ),
-
-                    // Hair (Back)
-                    if (appearance.hairStyle != HairStyle.none &&
-                        appearance.hairStyle != HairStyle.bald)
-                      _buildHair(appearance, size, isBack: true),
 
                     // Eyes
                     Positioned(
@@ -154,7 +156,7 @@ class CharacterBlobRenderer extends StatelessWidget {
             ],
 
             // Speech Bubble
-            if (npc.currentThought != null && npc.currentThought!.isNotEmpty)
+            if (showSpeechBubble && npc.currentThought != null && npc.currentThought!.isNotEmpty)
               _buildSpeechBubble(npc.currentThought!, size),
           ],
         ),
@@ -326,6 +328,7 @@ class CharacterBlobRenderer extends StatelessWidget {
   }
 
   Color _getAuraColor(NPC npc) {
+    if (npc.role == 'Butler' || npc.isPlayer) return Colors.black;
     for (final ability in npc.abilities) {
       if (ability.id.contains('freeze')) return Colors.cyanAccent;
       if (ability.id.contains('plague') || ability.id.contains('poison')) {

@@ -36,6 +36,21 @@ class ResidentBar extends StatefulWidget {
 class _ResidentBarState extends State<ResidentBar> {
   int _activeTabIndex = 0;
 
+  // Contract Modification State (buffered per NPC bar session)
+  int? _modifiedSalary;
+  int? _modifiedHours;
+  bool? _modifiedRoomAndBoard;
+
+  @override
+  void didUpdateWidget(covariant ResidentBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.npc.id != widget.npc.id) {
+      _modifiedSalary = null;
+      _modifiedHours = null;
+      _modifiedRoomAndBoard = null;
+    }
+  }
+
   late final List<String> _tabs;
 
   @override
@@ -838,6 +853,27 @@ class _ResidentBarState extends State<ResidentBar> {
       );
     }
 
+    // 1. Fetch current terms
+    final int currentSalary = contract.terms['salary'] as int? ?? widget.npc.monthlySalary;
+    final int currentHours = contract.terms['hours'] as int? ?? 40;
+    final bool currentRoomAndBoard = contract.terms['roomAndBoard'] as bool? ?? true;
+
+    // 2. Initialize buffered states if null
+    _modifiedSalary ??= currentSalary;
+    _modifiedHours ??= currentHours;
+    _modifiedRoomAndBoard ??= currentRoomAndBoard;
+
+    // 3. Check if terms changed
+    final bool hasChanged = _modifiedSalary != currentSalary ||
+        _modifiedHours != currentHours ||
+        _modifiedRoomAndBoard != currentRoomAndBoard;
+
+    // 4. Calculate favorability score (Heuristics: +salary, -hours, +roomAndBoard)
+    final int salaryDiff = _modifiedSalary! - currentSalary;
+    final int hoursDiff = currentHours - _modifiedHours!;
+    final int roomAndBoardDiff = (_modifiedRoomAndBoard! ? 10 : 0) - (currentRoomAndBoard ? 10 : 0);
+    final int favorabilityScore = salaryDiff * 6 + hoursDiff * 2 + roomAndBoardDiff;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -848,33 +884,278 @@ class _ResidentBarState extends State<ResidentBar> {
               color: inkColor,
               fontSize: 14,
               fontWeight: FontWeight.bold,
+              letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          
+          // Render Current Terms Summary
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.03),
+              border: Border.all(color: inkColor.withValues(alpha: 0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "ACTIVE COVENANT TERMS:",
+                  style: GoogleFonts.oswald(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: inkColor.withValues(alpha: 0.5),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "• Monthly Salary: $currentSalary CHF",
+                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "• Weekly Duty: $currentHours Hours / Week",
+                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "• Lodging Arrangement: ${currentRoomAndBoard ? 'Room and Board' : 'Room Only'}",
+                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+
+          // INTERACTIVE TERMS MODIFIERS
           Text(
-            contract.description,
-            style: GoogleFonts.oldStandardTt(
-              color: inkColor.withValues(alpha: 0.8),
-              fontSize: 12,
-              height: 1.4,
+            "PROPOSE NEW COVENANT TERMS:",
+            style: GoogleFonts.oswald(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: inkColor.withValues(alpha: 0.5),
+              letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Term 1: Salary
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "MONTHLY SALARY: $_modifiedSalary CHF",
+                style: GoogleFonts.oldStandardTt(
+                  color: inkColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(
+                width: 60,
+                height: 25,
+                child: TextField(
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.zero),
+                  ),
+                  onChanged: (value) {
+                    final val = int.tryParse(value);
+                    if (val != null && val >= 1 && val <= 100) {
+                      setState(() {
+                        _modifiedSalary = val;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: _modifiedSalary!.toDouble(),
+            min: 1,
+            max: 100,
+            divisions: 99,
+            activeColor: inkColor,
+            inactiveColor: inkColor.withValues(alpha: 0.2),
+            onChanged: (value) {
+              setState(() {
+                _modifiedSalary = value.round();
+              });
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // Term 2: Hours worked per week
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "DUTY PLAN: $_modifiedHours HOURS / WEEK",
+                style: GoogleFonts.oldStandardTt(
+                  color: inkColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: _modifiedHours!.toDouble(),
+            min: 10,
+            max: 80,
+            divisions: 14,
+            activeColor: inkColor,
+            inactiveColor: inkColor.withValues(alpha: 0.2),
+            onChanged: (value) {
+              setState(() {
+                _modifiedHours = value.round();
+              });
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // Term 3: Room and Board
+          DropdownButtonFormField<bool>(
+            initialValue: _modifiedRoomAndBoard,
+            decoration: InputDecoration(
+              labelText: "BOARDING & PROVISIONS",
+              labelStyle: GoogleFonts.oswald(color: inkColor.withValues(alpha: 0.5), fontSize: 9),
+              border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
+            ),
+            dropdownColor: const Color(0xFFE5D5B0),
+            items: const [
+              DropdownMenuItem(
+                value: true,
+                child: Text("ROOM & BOARD (FULL PROVISIONS)", style: TextStyle(fontSize: 11)),
+              ),
+              DropdownMenuItem(
+                value: false,
+                child: Text("ROOM ONLY (NO FOOD ALLOWANCE)", style: TextStyle(fontSize: 11)),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  _modifiedRoomAndBoard = value;
+                });
+              }
+            },
+          ),
+
+          const SizedBox(height: 24),
+
           Row(
             children: [
               ElevatedButton(
-                onPressed: () {
-                  // Example modification
-                  final newTerms = Map<String, dynamic>.from(contract.terms);
-                  newTerms['modified'] = true;
-                  state.proposeContractModification(contract.id, newTerms, isFavorable: true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("${widget.npc.name}'s terms modified.")),
-                  );
-                },
+                onPressed: hasChanged
+                    ? () {
+                        // Determine emotional response of employee
+                        String responseTitle;
+                        String responseDesc;
+                        Color responseColor;
+                        bool isFavorable;
+
+                        if (favorabilityScore > 0) {
+                          responseTitle = "PLEASED AND RETRIBUTIVE";
+                          responseDesc = "${widget.npc.name} is expected to be highly pleased by these generous terms, improving loyalty and admiration.";
+                          responseColor = Colors.green[700]!;
+                          isFavorable = true;
+                        } else if (favorabilityScore < 0) {
+                          responseTitle = "DEJECTED AND OFFENDED";
+                          responseDesc = "${widget.npc.name} is expected to be upset by these reduced terms, degrading respect and triggering intense resentment.";
+                          responseColor = Colors.red[800]!;
+                          isFavorable = false;
+                        } else {
+                          responseTitle = "INDIFFERENT";
+                          responseDesc = "${widget.npc.name} will accept these neutral terms with professional indifference.";
+                          responseColor = Colors.grey[800]!;
+                          isFavorable = true;
+                        }
+
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              backgroundColor: const Color(0xFF1E1A15),
+                              title: Text(
+                                "PROPOSE COVENANT MODIFICATION?",
+                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "ARE YOU SOLEMNLY SURE?",
+                                    style: GoogleFonts.oswald(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    responseDesc,
+                                    style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 12, height: 1.4),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    color: responseColor.withValues(alpha: 0.2),
+                                    child: Text(
+                                      "NPC RESPONSE: $responseTitle",
+                                      style: GoogleFonts.oswald(color: responseColor, fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text("CANCEL", style: GoogleFonts.playfairDisplay(color: Colors.white38, fontSize: 12)),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    final newTerms = {
+                                      'salary': _modifiedSalary,
+                                      'hours': _modifiedHours,
+                                      'roomAndBoard': _modifiedRoomAndBoard,
+                                      'interval': 'monthly',
+                                    };
+                                    state.proposeContractModification(contract.id, newTerms, isFavorable: isFavorable);
+                                    
+                                    // Reset buffer state
+                                    setState(() {
+                                      _modifiedSalary = null;
+                                      _modifiedHours = null;
+                                      _modifiedRoomAndBoard = null;
+                                    });
+
+                                    Navigator.pop(context); // Close dialog
+                                    
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("${widget.npc.name}'s covenant terms have been modified."),
+                                        backgroundColor: const Color(0xFFC4B89B),
+                                      ),
+                                    );
+                                  },
+                                  child: Text("PROPOSE MODIFICATION", style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontWeight: FontWeight.bold, fontSize: 12)),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      }
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: inkColor,
                   foregroundColor: const Color(0xFFE5D5B0),
+                  disabledBackgroundColor: inkColor.withValues(alpha: 0.1),
+                  disabledForegroundColor: const Color(0xFFE5D5B0).withValues(alpha: 0.2),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                 ),
                 child: Text("Propose Modification", style: GoogleFonts.oswald(fontSize: 10)),
               ),
@@ -889,6 +1170,7 @@ class _ResidentBarState extends State<ResidentBar> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.red[800],
                   side: BorderSide(color: Colors.red[800]!),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                 ),
                 child: Text("Terminate", style: GoogleFonts.oswald(fontSize: 10)),
               ),

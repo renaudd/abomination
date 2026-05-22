@@ -142,6 +142,15 @@ class NPCAppearance {
     outfitColor: const Color(0xFF4A5D6B), // Slate Grey/Blue (more visible)
   );
 
+  factory NPCAppearance.defaultMaster() => NPCAppearance(
+    hairStyle: HairStyle.messy,
+    facialHairStyle: FacialHairStyle.none,
+    bodyType: BodyType.slim,
+    bodyColor: const Color(0xFFFFDBAC),
+    hairColor: const Color(0xFF4B3621), // Dark Brown
+    outfitColor: const Color(0xFF2F4F4F), // Dark Slate Gray
+  );
+
   factory NPCAppearance.random() {
     final skinTones = [
       const Color(0xFFFFDBAC),
@@ -811,7 +820,7 @@ class NPC {
     inventory: (json['inventory'] as List? ?? [])
         .map((i) => GameItem.fromJson(i as Map<String, dynamic>))
         .toList(),
-    isResident: json['isResident'] as bool? ?? true,
+    isResident: json['isResident'] as bool? ?? (json['role']?.toString().toLowerCase() != 'creature' && json['specimenType']?.toString().toLowerCase() != 'fox'),
     currentStateTicks: json['currentStateTicks'] as int? ?? 0,
     chefStats: json['chefStats'] != null
         ? ChefSkills.fromJson(json['chefStats'] as Map<String, dynamic>)

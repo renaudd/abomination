@@ -413,7 +413,7 @@ class KitchenScreen extends StatelessWidget {
   void _showExperimentDialog(BuildContext context, GameState state) {
     const foodKeys = {
       'flour_spelt', 'flour_durum', 'flour', 'salt', 'pepper', 'sugar',
-      'eggs', 'butter', 'milk', 'cream', 'cheese', 'oil', 'water',
+      'eggs', 'butter', 'milk', 'cream', 'cheese', 'oil',
       'potato', 'carrots', 'beets', 'cabbage', 'onion', 'garlic', 'peppers', 'tomato',
       'faba_beans', 'green_beans', 'mushrooms', 'truffles',
       'meat', 'meat_beef', 'meat_chicken', 'meat_pork', 'meat_duck', 'meat_lamb', 'meat_rat',

@@ -166,6 +166,11 @@ class GameItem {
     if (type.contains('grain')) return 0.1;
     if (type.contains('timber')) return 5.0;
     if (type.contains('franc') || type.contains('funds')) return 0.01;
+    if (type.contains('cannabis')) return 0.2;
+    if (type.contains('tobacco')) return 0.5;
+    if (type.contains('mushroom')) return 0.3;
+    if (type.contains('hemp')) return 1.0;
+    if (type.contains('kompromat')) return 0.1;
     return 0.1;
   }
 
@@ -176,6 +181,16 @@ class GameItem {
     if (type.contains('meat')) return 5;
     if (type.contains('funds')) return 1;
     if (type.contains('timber')) return 8;
+    if (type.contains('seeds_cannabis')) return 15;
+    if (type.contains('cannabis_buds')) return 40;
+    if (type.contains('seeds_tobacco')) return 10;
+    if (type.contains('tobacco_leaves')) return 25;
+    if (type.contains('seeds_mushroom') || type.contains('mushroom_spores')) return 12;
+    if (type.contains('hallucinogenic_mushrooms')) return 35;
+    if (type.contains('hemp_fiber')) return 8;
+    if (type.contains('cloth')) return 15;
+    if (type.contains('cigar')) return 20;
+    if (type.contains('kompromat_folder')) return 100;
     return 1;
   }
 
@@ -198,7 +213,7 @@ class GameItem {
     if (type.contains('grain') || type.contains('flour')) {
       return (ItemShape.hexagon, Colors.yellow.shade200);
     }
-    if (type.contains('note') || type.contains('document')) {
+    if (type.contains('note') || type.contains('document') || type.contains('kompromat')) {
       return (ItemShape.pill, Colors.lightBlue.shade100);
     }
     if (type.contains('medicine')) {
@@ -209,6 +224,9 @@ class GameItem {
     }
     if (type.contains('franc') || type.contains('funds')) {
       return (ItemShape.circle, Colors.amber.shade300); // Gold coin representation
+    }
+    if (type.contains('cannabis') || type.contains('hemp') || type.contains('tobacco') || type.contains('mushroom')) {
+      return (ItemShape.hexagon, Colors.green.shade800);
     }
 
     // Fallsbacks by category

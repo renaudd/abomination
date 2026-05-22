@@ -13,8 +13,10 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../widgets/location_tile.dart';
 import '../widgets/prepare_journey_dialog.dart';
@@ -23,7 +25,13 @@ import 'destination_screen.dart';
 import 'regional_map_screen.dart';
 import '../widgets/encounter_dialog.dart';
 import '../../models/npc.dart';
-
+import 'davinci_bridge_screen.dart';
+import 'main_menu_screen.dart';
+import 'records_screen.dart';
+import '../widgets/save_load_dialogs.dart';
+import '../../services/save_service.dart';
+import '../widgets/options_dialog.dart';
+import '../../models/manor_venture.dart';
 class WorldMapScreen extends StatefulWidget {
   const WorldMapScreen({super.key});
 
@@ -33,6 +41,7 @@ class WorldMapScreen extends StatefulWidget {
 
 class _WorldMapScreenState extends State<WorldMapScreen> {
   bool _timeControlsExpanded = false;
+  bool _isNavigatingToCombat = false;
 
   @override
   void initState() {
@@ -55,6 +64,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             context,
             MaterialPageRoute(builder: (context) => const HamletScreen()),
           );
+        } else if (destination == 'river' && !state.riverBridgeBuilt) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const DaVinciBridgeScreen()),
+          );
         } else {
           Navigator.push(
             context,
@@ -64,12 +78,19 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             ),
           );
         }
-      } else if (state.pendingCombatEncounter) {
+      } else if (state.pendingCombatEncounter && !_isNavigatingToCombat && ModalRoute.of(context)?.isCurrent == true) {
+        _isNavigatingToCombat = true;
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) => const EncounterDialog(),
-        );
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isNavigatingToCombat = false;
+            });
+          }
+        });
       }
     });
   }
@@ -81,7 +102,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     _checkNavigation();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1612),
+        backgroundColor: const Color(0xFF1A1612),
       appBar: AppBar(
         title: Text(
           'SURVEY ESTATE',
@@ -99,6 +120,92 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.menu, color: Color(0xFFC4B89B)),
+            tooltip: 'Menu',
+            color: const Color(0xFF1A1612),
+            onSelected: (value) {
+              final state = context.read<GameState>();
+              if (value == 'save') {
+                showDialog(
+                  context: context,
+                  builder: (context) => const SaveGameDialog(),
+                );
+              } else if (value == 'load') {
+                showDialog(
+                  context: context,
+                  builder: (context) => LoadGameDialog(
+                    onSlotSelected: (slot) async {
+                      final data = await SaveService.loadGame(slot: slot);
+                      if (data != null && context.mounted) {
+                        state.loadFromJson(data);
+                        Navigator.pop(context);
+                      }
+                    },
+                  ),
+                );
+              } else if (value == 'options') {
+                _showOptionsDialog(context);
+              } else if (value == 'ventures') {
+                _showVentureOperationsDialog(context, state);
+              } else if (value == 'quit') {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MainMenuScreen(),
+                  ),
+                  (route) => false,
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'save',
+                child: Text(
+                  'Save Game',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFE5D5B0),
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'load',
+                child: Text(
+                  'Load Game',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFE5D5B0),
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'options',
+                child: Text(
+                  'Options',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFE5D5B0),
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'ventures',
+                child: Text(
+                  'Manor Ventures',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFE5D5B0),
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'quit',
+                child: Text(
+                  'Quit to Menu',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFE5D5B0),
+                  ),
+                ),
+              ),
+            ],
+          ),
           _buildClockWidget(context),
         ],
       ),
@@ -196,7 +303,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
                       Positioned(
                         bottom: 264,
-                        left: 650,
+                        left: 770,
                         child: Consumer<GameState>(
                           builder: (context, state, child) {
                             final someoneThere = state.npcs.any(
@@ -432,22 +539,13 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
     if (travelingNpcs.isEmpty) return [];
 
-    final size = MediaQuery.of(context).size;
-    // Map view height is screen height minus AppBar (kToolbarHeight usually 56) and top padding
-    final stackHeight = size.height - kToolbarHeight - MediaQuery.of(context).padding.top;
-    final stackWidth = size.width;
-
-    // Center offset for the location tiles (approx 75 width, 40 height)
-    const dx = 75.0;
-    const dy = 40.0;
-
-    // Map location IDs to screen coordinates to match the Positioned logic in _buildLocations
+    // Map location IDs to exact screen coordinates based on original LocationTile centers (hamlet shifted right by 120px)
     final Map<String, Offset> coords = {
-      'manor': const Offset(280 + dx, 120 + dy),
-      'mountains': const Offset(140 + dx, 20 + dy),
-      'hamlet': Offset(650 + dx, stackHeight - 264 - dy),
-      'woods': Offset(stackWidth - 60 - dx, 60 + dy),
-      'river': Offset(stackWidth - 650 - dx, stackHeight - 264 - dy),
+      'manor': const Offset(355, 160),
+      'mountains': const Offset(215, 60),
+      'hamlet': const Offset(845, 496),
+      'woods': const Offset(1065, 100),
+      'river': const Offset(475, 496),
     };
 
     // Group NPCs into parties based on their travel metadata
@@ -486,8 +584,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           : leader.name.toUpperCase();
 
       return Positioned(
-        top: currentPos.dy,
-        left: currentPos.dx,
+        top: currentPos.dy - 12,
+        left: currentPos.dx - 12,
         child: Column(
           children: [
             Icon(
@@ -510,5 +608,123 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         ),
       );
     }).toList();
+  }
+
+  void _showOptionsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const OptionsDialog(),
+    );
+  }
+
+  void _showVentureOperationsDialog(BuildContext context, GameState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1612),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final diners = state.npcs.where((n) => n.metadata['isDiner'] == true).toList();
+            final guests = state.npcs.where((n) => n.metadata['isHotelGuest'] == true).toList();
+            
+            final studyRoom = state.rooms.firstWhereOrNull((r) => r.id == 'study');
+            final kompromatFolders = studyRoom?.inventory.where((i) => i.type == 'kompromat_folder').toList() ?? [];
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'ESTATE OPERATIONS',
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFFE5D5B0)),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white10, height: 32),
+                  
+                  Text(
+                    'MANOR VENTURE MODE',
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'MANOR ADAPTATION:',
+                          style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 13),
+                        ),
+                      ),
+                      DropdownButton<ManorVenture>(
+                        value: state.manorVenture,
+                        dropdownColor: const Color(0xFF241F1A),
+                        style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
+                        onChanged: (val) {
+                          if (val != null) {
+                            state.setManorVenture(val);
+                            setState(() {});
+                          }
+                        },
+                        items: ManorVenture.values.map((v) {
+                          return DropdownMenuItem<ManorVenture>(
+                            value: v,
+                            child: Text(v.name.toUpperCase()),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white10, height: 24),
+                  
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        Text(
+                          'ACTIVE TRANSIENTS:',
+                          style: GoogleFonts.outfit(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'DINERS GATHERED: ${diners.length} / 12\nHOTEL GUESTS LODGED: ${guests.length} / 4\nKOMPROMAT ACQUIRED: ${kompromatFolders.length} FOLDERS',
+                          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 13, height: 1.6),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

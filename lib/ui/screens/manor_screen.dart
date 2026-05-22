@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +24,8 @@ import '../../services/science_service.dart';
 import '../../services/kitchen_service.dart';
 import '../../services/save_service.dart';
 import '../../models/game_item.dart';
+import '../../models/manor_venture.dart';
+import '../../models/npc.dart';
 import '../widgets/manor_renderer.dart';
 import '../widgets/character_portrait_dialog.dart';
 import '../widgets/room_ledger.dart';
@@ -39,6 +42,7 @@ import '../widgets/encounter_dialog.dart';
 import 'game_over_screen.dart';
 import 'records_screen.dart';
 import 'main_menu_screen.dart';
+import '../widgets/options_dialog.dart';
 
 class ManorScreen extends StatefulWidget {
   const ManorScreen({super.key});
@@ -61,7 +65,7 @@ class _ManorScreenState extends State<ManorScreen> {
   }
 
   void _checkCombatEncounter(GameState state) {
-    if (state.pendingCombatEncounter && !_isNavigatingToCombat) {
+    if (state.pendingCombatEncounter && !_isNavigatingToCombat && ModalRoute.of(context)?.isCurrent == true) {
       _isNavigatingToCombat = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showDialog(
@@ -99,7 +103,7 @@ class _ManorScreenState extends State<ManorScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1612),
+        backgroundColor: const Color(0xFF1A1612),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Colors.black.withValues(alpha: 0.7),
@@ -228,6 +232,8 @@ class _ManorScreenState extends State<ManorScreen> {
                   );
                 } else if (value == 'options') {
                   _showOptionsDialog(context);
+                } else if (value == 'ventures') {
+                  _showVentureOperationsDialog(context, state);
                 } else if (value == 'quit') {
                   Navigator.pushAndRemoveUntil(
                     context,
@@ -261,6 +267,15 @@ class _ManorScreenState extends State<ManorScreen> {
                   value: 'options',
                   child: Text(
                     'Options',
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFE5D5B0),
+                    ),
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'ventures',
+                  child: Text(
+                    'Manor Ventures',
                     style: GoogleFonts.oldStandardTt(
                       color: const Color(0xFFE5D5B0),
                     ),
@@ -430,8 +445,9 @@ class _ManorScreenState extends State<ManorScreen> {
   }
 
   void _showOptionsDialog(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Options coming soon.')),
+    showDialog(
+      context: context,
+      builder: (context) => const OptionsDialog(),
     );
   }
 
@@ -946,6 +962,384 @@ class _ManorScreenState extends State<ManorScreen> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showVentureOperationsDialog(BuildContext context, GameState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1612),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final diners = state.npcs.where((n) => n.metadata['isDiner'] == true).toList();
+            final guests = state.npcs.where((n) => n.metadata['isHotelGuest'] == true).toList();
+            
+            final studyRoom = state.rooms.firstWhereOrNull((r) => r.id == 'study');
+            final kompromatFolders = studyRoom?.inventory.where((i) => i.type == 'kompromat_folder').toList() ?? [];
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'ESTATE OPERATIONS',
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFFE5D5B0)),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white10, height: 32),
+                  
+                  Text(
+                    'MANOR VENTURE MODE',
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: ManorVenture.values.map((v) {
+                      final isSelected = state.manorVenture == v;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: OutlinedButton(
+                            onPressed: () {
+                              state.setManorVenture(v);
+                              setState(() {});
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: isSelected ? const Color(0xFFE5D5B0) : Colors.white10,
+                                width: isSelected ? 2.0 : 1.0,
+                              ),
+                              backgroundColor: isSelected ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
+                              shape: const RoundedRectangleBorder(),
+                            ),
+                            child: Text(
+                              v.name.toUpperCase(),
+                              style: GoogleFonts.playfairDisplay(
+                                color: isSelected ? const Color(0xFFE5D5B0) : Colors.white24,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  const Divider(color: Colors.white10, height: 32),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: () {
+                        if (state.manorVenture == ManorVenture.restaurant) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'DINING ROOM SEATING (${diners.length}/4 DINERS)',
+                                style: GoogleFonts.outfit(
+                                  color: const Color(0xFFC4B89B),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (diners.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                                  child: Center(
+                                    child: Text(
+                                      'NO DINERS CURRENTLY SEATED.',
+                                      style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 12),
+                                    ),
+                                  ),
+                                )
+                              else
+                                ...diners.map((diner) {
+                                  final orderedType = diner.metadata['orderedDishType'] as String? ?? 'any';
+                                  return Card(
+                                    color: Colors.black26,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    shape: const RoundedRectangleBorder(),
+                                    child: ListTile(
+                                      title: Text(
+                                        diner.name.toUpperCase(),
+                                        style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+                                      ),
+                                      subtitle: Text(
+                                        'ORDERING: ${orderedType.toUpperCase()}',
+                                        style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 11),
+                                      ),
+                                      trailing: OutlinedButton(
+                                        onPressed: () => _showServeDishDialog(context, state, diner),
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: Color(0xFFE5D5B0)),
+                                          shape: const RoundedRectangleBorder(),
+                                        ),
+                                        child: Text(
+                                          'SERVE MEAL',
+                                          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                            ],
+                          );
+                        } else if (state.manorVenture == ManorVenture.kompromatHotel) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'HOTEL LODGERS (${guests.length}/3 ROOMED)',
+                                style: GoogleFonts.outfit(
+                                  color: const Color(0xFFC4B89B),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (guests.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                                  child: Center(
+                                    child: Text(
+                                      'ALL BEDROOMS VACANT.',
+                                      style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 12),
+                                    ),
+                                  ),
+                                )
+                              else
+                                ...guests.map((guest) {
+                                  final guestFolder = kompromatFolders.firstWhereOrNull(
+                                    (i) => i.metadata['guestId'] == guest.id
+                                  );
+
+                                  return Card(
+                                    color: Colors.black26,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    shape: const RoundedRectangleBorder(),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                guest.name.toUpperCase(),
+                                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+                                              ),
+                                              Text(
+                                                'ROOM: ${(state.rooms.firstWhereOrNull((r) => r.id == guest.metadata['roomId'])?.name ?? 'Bedroom').toUpperCase()}',
+                                                style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 10, fontWeight: FontWeight.bold),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton.icon(
+                                                  onPressed: () => _showSpyOnGuestDialog(context, state, guest),
+                                                  icon: const Icon(Icons.visibility, size: 12, color: Color(0xFFE5D5B0)),
+                                                  label: Text(
+                                                    'SPY ON GUEST',
+                                                    style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold),
+                                                  ),
+                                                  style: OutlinedButton.styleFrom(
+                                                    side: const BorderSide(color: Color(0xFFE5D5B0)),
+                                                    shape: const RoundedRectangleBorder(),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: OutlinedButton.icon(
+                                                  onPressed: guestFolder != null
+                                                      ? () {
+                                                          state.blackmailGuest(guest.id, guestFolder.id);
+                                                          Navigator.pop(context);
+                                                        }
+                                                      : null,
+                                                  icon: const Icon(Icons.gavel, size: 12),
+                                                  label: Text(
+                                                    'BLACKMAIL (250 CHF)',
+                                                    style: GoogleFonts.playfairDisplay(fontSize: 9, fontWeight: FontWeight.bold),
+                                                  ),
+                                                  style: OutlinedButton.styleFrom(
+                                                    side: BorderSide(color: guestFolder != null ? Colors.red : Colors.white10),
+                                                    foregroundColor: guestFolder != null ? Colors.red : Colors.white12,
+                                                    shape: const RoundedRectangleBorder(),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }),
+                            ],
+                          );
+                        } else {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const SizedBox(height: 32),
+                              const Icon(Icons.gavel, size: 48, color: Colors.white12),
+                              const SizedBox(height: 16),
+                              Text(
+                                'A SECLUDED PRIVATE MANOR SANCTUARY.',
+                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 14, fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'NO ACTIVE BUSINESS VENTURES ESTABLISHED. GUESTS WILL OCCASIONALLY ARRIVE BUT WILL NOT PAY COMMERCIAL TARIFFS.',
+                                style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 11),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          );
+                        }
+                      }(),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showServeDishDialog(BuildContext context, GameState state, NPC diner) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final viableDishes = state.pantry.toList();
+
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1612),
+          title: Text(
+            'SERVE ${diner.name.toUpperCase()}',
+            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: viableDishes.isEmpty
+                ? Text(
+                    'PANTRY IS COMPLETELY EMPTY.',
+                    style: GoogleFonts.oldStandardTt(color: Colors.white24),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: viableDishes.length,
+                    itemBuilder: (context, index) {
+                      final dish = viableDishes[index];
+                      return ListTile(
+                        title: Text(
+                          dish.name.toUpperCase(),
+                          style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 13),
+                        ),
+                        subtitle: Text(
+                          'QUALITY: ${dish.quality.name.toUpperCase()}',
+                          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Color(0xFFE5D5B0)),
+                        onTap: () {
+                          state.serveDiner(diner.id, dish.id);
+                          Navigator.pop(context); // close serve dialog
+                          Navigator.pop(context); // close operations modal
+                        },
+                      );
+                    },
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSpyOnGuestDialog(BuildContext context, GameState state, NPC guest) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final residents = state.npcs.where((n) => n.isResident && n.status != NPCStatus.zombie && n.activeTaskId == null).toList();
+
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1612),
+          title: Text(
+            'CHOOSE AGENT FOR SPYCRAFT',
+            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: residents.isEmpty
+                ? Text(
+                    'NO IDLE RESIDENTS AVAILABLE FOR SPYING.',
+                    style: GoogleFonts.oldStandardTt(color: Colors.white24),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: residents.length,
+                    itemBuilder: (context, index) {
+                      final res = residents[index];
+                      final dexterity = res.stats['dexterity'] ?? 5;
+                      final perception = res.stats['perception'] ?? 5;
+
+                      return ListTile(
+                        title: Text(
+                          res.name.toUpperCase(),
+                          style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 13),
+                        ),
+                        subtitle: Text(
+                          'DEXTERITY: $dexterity | PERCEPTION: $perception',
+                          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11),
+                        ),
+                        trailing: const Icon(Icons.visibility, size: 14, color: Color(0xFFE5D5B0)),
+                        onTap: () {
+                          state.startSpyingOnGuest(res.id, guest.id);
+                          Navigator.pop(context); // close dialog
+                          Navigator.pop(context); // close operations modal
+                        },
+                      );
+                    },
+                  ),
+          ),
         );
       },
     );

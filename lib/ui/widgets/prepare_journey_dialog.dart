@@ -31,8 +31,6 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
   String? _selectedNpcId;
   final Map<String, num> _selectedResources = {
     'funds': 0,
-    'meat': 0,
-    'cabbage': 0,
   };
   final List<String> _escortIds = [];
   bool _isInitialized = false;
@@ -66,7 +64,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
     return Consumer<GameState>(
       builder: (context, state, child) {
         final availableNpcs = state.npcs
-            .where((n) => n.worldDestinationId == null)
+            .where((n) => n.worldDestinationId == null && n.isResident)
             .toList();
         
         _initializeDefaults(availableNpcs);
@@ -132,9 +130,18 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
 
                   // Resource Selector
                   _sectionHeader("PACK SUPPLIES"),
-                  ..._selectedResources.keys.map(
-                    (res) => _buildResourceSlider(state, res),
-                  ),
+                  ...(() {
+                    // Dynamically pre-populate all owned items in the selected pack
+                    for (var key in state.resources.keys) {
+                      if (key != 'meals') {
+                        _selectedResources.putIfAbsent(key, () => 0);
+                      }
+                    }
+                    
+                    return _selectedResources.keys
+                        .where((key) => (state.resources[key] ?? 0) > 0 || key == 'funds')
+                        .map((res) => _buildResourceSlider(state, res));
+                  })(),
 
                   const SizedBox(height: 24),
 
@@ -279,6 +286,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
     final travelerId = _selectedNpcId;
     final available = state.npcs.where((n) {
       return n.worldDestinationId == null &&
+          n.isResident &&
           n.id != travelerId &&
           !_escortIds.contains(n.id);
     }).toList();

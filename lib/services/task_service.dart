@@ -174,7 +174,7 @@ extension TaskTypeExtensions on TaskType {
       case TaskType.puzzleStudy:
         return 'Puzzle Study';
       case TaskType.vivisection:
-        return 'Voodoo';
+        return 'Vivisection';
       case TaskType.breedingAttempt:
         return 'Breed Attempt';
       case TaskType.surgicalOperation:
@@ -866,32 +866,12 @@ class TaskService {
       if (!task.isCompleted &&
           readyNpcIds.contains(task.npcId) &&
           activeTaskIds.contains(task.id)) {
-        // Calculate efficiency based on relevant attributes
-        final relevantAttrs = getRelevantAttributes(task.type);
-        double efficiency = 1.0;
-
-        if (relevantAttrs.isNotEmpty) {
-          final stats = getStats(task.npcId);
-          int sum = 0;
-          for (var attr in relevantAttrs) {
-            sum += stats[attr] ?? 3; // Default to median 3
-          }
-          // efficiency = (Average(RelevantStats) / 3.0)
-          // At median 3, efficiency is 1.0
-          efficiency = (sum / relevantAttrs.length) / 3.0;
-          // Clamp efficiency to avoid extreme slowdowns or hyper-speed
-          efficiency = efficiency.clamp(0.2, 3.0);
-        }
-
-        task.progressAccumulator += efficiency;
-
-        while (task.progressAccumulator >= 1.0 && !task.isCompleted) {
-          task.minutesRemaining--;
-          task.progressAccumulator -= 1.0;
-          if (task.minutesRemaining <= 0) {
-            task.isCompleted = true;
-            completed.add(task);
-          }
+        // Task duration is already adjusted for character efficiency and role when created in GameState.
+        // Decrement exactly 1 task minute for every 1 game minute to keep task speed perfectly synchronized with game clock speed.
+        task.minutesRemaining--;
+        if (task.minutesRemaining <= 0) {
+          task.isCompleted = true;
+          completed.add(task);
         }
       }
     }
@@ -962,7 +942,7 @@ class TaskService {
       case TaskType.puzzleStudy:
         return "Conduct cognitive puzzle study";
       case TaskType.vivisection:
-        return "Perform Voodoo ritual";
+        return "Perform vivisection study";
       case TaskType.breedingAttempt:
         return "Manage breeding attempt";
       case TaskType.surgicalOperation:

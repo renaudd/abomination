@@ -14,7 +14,7 @@
 
 import 'package:uuid/uuid.dart';
 
-enum CropType { cabbage, potato, carrot, beet, fabaBean, greenBean, grain }
+enum CropType { cabbage, potato, carrot, beet, fabaBean, greenBean, grain, cannabis, tobacco, mushroom }
 
 class Crop {
   final String id;

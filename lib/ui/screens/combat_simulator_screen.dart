@@ -18,6 +18,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import '../../services/combat_unit_service.dart';
+import '../../models/combat_map.dart';
 import '../widgets/character_blob_renderer.dart';
 import 'combat_screen.dart';
 
@@ -346,7 +347,58 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        Consumer<GameState>(
+                          builder: (context, state, child) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'BATTLEFIELD MAP',
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: const Color(0xFFC4B89B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black38,
+                                    border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.5)),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<CombatMap>(
+                                      dropdownColor: const Color(0xFF1A1612),
+                                      value: state.selectedCombatMap,
+                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFC4B89B)),
+                                      items: CombatMap.allMaps.map((map) {
+                                        return DropdownMenuItem<CombatMap>(
+                                          value: map,
+                                          child: Text(
+                                            map.name.toUpperCase(),
+                                            style: GoogleFonts.oldStandardTt(
+                                              color: const Color(0xFFE5D5B0),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (newMap) {
+                                        if (newMap != null) {
+                                          state.setSelectedCombatMap(newMap);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 28),
                         Consumer<GameState>(
                           builder: (context, state, child) {
                             return ElevatedButton(

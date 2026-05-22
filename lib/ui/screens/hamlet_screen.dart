@@ -19,6 +19,8 @@ import '../../state/game_state.dart';
 import '../widgets/hamlet_hotspot.dart';
 import '../widgets/encounter_dialog.dart';
 
+enum HamletVendor { grocer, curator, alchemist }
+
 class HamletScreen extends StatefulWidget {
   const HamletScreen({super.key});
 
@@ -30,7 +32,9 @@ class _HamletScreenState extends State<HamletScreen> {
   bool _isNavigatingToCombat = false;
 
   void _checkCombatEncounter(GameState state) {
-    if (state.pendingCombatEncounter && !_isNavigatingToCombat) {
+    if (state.pendingCombatEncounter &&
+        !_isNavigatingToCombat &&
+        ModalRoute.of(context)?.isCurrent == true) {
       _isNavigatingToCombat = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showDialog(
@@ -45,11 +49,28 @@ class _HamletScreenState extends State<HamletScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<GameState>().setSpeed(GameSpeed.paused);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = Provider.of<GameState>(context);
     _checkCombatEncounter(state);
 
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          state.setSpeed(GameSpeed.normal); // Resume speed on exit
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF1A1612),
       appBar: AppBar(
         title: Text(
@@ -150,8 +171,9 @@ class _HamletScreenState extends State<HamletScreen> {
           );
         },
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildReturnSection(BuildContext context) {
     return Consumer<GameState>(
@@ -224,44 +246,538 @@ class _HamletScreenState extends State<HamletScreen> {
       backgroundColor: const Color(0xFF241F1A),
       isScrollControlled: true,
       builder: (context) {
-        return Consumer<GameState>(
-          builder: (context, state, child) {
-            final resources = ['wood', 'meat', 'eggs', 'cabbage'];
-            return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-                  ),
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
+              ),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'MARKET OF GLARUS',
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'MARKET OF GLARUS',
-                    style: GoogleFonts.playfairDisplay(
-                      color: const Color(0xFFE5D5B0),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
+              const SizedBox(height: 4),
+              Text(
+                'SELECT A LOCAL VENDOR TO START TRADING',
+                style: GoogleFonts.oldStandardTt(
+                  color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
+                  fontSize: 10,
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 24),
+
+              // Vendor 1: Grocer
+              ListTile(
+                leading: const Icon(Icons.storefront, color: Color(0xFFC4B89B)),
+                title: Text(
+                  "GROCER & PROVISIONER",
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  "DEALS IN VEGETABLES, SEEDS, GRAINS, SALT AND BASIC PROVISIONS.",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white38,
+                    fontSize: 10,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: Color(0xFFC4B89B),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showTradeDialog(
+                    context,
+                    HamletVendor.grocer,
+                    "Grocer & Provisioner",
+                    "Deals in vegetables, seeds, grains, salt and basic provisions.",
+                    [
+                      'cabbage',
+                      'potato',
+                      'carrots',
+                      'beets',
+                      'grain',
+                      'eggs',
+                      'meat',
+                      'salt',
+                      'fertilizer',
+                      'wood',
+                      'seeds_cabbage',
+                      'seeds_potato',
+                      'seeds_carrot',
+                      'mushroom_spores',
+                    ],
+                    [
+                      'cabbage',
+                      'potato',
+                      'carrots',
+                      'beets',
+                      'grain',
+                      'eggs',
+                      'meat',
+                      'salt',
+                      'fertilizer',
+                      'wood',
+                      'seeds_cabbage',
+                      'seeds_potato',
+                      'seeds_carrot',
+                      'mushroom_spores',
+                    ],
+                  );
+                },
+              ),
+              const Divider(color: Colors.white10),
+
+              // Vendor 2: Rare Book & Art Curator
+              ListTile(
+                leading: const Icon(Icons.menu_book, color: Color(0xFFC4B89B)),
+                title: Text(
+                  "RARE BOOK & GOTHIC ART CURATOR",
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  "BUYS ARTWORK, LITERATURE, POEMS AND NOVELS FOR EXCELLENT WAGES.",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white38,
+                    fontSize: 10,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: Color(0xFFC4B89B),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showTradeDialog(
+                    context,
+                    HamletVendor.curator,
+                    "Rare Book & Gothic Art Curator",
+                    "Buys artwork, literature, poems and novels for excellent wages.",
+                    ['unreviewed_document', 'old_notes', 'research_notes'],
+                    [
+                      'poem',
+                      'novel',
+                      'research_notes',
+                      'unreviewed_document',
+                      'old_notes',
+                    ],
+                  );
+                },
+              ),
+              const Divider(color: Colors.white10),
+
+              // Vendor 3: Shady Alchemist & Ratcatcher
+              ListTile(
+                leading: const Icon(Icons.biotech, color: Color(0xFFC4B89B)),
+                title: Text(
+                  "SHADY ALCHEMIST & RATCATCHER",
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  "DEALS IN SPECIMENS, ALCHEMICAL REAGENTS, CROPS AND ANATOMICAL HARVESTS.",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white38,
+                    fontSize: 10,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: Color(0xFFC4B89B),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showTradeDialog(
+                    context,
+                    HamletVendor.alchemist,
+                    "Shady Alchemist & Ratcatcher",
+                    "Deals in specimens, alchemical reagents, crops and anatomical harvests.",
+                    ['herb_reagent', 'fertilizer'],
+                    [
+                      'rat',
+                      'bat',
+                      'chicken',
+                      'fertilizer',
+                      'herb_reagent',
+                      'cannabis_buds',
+                      'tobacco_leaves',
+                      'hallucinogenic_mushrooms',
+                      'hemp_fiber',
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTradeDialog(
+    BuildContext context,
+    HamletVendor vendor,
+    String vendorName,
+    String description,
+    List<String> buyableItems,
+    List<String> sellableItems,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Consumer<GameState>(
+          builder: (context, state, child) {
+            final traveler = state.npcs.firstWhere(
+              (n) =>
+                  n.worldDestinationId == 'hamlet' &&
+                  n.worldTravelProgress >= 1.0,
+            );
+            final funds = traveler.journeyInventory['funds'] ?? 0;
+
+            return Dialog(
+              backgroundColor: const Color(0xFF1E1A15),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.zero,
+              ),
+              child: Container(
+                width: 700,
+                height: 500,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFC4B89B), width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              vendorName.toUpperCase(),
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFE5D5B0),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              description.toUpperCase(),
+                              style: GoogleFonts.oldStandardTt(
+                                color: const Color(
+                                  0xFFC4B89B,
+                                ).withValues(alpha: 0.7),
+                                fontSize: 8,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFFE5D5B0),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'FUNDS: ${state.npcs.firstWhere((n) => n.worldDestinationId == 'hamlet' && n.worldTravelProgress >= 1.0).journeyInventory['funds']?.round()} CHF',
-                    style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFC4B89B),
-                      fontSize: 14,
+                    const Divider(color: Colors.white10, height: 24),
+
+                    // Funds Indicator
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "YOUR FUNDS: ${funds.round()} CHF",
+                          style: GoogleFonts.oswald(
+                            color: const Color(0xFFE5D5B0),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  ...resources.map(
-                    (res) => _buildMarketItem(context, state, res),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    const SizedBox(height: 16),
+
+                    Expanded(
+                      child: Row(
+                        children: [
+                          // Column 1: Player's Travel Bag
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "PLAYER'S BAG (SELL TO VENDOR)",
+                                    style: GoogleFonts.oswald(
+                                      color: const Color(0xFFC4B89B),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Divider(color: Colors.white10),
+                                  Expanded(
+                                    child: ListView(
+                                      children: sellableItems
+                                          .where(
+                                            (item) =>
+                                                (traveler
+                                                        .journeyInventory[item] ??
+                                                    0) >
+                                                0,
+                                          )
+                                          .map((res) {
+                                            final count =
+                                                traveler
+                                                    .journeyInventory[res] ??
+                                                0;
+                                            final price = state.marketService
+                                                .getSellPrice(res);
+
+                                            return ListTile(
+                                              contentPadding: EdgeInsets.zero,
+                                               title: Text(
+                                                _getPrettyResourceName(res),
+                                                style:
+                                                    GoogleFonts.playfairDisplay(
+                                                      color: const Color(
+                                                        0xFFE5D5B0,
+                                                      ),
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                              ),
+                                              subtitle: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    "CARRIED: ${count.round()}",
+                                                    style:
+                                                        GoogleFonts.oldStandardTt(
+                                                          color: Colors.white38,
+                                                          fontSize: 8,
+                                                        ),
+                                                  ),
+                                                  Text(
+                                                    "MEASURE: ${_getItemUnitName(res).toUpperCase()}",
+                                                    style: GoogleFonts.oswald(
+                                                      color: const Color(
+                                                        0xFFC4B89B,
+                                                      ).withValues(alpha: 0.5),
+                                                      fontSize: 7,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    "UNIT WT: ${_getItemWeightLabel(res).toUpperCase()}",
+                                                    style: GoogleFonts.oswald(
+                                                      color: const Color(
+                                                        0xFFC4B89B,
+                                                      ).withValues(alpha: 0.5),
+                                                      fontSize: 7,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              trailing: OutlinedButton(
+                                                onPressed: () =>
+                                                    state.sellResource(res, 1),
+                                                style: OutlinedButton.styleFrom(
+                                                  side: const BorderSide(
+                                                    color: Color(0xFFC4B89B),
+                                                  ),
+                                                  shape:
+                                                      const RoundedRectangleBorder(),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                      ),
+                                                ),
+                                                child: Text(
+                                                  "SELL ($price)",
+                                                  style:
+                                                      GoogleFonts.playfairDisplay(
+                                                        color: const Color(
+                                                          0xFFE5D5B0,
+                                                        ),
+                                                        fontSize: 9,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                ),
+                                              ),
+                                            );
+                                          })
+                                          .toList(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 16),
+
+                          // Column 2: Vendor's Stock
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "VENDOR'S STOCK (BUY FROM VENDOR)",
+                                    style: GoogleFonts.oswald(
+                                      color: const Color(0xFFC4B89B),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Divider(color: Colors.white10),
+                                  Expanded(
+                                    child: ListView(
+                                      children: buyableItems.map((res) {
+                                        final count =
+                                            traveler.journeyInventory[res] ?? 0;
+                                        final price = state.marketService
+                                            .getBuyPrice(res);
+
+                                        return ListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: Text(
+                                            _getPrettyResourceName(res),
+                                            style: GoogleFonts.playfairDisplay(
+                                              color: const Color(0xFFE5D5B0),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "IN PACK: ${count.round()}",
+                                                style:
+                                                    GoogleFonts.oldStandardTt(
+                                                      color: Colors.white38,
+                                                      fontSize: 8,
+                                                    ),
+                                              ),
+                                              Text(
+                                                "MEASURE: ${_getItemUnitName(res).toUpperCase()}",
+                                                style: GoogleFonts.oswald(
+                                                  color: const Color(
+                                                    0xFFC4B89B,
+                                                  ).withValues(alpha: 0.5),
+                                                  fontSize: 7,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                "UNIT WT: ${_getItemWeightLabel(res).toUpperCase()}",
+                                                style: GoogleFonts.oswald(
+                                                  color: const Color(
+                                                    0xFFC4B89B,
+                                                  ).withValues(alpha: 0.5),
+                                                  fontSize: 7,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          trailing: OutlinedButton(
+                                            onPressed: funds >= price
+                                                ? () =>
+                                                      state.buyResource(res, 1)
+                                                : null,
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                color: funds >= price
+                                                    ? const Color(0xFFC4B89B)
+                                                    : Colors.white10,
+                                              ),
+                                              shape:
+                                                  const RoundedRectangleBorder(),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                  ),
+                                            ),
+                                            child: Text(
+                                              "BUY ($price)",
+                                              style:
+                                                  GoogleFonts.playfairDisplay(
+                                                    color: funds >= price
+                                                        ? const Color(
+                                                            0xFFE5D5B0,
+                                                          )
+                                                        : Colors.white12,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -270,75 +786,122 @@ class _HamletScreenState extends State<HamletScreen> {
     );
   }
 
-  Widget _buildMarketItem(BuildContext context, GameState state, String res) {
-    final traveler = state.npcs.firstWhere(
-      (n) => n.worldDestinationId == 'hamlet' && n.worldTravelProgress >= 1.0,
-    );
-    final sellPrice = state.marketService.getSellPrice(res);
-    final buyPrice = state.marketService.getBuyPrice(res);
-    final count = traveler.journeyInventory[res] ?? 0;
-    final funds = traveler.journeyInventory['funds'] ?? 0;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        children: [
-          Icon(_getResourceIcon(res), color: const Color(0xFFC4B89B), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  res.toUpperCase(),
-                  style: GoogleFonts.playfairDisplay(
-                    color: const Color(0xFFE5D5B0),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'In Stock: ${count.round()}',
-                  style: GoogleFonts.oldStandardTt(
-                    color: Colors.white38,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _actionButton(
-            'SELL ($sellPrice)',
-            count > 0 ? () => state.sellResource(res, 1) : null,
-          ),
-          const SizedBox(width: 8),
-          _actionButton(
-            'BUY ($buyPrice)',
-            funds >= buyPrice ? () => state.buyResource(res, 1) : null,
-          ),
-        ],
-      ),
-    );
+  String _getItemUnitName(String type) {
+    if (type == 'salt') return 'Decagram (Precious)';
+    if (type == 'wood') return 'Kilogram';
+    if (type == 'rooster' ||
+        type == 'chicken' ||
+        type == 'rat' ||
+        type == 'bat') {
+      return 'Whole Unit (Variable)';
+    }
+    return 'Whole Unit';
   }
 
-  Widget _actionButton(String label, VoidCallback? onTap) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        side: BorderSide(
-          color: onTap != null ? const Color(0xFFC4B89B) : Colors.white10,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.playfairDisplay(
-          color: onTap != null ? const Color(0xFFE5D5B0) : Colors.white12,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
+  String _getPrettyResourceName(String res) {
+    if (res == 'seeds_cabbage') return 'CABBAGE SEEDS';
+    if (res == 'seeds_potato') return 'POTATO SEEDS';
+    if (res == 'seeds_carrot') return 'CARROT SEEDS';
+    if (res == 'seeds_cannabis') return 'CANNABIS SEEDS';
+    if (res == 'seeds_tobacco') return 'TOBACCO SEEDS';
+    if (res == 'mushroom_spores') return 'MUSHROOM SPORES';
+    if (res == 'salt') return 'SALT';
+    if (res == 'wood') return 'WOOD';
+    if (res == 'grain') return 'GRAIN';
+    return res.replaceAll('_', ' ').toUpperCase();
+  }
+
+  String _getItemWeightLabel(String type) {
+    final grams = _getItemWeightGrams(type);
+    if (type == 'rooster' ||
+        type == 'chicken' ||
+        type == 'rat' ||
+        type == 'bat') {
+      return 'Variable (~${_formatWeight(grams)})';
+    }
+    return _formatWeight(grams);
+  }
+
+  int _getItemWeightGrams(String type) {
+    switch (type) {
+      case 'cabbage':
+        return 1200;
+      case 'potato':
+        return 150;
+      case 'carrots':
+        return 100;
+      case 'beets':
+        return 200;
+      case 'eggs':
+        return 60;
+      case 'grain':
+        return 500;
+      case 'rooster':
+        return 2300;
+      case 'chicken':
+        return 1800;
+      case 'rat':
+        return 320;
+      case 'bat':
+        return 150;
+      case 'poem':
+        return 10;
+      case 'novel':
+        return 450;
+      case 'unreviewed_document':
+        return 20;
+      case 'old_notes':
+        return 150;
+      case 'research_notes':
+        return 100;
+      case 'seeds_cabbage':
+        return 5;
+      case 'seeds_potato':
+        return 5;
+      case 'seeds_carrot':
+        return 5;
+      case 'seeds_cannabis':
+        return 10;
+      case 'seeds_tobacco':
+        return 10;
+      case 'mushroom_spores':
+        return 5;
+      case 'fertilizer':
+        return 5000;
+      case 'ale':
+        return 1000;
+      case 'spirits':
+        return 750;
+      case 'timber':
+        return 15000;
+      case 'hemp_fiber':
+        return 1000;
+      case 'cannabis_buds':
+        return 50;
+      case 'tobacco_leaves':
+        return 100;
+      case 'hallucinogenic_mushrooms':
+        return 20;
+
+      case 'wood':
+        return 1000;
+      case 'salt':
+        return 100; // 1 hectogram = 100g (contains 10 decagrams)
+      default:
+        return 100;
+    }
+  }
+
+  String _formatWeight(int grams) {
+    if (grams < 1000) {
+      return '$grams g';
+    }
+    final double kg = grams / 1000.0;
+    if (kg < 100.0) {
+      return '${kg.toStringAsFixed(1)} kg';
+    } else {
+      return '${kg.toStringAsFixed(0)} kg';
+    }
   }
 
   void _showTavern(BuildContext context) {
@@ -486,20 +1049,7 @@ class _HamletScreenState extends State<HamletScreen> {
     );
   }
 
-  IconData _getResourceIcon(String res) {
-    switch (res) {
-      case 'wood':
-        return Icons.forest;
-      case 'meat':
-        return Icons.restaurant;
-      case 'eggs':
-        return Icons.egg;
-      case 'cabbage':
-        return Icons.grass;
-      default:
-        return Icons.help_outline;
-    }
-  }
+
 
   void _showTownSquare(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(

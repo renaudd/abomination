@@ -18,8 +18,26 @@ import 'package:flutter/material.dart';
 import '../models/combat_log_entry.dart';
 import '../models/npc.dart';
 import '../models/combat_stats.dart';
+import '../models/schedule.dart';
+import '../models/diet.dart';
+import '../models/combat_map.dart';
 
 enum CombatSide { player, enemy }
+
+class HealingCauldron {
+  final String id;
+  final double x;
+  final double y;
+  bool isAvailable = true;
+  double rechargeProgress = 1.0;
+  static const double rechargeDuration = 20.0;
+
+  HealingCauldron({
+    required this.id,
+    required this.x,
+    required this.y,
+  });
+}
 
 class FloatingMessage {
   final String text;
@@ -49,17 +67,46 @@ class Combatant {
   specialTargetId; // The ID of the NPC being targeted by specialActionId
   bool isDead = false;
   final List<FloatingMessage> floatingMessages = [];
+  double flashTimer = 0.0;
+  double recentDamage = 0.0;
+
+  // New Fields for Lane & Tower Mechanics
+  int laneIndex;
+  bool isTower;
+  String? towerType;
+  double? respawnTimer;
+  int deathCount = 0;
+  double specialCharge2 = 0.0;
+  double? waypointX;
+  double? waypointY;
+  double? detourX;
+  double? detourY;
 
   Combatant({
     required this.npc,
     required this.side,
     this.x = 0.0,
     this.y = 42.5, // Center of 85ft field
+    this.laneIndex = 1,
+    this.isTower = false,
+    this.towerType,
+    this.respawnTimer,
+    this.deathCount = 0,
+    this.specialCharge2 = 0.0,
+    this.waypointX,
+    this.waypointY,
+    this.detourX,
+    this.detourY,
   });
 
   // For continuous movement (Alphonse)
   double moveDirX = 0.0;
   double moveDirY = 0.0;
+
+  double backstepTimer = 0.0;
+  double backstepDirX = 0.0;
+  double backstepDirY = 0.0;
+  int stuckFrames = 0;
 }
 
 class Projectile {
@@ -70,6 +117,10 @@ class Projectile {
   final double targetY;
   final CombatSide side;
   bool isExpired = false;
+  final bool isSlowRocket;
+  final double damage;
+  final String attackerId;
+  final double speed;
 
   Projectile({
     required this.id,
@@ -78,31 +129,74 @@ class Projectile {
     required this.targetX,
     required this.targetY,
     required this.side,
+    this.isSlowRocket = false,
+    this.damage = 0.0,
+    required this.attackerId,
+    required this.speed,
   });
 
-  void update(double dt) {
-    final dx = targetX - x;
-    final dy = targetY - y;
-    final len = sqrt(dx * dx + dy * dy);
-    if (len < 0.2) {
+  void update(double dt, CombatManager manager) {
+    // Physical collision hit-test against the 3 centerline impassable walls (Y inside [40, 100])
+    final bool inWall = y >= 40.0 && y <= 100.0 &&
+        ((x >= 70.0 && x <= 90.0) ||
+         (x >= 140.0 && x <= 160.0) ||
+         (x >= 210.0 && x <= 230.0));
+    if (inWall) {
       isExpired = true;
       return;
     }
-    const speed = 20.0;
+
+    final dx = targetX - x;
+    final dy = targetY - y;
+    final len = sqrt(dx * dx + dy * dy);
+    
+    if (isSlowRocket) {
+      // Dodgeable slow rocket projectile: checks physical collision with active enemy targets!
+      final enemyTargets = manager.combatants.where((c) => c.side != side && !c.isDead).toList();
+      for (final t in enemyTargets) {
+        final tx = t.x - x;
+        final ty = t.y - y;
+        final dist = sqrt(tx * tx + ty * ty);
+        if (dist < (t.npc.combatStats?.radius ?? 1.5) + 1.5) {
+          manager.applyDirectDamage(t, damage, attackerId);
+          isExpired = true;
+          return;
+        }
+      }
+    }
+
+    if (len <= speed * dt || len < 0.4) {
+      isExpired = true;
+      x = targetX;
+      y = targetY;
+      return;
+    }
+
     x += (dx / len) * speed * dt;
     y += (dy / len) * speed * dt;
   }
 }
 
 class CombatManager extends ChangeNotifier {
+  CombatMap _map = CombatMap.allMaps.first;
+  CombatMap get map => _map;
+
+  set map(CombatMap val) {
+    _map = val;
+    notifyListeners();
+  }
+
   final List<Combatant> _combatants = [];
   final List<Projectile> _projectiles = [];
   final List<CombatLogEntry> _logs = [];
   double _actionPoints = 6.0; // Start with 6
   static const double maxAP = 10.0;
   static const double apPerSecond = 0.3; // Reduced by 25% (was 0.4)
-  static const double fieldWidth = 85.0;
-  static const double fieldLength = 200.0;
+  static const double fieldWidth = 140.0;
+  static const double fieldLength = 300.0;
+
+  final List<HealingCauldron> _cauldrons = [];
+  List<HealingCauldron> get cauldrons => List.unmodifiable(_cauldrons);
 
   final List<NPC> _deck = [];
   final List<NPC> _hand = [];
@@ -115,10 +209,15 @@ class CombatManager extends ChangeNotifier {
   final List<NPC> _aiHand = [];
 
   double _fieldScroll = 0.0;
+  double _yFieldScroll = 0.0;
+  double _manualCameraOverrideTimer = 0.0;
+  double _zoomFactor = 1.0;
   bool _isScrolling = true;
   bool _isCombatActive = false;
   bool _isVictory = false;
   bool _isDefeat = false;
+  double _combatTimeRemaining = 180.0;
+  bool _isDraw = false;
 
   final List<NPC> _killedEnemies = [];
   final Map<String, num> _accumulatedLoot = {'funds': 0, 'meat': 0};
@@ -133,14 +232,179 @@ class CombatManager extends ChangeNotifier {
   List<NPC> get hand => List.unmodifiable(_hand);
   double get actionPoints => _actionPoints;
   double get fieldScroll => _fieldScroll;
+  double get yFieldScroll => _yFieldScroll;
+  double get zoomFactor => _zoomFactor;
+  
+  set zoomFactor(double val) {
+    _zoomFactor = val.clamp(0.2, 1.5);
+    notifyListeners();
+  }
+
   bool get isCombatActive => _isCombatActive;
   bool get isVictory => _isVictory;
   bool get isDefeat => _isDefeat;
+  double get combatTimeRemaining => _combatTimeRemaining;
+  bool get isDraw => _isDraw;
+  bool get isLastMinute => _combatTimeRemaining <= 60.0 && _isCombatActive;
   List<NPC> get killedEnemies => List.unmodifiable(_killedEnemies);
   Map<String, num> get accumulatedLoot => Map.unmodifiable(_accumulatedLoot);
   bool get isSimulation => _isSimulation;
   double get aiActionPoints => _aiActionPoints;
   List<NPC> get aiHand => List.unmodifiable(_aiHand);
+
+  // Callbacks for GameState communication
+  VoidCallback? onPlayerDeath;
+  Function(NPC enemy)? onEnemyHeroDeath;
+  Function(NPC tower)? onEnemyTowerDestroyed;
+  Function(NPC enemy)? onEnemyKill;
+
+  void spawnTower({
+    required String name,
+    required CombatSide side,
+    required int lane,
+    required double maxHealth,
+    required double attack,
+    required double range,
+    required double speed,
+    required String towerType,
+  }) {
+    final npc = NPC(
+      id: '${side.name}_tower_$lane',
+      name: name,
+      role: 'Structure',
+      age: 0,
+      gender: 'N/A',
+      specimenType: 'Structure',
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      isPlayer: false,
+      bodyParts: const [],
+      appearance: NPCAppearance.random(),
+      combatStats: CombatStats(
+        attack: attack,
+        health: maxHealth,
+        maxHealth: maxHealth,
+        speed: speed,
+        movement: 0.0,
+        distance: range,
+        defense: 10,
+        accuracy: 0.95,
+        cost: 0,
+        radius: 3.0, // Small footprint structure
+      ),
+    );
+
+    double x;
+    double y;
+    if (side == CombatSide.player) {
+      if (lane == 0) {
+        x = _map.playerCornerTowerX;
+        y = _map.laneCenters.first;
+      } else if (lane == 1) {
+        x = _map.playerCornerTowerX;
+        y = _map.laneCenters.last;
+      } else {
+        x = _map.playerCentralTowerX;
+        y = _map.height / 2;
+      }
+    } else {
+      if (lane == 0) {
+        x = _map.enemyCornerTowerX;
+        y = _map.laneCenters.first;
+      } else if (lane == 1) {
+        x = _map.enemyCornerTowerX;
+        y = _map.laneCenters.last;
+      } else {
+        x = _map.enemyCentralTowerX;
+        y = _map.height / 2;
+      }
+    }
+
+    final combatant = Combatant(
+      npc: npc,
+      side: side,
+      x: x,
+      y: y,
+      laneIndex: lane == 2 ? 0 : lane, // Map center tower to north/lane 0 or south/lane 1
+      isTower: true,
+      towerType: towerType,
+    );
+
+    _combatants.add(combatant);
+    notifyListeners();
+  }
+
+  void setupTowersForEncounter(String encounterTitle) {
+    _combatants.removeWhere((c) => c.isTower);
+
+    String playerTowerType = 'wagon';
+    String enemyTowerType = 'wagon';
+    double enemyHealth = 600.0;
+    double enemyAttack = 15.0;
+    double enemyRange = 20.0; // Overlapping field of fire
+    double enemySpeed = 2.0;
+    
+    String playerTowerName = 'Covered Wagon';
+    String enemyTowerName = 'Covered Wagon';
+
+    if (encounterTitle.contains("Highwaymen") || encounterTitle.contains("Bandits")) {
+      playerTowerType = 'wagon';
+      enemyTowerType = 'wagon_musket';
+      enemyTowerName = 'Armored Wagon';
+      enemyHealth = 800.0;
+      enemyAttack = 20.0;
+    } else if (encounterTitle.contains("Beasts") || encounterTitle.contains("Animals") || encounterTitle.contains("Feral")) {
+      playerTowerType = 'wagon';
+      enemyTowerType = 'animal_den';
+      enemyTowerName = 'Feral Den';
+      enemyHealth = 500.0;
+      enemyAttack = 10.0;
+      enemyRange = 20.0;
+    } else if (encounterTitle.contains("Bologna") || encounterTitle.contains("City")) {
+      playerTowerType = 'tower_house';
+      enemyTowerType = 'tower_house';
+      playerTowerName = 'Tower House';
+      enemyTowerName = 'Tower House';
+      enemyHealth = 1000.0;
+      enemyAttack = 25.0;
+    } else if (encounterTitle.contains("Fortress") || encounterTitle.contains("Castle")) {
+      playerTowerType = 'fortification';
+      enemyTowerType = 'castle_keep';
+      playerTowerName = 'Field Fortification';
+      enemyTowerName = 'Castle Tower';
+      enemyHealth = 1500.0;
+      enemyAttack = 40.0;
+      enemyRange = 20.0;
+    }
+
+    // Spawn 3 player towers
+    for (int lane = 0; lane < 3; lane++) {
+      spawnTower(
+        name: '$playerTowerName ${lane + 1}',
+        side: CombatSide.player,
+        lane: lane,
+        maxHealth: 600.0,
+        attack: 15.0,
+        range: 20.0, // Overlapping field of fire
+        speed: 2.0,
+        towerType: playerTowerType,
+      );
+    }
+
+    // Spawn 3 enemy towers
+    for (int lane = 0; lane < 3; lane++) {
+      spawnTower(
+        name: '$enemyTowerName ${lane + 1}',
+        side: CombatSide.enemy,
+        lane: lane,
+        maxHealth: enemyHealth,
+        attack: enemyAttack,
+        range: enemyRange, // Overlapping field of fire
+        speed: enemySpeed,
+        towerType: enemyTowerType,
+      );
+    }
+  }
 
   void _addLog(String message, {CombatSide? side}) {
     _logs.insert(0, CombatLogEntry(message: message, side: side));
@@ -168,6 +432,17 @@ class CombatManager extends ChangeNotifier {
     for (int i = 0; i < maxHandSize && _deck.isNotEmpty; i++) {
       _hand.add(_deck.removeAt(0));
     }
+  }
+
+  void setupAIDeck(List<NPC> units) {
+    _aiHand.clear();
+    _aiDeck.clear();
+    _aiDeck.addAll(units);
+    _aiDeck.shuffle();
+    for (int i = 0; i < maxHandSize && _aiDeck.isNotEmpty; i++) {
+      _aiHand.add(_aiDeck.removeAt(0));
+    }
+    _aiActionPoints = 6.0;
   }
 
   void drawCard() {
@@ -202,8 +477,19 @@ class CombatManager extends ChangeNotifier {
     _isScrolling = true;
     _isDefeat = false;
     _isVictory = false;
+    _combatTimeRemaining = 180.0;
+    _isDraw = false;
     _killedEnemies.clear();
     _accumulatedLoot.updateAll((key, value) => 0);
+
+    _cauldrons.clear();
+    _cauldrons.addAll([
+      HealingCauldron(id: 'c1', x: 20.0, y: 50.0),
+      HealingCauldron(id: 'c2', x: 20.0, y: 90.0),
+      HealingCauldron(id: 'c3', x: 280.0, y: 50.0),
+      HealingCauldron(id: 'c4', x: 280.0, y: 90.0),
+    ]);
+
     notifyListeners();
   }
 
@@ -226,6 +512,42 @@ class CombatManager extends ChangeNotifier {
     final stats = npc.combatStats;
     if (stats == null) return false;
 
+    // 1. Calculate proposed spawn location
+    final double spawnX = x ?? (side == CombatSide.player ? (_fieldScroll + 15.0) : (_fieldScroll + 190.0));
+    final double spawnY = (y ?? (Random().nextDouble() * _map.height)).clamp(2.0, _map.height - 2.0);
+
+    // 2. Enforce player spawn limits
+    if (side == CombatSide.player) {
+      // Spawning must never exceed the 80% mark
+      if (spawnX > 0.8 * _map.width) return false;
+
+      // Spawning is valid anywhere inside the first 20% of the battlefield
+      final double startingZoneLimit = 0.2 * _map.width;
+      if (spawnX > startingZoneLimit) {
+        // Otherwise, must be on one of the defined channels/lanes no further towards
+        // the enemy's end than another player unit is leading on that lane.
+        int targetLaneIdx = -1;
+        for (int i = 0; i < _map.laneCenters.length; i++) {
+          if ((spawnY - _map.laneCenters[i]).abs() <= 18.0) {
+            targetLaneIdx = i;
+            break;
+          }
+        }
+        if (targetLaneIdx == -1) return false; // Must spawn on a lane if outside home base
+
+        double maxPlayerXOnLane = 0.0;
+        for (final c in _combatants) {
+          if (c.side == CombatSide.player && !c.isDead && !c.isTower) {
+            if ((c.y - _map.laneCenters[targetLaneIdx]).abs() <= 18.0) {
+              maxPlayerXOnLane = max(maxPlayerXOnLane, c.x);
+            }
+          }
+        }
+        if (spawnX > maxPlayerXOnLane) return false; // Cannot spawn ahead of allied units
+      }
+    }
+
+    // 3. Check and deduct Action Points
     if (side == CombatSide.player && _actionPoints < stats.cost) return false;
 
     if (side == CombatSide.player) {
@@ -234,22 +556,25 @@ class CombatManager extends ChangeNotifier {
       drawCard();
     }
 
-    // Restrict placement to left half (0 to 100ft) and 0-85ft width
-    double spawnX;
-    if (side == CombatSide.player) {
-      spawnX = (x ?? (_fieldScroll + 10.0)).clamp(
-        _fieldScroll,
-        _fieldScroll + 100.0,
-      );
-    } else {
-      spawnX = x ?? (_fieldScroll + 190.0);
+    // Find closest lane center index
+    int closestLaneIdx = 0;
+    double minDist = 99999.0;
+    for (int i = 0; i < _map.laneCenters.length; i++) {
+      final dist = (spawnY - _map.laneCenters[i]).abs();
+      if (dist < minDist) {
+        minDist = dist;
+        closestLaneIdx = i;
+      }
     }
-    final spawnY = (y ?? (Random().nextDouble() * fieldWidth)).clamp(
-      0.0,
-      fieldWidth,
-    );
 
-    final combatant = Combatant(npc: npc, side: side, x: spawnX, y: spawnY);
+    final combatant = Combatant(
+      npc: npc,
+      side: side,
+      x: spawnX,
+      y: spawnY,
+      laneIndex: closestLaneIdx,
+      isTower: false,
+    );
 
     _combatants.add(combatant);
 
@@ -282,43 +607,55 @@ class CombatManager extends ChangeNotifier {
   void update(double dt) {
     if (!_isCombatActive) return;
 
-    // 1. AP Generation
-    _actionPoints = min(maxAP, _actionPoints + apPerSecond * dt);
+    // 0. Decrement combat timer
+    _combatTimeRemaining = max(0.0, _combatTimeRemaining - dt);
+
+    // 1. AP Generation (doubled in final minute)
+    final rateMultiplier = (_combatTimeRemaining <= 60.0) ? 2.0 : 1.0;
+    _actionPoints = min(maxAP, _actionPoints + apPerSecond * rateMultiplier * dt);
 
     // 1b. Projectile Ticks
     for (var p in _projectiles) {
-      p.update(dt);
+      p.update(dt, this);
     }
     _projectiles.removeWhere((p) => p.isExpired);
 
-    // 2. Battlefield Scrolling
-    final alphonse = _combatants.firstWhere(
-      (c) => c.npc.isPlayer,
-      orElse: () => _combatants.first,
-    );
+    // 2. Battlefield Scrolling (Gradual camera follow/centering on player character)
+    if (_combatants.isNotEmpty) {
+      final alphonse = _combatants.firstWhere(
+        (c) => c.npc.isPlayer,
+        orElse: () => _combatants.first,
+      );
 
-    // Dynamic Scrolling: If Alphonse is past the midpoint (100ft) of the visible field, scroll.
-    final scrollThreshold = _fieldScroll + 100.0;
-    if (alphonse.x > scrollThreshold) {
-      final delta = alphonse.x - scrollThreshold;
-      _fieldScroll += delta;
-    }
+      // Update manual camera override timer
+      if (_manualCameraOverrideTimer > 0.0) {
+        _manualCameraOverrideTimer -= dt;
+      }
 
-    // Also handle automatic scrolling if no enemies (to reach the goal/objective)
-    final hasEnemies = _combatants.any(
-      (c) => c.side == CombatSide.enemy && !c.isDead,
-    );
-    if (!hasEnemies) {
-      _isScrolling = true;
-    } else {
-      _isScrolling = false;
-    }
+      // Determine if we should auto-scroll forward when no enemies remain
+      final hasEnemies = _combatants.any(
+        (c) => c.side == CombatSide.enemy && !c.isDead,
+      );
+      _isScrolling = !hasEnemies;
 
-    if (_isScrolling) {
-      _fieldScroll += alphonse.npc.combatStats!.movement * dt * 3.75;
-      // Shift Alphonse forward with scroll if they aren't moving manually
-      if (alphonse.moveDirX == 0) {
-        alphonse.x += alphonse.npc.combatStats!.movement * dt * 3.75;
+      if (_isScrolling) {
+        // Auto-drift Alphonse forward if they are not moving manually
+        if (alphonse.moveDirX == 0) {
+          alphonse.x += alphonse.npc.combatStats!.movement * dt * 3.75;
+          enforceUnitBoundaries(alphonse);
+        }
+      }
+
+
+
+      if (_manualCameraOverrideTimer <= 0.0) {
+        // Target scroll coordinates to center Alphonse on the screen
+        final targetFieldScroll = alphonse.x.clamp(0.0, _map.width);
+        final targetYFieldScroll = alphonse.y.clamp(0.0, _map.height);
+
+        // Lerp smoothly with a factor of 1.5 so it takes ~2 full seconds to completely transition
+        _fieldScroll += (targetFieldScroll - _fieldScroll) * 1.5 * dt;
+        _yFieldScroll += (targetYFieldScroll - _yFieldScroll) * 1.5 * dt;
       }
     }
 
@@ -326,9 +663,12 @@ class CombatManager extends ChangeNotifier {
     for (final c in _combatants) {
       if (c.isDead) continue;
 
-      // Update freeze timer
+      // Update freeze and flash timers
       if (c.freezeTimer > 0) {
         c.freezeTimer -= dt;
+      }
+      if (c.flashTimer > 0.0) {
+        c.flashTimer = max(0.0, c.flashTimer - dt);
       }
 
       // Update floating messages
@@ -342,9 +682,44 @@ class CombatManager extends ChangeNotifier {
       _processUnitTick(c, dt);
     }
 
-    // 4. Cleanup dead units
+    // 4. Cleanup dead units (with Hero and Tower exclusions)
     _combatants.removeWhere((c) {
       if (c.isDead) {
+        // If it is a tower or a hero, DO NOT remove it from the active battlefield!
+        if (c.isTower || c.npc.isPlayer || c.npc.id == 'ai_mirror') {
+          if (c.respawnTimer == null && (c.npc.isPlayer || c.npc.id == 'ai_mirror')) {
+            // Trigger first-time death and set respawn
+            c.deathCount++;
+            double respawnDuration = 5.0;
+            c.respawnTimer = respawnDuration;
+            c.waypointX = null;
+            c.waypointY = null;
+            c.detourX = null;
+            c.detourY = null;
+            c.moveDirX = 0.0;
+            c.moveDirY = 0.0;
+            _addLog('${c.npc.name} has fainted and will respawn in ${respawnDuration.toInt()} seconds.', side: c.side);
+            
+            // Invoke state callbacks
+            if (c.side == CombatSide.player && c.npc.isPlayer) {
+              onPlayerDeath?.call();
+            } else if (c.side == CombatSide.enemy && c.npc.id == 'ai_mirror') {
+              onEnemyHeroDeath?.call(c.npc);
+            }
+          } else if (c.isTower) {
+            // Trigger first-time tower destruction
+            if (c.npc.role != 'Ruins') {
+              _addLog('${c.npc.name} has been destroyed!', side: c.side);
+              c.npc = c.npc.copyWith(role: 'Ruins'); // Mutate role to stop duplicate alerts
+              
+              if (c.side == CombatSide.enemy) {
+                onEnemyTowerDestroyed?.call(c.npc);
+              }
+            }
+          }
+          return false; // Keep in the list so we can draw them as ruins or tick respawn
+        }
+
         _addLog('${c.npc.name} has been vanquished.', side: c.side);
         // Trigger Knell abilities before removal
         for (final ability in c.npc.abilities) {
@@ -365,6 +740,10 @@ class CombatManager extends ChangeNotifier {
           _deck.add(resetNpc);
         } else if (c.side == CombatSide.enemy) {
           _killedEnemies.add(c.npc);
+          
+          // Trigger standard kill callback
+          onEnemyKill?.call(c.npc);
+          
           // Roll for loot
           final rand = Random();
           if (rand.nextDouble() < 0.4) {
@@ -381,6 +760,63 @@ class CombatManager extends ChangeNotifier {
       return false;
     });
 
+    // 4b. Hero Respawn Tick
+    for (final c in _combatants) {
+      if (c.isDead && c.respawnTimer != null) {
+        c.respawnTimer = max(0.0, c.respawnTimer! - dt);
+        if (c.respawnTimer! <= 0.0) {
+          c.isDead = false;
+          c.respawnTimer = null;
+          c.waypointX = null;
+          c.waypointY = null;
+          c.detourX = null;
+          c.detourY = null;
+          c.moveDirX = 0.0;
+          c.moveDirY = 0.0;
+          
+          // Reset health
+          c.npc = c.npc.copyWith(
+            combatStats: c.npc.combatStats?.copyWith(
+              health: c.npc.combatStats?.maxHealth,
+            ),
+          );
+          
+          // Respawn at home zone
+           if (c.side == CombatSide.player) {
+            final centralTower = _combatants.firstWhereOrNull(
+              (t) => t.isTower && t.side == CombatSide.player && (t.x - _map.playerCentralTowerX).abs() < 5.0 && !t.isDead
+            );
+            if (centralTower != null) {
+              c.x = _map.playerCornerTowerX;
+              c.y = _map.height / 2;
+            } else {
+              final standing = _combatants.where(
+                (t) => t.isTower && t.side == CombatSide.player && !t.isDead
+              ).toList();
+              if (standing.isNotEmpty) {
+                final pick = standing[Random().nextInt(standing.length)];
+                c.x = pick.x + 15.0;
+                c.y = pick.y;
+              } else {
+                c.x = _map.playerCornerTowerX;
+                c.y = _map.height / 2;
+              }
+            }
+          } else {
+            c.x = _map.enemyCornerTowerX;
+            c.y = _map.height / 2;
+          }
+          c.attackCooldown = 0.0;
+          
+          if (c.npc.isPlayer) {
+            _fieldScroll = 0.0; // Reset camera scroll to show home base respawn
+          }
+          
+          _addLog('${c.npc.name} has respawned!', side: c.side);
+        }
+      }
+    }
+
     // 5. Replenish Hands (Continuous Draw)
     if (_hand.length < maxHandSize && _deck.isNotEmpty) {
       drawCard();
@@ -389,9 +825,10 @@ class CombatManager extends ChangeNotifier {
       _aiDrawCard();
     }
 
-    // 6. AI Mirror Logic (Sim mode only)
-    if (_isSimulation && _isCombatActive) {
-      _aiActionPoints = min(maxAP, _aiActionPoints + apPerSecond * dt);
+    // 6. AI Mirror Logic
+    if (_isCombatActive) {
+      final rateMultiplier = (_combatTimeRemaining <= 60.0) ? 2.0 : 1.0;
+      _aiActionPoints = min(maxAP, _aiActionPoints + apPerSecond * rateMultiplier * dt);
 
       // AI Spawning Strategy: Spawn the most expensive thing we can afford from hand
       if (_aiHand.isNotEmpty) {
@@ -405,46 +842,160 @@ class CombatManager extends ChangeNotifier {
           if (_aiActionPoints >= cost) {
             _aiActionPoints -= cost;
             _aiHand.removeAt(i);
-            spawnUnit(unit, CombatSide.enemy);
+            
+            // Pick a random lane Y coordinate to spawn
+            final lane = Random().nextInt(_map.laneCenters.length);
+            final spawnYs = _map.laneCenters;
+            final spawnX = (_fieldScroll + 120.0).clamp(100.0, _map.width - 20.0);
+            spawnUnit(unit, CombatSide.enemy, x: spawnX, y: spawnYs[lane]);
             break; // One per tick
           }
         }
       }
     }
 
-    // 7. Win/Loss Conditions
-    final playerUnits = _combatants.where((c) => c.side == CombatSide.player);
-    final enemyUnits = _combatants.where((c) => c.side == CombatSide.enemy);
+    // Cauldron Ticks
+    for (final cauldron in _cauldrons) {
+      if (!cauldron.isAvailable) {
+        cauldron.rechargeProgress = min(1.0, cauldron.rechargeProgress + dt / HealingCauldron.rechargeDuration);
+        if (cauldron.rechargeProgress >= 1.0) {
+          cauldron.isAvailable = true;
+        }
+      }
 
-    final playerCharacterDead = !playerUnits.any(
-      (c) => c.npc.isPlayer && !c.isDead,
-    );
-    final enemyCharacterDead = enemyUnits.any(
-      (c) => c.npc.id == 'ai_mirror' && c.isDead,
-    );
+      // Check proximity to player's character or opponent's character
+      if (cauldron.isAvailable) {
+        final characters = _combatants.where((c) => !c.isDead && (c.npc.isPlayer || c.npc.id == 'ai_mirror'));
+        for (final character in characters) {
+          final dist = sqrt(pow(character.x - cauldron.x, 2) + pow(character.y - cauldron.y, 2));
+          if (dist < 8.0) {
+            final stats = character.npc.combatStats!;
+            // rough 1/3 of Alphonse's overall health (assume ~300/500, let's use stats.maxHealth / 3.0)
+            final healAmount = stats.maxHealth / 3.0;
+            character.npc = character.npc.copyWith(
+              combatStats: stats.copyWith(
+                health: min(stats.maxHealth, stats.health + healAmount),
+              ),
+            );
+            
+            // Trigger cooldown
+            cauldron.isAvailable = false;
+            cauldron.rechargeProgress = 0.0;
 
-    if (playerUnits.isEmpty || playerCharacterDead) {
+            _addLog('${character.npc.name} consumed a meal and healed for ${healAmount.toInt()} HP!', side: character.side);
+            _addFloatingMessage(character, '+${healAmount.toInt()} HP', Colors.greenAccent);
+            break; // Only one character can consume it per tick
+          }
+        }
+      }
+    }
+
+    // 7. Win/Loss/Draw Conditions (Victory Point-Based)
+    final playerTowers = _combatants.where((c) => c.isTower && c.side == CombatSide.player);
+    final enemyTowers = _combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+
+    final playerVPs = enemyTowers.where((t) => t.isDead).length;
+    final enemyVPs = playerTowers.where((t) => t.isDead).length;
+
+    if (enemyVPs >= 3) {
       _isDefeat = true;
       _isCombatActive = false;
       _projectiles.clear();
-    } else if (enemyUnits.isEmpty || enemyCharacterDead) {
-      // Victory immediately if all enemies dead OR enemy leader dead
+    } else if (playerVPs >= 3) {
       _isVictory = true;
       _isCombatActive = false;
       _projectiles.clear();
+    } else if (_combatTimeRemaining <= 0.0) {
+      _isCombatActive = false;
+      _projectiles.clear();
+      if (playerVPs > enemyVPs) {
+        _isVictory = true;
+      } else if (enemyVPs > playerVPs) {
+        _isDefeat = true;
+      } else {
+        _isDraw = true;
+      }
     }
 
     notifyListeners();
+  }
+
+  bool _isPointInWall(double x, double y) {
+    for (final rect in _map.walls) {
+      final padded = Rect.fromLTRB(
+        rect.left - 2.0,
+        rect.top - 2.0,
+        rect.right + 2.0,
+        rect.bottom + 2.0,
+      );
+      if (padded.contains(Offset(x, y))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool isPathObstructed(double x1, double y1, double x2, double y2) {
+    final double centerY = _map.height / 2;
+    if ((y1 < centerY && y2 > centerY) || (y1 > centerY && y2 < centerY)) {
+      final t = (centerY - y1) / (y2 - y1);
+      final intersectX = x1 + t * (x2 - x1);
+      for (final rect in _map.walls) {
+        if (intersectX >= rect.left - 2.0 && intersectX <= rect.right + 2.0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void enforceUnitBoundaries(Combatant unit) {
+    if (unit.isDead || unit.isTower) return;
+    unit.x = unit.x.clamp(0.0, _map.width);
+    unit.y = unit.y.clamp(2.0, _map.height - 2.0);
+
+    if (_isPointInWall(unit.x, unit.y)) {
+      Rect? closestWall;
+      double minDist = 99999.0;
+      for (final rect in _map.walls) {
+        final double distY1 = (unit.y - rect.top).abs();
+        final double distY2 = (unit.y - rect.bottom).abs();
+        final double dist = min(distY1, distY2);
+        if (dist < minDist) {
+          minDist = dist;
+          closestWall = rect;
+        }
+      }
+      if (closestWall != null) {
+        if (unit.y < closestWall.top + closestWall.height / 2) {
+          unit.y = closestWall.top - 4.0;
+        } else {
+          unit.y = closestWall.bottom + 4.0;
+        }
+      }
+    }
   }
 
   void _processUnitTick(Combatant c, double dt) {
     if (c.isDead) return;
     final stats = c.npc.combatStats!;
 
+    // Backstep (stuck prevention backup)
+    if (c.backstepTimer > 0.0) {
+      c.backstepTimer -= dt;
+      c.x += c.backstepDirX * stats.movement * dt * 4.0;
+      c.y += c.backstepDirY * stats.movement * dt * 4.0;
+      enforceUnitBoundaries(c);
+      return; // Skip normal updates while backing away
+    }
+
+    final double oldX = c.x;
+    final double oldY = c.y;
+
     // A0. Attack Cooldown Ticking (Wind up while moving)
     c.attackCooldown -= dt;
 
-    // 0. Collision Repulsion (Push units apart if they overlap)
+    // 0. Collision Repulsion (Push units apart if they overlap, respecting static towers)
     for (final other in _combatants) {
       if (other == c || other.isDead) continue;
       final otherStats = other.npc.combatStats!;
@@ -460,10 +1011,38 @@ class CombatManager extends ChangeNotifier {
         final pushFactor = (overlap / 2.0) + 0.1;
         final nx = dist > 0.001 ? dx / dist : (Random().nextDouble() * 2 - 1);
         final ny = dist > 0.001 ? dy / dist : (Random().nextDouble() * 2 - 1);
-        c.x -= nx * pushFactor;
-        c.y -= ny * pushFactor;
-        other.x += nx * pushFactor;
-        other.y += ny * pushFactor;
+        
+        if (c.isTower && other.isTower) {
+          // Both are static towers, do not move either
+        } else if (c.isTower) {
+          // Tower is static, only push the other unit
+          other.x += nx * pushFactor * 2.0;
+          other.y += ny * pushFactor * 2.0;
+          enforceUnitBoundaries(other);
+        } else if (other.isTower) {
+          // Other unit is a static tower, only push c
+          c.x -= nx * pushFactor * 2.0;
+          c.y -= ny * pushFactor * 2.0;
+          enforceUnitBoundaries(c);
+        } else if (c.npc.isPlayer) {
+          // Player hero is unpushable by mobile units; push only the other unit
+          other.x += nx * pushFactor * 2.0;
+          other.y += ny * pushFactor * 2.0;
+          enforceUnitBoundaries(other);
+        } else if (other.npc.isPlayer) {
+          // Only push c
+          c.x -= nx * pushFactor * 2.0;
+          c.y -= ny * pushFactor * 2.0;
+          enforceUnitBoundaries(c);
+        } else {
+          // Both are mobile units, push both
+          c.x -= nx * pushFactor;
+          c.y -= ny * pushFactor;
+          other.x += nx * pushFactor;
+          other.y += ny * pushFactor;
+          enforceUnitBoundaries(c);
+          enforceUnitBoundaries(other);
+        }
       }
     }
 
@@ -506,7 +1085,7 @@ class CombatManager extends ChangeNotifier {
         } else {
           // 3. Close enough to EXECUTE
           target.npc = target.npc.copyWith(
-            combatStats: tStats.copyWith(health: 0),
+            combatStats: tStats.copyWith(health: 0.0),
           );
           target.isDead = true;
           c.specialActionId = null;
@@ -528,6 +1107,9 @@ class CombatManager extends ChangeNotifier {
         specialCharge: min(1.0, c.npc.specialCharge + chargeInc),
       );
     }
+    if (c.npc.isPlayer) {
+      c.specialCharge2 = min(1.0, c.specialCharge2 + dt / 25.0);
+    }
 
     // B. Targeting
     List<Combatant> targets = _combatants
@@ -541,39 +1123,288 @@ class CombatManager extends ChangeNotifier {
       targets = targets.where((t) => !t.npc.combatStats!.isFlying).toList();
     }
 
-    if (targets.isEmpty) {
-      // Move forward/follow player input
-      if (c.npc.id == 'alphonse' || c.npc.id == 'ai_mirror') {
-        // Goalies stay at their posts (only move in Y if player controlled, but stationary otherwise)
-        if (c.npc.isPlayer) {
-          c.y += c.moveDirY * stats.movement * dt * 1.125;
-        }
-      } else if (c.npc.isPlayer) {
-        c.x += c.moveDirX * stats.movement * dt * 1.125;
-        c.y += c.moveDirY * stats.movement * dt * 1.125;
-      } else {
-        final moveSpeed = stats.movement * dt * 1.125;
-        if (c.side == CombatSide.player) {
-          c.x += moveSpeed;
-        } else {
-          c.x -= moveSpeed;
+    if (targets.isNotEmpty && !c.npc.isPlayer) {
+      // Prefer nearest targets that are NOT obstructed by the centerline walls
+      var visibleTargets = targets.where((t) => !isPathObstructed(c.x, c.y, t.x, t.y)).toList();
+      if (visibleTargets.isEmpty) {
+        visibleTargets = targets; // Fallback to all targets if everything is behind walls
+      }
+      visibleTargets.sort((a, b) {
+        final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
+        final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
+        return distA.compareTo(distB);
+      });
+      targets = visibleTargets;
+    }
+
+    // 1. Static Tower Logic: Static structures never move, but fire automatically at any target in range
+    if (c.isTower) {
+      if (targets.isNotEmpty) {
+        targets.sort((a, b) {
+          final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
+          final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
+          return distA.compareTo(distB);
+        });
+        final target = targets.first;
+        final distToTarget = sqrt(pow(target.x - c.x, 2) + pow(target.y - c.y, 2));
+        final rangeInFeet = stats.distance * 3.28;
+        final myRadius = stats.radius;
+        final targetRadius = target.npc.combatStats?.radius ?? 1.0;
+
+        if (distToTarget - myRadius - targetRadius <= rangeInFeet) {
+          if (c.attackCooldown <= 0) {
+            _performAttack(c, target);
+            c.attackCooldown = stats.speed * 1.2;
+          }
         }
       }
-      // Boundary enforcement (Full field length/width)
-      if (c.npc.id == 'alphonse') {
-        c.x = 10.0;
-      } else if (c.npc.id == 'ai_mirror') {
-        c.x = fieldLength - 10.0;
-      } else {
-        c.x = c.x.clamp(_fieldScroll, _fieldScroll + fieldLength * 10);
-      }
-      c.y = c.y.clamp(0.0, fieldWidth);
       return;
     }
 
-    // Targeting Logic:
-    // 1. If we have a targetId and that target is alive and in range, keep it.
-    // 2. Otherwise, find the nearest alive enemy and set it as targetId.
+    // 2. Mobile Player Hero Locomotion & Auto-Attack Logic
+    if (c.npc.isPlayer) {
+      if (c.waypointX != null && c.waypointY != null) {
+        // Check if path to final waypoint is obstructed by a centerline wall
+        final bool pathBlocked = isPathObstructed(c.x, c.y, c.waypointX!, c.waypointY!);
+        if (pathBlocked) {
+          if (c.detourX == null || c.detourY == null) {
+            // Find nearest gap X among: 35.0, 115.0, 185.0, 265.0
+            final gaps = [35.0, 115.0, 185.0, 265.0];
+            double nearestGapX = 115.0;
+            double minDist = 99999.0;
+            for (final gx in gaps) {
+              final dist = (gx - c.x).abs();
+              if (dist < minDist) {
+                minDist = dist;
+                nearestGapX = gx;
+              }
+            }
+            c.detourX = nearestGapX;
+            c.detourY = 70.0;
+          }
+        }
+
+        // Walk towards detour first, then final waypoint
+        final double tx = (c.detourX != null && c.detourY != null) ? c.detourX! : c.waypointX!;
+        final double ty = (c.detourX != null && c.detourY != null) ? c.detourY! : c.waypointY!;
+
+        final wdx = tx - c.x;
+        final wdy = ty - c.y;
+        final wlen = sqrt(wdx * wdx + wdy * wdy);
+
+        if (wlen > 2.0) {
+          c.moveDirX = wdx / wlen;
+          c.moveDirY = wdy / wlen;
+        } else {
+          if (c.detourX != null && c.detourY != null) {
+            // Arrived at detour! Clear detour and proceed to final waypoint
+            c.detourX = null;
+            c.detourY = null;
+          } else {
+            c.moveDirX = 0.0;
+            c.moveDirY = 0.0;
+            c.waypointX = null;
+            c.waypointY = null;
+          }
+        }
+      }
+
+      double nextX = c.x + c.moveDirX * stats.movement * dt * 7.5 * 2.25;
+      double nextY = c.y + c.moveDirY * stats.movement * dt * 7.5 * 2.25;
+
+      bool inWall = _isPointInWall(nextX, nextY);
+
+      if (!inWall) {
+        c.x = nextX;
+        c.y = nextY;
+      } else {
+        // Slide along collision boundaries
+        double tryX = c.x + c.moveDirX * stats.movement * dt * 7.5 * 2.25;
+        bool tryXObstructed = _isPointInWall(tryX, c.y);
+        if (!tryXObstructed) {
+          c.x = tryX;
+        }
+
+        double tryY = c.y + c.moveDirY * stats.movement * dt * 7.5 * 2.25;
+        bool tryYObstructed = _isPointInWall(c.x, tryY);
+        if (!tryYObstructed) {
+          c.y = tryY;
+        }
+      }
+
+      enforceUnitBoundaries(c);
+
+      // Auto-attack nearest enemy within weapon range
+      if (targets.isNotEmpty) {
+        targets.sort((a, b) {
+          final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
+          final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
+          return distA.compareTo(distB);
+        });
+        final target = targets.first;
+        final distToTarget = sqrt(pow(target.x - c.x, 2) + pow(target.y - c.y, 2));
+        final rangeInFeet = stats.distance * 3.28;
+        final myRadius = stats.radius;
+        final targetRadius = target.npc.combatStats?.radius ?? 1.0;
+
+        if (distToTarget - myRadius - targetRadius <= rangeInFeet) {
+          if (c.attackCooldown <= 0) {
+            _performAttack(c, target);
+            c.attackCooldown = stats.speed * 1.2;
+          }
+        }
+      }
+      return;
+    }
+
+    // 3. Mobile AI Hero (Opponent Leader) Locomotion & Attack AI
+    if (c.npc.id == 'ai_mirror') {
+      if (targets.isNotEmpty) {
+        targets.sort((a, b) {
+          final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
+          final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
+          return distA.compareTo(distB);
+        });
+        final target = targets.first;
+        final distToTarget = sqrt(pow(target.x - c.x, 2) + pow(target.y - c.y, 2));
+        final rangeInFeet = stats.distance * 3.28;
+        final myRadius = stats.radius;
+        final targetRadius = target.npc.combatStats?.radius ?? 1.0;
+
+        if (distToTarget - myRadius - targetRadius > rangeInFeet) {
+          // Approach target (+50% speed boost), prioritizing combat channels if path is obstructed by walls!
+          double tx = target.x;
+          double ty = target.y;
+
+          if (isPathObstructed(c.x, c.y, target.x, target.y)) {
+            double minDist = 99999.0;
+            double myLaneY = _map.laneCenters.first;
+            for (final ly in _map.laneCenters) {
+              final dist = (c.y - ly).abs();
+              if (dist < minDist) {
+                minDist = dist;
+                myLaneY = ly;
+              }
+            }
+            tx = target.x;
+            ty = myLaneY; // Align within our safe lane to bypass wall!
+          }
+
+          final dx = tx - c.x;
+          final dy = ty - c.y;
+          final len = sqrt(dx * dx + dy * dy);
+          
+          double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+          double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+
+          bool inWall = _isPointInWall(nextX, nextY);
+
+          if (!inWall) {
+            c.x = nextX;
+            c.y = nextY;
+          } else {
+            // Slide
+            double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+            bool tryXObstructed = _isPointInWall(tryX, c.y);
+            if (!tryXObstructed) {
+              c.x = tryX;
+            }
+
+            double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+            bool tryYObstructed = _isPointInWall(c.x, tryY);
+            if (!tryYObstructed) {
+              c.y = tryY;
+            }
+          }
+        } else {
+          // Perform attack
+          if (c.attackCooldown <= 0) {
+            _performAttack(c, target);
+            c.attackCooldown = stats.speed * 1.2;
+          }
+          if (c.npc.specialCharge >= 1.0) {
+            executeSpecial(c.npc.id);
+          }
+        }
+      } else {
+        // No active targets! Seek nearest channel and proceed towards player central/corner towers!
+        double minDist = 99999.0;
+        double nearestLaneY = _map.laneCenters.first;
+        for (final ly in _map.laneCenters) {
+          final dist = (c.y - ly).abs();
+          if (dist < minDist) {
+            minDist = dist;
+            nearestLaneY = ly;
+          }
+        }
+
+        // 1. Seek channel alignment Y first
+        double dy = nearestLaneY - c.y;
+        if (dy.abs() > 2.0) {
+          c.moveDirY = dy > 0.0 ? 1.0 : -1.0;
+          c.y += c.moveDirY * stats.movement * dt * 1.5 * 2.25;
+        } else {
+          c.moveDirY = 0.0;
+        }
+
+        // 2. Proceed down channel towards player central/corner towers (X = 0)
+        c.moveDirX = -1.0;
+        c.x += c.moveDirX * stats.movement * dt * 1.5 * 2.25;
+      }
+      
+      enforceUnitBoundaries(c);
+      return;
+    }
+
+    if (targets.isEmpty) {
+      // Find nearest channel Y center
+      double minDist = 99999.0;
+      double nearestLaneY = _map.laneCenters.first;
+      for (final ly in _map.laneCenters) {
+        final dist = (c.y - ly).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          nearestLaneY = ly;
+        }
+      }
+
+      // 1. Seek channel Y alignment first
+      double dy = nearestLaneY - c.y;
+      if (dy.abs() > 2.0) {
+        c.moveDirY = dy > 0.0 ? 1.0 : -1.0;
+        c.y += c.moveDirY * stats.movement * dt * 1.125;
+      } else {
+        c.moveDirY = 0.0;
+      }
+
+      // 2. Proceed down channel towards opponent base
+      final moveSpeed = stats.movement * dt * 1.125;
+      double nextX = c.x;
+      if (c.side == CombatSide.player) {
+        c.moveDirX = 1.0;
+        nextX += moveSpeed;
+      } else {
+        c.moveDirX = -1.0;
+        nextX -= moveSpeed;
+      }
+
+      bool inWall = _isPointInWall(nextX, c.y);
+      if (!inWall) {
+        c.x = nextX;
+      } else {
+        // Slide towards closest channel center Y dynamically
+        final targetY = c.y < _map.height / 2 ? _map.laneCenters.first : _map.laneCenters.last;
+        final sdy = targetY - c.y;
+        if (sdy.abs() > 0.1) {
+          c.y += (sdy > 0 ? 1.0 : -1.0) * stats.movement * dt * 1.125;
+        }
+      }
+
+      enforceUnitBoundaries(c);
+      return;
+    }
+
+    // Targeting Logic for normal units:
     Combatant? target;
     if (c.targetId != null) {
       target = _combatants.firstWhereOrNull(
@@ -586,7 +1417,6 @@ class CombatManager extends ChangeNotifier {
         final myRadius = stats.radius;
         final targetRadius = target.npc.combatStats?.radius ?? 1.0;
 
-        // If not in range yet, we might want to switch to a closer target if one appeared
         if (dist - myRadius - targetRadius > rangeInFeet) {
           target = null; // Forces re-targeting below
         }
@@ -594,7 +1424,6 @@ class CombatManager extends ChangeNotifier {
     }
 
     if (target == null) {
-      // Find nearest target (using Euclidean distance in feet)
       targets.sort((a, b) {
         final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
         final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
@@ -606,30 +1435,60 @@ class CombatManager extends ChangeNotifier {
 
     final distToTarget = sqrt(pow(target.x - c.x, 2) + pow(target.y - c.y, 2));
 
-    // C. Movement/Attack Logic
-    // Convert weapon range (meters) to feet for the 85x200 field. 1m ~ 3.28ft.
+    // C. Movement/Attack Logic for normal units
     final rangeInFeet = stats.distance * 3.28;
     final myRadius = stats.radius;
     final targetRadius = target.npc.combatStats?.radius ?? 1.0;
 
-    // Edge-to-edge distance check (Reliably hits even if repulsive forces push units apart)
     if (distToTarget - myRadius - targetRadius > rangeInFeet) {
-      if (c.npc.id == 'alphonse' || c.npc.id == 'ai_mirror') {
-        // Goalies don't approach targets
-        return;
+      // Approach target, prioritizing combat channels if path is obstructed by walls!
+      double tx = target.x;
+      double ty = target.y;
+
+      if (isPathObstructed(c.x, c.y, target.x, target.y)) {
+        double minDist = 99999.0;
+        double myLaneY = _map.laneCenters.first;
+        for (final ly in _map.laneCenters) {
+          final dist = (c.y - ly).abs();
+          if (dist < minDist) {
+            minDist = dist;
+            myLaneY = ly;
+          }
+        }
+        tx = target.x;
+        ty = myLaneY; // Align within our safe lane to bypass wall!
       }
-      // Approach target
-      final dx = target.x - c.x;
-      final dy = target.y - c.y;
+
+      final dx = tx - c.x;
+      final dy = ty - c.y;
       final len = sqrt(dx * dx + dy * dy);
-      c.x +=
-          (dx / len) * stats.movement * dt * 6.0;
-      c.y += (dy / len) * stats.movement * dt * 6.0;
+      
+      double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0;
+      double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0;
+
+      bool inWall = _isPointInWall(nextX, nextY);
+
+      if (!inWall) {
+        c.x = nextX;
+        c.y = nextY;
+      } else {
+        // Slide
+        double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0;
+        bool tryXObstructed = _isPointInWall(tryX, c.y);
+        if (!tryXObstructed) {
+          c.x = tryX;
+        }
+
+        double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0;
+        bool tryYObstructed = _isPointInWall(c.x, tryY);
+        if (!tryYObstructed) {
+          c.y = tryY;
+        }
+      }
     } else {
-      // Within range, attack if ready
       if (c.attackCooldown <= 0) {
         _performAttack(c, target);
-        c.attackCooldown = stats.speed * 1.2; // Faster combat (was 1.2)
+        c.attackCooldown = stats.speed * 1.2;
       }
 
       // Auto-fire special ability if charged (AI ONLY)
@@ -638,30 +1497,88 @@ class CombatManager extends ChangeNotifier {
       }
     }
 
-    // Boundary enforcement (Full field - slightly tighter on Y)
-    c.x = c.x.clamp(_fieldScroll, _fieldScroll + fieldLength * 10);
-    c.y = c.y.clamp(2.0, fieldWidth - 2.0); // Keep units clearly on the grit
+    enforceUnitBoundaries(c);
+
+    // Stuck detection (Obstacle stuck prevention)
+    if (!c.isTower && !c.isDead) {
+      final distMoved = sqrt(pow(c.x - oldX, 2) + pow(c.y - oldY, 2));
+      final expectedStep = stats.movement * dt;
+      if (expectedStep > 0.001 && distMoved < expectedStep * 0.1) {
+        c.stuckFrames++;
+        if (c.stuckFrames >= 15) { // Blocked for 15 frames (~0.25 seconds)
+          c.backstepTimer = 0.5; // Backup for 0.5 seconds (about 2 steps!)
+          
+          final dx = c.moveDirX != 0 || c.moveDirY != 0 
+              ? -c.moveDirX 
+              : (c.side == CombatSide.player ? -1.0 : 1.0);
+          final dy = c.moveDirY != 0 
+              ? -c.moveDirY 
+              : (c.y < _map.height / 2 ? 1.0 : -1.0);
+          final len = sqrt(dx * dx + dy * dy);
+          c.backstepDirX = len > 0.0 ? dx / len : (c.side == CombatSide.player ? -1.0 : 1.0);
+          c.backstepDirY = len > 0.0 ? dy / len : (c.y < _map.height / 2 ? 1.0 : -1.0);
+          
+          c.stuckFrames = 0;
+          c.waypointX = null;
+          c.waypointY = null;
+          c.detourX = null;
+          c.detourY = null;
+        }
+      } else {
+        c.stuckFrames = 0;
+      }
+    } else {
+      c.stuckFrames = 0;
+    }
   }
 
   void _performAttack(Combatant attacker, Combatant target) {
     final stats = attacker.npc.combatStats!;
     final targetStats = target.npc.combatStats!;
 
-    // Spawn projectile if ranged
+    // Determine if it's a slow rocket unit (e.g., ChemicalSlinger / Artillery / Rocket)
+    final bool isSlowRocketUnit = attacker.npc.role.toLowerCase() == 'artillery' ||
+        attacker.npc.name.toLowerCase().contains('slinger') ||
+        attacker.npc.name.toLowerCase().contains('rocket');
+
     if (stats.distance > 1.0) {
-      _projectiles.add(
-        Projectile(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          x: attacker.x,
-          y: attacker.y,
-          targetX: target.x,
-          targetY: target.y,
-          side: attacker.side,
-        ),
-      );
+      if (isSlowRocketUnit) {
+        // Dodgeable slow-moving rocket (speed = 14.0)
+        _projectiles.add(
+          Projectile(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            x: attacker.x,
+            y: attacker.y,
+            targetX: target.x,
+            targetY: target.y,
+            side: attacker.side,
+            isSlowRocket: true,
+            damage: stats.attack.toDouble(),
+            attackerId: attacker.npc.id,
+            speed: 14.0,
+          ),
+        );
+        _addLog('${attacker.npc.name} launched a rocket toward ${target.npc.name}!', side: attacker.side);
+        return; // Bypass predetermined roll completely!
+      } else {
+        // Ordinary fast-moving projectile (speed = 120.0)
+        _projectiles.add(
+          Projectile(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            x: attacker.x,
+            y: attacker.y,
+            targetX: target.x,
+            targetY: target.y,
+            side: attacker.side,
+            isSlowRocket: false,
+            attackerId: attacker.npc.id,
+            speed: 240.0,
+          ),
+        );
+      }
     }
 
-    // Accuracy check
+    // Accuracy check (melee & ordinary fast projectiles)
     if (Random().nextDouble() > stats.accuracy) {
       // Miss!
       _addLog(
@@ -679,16 +1596,14 @@ class CombatManager extends ChangeNotifier {
       final minDmg = double.tryParse(parts[0]) ?? stats.attack;
       final maxDmg = double.tryParse(parts[1]) ?? stats.attack * 1.5;
       damage = minDmg + Random().nextDouble() * (maxDmg - minDmg);
-      // Still apply defense as a reduction
       damage = max(1.0, damage - targetStats.defense);
     } else {
       damage = max(
         1.0,
         (stats.attack - targetStats.defense) * 1.5,
-      ); // 1.5x DAMAGE BOOST
+      );
     }
 
-    // Swarm damage capping
     if (targetStats.swarmSize > 0) {
       final maxDamagePerHit = targetStats.maxHealth / targetStats.swarmSize;
       damage = min(damage, maxDamagePerHit);
@@ -703,9 +1618,7 @@ class CombatManager extends ChangeNotifier {
     _addFloatingMessage(
       attacker,
       'HIT',
-      attacker.side == CombatSide.player
-          ? Colors.cyanAccent
-          : Colors.orangeAccent,
+      attacker.side == CombatSide.player ? Colors.cyanAccent : Colors.orangeAccent,
     );
 
     // Apply damage to target NPC
@@ -719,7 +1632,7 @@ class CombatManager extends ChangeNotifier {
       _addLog('${target.npc.name} has been defeated!', side: target.side);
     }
 
-    // Handle Trait effects (e.g., Sniper accuracy boost)
+    // Handle Trait effects
     for (final ability in attacker.npc.abilities) {
       if (ability.type == AbilityType.trait &&
           ability.effectData['on_hit'] == true) {
@@ -939,7 +1852,7 @@ class CombatManager extends ChangeNotifier {
       (c) => c.npc.id == combatantId,
       orElse: () => _combatants.first,
     );
-    if (c.npc.specialCharge < 1.0) return false;
+    if (c.isDead || c.npc.specialCharge < 1.0) return false;
 
     final special = c.npc.abilities.firstWhere(
       (a) => a.type == AbilityType.special,
@@ -1022,19 +1935,111 @@ class CombatManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool canExecuteSpecial2(String combatantId) {
+    final c = _combatants.firstWhereOrNull((c) => c.npc.id == combatantId);
+    if (c == null || c.specialCharge2 < 1.0 || c.isDead) return false;
+    return _combatants.any((other) => other.side != c.side && !other.isDead);
+  }
+
+  void executeSpecial2(String combatantId) {
+    if (!canExecuteSpecial2(combatantId)) return;
+
+    final c = _combatants.firstWhere((c) => c.npc.id == combatantId);
+    final enemies = _combatants.where((other) => other.side != c.side && !other.isDead).toList();
+    if (enemies.isNotEmpty) {
+      enemies.sort((a, b) {
+        final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
+        final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
+        return distA.compareTo(distB);
+      });
+      final target = enemies.first;
+      
+      _applyDamage(c, target, 150.0);
+      _applyFreeze(target, 4.0); // 4s stun
+      
+      _addLog('${c.npc.name} cast Lightning Strike on ${target.npc.name}!', side: c.side);
+      _addFloatingMessage(target, 'STUNNED', Colors.yellowAccent);
+      _addFloatingMessage(target, '-150', Colors.red);
+    }
+
+    c.specialCharge2 = 0.0;
+    notifyListeners();
+  }
+
   void setPlayerTarget(String enemyId) {
     // Force Alphonse or units to target a specific enemy
     final alphonse = _combatants.firstWhere((c) => c.npc.isPlayer);
     alphonse.targetId = enemyId;
   }
 
-  void movePlayer(double targetX, double targetY) {
-    // Restrict to player half (0 to 100ft) and 0-85ft width
-    final alphonse = _combatants.firstWhere((c) => c.npc.isPlayer);
-    alphonse.x = targetX.clamp(_fieldScroll, _fieldScroll + 100.0);
-    alphonse.y = targetY.clamp(0.0, fieldWidth);
+  void scrollField(double dx, double dy) {
+    _fieldScroll = (_fieldScroll + dx).clamp(0.0, _map.width);
+    _yFieldScroll = (_yFieldScroll + dy).clamp(0.0, _map.height);
+    _manualCameraOverrideTimer = 1.5; // Block auto-recenter for 1.5 seconds after a manual drag/pan!
     notifyListeners();
   }
+
+  void movePlayer(double targetX, double targetY) {
+    final alphonse = _combatants.firstWhere((c) => c.npc.isPlayer);
+    double tx = targetX.clamp(0.0, _map.width);
+    double ty = targetY.clamp(2.0, _map.height - 2.0);
+
+    if (_isPointInWall(tx, ty)) {
+      Rect? closestWall;
+      double minDist = 99999.0;
+      for (final rect in _map.walls) {
+        final double distY1 = (ty - rect.top).abs();
+        final double distY2 = (ty - rect.bottom).abs();
+        final double dist = min(distY1, distY2);
+        if (dist < minDist) {
+          minDist = dist;
+          closestWall = rect;
+        }
+      }
+      if (closestWall != null) {
+        if (ty < closestWall.top + closestWall.height / 2) {
+          ty = closestWall.top - 4.0;
+        } else {
+          ty = closestWall.bottom + 4.0;
+        }
+      }
+    }
+
+    alphonse.waypointX = tx;
+    alphonse.waypointY = ty;
+    notifyListeners();
+  }
+
+  void applyDirectDamage(Combatant target, double damage, String attackerId) {
+    if (target.isDead) return;
+    final attacker = _combatants.firstWhereOrNull((c) => c.npc.id == attackerId);
+    final targetStats = target.npc.combatStats!;
+    final actualDamage = max(1.0, damage - targetStats.defense);
+
+    target.npc = target.npc.copyWith(
+      combatStats: targetStats.copyWith(
+        health: max(0.0, targetStats.health - actualDamage),
+      ),
+    );
+
+    target.flashTimer = 0.25;
+    target.recentDamage += actualDamage;
+
+    if (target.npc.combatStats!.health <= 0.0) {
+      target.isDead = true;
+      _addLog('${target.npc.name} has been vanquished!', side: target.side);
+    } else {
+      _addFloatingMessage(target, '-${actualDamage.toInt()}', Colors.redAccent);
+    }
+
+    if (attacker != null) {
+      attacker.npc = attacker.npc.copyWith(
+        specialCharge: min(1.0, attacker.npc.specialCharge + 0.08),
+      );
+    }
+    notifyListeners();
+  }
+
 
   void _applyDamage(Combatant attacker, Combatant target, double damage) {
     if (target.isDead) return;
@@ -1045,6 +2050,9 @@ class CombatManager extends ChangeNotifier {
     target.npc = target.npc.copyWith(
       combatStats: tStats.copyWith(health: newHealth),
     );
+    target.flashTimer = 0.5; // 500ms flash
+    target.recentDamage = actualDamage;
+
     _addFloatingMessage(target, '-${actualDamage.toInt()}', Colors.red);
     if (newHealth <= 0) {
       target.isDead = true;

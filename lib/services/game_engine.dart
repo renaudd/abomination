@@ -67,8 +67,16 @@ class GameEngine {
       // there might be a need for it. For now, let's keep the user's 1 min/sec in mind.
     }
 
-    // Special handling for a "slow" speed if we add it, or just use normal for now.
-    // For now, let's just implement the requested logic.
+    // Auto-accelerate speed if all residents are asleep
+    if (state.areAllResidentsAsleep()) {
+      if (state.residentsAsleepBehavior == 'lightning') {
+        threshold = 1;
+        minutesPerTick = 3;
+      } else if (state.residentsAsleepBehavior == 'fast') {
+        threshold = 1;
+        minutesPerTick = 1;
+      }
+    }
 
     _tickCounter++;
     if (_tickCounter >= threshold) {

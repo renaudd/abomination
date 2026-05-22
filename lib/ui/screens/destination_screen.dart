@@ -30,7 +30,7 @@ class _DestinationScreenState extends State<DestinationScreen> {
   bool _isNavigatingToCombat = false;
 
   void _checkCombatEncounter(GameState state) {
-    if (state.pendingCombatEncounter && !_isNavigatingToCombat) {
+    if (state.pendingCombatEncounter && !_isNavigatingToCombat && ModalRoute.of(context)?.isCurrent == true) {
       _isNavigatingToCombat = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showDialog(

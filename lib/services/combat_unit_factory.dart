@@ -40,13 +40,13 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(), // Should be customized later
+      appearance: NPCAppearance.defaultMaster(),
       combatStats: const CombatStats(
-        attack: 8,
+        attack: 35,
         health: 300,
         maxHealth: 300,
         speed: 1.0,
-        movement: 0.64,
+        movement: 1.0,
         distance: 7.5, // Ranged (was 5.0)
         defense: 0,
         accuracy: 0.85,
@@ -72,17 +72,17 @@ class CombatUnitFactory {
   static NPC createFlaubert() {
     return NPC.initialButler().copyWith(
       combatStats: const CombatStats(
-        attack: 45, // Heavy melee hitter
+        attack: 100, // Heavy melee hitter
         health: 450, // Sturdy
         maxHealth: 450,
         speed: 1.5, // Slow attack
-        movement: 0.4,
+        movement: 0.8,
         distance: 1.8,
         defense: 5,
         accuracy: 0.85,
         cost: 6, // Elite cost
         radius: 3.5,
-        damageFormula: "40-50",
+        damageFormula: "90-110",
       ),
       abilities: [
         const Ability(
@@ -111,11 +111,11 @@ class CombatUnitFactory {
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 12, // Low per-hit but swarm
+        attack: 30, // Low per-hit but swarm
         health: 25, // Fragile swarm
         maxHealth: 25,
         speed: 0.6, // Fast bites
-        movement: 1.12, // Very fast
+        movement: 1.3, // Very fast
         distance: 0.5,
         defense: 0,
         accuracy: 0.7,
@@ -123,7 +123,7 @@ class CombatUnitFactory {
         radius: 1.2,
         isFlying: true,
         swarmSize: 4,
-        damageFormula: "10-15",
+        damageFormula: "28-32",
       ),
       abilities: [
         const Ability(
@@ -160,18 +160,18 @@ class CombatUnitFactory {
         outfitColor: Colors.blueGrey.shade800,
       ),
       combatStats: const CombatStats(
-        attack: 15,
+        attack: 35,
         health: 45, // Glass flyer
         maxHealth: 45,
         speed: 0.8,
-        movement: 0.96,
+        movement: 1.2,
         distance: 0.8,
         defense: 0,
         accuracy: 0.8,
         cost: 2,
         radius: 1.8,
         isFlying: true,
-        damageFormula: "12-18",
+        damageFormula: "32-38",
       ),
       abilities: [
         const Ability(
@@ -202,16 +202,16 @@ class CombatUnitFactory {
         hairColor: Colors.black87,
       ),
       combatStats: const CombatStats(
-        attack: 22,
+        attack: 50,
         health: 220,
         maxHealth: 220,
         speed: 1.2,
-        movement: 0.56,
+        movement: 0.8,
         distance: 0.6,
         defense: 2,
         accuracy: 0.8,
         cost: 3, // Increased cost for durability
-        damageFormula: "18-26",
+        damageFormula: "45-55",
       ),
       abilities: [
         const Ability(
@@ -242,16 +242,16 @@ class CombatUnitFactory {
         hairColor: Colors.black,
       ),
       combatStats: const CombatStats(
-        attack: 38,
+        attack: 85,
         health: 140,
         maxHealth: 140,
         speed: 2.8, // Very slow fire rate
-        movement: 0.32,
+        movement: 0.6,
         distance: 12.0, // Significant range
         defense: 0,
         accuracy: 0.9,
         cost: 5, // High value target
-        damageFormula: "32-44",
+        damageFormula: "80-90",
       ),
       abilities: [
         const Ability(
@@ -282,17 +282,17 @@ class CombatUnitFactory {
         outfitColor: Colors.blueGrey.shade800,
       ),
       combatStats: const CombatStats(
-        attack: 25,
+        attack: 65,
         health: 350,
         maxHealth: 350,
         speed: 1.6,
-        movement: 0.32,
+        movement: 0.7,
         distance: 1.8,
         defense: 8,
         accuracy: 0.7,
         cost: 6, // Heavy tank
         radius: 4.5,
-        damageFormula: "20-30",
+        damageFormula: "60-70",
       ),
       abilities: [
         const Ability(
@@ -326,11 +326,11 @@ class CombatUnitFactory {
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 20,
+        attack: 40,
         health: 30,
         maxHealth: 30,
         speed: 0.8,
-        movement: 0.8,
+        movement: 1.1,
         distance: 0.125, // Near zero but slightly above (was 0.1)
         defense: 0,
         accuracy: 0.9,
@@ -338,7 +338,7 @@ class CombatUnitFactory {
         radius: 1.5,
         isFlying: true,
         swarmSize: 3,
-        damageFormula: "18-22",
+        damageFormula: "38-42",
       ),
       abilities: [
         const Ability(
@@ -370,17 +370,17 @@ class CombatUnitFactory {
         hairColor: Colors.brown,
       ),
       combatStats: const CombatStats(
-        attack: 12,
+        attack: 45,
         health: 120,
         maxHealth: 120,
         speed: 1.0,
-        movement: 0.48,
+        movement: 0.8,
         distance: 1.25, // Increased reach (was 1.0)
         defense: 5,
         accuracy: 0.85,
         cost: 3,
         radius: 1.8,
-        damageFormula: "10-14",
+        damageFormula: "40-50",
       ),
       abilities: [
         const Ability(
@@ -419,11 +419,11 @@ class CombatUnitFactory {
         facialHairStyle: FacialHairStyle.beard,
       ),
       combatStats: const CombatStats(
-        attack: 32,
+        attack: 90,
         health: 800, // True Boss/Leader stats
         maxHealth: 800,
         speed: 1.4,
-        movement: 0.36,
+        movement: 0.8,
         distance: 2.0,
         defense: 12,
         accuracy: 0.95,
@@ -466,11 +466,11 @@ class CombatUnitFactory {
         hairStyle: HairStyle.long,
       ),
       combatStats: const CombatStats(
-        attack: 12,
+        attack: 35,
         health: 140,
         maxHealth: 140,
         speed: 1.0,
-        movement: 0.88, // Fast commoner
+        movement: 1.1, // Fast commoner
         distance: 1.8,
         defense: 0,
         accuracy: 0.8,
@@ -505,11 +505,11 @@ class CombatUnitFactory {
         outfitColor: Colors.brown.shade900,
       ),
       combatStats: const CombatStats(
-        attack: 18,
+        attack: 75,
         health: 600, // Massive Tank
         maxHealth: 600,
         speed: 2.0, // Slow
-        movement: 0.28,
+        movement: 0.6,
         distance: 2.2,
         defense: 20,
         accuracy: 0.8,
@@ -554,11 +554,11 @@ class CombatUnitFactory {
         outfitColor: Colors.grey.shade800,
       ),
       combatStats: const CombatStats(
-        attack: 35,
+        attack: 95,
         health: 80,
         maxHealth: 80,
         speed: 0.8,
-        movement: 0.88,
+        movement: 1.1,
         distance: 1.875, // (was 1.5)
         defense: 0,
         accuracy: 0.9,
@@ -599,11 +599,11 @@ class CombatUnitFactory {
         hairColor: Colors.black,
       ),
       combatStats: const CombatStats(
-        attack: 22,
+        attack: 55,
         health: 120,
         maxHealth: 120,
         speed: 2.2,
-        movement: 0.48,
+        movement: 0.8,
         distance: 9.0, // Ranged (was 6.0)
         defense: 2,
         accuracy: 0.7,
@@ -639,11 +639,11 @@ class CombatUnitFactory {
         outfitColor: Colors.black,
       ),
       combatStats: const CombatStats(
-        attack: 25,
+        attack: 60,
         health: 60,
         maxHealth: 60,
         speed: 0.6,
-        movement: 1.2,
+        movement: 1.4,
         distance: 2.25, // Stealthy reach (was 1.8)
         defense: 0,
         accuracy: 0.85,
@@ -678,11 +678,11 @@ class CombatUnitFactory {
         facialHairStyle: FacialHairStyle.beard,
       ),
       combatStats: const CombatStats(
-        attack: 18,
+        attack: 55,
         health: 240,
         maxHealth: 240,
         speed: 1.5,
-        movement: 0.56,
+        movement: 0.8,
         distance: 1.875, // Shovel reach (was 1.5)
         defense: 8,
         accuracy: 0.8,
@@ -718,11 +718,11 @@ class CombatUnitFactory {
         hairStyle: HairStyle.bald,
       ),
       combatStats: const CombatStats(
-        attack: 12,
+        attack: 40,
         health: 150,
         maxHealth: 150,
         speed: 1.8,
-        movement: 0.72,
+        movement: 0.9,
         distance: 2.5, // Ceremonial staff reach (was 2.0)
         defense: 5,
         accuracy: 0.75,
@@ -758,11 +758,11 @@ class CombatUnitFactory {
         hairStyle: HairStyle.bob,
       ),
       combatStats: const CombatStats(
-        attack: 28,
+        attack: 85,
         health: 140,
         maxHealth: 140,
         speed: 2.0,
-        movement: 0.56,
+        movement: 0.8,
         distance: 10.5, // Long range (was 7.0)
         defense: 5,
         accuracy: 0.95,
@@ -802,11 +802,11 @@ class CombatUnitFactory {
         outfitColor: Colors.blueGrey.shade900,
       ),
       combatStats: const CombatStats(
-        attack: 20,
+        attack: 60,
         health: 400,
         maxHealth: 400,
         speed: 2.5,
-        movement: 0.16,
+        movement: 0.5,
         distance: 1.75, // Spiked reach (was 1.4)
         defense: 25,
         accuracy: 0.7,
@@ -842,17 +842,17 @@ class CombatUnitFactory {
         outfitColor: Colors.brown.shade800,
       ),
       combatStats: const CombatStats(
-        attack: 25,
+        attack: 55,
         health: 180, // Glass-ier chaser
         maxHealth: 180,
         speed: 0.6, // Very fast attacks
-        movement: 1.44, // Elite speed
+        movement: 1.6, // Elite speed
         distance: 1.5,
         defense: 0,
         accuracy: 0.85,
         cost: 4,
         radius: 1.4,
-        damageFormula: "22-28",
+        damageFormula: "48-60",
       ),
       abilities: [
         const Ability(
@@ -884,16 +884,16 @@ class CombatUnitFactory {
         outfitColor: Colors.indigo,
       ),
       combatStats: const CombatStats(
-        attack: 30,
+        attack: 95,
         health: 500,
         maxHealth: 500,
         speed: 1.8,
-        movement: 0.24,
+        movement: 0.6,
         distance: 4.5,
         defense: 15,
         accuracy: 0.9,
         cost: 8, // Elite Tank
-        damageFormula: "15-25",
+        damageFormula: "88-102",
         radius: 5.0,
       ),
       abilities: [

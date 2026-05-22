@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -24,7 +25,7 @@ class EncounterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<GameState>();
+    final state = context.read<GameState>();
     final encounter = state.pendingEncounterData;
 
     if (encounter == null) {
@@ -43,8 +44,72 @@ class EncounterDialog extends StatelessWidget {
 
     return PopScope(
       canPop: false, // Must resolve the encounter
-      child: Dialog(
-        backgroundColor: Colors.transparent,
+      child: KeyboardListener(
+        focusNode: FocusNode(),
+        autofocus: true,
+        onKeyEvent: (event) {
+          if (event is KeyDownEvent) {
+            final key = event.physicalKey;
+            final hasDemands = encounter.demands.isNotEmpty;
+
+            if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
+              if (hasDemands) {
+                if (canPay) {
+                  state.resolveEncounterPayDemand(encounter.demands);
+                  Navigator.of(context).pop();
+                }
+              } else {
+                // Flee
+                final escaped = state.resolveEncounterFlee();
+                if (!escaped) {
+                  state.startCombatEncounter();
+                  Navigator.of(context).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CombatScreen()),
+                  );
+                } else {
+                  Navigator.of(context).pop();
+                }
+              }
+            } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2) {
+              if (hasDemands) {
+                // Flee
+                final escaped = state.resolveEncounterFlee();
+                if (!escaped) {
+                  state.startCombatEncounter();
+                  Navigator.of(context).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CombatScreen()),
+                  );
+                } else {
+                  Navigator.of(context).pop();
+                }
+              } else {
+                // Fight
+                state.startCombatEncounter();
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CombatScreen()),
+                );
+              }
+            } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3) {
+              if (hasDemands) {
+                // Fight
+                state.startCombatEncounter();
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CombatScreen()),
+                );
+              }
+            }
+          }
+        },
+        child: Dialog(
+          backgroundColor: Colors.transparent,
         child: Container(
           width: 450,
           padding: const EdgeInsets.all(24),
@@ -133,8 +198,8 @@ class EncounterDialog extends StatelessWidget {
                   label: 'SATISFY DEMANDS',
                   enabled: canPay,
                   onPressed: () {
-                    state.resolveEncounterPayDemand(encounter.demands);
                     Navigator.of(context).pop();
+                    state.resolveEncounterPayDemand(encounter.demands);
                   },
                 ),
               const SizedBox(height: 12),
@@ -143,12 +208,15 @@ class EncounterDialog extends StatelessWidget {
                 enabled: true,
                 onPressed: () {
                   final escaped = state.resolveEncounterFlee();
-                  Navigator.of(context).pop();
                   if (!escaped) {
+                    state.startCombatEncounter();
+                    Navigator.of(context).pop();
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const CombatScreen()),
                     );
+                  } else {
+                    Navigator.of(context).pop();
                   }
                 },
               ),
@@ -158,7 +226,7 @@ class EncounterDialog extends StatelessWidget {
                 enabled: true,
                 isPrimary: true,
                 onPressed: () {
-                  // We don't clear state yet, CombatScreen will consume pendingEncounterEnemies
+                  state.startCombatEncounter();
                   Navigator.of(context).pop();
                   Navigator.push(
                     context,
@@ -169,6 +237,7 @@ class EncounterDialog extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

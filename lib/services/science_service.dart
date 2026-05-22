@@ -63,7 +63,7 @@ class ScienceService {
         id: 'large_dissection',
         name: 'Large Specimen Anatomical Study',
         type: TaskType.dissect,
-        ingredients: {'captive_human': 1}, // Example
+        ingredients: {'large_specimen': 1},
         baseDurationMinutes: 90,
         discipline: 'Anatomy',
         outcomeDescription:
@@ -71,7 +71,7 @@ class ScienceService {
       ),
       ScienceActivity(
         id: 'small_vivisection',
-        name: 'Small Specimen Voodoo',
+        name: 'Small Specimen Vivisection',
         type: TaskType.vivisection,
         ingredients: {'specimen': 1},
         baseDurationMinutes: 45,
@@ -82,9 +82,9 @@ class ScienceService {
       ),
       ScienceActivity(
         id: 'large_vivisection',
-        name: 'Large Specimen Voodoo',
+        name: 'Large Specimen Vivisection',
         type: TaskType.vivisection,
-        ingredients: {'captive_human': 1},
+        ingredients: {'large_specimen': 1},
         baseDurationMinutes: 150,
         discipline: 'Anatomy',
         moralCost: 0.5,

@@ -326,6 +326,10 @@ class TaskResultGenerator {
         return TaskResult(
           message: "The specimen was caught and returned to containment.",
         );
+      case TaskType.refinePlantFungus:
+        return TaskResult(
+          message: "${worker.name} worked in the garden laboratory, refining harvested crops and extracting fresh seeds.",
+        );
       case TaskType.defendManor:
         return TaskResult(
           message: "The intruder was driven off. The manor is safe.",

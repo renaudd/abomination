@@ -685,7 +685,7 @@ class StudyScreen extends StatelessWidget {
         .where(
           (e) =>
               e.key == 'specimen' ||
-              e.key == 'captive_human' ||
+              e.key == 'large_specimen' ||
               e.key == 'research_notes',
         )
         .toList();
