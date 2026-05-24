@@ -15,12 +15,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import '../../state/game_state.dart';
 import '../../services/combat_unit_service.dart';
-import '../../models/combat_map.dart';
 import '../widgets/character_blob_renderer.dart';
-import 'combat_screen.dart';
+import 'combat_simulator_map_selection_screen.dart';
 
 class CombatSimulatorScreen extends StatefulWidget {
   const CombatSimulatorScreen({super.key});
@@ -95,7 +92,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
     });
   }
 
-  void _startSimulation(GameState state) {
+  void _goToMapSelection() {
     if (_playerDeckTypes.length < 12 || _aiDeckTypes.length < 12) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Both decks must have 12 units.')),
@@ -103,20 +100,14 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
       return;
     }
 
-    // Create NPC instances for the decks
-    final playerUnits = _playerDeckTypes
-        .map((t) => CombatUnitService.createUnit(t))
-        .toList();
-    final aiUnits = _aiDeckTypes
-        .map((t) => CombatUnitService.createUnit(t))
-        .toList();
-
-    // Setup simulator state
-    state.startCombatSimulation(playerUnits, aiUnits);
-
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CombatScreen()),
+      MaterialPageRoute(
+        builder: (context) => CombatSimulatorMapSelectionScreen(
+          playerDeckTypes: _playerDeckTypes,
+          aiDeckTypes: _aiDeckTypes,
+        ),
+      ),
     );
   }
 
@@ -170,9 +161,11 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                             ),
                           ),
                           child: ListTile(
+                            dense: true,
+                            visualDensity: VisualDensity.compact,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 4,
+                              vertical: 0,
                             ),
                             leading: CharacterBlobRenderer(
                               npc: sampleUnit,
@@ -266,7 +259,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                 ),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       children: [
                         Expanded(
@@ -274,8 +267,8 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 4,
-                                  mainAxisSpacing: 16,
-                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
                                 ),
                             itemCount: 12,
                             itemBuilder: (context, index) {
@@ -347,82 +340,27 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                             },
                           ),
                         ),
-                        Consumer<GameState>(
-                          builder: (context, state, child) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'BATTLEFIELD MAP',
-                                  style: GoogleFonts.oldStandardTt(
-                                    color: const Color(0xFFC4B89B),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black38,
-                                    border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.5)),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<CombatMap>(
-                                      dropdownColor: const Color(0xFF1A1612),
-                                      value: state.selectedCombatMap,
-                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFC4B89B)),
-                                      items: CombatMap.allMaps.map((map) {
-                                        return DropdownMenuItem<CombatMap>(
-                                          value: map,
-                                          child: Text(
-                                            map.name.toUpperCase(),
-                                            style: GoogleFonts.oldStandardTt(
-                                              color: const Color(0xFFE5D5B0),
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (newMap) {
-                                        if (newMap != null) {
-                                          state.setSelectedCombatMap(newMap);
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 28),
-                        Consumer<GameState>(
-                          builder: (context, state, child) {
-                            return ElevatedButton(
-                              onPressed: () => _startSimulation(state),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFC4B89B),
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 48,
-                                  vertical: 20,
-                                ),
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.zero,
-                                ),
-                              ),
-                              child: Text(
-                                "START SIMULATION",
-                                style: GoogleFonts.playfairDisplay(
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            );
-                          },
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _goToMapSelection,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFC4B89B),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.zero,
+                            ),
+                          ),
+                          child: Text(
+                            "SELECT MAP",
+                            style: GoogleFonts.playfairDisplay(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -438,7 +376,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
 
   Widget _sectionHeader(String title) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       width: double.infinity,
       color: Colors.black26,
       child: Text(
@@ -457,7 +395,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(

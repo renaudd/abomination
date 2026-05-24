@@ -60,14 +60,14 @@ void main() {
     });
 
     test('AP generation doubles during the final minute', () {
-      // 1. Verify standard rate (0.3 AP/sec)
-      // Starting AP is 6.0. Tick 10 seconds:
+      // 1. Verify standard rate (1/3 AP/sec)
+      // Starting AP is 6.0. Tick 9 seconds:
       final apStart = manager.actionPoints; // 6.0
-      manager.update(10.0);
+      manager.update(9.0);
       expect(manager.actionPoints, closeTo(apStart + 3.0, 0.01)); // 9.0 AP
 
       // 2. Tick to final minute
-      manager.update(110.0); // Remaining time is 180 - 120 = 60.0s. AP caps at 10.0.
+      manager.update(111.0); // Remaining time is 180 - 120 = 60.0s. AP caps at 10.0.
       
       // Drain AP so we don't hit maxAP (10.0) during the test tick
       // Spawn Rats (costs 3 AP) twice:
@@ -77,10 +77,10 @@ void main() {
       final apStartOverdrive = manager.actionPoints; // 4.0
       expect(apStartOverdrive, 4.0);
       
-      // Tick 5 seconds (Overdrive rate is 0.6 AP/sec).
-      manager.update(5.0);
-      // AP should increase by 0.6 * 5 = 3.0 AP, ending at 7.0 AP
-      expect(manager.actionPoints, closeTo(apStartOverdrive + 3.0, 0.01));
+      // Tick 6 seconds (Overdrive rate is 2/3 AP/sec).
+      manager.update(6.0);
+      // AP should increase by (2/3) * 6 = 4.0 AP, ending at 8.0 AP
+      expect(manager.actionPoints, closeTo(apStartOverdrive + 4.0, 0.01));
     });
 
     test('Combat ends in a draw when timer reaches 0', () {

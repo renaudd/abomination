@@ -191,7 +191,7 @@ class CombatManager extends ChangeNotifier {
   final List<CombatLogEntry> _logs = [];
   double _actionPoints = 6.0; // Start with 6
   static const double maxAP = 10.0;
-  static const double apPerSecond = 0.3; // Reduced by 25% (was 0.4)
+  static const double apPerSecond = 1.0 / 3.0; // 1 point of energy every 3 seconds
   static const double fieldWidth = 140.0;
   static const double fieldLength = 300.0;
 
@@ -649,9 +649,10 @@ class CombatManager extends ChangeNotifier {
 
 
       if (_manualCameraOverrideTimer <= 0.0) {
-        // Target scroll coordinates to center Alphonse on the screen
-        final targetFieldScroll = alphonse.x.clamp(0.0, _map.width);
-        final targetYFieldScroll = alphonse.y.clamp(0.0, _map.height);
+        // Target scroll coordinates to center on as much battlefield as possible
+        // focused above and to the right of the character (shifting camera target to the right and up)
+        final targetFieldScroll = (alphonse.x + 35.0 / _zoomFactor).clamp(0.0, _map.width);
+        final targetYFieldScroll = (alphonse.y - 12.0 / _zoomFactor).clamp(0.0, _map.height);
 
         // Lerp smoothly with a factor of 1.5 so it takes ~2 full seconds to completely transition
         _fieldScroll += (targetFieldScroll - _fieldScroll) * 1.5 * dt;

@@ -40,6 +40,30 @@ class _CombatScreenState extends State<CombatScreen>
   late CombatManager _combatManager;
   GameSpeed? _previousSpeed;
   int? _selectedCardIndex;
+  DateTime? _lastTickTime;
+
+  // Custom Top-Right Notifications State
+  final List<_CombatNotification> _activeNotifications = [];
+
+  void _showNotification(String message, Color bgColor, {Duration duration = const Duration(seconds: 2)}) {
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final notif = _CombatNotification(
+      id: id,
+      message: message,
+      backgroundColor: bgColor,
+      duration: duration,
+    );
+    setState(() {
+      _activeNotifications.add(notif);
+    });
+    Future.delayed(duration, () {
+      if (mounted) {
+        setState(() {
+          _activeNotifications.removeWhere((n) => n.id == id);
+        });
+      }
+    });
+  }
   
   // Keyboard Navigation State
   late final FocusNode _keyboardFocusNode;
@@ -89,20 +113,10 @@ class _CombatScreenState extends State<CombatScreen>
 
   void _showCardSelectedMessage(int index) {
     final name = _combatManager.hand[index].name;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'CARD SELECT: ${name.toUpperCase()} (SLOT ${index + 1}) - CLICK ON BATTLEFIELD TO DEPLOY',
-          style: GoogleFonts.oldStandardTt(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
-          ),
-        ),
-        duration: const Duration(seconds: 3),
-        backgroundColor: Colors.blue.shade900,
-      ),
+    _showNotification(
+      'CARD SELECT: ${name.toUpperCase()} (SLOT ${index + 1}) - CLICK ON BATTLEFIELD TO DEPLOY',
+      Colors.blue.shade900,
+      duration: const Duration(seconds: 3),
     );
   }
 
@@ -276,7 +290,13 @@ class _CombatScreenState extends State<CombatScreen>
     _tickController =
         AnimationController(vsync: this, duration: const Duration(seconds: 1))
           ..addListener(() {
-            _combatManager.update(0.016); // ~60fps
+            final now = DateTime.now();
+            double dt = 0.016;
+            if (_lastTickTime != null) {
+              dt = now.difference(_lastTickTime!).inMicroseconds / 1000000.0;
+            }
+            _lastTickTime = now;
+            _combatManager.update(dt.clamp(0.0, 0.1));
             if (mounted) setState(() {});
           });
     _tickController.repeat();
@@ -381,7 +401,7 @@ class _CombatScreenState extends State<CombatScreen>
                 top: 0,
                 left: 0,
                 right: 0,
-                bottom: 150,
+                bottom: 0,
                 child: GestureDetector(
                   onScaleStart: (details) {
                     _keyboardFocusNode.requestFocus();
@@ -421,29 +441,13 @@ class _CombatScreenState extends State<CombatScreen>
                       );
                       
                       if (success) {
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '${npc.name} deployed!',
-                              style: GoogleFonts.oldStandardTt(color: Colors.white),
-                            ),
-                            duration: const Duration(seconds: 1),
-                            backgroundColor: Colors.blue.shade800,
-                          ),
-                        );
+                        _showNotification('${npc.name} deployed!', Colors.blue.shade800, duration: const Duration(seconds: 1));
                         _selectedCardIndex = null; // Clear selection
                       } else {
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
-                              style: GoogleFonts.oldStandardTt(color: Colors.white),
-                            ),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: Colors.red.shade900,
-                          ),
+                        _showNotification(
+                          'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
+                          Colors.red.shade900,
+                          duration: const Duration(seconds: 2),
                         );
                         _selectedCardIndex = null; // Clear selection
                       }
@@ -469,11 +473,12 @@ class _CombatScreenState extends State<CombatScreen>
               ),
               
               // Transparent unmarked movement pad in bottom-left
+              // Bracketed movement pad in bottom-left
               Positioned(
-                bottom: 0,
-                left: 0,
-                width: MediaQuery.of(context).size.width * 0.45,
-                height: 180,
+                bottom: 16,
+                left: 16,
+                width: MediaQuery.of(context).size.width * 0.4,
+                height: 160,
                 child: Consumer<CombatManager>(
                   builder: (context, manager, child) {
                     final gameState = Provider.of<GameState>(context, listen: false);
@@ -523,15 +528,18 @@ class _CombatScreenState extends State<CombatScreen>
                           alphonse.moveDirY = 0.0;
                         }
                       },
-                      child: const SizedBox.expand(),
+                      child: CustomPaint(
+                        painter: _TrackpadBracketPainter(),
+                        child: const SizedBox.expand(),
+                      ),
                     );
                   },
                 ),
               ),
 
-              // Floating cards hand & stacked buttons positioned bottom-right
+              // Floating cards hand & stacked buttons positioned bottom-right (floated elegantly)
               Positioned(
-                bottom: 20,
+                bottom: 12,
                 right: 20,
                 child: const _CombatBottomBar(),
               ),
@@ -569,6 +577,20 @@ class _CombatScreenState extends State<CombatScreen>
                 }
                 return <Widget>[];
               })(),
+
+              // Top-right Cascading Notification Banners
+              Positioned(
+                top: 85,
+                right: 20,
+                width: 280,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: _activeNotifications
+                      .map((n) => _CombatNotificationWidget(notification: n))
+                      .toList(),
+                ),
+              ),
 
               if (_combatManager.isVictory || _combatManager.isDefeat || _combatManager.isDraw)
                 Positioned.fill(child: Container(color: Colors.black54)),
@@ -869,31 +891,37 @@ class _BattlefieldViewport extends StatelessWidget {
             children: [
               // Environment/Background
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _SwissCountrysidePainter(
-                    fieldScroll: manager.fieldScroll,
-                    yFieldScroll: manager.yFieldScroll,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _SwissCountrysidePainter(
+                      fieldScroll: manager.fieldScroll,
+                      yFieldScroll: manager.yFieldScroll,
+                    ),
                   ),
                 ),
               ),
               // 2a. Battlefield Background Art
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _BattlefieldArtPainter(
-                    projection: projection,
-                    fieldScroll: manager.fieldScroll,
-                    yFieldScroll: manager.yFieldScroll,
-                    map: manager.map,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _BattlefieldArtPainter(
+                      projection: projection,
+                      fieldScroll: manager.fieldScroll,
+                      yFieldScroll: manager.yFieldScroll,
+                      map: manager.map,
+                    ),
                   ),
                 ),
               ),
 
               // 2c. Ability Target Highlight
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _AbilityHighlightPainter(
-                    manager: manager,
-                    projection: projection,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _AbilityHighlightPainter(
+                      manager: manager,
+                      projection: projection,
+                    ),
                   ),
                 ),
               ),
@@ -1052,11 +1080,11 @@ class _CombatantSprite extends StatelessWidget {
     final double opacity = combatant.isDead ? 0.3 : 1.0;
     // Scale based on Y depth
     final double scale =
-        (0.8 + (combatant.y / CombatManager.fieldWidth) * 0.4) * 1.5;
+        (0.8 + (combatant.y / CombatManager.fieldWidth) * 0.4) * 0.9;
 
     return Positioned(
-      left: screenPos.dx - 50,
-      top: screenPos.dy - 140, // 140 height aligns visual base shadow with physical y coordinate
+      left: screenPos.dx - 30,
+      top: screenPos.dy - 82, // aligns visual base shadow with physical y coordinate
       child: IgnorePointer(
         ignoring: combatant.isDead,
         child: Transform.scale(
@@ -1064,8 +1092,8 @@ class _CombatantSprite extends StatelessWidget {
           child: Opacity(
             opacity: opacity,
           child: SizedBox(
-            width: 100,
-            height: 150, // Total height to include floating text & hit-test bounds
+            width: 60,
+            height: 90, // Total height to include floating text & hit-test bounds
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -1076,11 +1104,11 @@ class _CombatantSprite extends StatelessWidget {
                   Positioned(
                     bottom: 4,
                     child: Container(
-                      width: 40,
-                      height: 12,
+                      width: 24,
+                      height: 7,
                       decoration: BoxDecoration(
                         borderRadius: const BorderRadius.all(
-                          Radius.elliptical(20, 6),
+                          Radius.elliptical(12, 3),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -1155,7 +1183,7 @@ class _CombatantSprite extends StatelessWidget {
                                   msg.text,
                                   style: GoogleFonts.oswald(
                                     color: msg.color,
-                                    fontSize: 9,
+                                    fontSize: 6,
                                     fontWeight: FontWeight.bold,
                                     shadows: const [
                                       Shadow(
@@ -1192,7 +1220,7 @@ class _CombatantSprite extends StatelessWidget {
                                 'TARGET',
                                 style: GoogleFonts.oswald(
                                   color: Colors.white,
-                                  fontSize: 7,
+                                  fontSize: 5,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1203,8 +1231,8 @@ class _CombatantSprite extends StatelessWidget {
                         // Health Bar (allies: green, enemies: red)
                         if (!combatant.isDead) ...[
                           Container(
-                            width: (stats.maxHealth * 0.4).clamp(20.0, 120.0),
-                            height: 11,
+                            width: (stats.maxHealth * 0.24).clamp(12.0, 72.0),
+                            height: 3,
                             decoration: BoxDecoration(
                               color: const Color(0xFF1A1612),
                               border: Border.all(color: const Color(0xFFC4B89B), width: 1),
@@ -1327,26 +1355,22 @@ class _SpecialReadyButton extends StatelessWidget {
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
               onTap: canUse ? () {
+                final screenState = context.findAncestorStateOfType<_CombatScreenState>();
                 manager.executeSpecial(combatant.npc.id); // Call executeSpecial for normal special abilities!
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${combatant.npc.name} used ${special.name}!',
-                      style: GoogleFonts.oldStandardTt(color: Colors.white),
-                    ),
-                    duration: const Duration(seconds: 1),
-                    backgroundColor: const Color(0xFFC4B89B),
-                  ),
+                screenState?._showNotification(
+                  '${combatant.npc.name} used ${special.name}!',
+                  const Color(0xFFC4B89B),
+                  duration: const Duration(seconds: 1),
                 );
               } : null,
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
                 opacity: canUse ? 1.0 : 0.4,
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(6),
                     color: canUse ? const Color(0xFFC4B89B) : Colors.grey.shade800,
                     border: Border.all(color: const Color(0xFF2A1B1B), width: 2.5),
                     boxShadow: const [
@@ -1361,7 +1385,7 @@ class _SpecialReadyButton extends StatelessWidget {
                   child: const Icon(
                     Icons.bolt,
                     color: Colors.black,
-                    size: 24.0,
+                    size: 14.0,
                   ),
                 ),
               ),
@@ -1398,7 +1422,7 @@ class _CombatTimerWidget extends StatelessWidget {
                 isLastMinute ? 'ENERGY OVERDRIVE (2X)' : 'COMBAT STATUS',
                 style: GoogleFonts.oldStandardTt(
                   color: isLastMinute ? const Color(0xFFD4AF37) : Colors.white,
-                  fontSize: 12,
+                  fontSize: 8,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
@@ -1414,14 +1438,14 @@ class _CombatTimerWidget extends StatelessWidget {
                       const Icon(
                         Icons.bolt,
                         color: Color(0xFFD4AF37),
-                        size: 26,
+                        size: 13,
                       ),
                       const SizedBox(width: 2),
                       Text(
                         manager.actionPoints.toStringAsFixed(1),
                         style: GoogleFonts.oldStandardTt(
                           color: const Color(0xFFD4AF37),
-                          fontSize: 32,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1429,7 +1453,7 @@ class _CombatTimerWidget extends StatelessWidget {
                         ' / 10',
                         style: GoogleFonts.oldStandardTt(
                           color: Colors.white54,
-                          fontSize: 18,
+                          fontSize: 9,
                         ),
                       ),
                     ],
@@ -1442,14 +1466,14 @@ class _CombatTimerWidget extends StatelessWidget {
                       Icon(
                         Icons.hourglass_bottom,
                         color: isLastMinute ? const Color(0xFFD4AF37) : Colors.white70,
-                        size: 24,
+                        size: 12,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         timeStr,
                         style: GoogleFonts.oldStandardTt(
                           color: isLastMinute ? const Color(0xFFD4AF37) : Colors.white,
-                          fontSize: 32,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1478,11 +1502,11 @@ class _SplitLogOverlay extends StatelessWidget {
         builder: (context, manager, child) {
           final playerLogs = manager.logs
               .where((l) => l.side == CombatSide.player)
-              .take(5)
+              .take(3)
               .toList();
           final enemyLogs = manager.logs
               .where((l) => l.side == CombatSide.enemy)
-              .take(5)
+              .take(3)
               .toList();
 
           return Row(
@@ -1490,7 +1514,7 @@ class _SplitLogOverlay extends StatelessWidget {
             children: [
               // Player Logs (Left)
               SizedBox(
-                width: 250,
+                width: 180,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: playerLogs
@@ -1498,10 +1522,10 @@ class _SplitLogOverlay extends StatelessWidget {
                       .toList(),
                 ),
               ),
-              const SizedBox(width: 40),
+              const SizedBox(width: 20),
               // Enemy Logs (Right)
               SizedBox(
-                width: 250,
+                width: 180,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: enemyLogs
@@ -1523,7 +1547,7 @@ class _SplitLogOverlay extends StatelessWidget {
         message.toUpperCase(),
         style: GoogleFonts.oldStandardTt(
           color: color.withValues(alpha: 0.8),
-          fontSize: 10,
+          fontSize: 8,
           fontWeight: FontWeight.bold,
           shadows: [const Shadow(color: Colors.black, blurRadius: 2)],
         ),
@@ -1553,7 +1577,7 @@ class _CombatBottomBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // AP Progress Bar sitting on top (width matches the hand box 425.0)
+              // AP Progress Bar sitting on top
               Consumer<CombatManager>(
                 builder: (context, manager, child) {
                   final double apVal = (manager.actionPoints / 10.0).clamp(0.0, 1.0);
@@ -1564,7 +1588,7 @@ class _CombatBottomBar extends StatelessWidget {
                   final progressColor = hasEnough ? const Color(0xFFD4AF37) : Colors.redAccent;
 
                   return Container(
-                    width: 770,
+                    width: 492,
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 4),
                     decoration: BoxDecoration(
@@ -1584,12 +1608,12 @@ class _CombatBottomBar extends StatelessWidget {
                   );
                 },
               ),
-              // Translucent floating card hand box
+              // Translucent floating card hand box (solid premium dark box backing)
               Container(
-                width: 770,
-                height: 110,
+                width: 492,
+                height: 74,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
+                  color: Colors.black.withValues(alpha: 0.85),
                   border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3), width: 1.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -1597,7 +1621,7 @@ class _CombatBottomBar extends StatelessWidget {
                   itemCount: manager.hand.length,
                   scrollDirection: Axis.horizontal,
                   clipBehavior: Clip.none,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   itemBuilder: (context, index) {
                     final npc = manager.hand[index];
                     return _UnitCard(key: ValueKey(npc.id), npc: npc);
@@ -1607,9 +1631,9 @@ class _CombatBottomBar extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 12),
-          // 2. Vertically stacked special action buttons (R and F) on the far right
+          // 2. Vertically stacked special action buttons (R and F) on the right
           Padding(
-            padding: const EdgeInsets.only(bottom: 2.0),
+            padding: const EdgeInsets.only(bottom: 0.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1666,7 +1690,7 @@ class _UnitCard extends StatefulWidget {
 }
 
 class _UnitCardState extends State<_UnitCard> {
-  bool _isHovered = false;
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1675,116 +1699,106 @@ class _UnitCardState extends State<_UnitCard> {
         final cost = widget.npc.combatStats?.cost ?? 0;
         final canAfford = manager.actionPoints >= cost;
 
-        return MouseRegion(
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            width: 140,
-            height: 70, // Base height
-            margin: const EdgeInsets.only(right: 14),
-            transform: Matrix4.translationValues(0, _isHovered ? -20 : 0, 0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFDF5E6), // Old Lace/Parchment
-              border: Border.all(
-                color: _isHovered
-                    ? const Color(0xFF8B4513) // Saddle Brown
-                    : (canAfford
-                          ? const Color(0xFF5D4037) // Muted Brown
-                          : const Color(0xFFD32F2F).withValues(alpha: 0.5)),
-                width: _isHovered ? 3 : 2,
-              ),
-              boxShadow: _isHovered
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(4, 4),
-                      ),
-                    ]
-                  : null,
+        return Draggable<NPC>(
+          data: widget.npc,
+          feedback: Material(
+            color: Colors.transparent,
+            child: Opacity(
+              opacity: 0.8,
+              child: CharacterBlobRenderer(npc: widget.npc, size: 20, showSpeechBubble: false),
             ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Draggable<NPC>(
-                  data: widget.npc,
-                  feedback: Material(
-                    color: Colors.transparent,
-                    child: Opacity(
-                      opacity: 0.8,
-                      child: CharacterBlobRenderer(npc: widget.npc, size: 50, showSpeechBubble: false),
-                    ),
-                  ),
-                  onDragEnd: (details) {
-                    final screenSize = MediaQuery.of(context).size;
-                    final projection = _CombatProjection(
-                      viewSize: screenSize,
-                      fieldScroll: manager.fieldScroll,
-                      yFieldScroll: manager.yFieldScroll,
-                      zoomFactor: manager.zoomFactor,
-                    );
-                    
-                    // Allow dropping anywhere that projects to valid world Y
-                    if (details.offset.dy < projection.yNear) {
-                      // Compensate for the drag anchor (CharacterBlob is 50x50, anchor is center)
-                      // We want the feet (bottom of blob) to match world position.
-                      final dragFeetOffset =
-                          details.offset + const Offset(25, 50);
-                      final worldPos = projection.unproject(dragFeetOffset);
-                      final dropX = worldPos.dx;
-                      final dropY = worldPos.dy;
+          ),
+          onDragStarted: () => setState(() => _isExpanded = false),
+          onDragEnd: (details) {
+            // Capture parent state before unmounting/deactivating context
+            final screenState = context.findAncestorStateOfType<_CombatScreenState>();
 
-                      if (dropX <= manager.fieldScroll + 100.0) {
-                        final clampedY = dropY.clamp(
-                          0.0,
-                          manager.map.height,
-                        );
-                        final success = manager.spawnUnit(
-                          widget.npc,
-                          CombatSide.player,
-                          x: dropX,
-                          y: clampedY,
-                        );
-                        if (success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${widget.npc.name} deployed!',
-                                style: GoogleFonts.oldStandardTt(
-                                  color: Colors.white,
-                                ),
-                              ),
-                              duration: const Duration(seconds: 1),
-                              backgroundColor: Colors.blue.shade800,
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
-                                style: GoogleFonts.oldStandardTt(
-                                  color: Colors.white,
-                                ),
-                              ),
-                              duration: const Duration(seconds: 2),
-                              backgroundColor: Colors.red.shade900,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  },
-                  child: SizedBox(
+            final screenSize = MediaQuery.of(context).size;
+            final projection = _CombatProjection(
+              viewSize: screenSize,
+              fieldScroll: manager.fieldScroll,
+              yFieldScroll: manager.yFieldScroll,
+              zoomFactor: manager.zoomFactor,
+            );
+            
+            // Allow dropping anywhere that projects to valid world Y
+            if (details.offset.dy < projection.yNear) {
+              // Compensate for the drag anchor (CharacterBlob is 50x50, anchor is center)
+              // We want the feet (bottom of blob) to match world position.
+              final dragFeetOffset =
+                  details.offset + const Offset(25, 50);
+              final worldPos = projection.unproject(dragFeetOffset);
+              final dropX = worldPos.dx;
+              final dropY = worldPos.dy;
+
+              if (dropX <= manager.fieldScroll + 100.0) {
+                final clampedY = dropY.clamp(
+                  0.0,
+                  manager.map.height,
+                );
+                final success = manager.spawnUnit(
+                  widget.npc,
+                  CombatSide.player,
+                  x: dropX,
+                  y: clampedY,
+                );
+                if (success) {
+                  screenState?._showNotification(
+                    '${widget.npc.name} deployed!',
+                    Colors.blue.shade800,
+                    duration: const Duration(seconds: 1),
+                  );
+                } else {
+                  screenState?._showNotification(
+                    'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
+                    Colors.red.shade900,
+                    duration: const Duration(seconds: 2),
+                  );
+                }
+              }
+            }
+          },
+          child: GestureDetector(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              width: 82,
+              height: 52,
+              margin: const EdgeInsets.only(right: 14),
+              transform: Matrix4.translationValues(0, _isExpanded ? -10 : 0, 0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFDF5E6), // Old Lace/Parchment
+                border: Border.all(
+                  color: _isExpanded
+                      ? const Color(0xFF8B4513) // Saddle Brown
+                      : (canAfford
+                            ? const Color(0xFF5D4037) // Muted Brown
+                            : const Color(0xFFD32F2F).withValues(alpha: 0.5)),
+                  width: _isExpanded ? 3 : 2,
+                ),
+                boxShadow: _isExpanded
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(4, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  SizedBox(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Stats & Name (Left)
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.all(6.0),
+                            padding: const EdgeInsets.all(4.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1792,7 +1806,7 @@ class _UnitCardState extends State<_UnitCard> {
                                   widget.npc.name.toUpperCase(),
                                   style: GoogleFonts.oldStandardTt(
                                     color: const Color(0xFF2E1A0A), // Dark Ink
-                                    fontSize: 9,
+                                    fontSize: 7,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 0.2,
                                   ),
@@ -1806,7 +1820,7 @@ class _UnitCardState extends State<_UnitCard> {
                                     color: canAfford
                                         ? const Color(0xFF388E3C)
                                         : const Color(0xFFD32F2F),
-                                    fontSize: 10,
+                                    fontSize: 8,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1814,17 +1828,16 @@ class _UnitCardState extends State<_UnitCard> {
                             ),
                           ),
                         ),
-                        // Damage & Health (Center-Left)
+                        // Damage & Health (Right)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                          padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               _buildCardStat(
                                 'D',
-                                widget.npc.combatStats?.damageFormula ??
-                                    '${(widget.npc.combatStats!.attack * 1.5).toInt()}',
+                                '${(widget.npc.combatStats!.attack * 1.5).toInt()}', // Single median value
                                 Colors.deepOrange.shade800,
                               ),
                               const SizedBox(height: 2),
@@ -1836,99 +1849,93 @@ class _UnitCardState extends State<_UnitCard> {
                             ],
                           ),
                         ),
-                        // Character Image (Right)
-                        Padding(
-                          padding: const EdgeInsets.all(6.0),
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFF8B4513,
-                                ).withValues(alpha: 0.3),
-                              ),
-                              shape: BoxShape.rectangle,
-                            ),
-                            child: Center(
-                              child: CharacterBlobRenderer(
-                                npc: widget.npc,
-                                size: 30,
-                                showSpeechBubble: false,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
-                ),
-                // Hover Detail Panel (Lifted up above the main card)
-                if (_isHovered)
-                  Positioned(
-                    bottom: 74,
-                    left: -1,
-                    right: -1,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[900],
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
+                  // Expanded Detail Panel (Lifted up above the main card)
+                  if (_isExpanded)
+                    Positioned(
+                      bottom: 58,
+                      left: -20,
+                      right: -20,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[900],
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          border: Border.all(color: Colors.blue, width: 2),
                         ),
-                        border: Border.all(color: Colors.blue, width: 2),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'DRAG ONTO BATTLEFIELD TO DEPLOY',
-                            style: GoogleFonts.oldStandardTt(
-                              fontSize: 7.5,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber,
-                              letterSpacing: 0.5,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Center(
+                              child: CharacterBlobRenderer(
+                                npc: widget.npc,
+                                size: 40,
+                                showSpeechBubble: false,
+                              ),
                             ),
-                          ),
-                          const Divider(color: Colors.white24, height: 8),
-                          _buildDetailRow(
-                            'Speed',
-                            widget.npc.combatStats?.speed.toStringAsFixed(1) ??
-                                '0',
-                          ),
-                          _buildDetailRow(
-                            'Range',
-                            widget.npc.combatStats?.distance.toStringAsFixed(
-                                  1,
-                                ) ??
-                                '0',
-                          ),
-                          const Divider(color: Colors.white24, height: 8),
-                          Text(
-                            'ABILITIES',
-                            style: GoogleFonts.oldStandardTt(
-                              fontSize: 8,
-                              color: Colors.blue[300],
+                            const SizedBox(height: 4),
+                            Text(
+                              'COST: $cost AP',
+                              style: GoogleFonts.oldStandardTt(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.cyanAccent,
+                              ),
                             ),
-                          ),
-                          ...widget.npc.abilities
-                              .take(2)
-                              .map(
-                                (a) => Text(
-                                  '• ${a.name}',
-                                  style: GoogleFonts.oldStandardTt(
-                                    fontSize: 8,
-                                    color: Colors.white70,
+                            const Divider(color: Colors.white24, height: 8),
+                            Text(
+                              'DRAG ONTO BATTLEFIELD TO DEPLOY',
+                              style: GoogleFonts.oldStandardTt(
+                                fontSize: 7.5,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber,
+                                letterSpacing: 0.5,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const Divider(color: Colors.white24, height: 8),
+                            _buildDetailRow(
+                              'Speed',
+                              widget.npc.combatStats?.speed.toStringAsFixed(1) ??
+                                  '0',
+                            ),
+                            _buildDetailRow(
+                              'Range',
+                              widget.npc.combatStats?.distance.toStringAsFixed(
+                                    1,
+                                  ) ??
+                                  '0',
+                            ),
+                            const Divider(color: Colors.white24, height: 8),
+                            Text(
+                              'ABILITIES',
+                              style: GoogleFonts.oldStandardTt(
+                                fontSize: 8,
+                                color: Colors.blue[300],
+                              ),
+                            ),
+                            ...widget.npc.abilities
+                                .take(2)
+                                .map(
+                                  (a) => Text(
+                                    '• ${a.name}',
+                                    style: GoogleFonts.oldStandardTt(
+                                      fontSize: 8,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ),
-                              ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -2307,8 +2314,8 @@ class _TacticalMinimap extends StatelessWidget {
     return Consumer<CombatManager>(
       builder: (context, manager, child) {
         return SizedBox(
-          width: 120,
-          height: 80,
+          width: 80,
+          height: 53,
           child: CustomPaint(
             painter: _MinimapPainter(
               combatants: manager.combatants,
@@ -2441,7 +2448,7 @@ class _TowerRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double size = 60.0;
+    const double size = 36.0;
     return SizedBox(
       width: size,
       height: size * 1.2,
@@ -2820,10 +2827,10 @@ class _SpecialAbilityButton extends StatelessWidget {
       onTap: isCharged ? onPressed : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 70,
-        height: 70,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(8),
           color: isCharged ? Colors.black.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.3),
           border: Border.all(color: activeColor, width: isCharged ? 3.5 : 1.5),
           boxShadow: isCharged
@@ -2840,7 +2847,7 @@ class _SpecialAbilityButton extends StatelessWidget {
           child: Icon(
             icon,
             color: isCharged ? const Color(0xFFD4AF37) : Colors.white30,
-            size: 30,
+            size: 18,
           ),
         ),
       ),
@@ -2985,4 +2992,105 @@ class _HeartIcon extends StatelessWidget {
       );
     }
   }
+}
+
+class _CombatNotification {
+  final String id;
+  final String message;
+  final Color backgroundColor;
+  final Duration duration;
+
+  _CombatNotification({
+    required this.id,
+    required this.message,
+    required this.backgroundColor,
+    required this.duration,
+  });
+}
+
+class _CombatNotificationWidget extends StatelessWidget {
+  final _CombatNotification notification;
+  const _CombatNotificationWidget({required this.notification});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: notification.backgroundColor.withValues(alpha: 0.9),
+        border: Border.all(
+          color: const Color(0xFFC4B89B).withValues(alpha: 0.8),
+          width: 1.5,
+        ),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 6,
+            offset: const Offset(2, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        notification.message,
+        style: GoogleFonts.oldStandardTt(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+}
+
+class _TrackpadBracketPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    const double cornerLength = 16.0;
+
+    // Top-left corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, cornerLength)
+        ..lineTo(0, 0)
+        ..lineTo(cornerLength, 0),
+      paint,
+    );
+
+    // Top-right corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width, cornerLength)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width - cornerLength, 0),
+      paint,
+    );
+
+    // Bottom-left corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, size.height - cornerLength)
+        ..lineTo(0, size.height)
+        ..lineTo(cornerLength, size.height),
+      paint,
+    );
+
+    // Bottom-right corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width, size.height - cornerLength)
+        ..lineTo(size.width, size.height)
+        ..lineTo(size.width - cornerLength, size.height),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
