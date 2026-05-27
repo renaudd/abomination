@@ -82,6 +82,13 @@ class Combatant {
   double? detourX;
   double? detourY;
 
+  // Regiment/Squad Fields
+  String? squadId;
+  String? leaderId;
+  bool isSquadLeader;
+  Offset? formationOffset;
+  double activeDeploymentTimer;
+
   Combatant({
     required this.npc,
     required this.side,
@@ -97,6 +104,11 @@ class Combatant {
     this.waypointY,
     this.detourX,
     this.detourY,
+    this.squadId,
+    this.leaderId,
+    this.isSquadLeader = false,
+    this.formationOffset,
+    this.activeDeploymentTimer = 0.0,
   });
 
   // For continuous movement (Alphonse)
@@ -508,6 +520,20 @@ class CombatManager extends ChangeNotifier {
     _aiActionPoints = 6.0;
   }
 
+  Offset _getFormationOffset(int index) {
+    switch (index) {
+      case 0: return const Offset(-2.5, -2.5);
+      case 1: return const Offset(-2.5, 2.5);
+      case 2: return const Offset(-5.0, -5.0);
+      case 3: return const Offset(-5.0, 5.0);
+      case 4: return const Offset(-7.5, 0.0);
+      case 5: return const Offset(-7.5, -2.5);
+      case 6: return const Offset(-7.5, 2.5);
+      case 7: return const Offset(-10.0, 0.0);
+      default: return Offset(-2.5 * (index ~/ 2 + 1).toDouble(), (index % 2 == 0 ? -2.5 : 2.5));
+    }
+  }
+
   bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y}) {
     final stats = npc.combatStats;
     if (stats == null) return false;
@@ -567,21 +593,70 @@ class CombatManager extends ChangeNotifier {
       }
     }
 
-    final combatant = Combatant(
+    // Generate unique squad ID
+    final String squadId = 'squad_${npc.id}_${DateTime.now().microsecondsSinceEpoch}';
+
+    // Spawn the Leader
+    final leader = Combatant(
       npc: npc,
       side: side,
       x: spawnX,
       y: spawnY,
       laneIndex: closestLaneIdx,
       isTower: false,
+      squadId: squadId,
+      isSquadLeader: true,
+      activeDeploymentTimer: stats.deploymentTime,
     );
 
-    _combatants.add(combatant);
+    _combatants.add(leader);
+
+    // Spawn Followers if unit count > 1
+    if (stats.unitCount > 1) {
+      final followersToSpawn = stats.unitCount - 1;
+      for (int i = 0; i < followersToSpawn; i++) {
+        final offset = _getFormationOffset(i);
+        
+        // Calculate spawn position based on offset direction
+        final double followerX = (spawnX + (side == CombatSide.player ? offset.dx : -offset.dx));
+        final double followerY = (spawnY + offset.dy).clamp(2.0, _map.height - 2.0);
+
+        final followerNpc = NPC(
+          id: '${npc.id}_follower_${i}_${DateTime.now().microsecondsSinceEpoch}',
+          name: '${npc.name} Recruit',
+          age: npc.age,
+          gender: npc.gender,
+          specimenType: npc.specimenType,
+          role: 'Troop',
+          bodyParts: npc.bodyParts,
+          schedule: npc.schedule,
+          diet: npc.diet,
+          appearance: npc.appearance,
+          combatStats: stats.copyWith(unitCount: 1), // Followers themselves represent single entities
+        );
+
+        final follower = Combatant(
+          npc: followerNpc,
+          side: side,
+          x: followerX,
+          y: followerY,
+          laneIndex: closestLaneIdx,
+          isTower: false,
+          squadId: squadId,
+          leaderId: npc.id,
+          isSquadLeader: false,
+          formationOffset: offset,
+          activeDeploymentTimer: stats.deploymentTime,
+        );
+
+        _combatants.add(follower);
+      }
+    }
 
     // Trigger Horn abilities
     for (final ability in npc.abilities) {
       if (ability.type == AbilityType.horn) {
-        _applyAbilityEffect(combatant, ability);
+        _applyAbilityEffect(leader, ability);
       }
     }
 
@@ -977,9 +1052,33 @@ class CombatManager extends ChangeNotifier {
     }
   }
 
+  List<Combatant> filterTargets(Combatant seeker, List<Combatant> candidates) {
+    final rule = seeker.npc.combatStats?.targetingRule ?? TargetingRule.all;
+    switch (rule) {
+      case TargetingRule.towersOnly:
+        return candidates.where((c) => c.isTower).toList();
+      case TargetingRule.enemyCharacterOnly:
+        return candidates.where((c) => c.npc.isPlayer || c.npc.id == 'ai_mirror').toList();
+      case TargetingRule.squadsOnly:
+        return candidates.where((c) => !c.isTower && c.npc.combatStats?.unitType == UnitType.squad).toList();
+      case TargetingRule.vehiclesOnly:
+        return candidates.where((c) => !c.isTower && c.npc.combatStats?.unitType == UnitType.vehicle).toList();
+      case TargetingRule.nonTowers:
+        return candidates.where((c) => !c.isTower).toList();
+      case TargetingRule.all:
+        return candidates;
+    }
+  }
+
   void _processUnitTick(Combatant c, double dt) {
     if (c.isDead) return;
     final stats = c.npc.combatStats!;
+
+    // A-1. Deployment Timer ticking
+    if (c.activeDeploymentTimer > 0.0) {
+      c.activeDeploymentTimer = max(0.0, c.activeDeploymentTimer - dt);
+      return; // Skip normal updates while deploying
+    }
 
     // Backstep (stuck prevention backup)
     if (c.backstepTimer > 0.0) {
@@ -1113,15 +1212,40 @@ class CombatManager extends ChangeNotifier {
     }
 
     // B. Targeting
-    List<Combatant> targets = _combatants
-        .where((other) => other.side != c.side && !other.isDead)
-        .toList();
+    // Grid spatial partitioning (5 horizontal sectors across map.width)
+    final double sectorWidth = _map.width / 5.0;
+    final int mySector = (c.x / sectorWidth).floor().clamp(0, 4);
+    
+    List<Combatant> targets = _combatants.where((other) {
+      if (other.side == c.side || other.isDead) return false;
+      final int otherSector = (other.x / sectorWidth).floor().clamp(0, 4);
+      return (otherSector - mySector).abs() <= 1; // same or adjacent sector
+    }).toList();
+    
+    // Fallback to all targets if adjacent sectors are empty to preserve baseline reactivity
+    if (targets.isEmpty) {
+      targets = _combatants
+          .where((other) => other.side != c.side && !other.isDead)
+          .toList();
+    }
+
+    // Filter by Targeting Rule
+    targets = filterTargets(c, targets);
 
     // Flyer targeting rules
     final bool isRanged = stats.distance >= 3.0; // Standardize ranged threshold
     if (!stats.isFlying && !isRanged) {
       // Ground melee units can only hit other ground units
       targets = targets.where((t) => !t.npc.combatStats!.isFlying).toList();
+    }
+
+    // Clean up leader reference if leader fainted or died
+    if (c.leaderId != null) {
+      final leader = _combatants.firstWhereOrNull((other) => other.npc.id == c.leaderId && !other.isDead);
+      if (leader == null) {
+        c.leaderId = null;
+        c.formationOffset = null;
+      }
     }
 
     if (targets.isNotEmpty && !c.npc.isPlayer) {
@@ -1358,6 +1482,26 @@ class CombatManager extends ChangeNotifier {
     }
 
     if (targets.isEmpty) {
+      // Followers follow their leader if targets are empty
+      if (c.leaderId != null) {
+        final leader = _combatants.firstWhereOrNull((other) => other.npc.id == c.leaderId && !other.isDead);
+        if (leader != null) {
+          final double targetX = leader.x + (leader.side == CombatSide.player ? c.formationOffset!.dx : -c.formationOffset!.dx);
+          final double targetY = (leader.y + c.formationOffset!.dy).clamp(2.0, _map.height - 2.0);
+          
+          final dx = targetX - c.x;
+          final dy = targetY - c.y;
+          final len = sqrt(dx * dx + dy * dy);
+          
+          if (len > 1.0) {
+            c.x += (dx / len) * stats.movement * dt * 6.0;
+            c.y += (dy / len) * stats.movement * dt * 6.0;
+            enforceUnitBoundaries(c);
+          }
+          return;
+        }
+      }
+
       // Find nearest channel Y center
       double minDist = 99999.0;
       double nearestLaneY = _map.laneCenters.first;
@@ -1442,9 +1586,17 @@ class CombatManager extends ChangeNotifier {
     final targetRadius = target.npc.combatStats?.radius ?? 1.0;
 
     if (distToTarget - myRadius - targetRadius > rangeInFeet) {
-      // Approach target, prioritizing combat channels if path is obstructed by walls!
+      // Approach target OR follow leader in tight formation
       double tx = target.x;
       double ty = target.y;
+
+      if (c.leaderId != null) {
+        final leader = _combatants.firstWhereOrNull((other) => other.npc.id == c.leaderId && !other.isDead);
+        if (leader != null) {
+          tx = leader.x + (leader.side == CombatSide.player ? c.formationOffset!.dx : -c.formationOffset!.dx);
+          ty = (leader.y + c.formationOffset!.dy).clamp(2.0, _map.height - 2.0);
+        }
+      }
 
       if (isPathObstructed(c.x, c.y, target.x, target.y)) {
         double minDist = 99999.0;

@@ -26,6 +26,8 @@ import '../widgets/character_blob_renderer.dart';
 import '../../models/combat_stats.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import '../../services/save_service.dart';
+import '../widgets/options_dialog.dart';
 
 class CombatScreen extends StatefulWidget {
   const CombatScreen({super.key});
@@ -41,6 +43,35 @@ class _CombatScreenState extends State<CombatScreen>
   GameSpeed? _previousSpeed;
   int? _selectedCardIndex;
   DateTime? _lastTickTime;
+
+  // Real-Time Drag & Placement Preview State
+  NPC? _previewNpc;
+  Offset? _previewLocalPosition;
+
+  void updateDragPreview(NPC npc, Offset globalPosition) {
+    if (globalPosition == Offset.zero) {
+      setState(() {
+        _previewNpc = npc;
+        _previewLocalPosition = null;
+      });
+      return;
+    }
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final localPos = renderBox.globalToLocal(globalPosition);
+      setState(() {
+        _previewNpc = npc;
+        _previewLocalPosition = localPos;
+      });
+    }
+  }
+
+  void clearDragPreview() {
+    setState(() {
+      _previewNpc = null;
+      _previewLocalPosition = null;
+    });
+  }
 
   // Custom Top-Right Notifications State
   final List<_CombatNotification> _activeNotifications = [];
@@ -402,64 +433,87 @@ class _CombatScreenState extends State<CombatScreen>
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: GestureDetector(
-                  onScaleStart: (details) {
-                    _keyboardFocusNode.requestFocus();
-                    _dragStartZoom = _combatManager.zoomFactor;
-                  },
-                  onScaleUpdate: (details) {
-                    if (details.scale != 1.0) {
-                      _combatManager.zoomFactor = _dragStartZoom * details.scale;
-                    }
-                    final screenSize = MediaQuery.of(context).size;
-                    final dx = -details.focalPointDelta.dx * (100.0 / screenSize.width) / _combatManager.zoomFactor;
-                    final dy = -details.focalPointDelta.dy * (75.0 / screenSize.height) / _combatManager.zoomFactor;
-                    _combatManager.scrollField(dx, dy);
-                  },
-                   onTapUp: (details) {
-                    _keyboardFocusNode.requestFocus();
-                    final gameState = Provider.of<GameState>(context, listen: false);
-                    final localPosition = details.localPosition;
-                    final screenSize = MediaQuery.of(context).size;
-                    final projection = _CombatProjection(
-                      viewSize: screenSize,
-                      fieldScroll: _combatManager.fieldScroll,
-                      yFieldScroll: _combatManager.yFieldScroll,
-                      zoomFactor: _combatManager.zoomFactor,
-                    );
-                    final targetWorldOffset = projection.unproject(localPosition);
-
-                    // 1. Attempt to spawn a card selected via hotkey
+                child: MouseRegion(
+                  onHover: (event) {
                     if (_selectedCardIndex != null && _selectedCardIndex! < _combatManager.hand.length) {
-                      final double clampedY = targetWorldOffset.dy.clamp(0.0, _combatManager.map.height);
-                      final npc = _combatManager.hand[_selectedCardIndex!];
-                      final success = _combatManager.spawnUnit(
-                        npc,
-                        CombatSide.player,
-                        x: targetWorldOffset.dx,
-                        y: clampedY,
-                      );
-                      
-                      if (success) {
-                        _showNotification('${npc.name} deployed!', Colors.blue.shade800, duration: const Duration(seconds: 1));
-                        _selectedCardIndex = null; // Clear selection
-                      } else {
-                        _showNotification(
-                          'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
-                          Colors.red.shade900,
-                          duration: const Duration(seconds: 2),
-                        );
-                        _selectedCardIndex = null; // Clear selection
-                      }
-                      return; // Intercept click
-                    }
-
-                    // 2. Otherwise, regular waypoint click player movement
-                    if (gameState.combatControlMode == 'click') {
-                      _combatManager.movePlayer(targetWorldOffset.dx, targetWorldOffset.dy);
+                      setState(() {
+                        _previewNpc = _combatManager.hand[_selectedCardIndex!];
+                        _previewLocalPosition = event.localPosition;
+                      });
+                    } else if (_previewNpc != null && _selectedCardIndex == null) {
+                      setState(() {
+                        _previewNpc = null;
+                        _previewLocalPosition = null;
+                      });
                     }
                   },
-                  child: _BattlefieldViewport(zoomFactor: _combatManager.zoomFactor),
+                  child: GestureDetector(
+                    onScaleStart: (details) {
+                      _keyboardFocusNode.requestFocus();
+                      _dragStartZoom = _combatManager.zoomFactor;
+                    },
+                    onScaleUpdate: (details) {
+                      if (details.scale != 1.0) {
+                        _combatManager.zoomFactor = _dragStartZoom * details.scale;
+                      }
+                      final screenSize = MediaQuery.of(context).size;
+                      final dx = -details.focalPointDelta.dx * (100.0 / screenSize.width) / _combatManager.zoomFactor;
+                      final dy = -details.focalPointDelta.dy * (75.0 / screenSize.height) / _combatManager.zoomFactor;
+                      _combatManager.scrollField(dx, dy);
+                    },
+                     onTapUp: (details) {
+                      _keyboardFocusNode.requestFocus();
+                      final gameState = Provider.of<GameState>(context, listen: false);
+                      final localPosition = details.localPosition;
+                      final screenSize = MediaQuery.of(context).size;
+                      final projection = _CombatProjection(
+                        viewSize: screenSize,
+                        fieldScroll: _combatManager.fieldScroll,
+                        yFieldScroll: _combatManager.yFieldScroll,
+                        zoomFactor: _combatManager.zoomFactor,
+                      );
+                      final targetWorldOffset = projection.unproject(localPosition);
+
+                      // 1. Attempt to spawn a card selected via hotkey
+                      if (_selectedCardIndex != null && _selectedCardIndex! < _combatManager.hand.length) {
+                        final double clampedY = targetWorldOffset.dy.clamp(0.0, _combatManager.map.height);
+                        final npc = _combatManager.hand[_selectedCardIndex!];
+                        final success = _combatManager.spawnUnit(
+                          npc,
+                          CombatSide.player,
+                          x: targetWorldOffset.dx,
+                          y: clampedY,
+                        );
+                        
+                        if (success) {
+                          _showNotification('${npc.name} deployed!', Colors.blue.shade800, duration: const Duration(seconds: 1));
+                          _selectedCardIndex = null; // Clear selection
+                          _previewNpc = null; // Clear preview
+                          _previewLocalPosition = null;
+                        } else {
+                          _showNotification(
+                            'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
+                            Colors.red.shade900,
+                            duration: const Duration(seconds: 2),
+                          );
+                          _selectedCardIndex = null; // Clear selection
+                          _previewNpc = null; // Clear preview
+                          _previewLocalPosition = null;
+                        }
+                        return; // Intercept click
+                      }
+
+                      // 2. Otherwise, regular waypoint click player movement
+                      if (gameState.combatControlMode == 'click') {
+                        _combatManager.movePlayer(targetWorldOffset.dx, targetWorldOffset.dy);
+                      }
+                    },
+                    child: _BattlefieldViewport(
+                      zoomFactor: _combatManager.zoomFactor,
+                      previewNpc: _previewNpc,
+                      previewLocalPosition: _previewLocalPosition,
+                    ),
+                  ),
                 ),
               ),
               const _CombatTimerWidget(),
@@ -470,6 +524,15 @@ class _CombatScreenState extends State<CombatScreen>
                 top: 16,
                 left: 16,
                 child: _TacticalMinimap(),
+              ),
+
+              // Circular Menu Button in top-right
+              Positioned(
+                top: 16,
+                right: 20,
+                child: _CombatMenuButton(
+                  showMenuDialog: () => _showCombatMenuDialog(context),
+                ),
               ),
               
               // Transparent unmarked movement pad in bottom-left
@@ -867,8 +930,14 @@ class _DefeatButton extends StatelessWidget {
 
 class _BattlefieldViewport extends StatelessWidget {
   final double zoomFactor;
+  final NPC? previewNpc;
+  final Offset? previewLocalPosition;
 
-  const _BattlefieldViewport({required this.zoomFactor});
+  const _BattlefieldViewport({
+    required this.zoomFactor,
+    this.previewNpc,
+    this.previewLocalPosition,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -925,6 +994,19 @@ class _BattlefieldViewport extends StatelessWidget {
                   ),
                 ),
               ),
+
+              // Real-Time Drag & Placement Preview Indicator Overlay
+              if (previewNpc != null && previewLocalPosition != null)
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _PlacementIndicatorPainter(
+                      npc: previewNpc!,
+                      screenPos: previewLocalPosition!,
+                      projection: projection,
+                      manager: manager,
+                    ),
+                  ),
+                ),
 
                 // Units, Cauldrons, Walls & Special Buttons (Depth-Sorted)
                 ...(() {
@@ -1076,7 +1158,7 @@ class _CombatantSprite extends StatelessWidget {
       }
     }
     final stats = combatant.npc.combatStats!;
-    final healthPercent = stats.health / stats.maxHealth;
+    final healthPercent = (stats.health / stats.maxHealth).clamp(0.0, 1.0);
     final double opacity = combatant.isDead ? 0.3 : 1.0;
     // Scale based on Y depth
     final double scale =
@@ -1708,10 +1790,18 @@ class _UnitCardState extends State<_UnitCard> {
               child: CharacterBlobRenderer(npc: widget.npc, size: 20, showSpeechBubble: false),
             ),
           ),
-          onDragStarted: () => setState(() => _isExpanded = false),
-          onDragEnd: (details) {
-            // Capture parent state before unmounting/deactivating context
+          onDragStarted: () {
+            setState(() => _isExpanded = false);
             final screenState = context.findAncestorStateOfType<_CombatScreenState>();
+            screenState?.updateDragPreview(widget.npc, Offset.zero);
+          },
+          onDragUpdate: (details) {
+            final screenState = context.findAncestorStateOfType<_CombatScreenState>();
+            screenState?.updateDragPreview(widget.npc, details.globalPosition);
+          },
+          onDragEnd: (details) {
+            final screenState = context.findAncestorStateOfType<_CombatScreenState>();
+            screenState?.clearDragPreview();
 
             final screenSize = MediaQuery.of(context).size;
             final projection = _CombatProjection(
@@ -3093,4 +3183,319 @@ class _TrackpadBracketPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _PlacementIndicatorPainter extends CustomPainter {
+  final NPC npc;
+  final Offset screenPos;
+  final _CombatProjection projection;
+  final CombatManager manager;
+
+  _PlacementIndicatorPainter({
+    required this.npc,
+    required this.screenPos,
+    required this.projection,
+    required this.manager,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stats = npc.combatStats;
+    if (stats == null) return;
+
+    final worldPos = projection.unproject(screenPos);
+    final double worldX = worldPos.dx;
+    final double worldY = worldPos.dy.clamp(0.0, manager.map.height);
+
+    // Determine validation state
+    bool isValid = false;
+    final isSupport = npc.name.contains('Barrage') || npc.name.contains('Artillery') || npc.name.contains('Gas') || npc.name.contains('Tear') || npc.name.contains('Caltrops') || npc.name.contains('Totem') || stats.unitType == UnitType.support;
+    if (isSupport) {
+      isValid = _isValidSupportPlacement(manager, npc.name, worldX, worldY);
+    } else {
+      isValid = _isValidPlacement(manager, worldX, worldY);
+    }
+
+    final paint = Paint()
+      ..color = isValid ? Colors.green.withValues(alpha: 0.35) : Colors.red.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
+
+    final strokePaint = Paint()
+      ..color = isValid ? Colors.green : Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    if (isSupport) {
+      // Render support area of effect shape
+      if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
+        // Long rectangle (1/3 of lane length, lane width)
+        final rectWidth = manager.map.width / 3.0;
+        final rectHeight = 15.0;
+        final center = projection.project(worldX, worldY);
+        final rect = Rect.fromCenter(center: center, width: rectWidth * projection.zoomFactor, height: rectHeight * projection.zoomFactor);
+        canvas.drawRect(rect, paint);
+        canvas.drawRect(rect, strokePaint);
+      } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
+        // Shaded circle
+        final center = projection.project(worldX, worldY);
+        final radius = 15.0 * projection.zoomFactor;
+        canvas.drawCircle(center, radius, paint);
+        canvas.drawCircle(center, radius, strokePaint);
+      } else if (npc.name.contains('Caltrops')) {
+        // Square on player character position
+        final alphonse = manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
+        if (alphonse != null) {
+          final center = projection.project(alphonse.x, alphonse.y);
+          final sizeVal = 15.0 * projection.zoomFactor;
+          final rect = Rect.fromCenter(center: center, width: sizeVal, height: sizeVal);
+          canvas.drawRect(rect, paint);
+          canvas.drawRect(rect, strokePaint);
+        }
+      } else {
+        // Default circular support shape (Totems, etc.)
+        final center = projection.project(worldX, worldY);
+        final radius = 15.0 * projection.zoomFactor;
+        canvas.drawCircle(center, radius, paint);
+        canvas.drawCircle(center, radius, strokePaint);
+      }
+    } else {
+      // Render troop squad bases
+      final double myRadius = stats.radius * projection.zoomFactor;
+      
+      // 1. Leader base
+      final leaderCenter = projection.project(worldX, worldY);
+      canvas.drawCircle(leaderCenter, myRadius, paint);
+      canvas.drawCircle(leaderCenter, myRadius, strokePaint);
+
+      // 2. Followers bases
+      if (stats.unitCount > 1) {
+        final followersCount = stats.unitCount - 1;
+        for (int i = 0; i < followersCount; i++) {
+          final offset = _getFormationOffsetHelper(i);
+          final followerWorldX = worldX + offset.dx;
+          final followerWorldY = (worldY + offset.dy).clamp(2.0, manager.map.height - 2.0);
+          final followerCenter = projection.project(followerWorldX, followerWorldY);
+          canvas.drawCircle(followerCenter, myRadius, paint);
+          canvas.drawCircle(followerCenter, myRadius, strokePaint);
+        }
+      }
+    }
+  }
+
+  Offset _getFormationOffsetHelper(int index) {
+    switch (index) {
+      case 0: return const Offset(-2.5, -2.5);
+      case 1: return const Offset(-2.5, 2.5);
+      case 2: return const Offset(-5.0, -5.0);
+      case 3: return const Offset(-5.0, 5.0);
+      case 4: return const Offset(-7.5, 0.0);
+      case 5: return const Offset(-7.5, -2.5);
+      case 6: return const Offset(-7.5, 2.5);
+      case 7: return const Offset(-10.0, 0.0);
+      default: return Offset(-2.5 * (index ~/ 2 + 1).toDouble(), (index % 2 == 0 ? -2.5 : 2.5));
+    }
+  }
+
+  bool _isValidPlacement(CombatManager manager, double worldX, double worldY) {
+    if (worldX > 0.8 * manager.map.width) return false;
+    final double startingZoneLimit = 0.2 * manager.map.width;
+    if (worldX > startingZoneLimit) {
+      int targetLaneIdx = -1;
+      for (int i = 0; i < manager.map.laneCenters.length; i++) {
+        if ((worldY - manager.map.laneCenters[i]).abs() <= 18.0) {
+          targetLaneIdx = i;
+          break;
+        }
+      }
+      if (targetLaneIdx == -1) return false;
+
+      double maxPlayerXOnLane = 0.0;
+      for (final c in manager.combatants) {
+        if (c.side == CombatSide.player && !c.isDead && !c.isTower) {
+          if ((c.y - manager.map.laneCenters[targetLaneIdx]).abs() <= 18.0) {
+            maxPlayerXOnLane = max(maxPlayerXOnLane, c.x);
+          }
+        }
+      }
+      if (worldX > maxPlayerXOnLane) return false;
+    }
+    return true;
+  }
+
+  bool _isValidSupportPlacement(CombatManager manager, String cardName, double worldX, double worldY) {
+    final alphonse = manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
+    if (alphonse == null) return false;
+
+    if (cardName.contains('Barrage') || cardName.contains('Artillery')) {
+      if (worldX > 0.8 * manager.map.width) {
+        final hasPresence = manager.combatants.any((c) => c.side == CombatSide.player && !c.isDead && c.x >= 0.7 * manager.map.width);
+        if (!hasPresence) return false;
+      }
+      return true;
+    } else if (cardName.contains('Gas') || cardName.contains('Tear')) {
+      final dist = sqrt(pow(worldX - alphonse.x, 2) + pow(worldY - alphonse.y, 2));
+      return dist <= 0.1 * manager.map.width;
+    } else if (cardName.contains('Caltrops')) {
+      final dist = sqrt(pow(worldX - alphonse.x, 2) + pow(worldY - alphonse.y, 2));
+      return dist <= 5.0;
+    } else if (cardName.contains('Totem') || cardName.contains('Vampiric')) {
+      return _isValidPlacement(manager, worldX, worldY);
+    }
+    return true;
+  }
+
+  @override
+  bool shouldRepaint(covariant _PlacementIndicatorPainter oldDelegate) {
+    return oldDelegate.npc.id != npc.id || oldDelegate.screenPos != screenPos;
+  }
+}
+
+class _CombatMenuButton extends StatelessWidget {
+  final VoidCallback showMenuDialog;
+
+  const _CombatMenuButton({required this.showMenuDialog});
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: showMenuDialog,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.85),
+            border: Border.all(
+              color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+            shape: BoxShape.circle,
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black45,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              )
+            ],
+          ),
+          child: const Icon(
+            Icons.settings,
+            color: Color(0xFFE5D5B0),
+            size: 16,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _showCombatMenuDialog(BuildContext context) {
+  final gameState = Provider.of<GameState>(context, listen: false);
+  final screenState = context.findAncestorStateOfType<_CombatScreenState>();
+  showDialog(
+    context: context,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: const Color(0xFF1A1612),
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: Color(0xFFC4B89B), width: 1.5),
+        ),
+        child: Container(
+          width: 300,
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'COMBAT MENU',
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 20),
+              _buildMenuButton(
+                context,
+                'LOAD GAME',
+                onPressed: () async {
+                  final data = await SaveService.loadGame(slot: 1);
+                  if (data != null) {
+                    gameState.loadFromJson(data);
+                    Navigator.of(context).pop(); // close dialog
+                    Navigator.of(context).pop(); // close combat screen
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMenuButton(
+                context,
+                'ATTEMPT TO FLEE',
+                onPressed: () {
+                  Navigator.of(context).pop(); // close dialog
+                  final success = Random().nextDouble() < 0.5;
+                  if (success) {
+                    gameState.clearEncounterState();
+                    Navigator.of(context).pop(); // close combat screen
+                    screenState?._showNotification('FLEED TO SAFETY', Colors.green.shade800);
+                  } else {
+                    screenState?._showNotification('FLEE ATTEMPT FAILED! THE ENEMY PURSUES!', Colors.red.shade900);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMenuButton(
+                context,
+                'GAME OPTIONS',
+                onPressed: () {
+                  Navigator.of(context).pop(); // close dialog
+                  showDialog(
+                    context: context,
+                    builder: (context) => const OptionsDialog(),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMenuButton(
+                context,
+                'QUIT TO MAIN MENU',
+                onPressed: () {
+                  Navigator.of(context).pop(); // close dialog
+                  gameState.clearEncounterState();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildMenuButton(BuildContext context, String label, {required VoidCallback onPressed}) {
+  return SizedBox(
+    width: double.infinity,
+    child: OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFE5D5B0),
+        side: const BorderSide(color: Color(0xFFC4B89B)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: GoogleFonts.outfit(
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+          fontSize: 12,
+        ),
+      ),
+    ),
+  );
 }

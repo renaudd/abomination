@@ -16,6 +16,36 @@ import 'package:flutter/foundation.dart';
 
 enum AbilityType { horn, special, trait, knell }
 
+enum UnitType { squad, vehicle, support }
+
+enum TargetingRule {
+  all,
+  towersOnly,
+  enemyCharacterOnly,
+  squadsOnly,
+  vehiclesOnly,
+  nonTowers,
+}
+
+enum CombatTrait {
+  none,
+  magicImmune,
+  fireVulnerable,
+  constantHeal,
+}
+
+enum DeathknellEffect {
+  none,
+  explosion,
+  mindControl,
+}
+
+enum BattlehornEffect {
+  none,
+  charge,
+  heal,
+}
+
 @immutable
 class CombatStats {
   final double attack;
@@ -32,6 +62,21 @@ class CombatStats {
   final double radius; // Physics radius for collision
   final String? damageFormula; // e.g. "4d6+2"
 
+  // Regiment Overhaul Fields
+  final UnitType unitType;
+  final int unitCount;
+  final double rangedDamage;
+  final double rangedRange;
+  final double rangedAttackSpeed;
+  final double meleeDamage;
+  final double meleeRange;
+  final double meleeAttackSpeed;
+  final double deploymentTime;
+  final TargetingRule targetingRule;
+  final CombatTrait trait;
+  final DeathknellEffect deathknell;
+  final BattlehornEffect battlehorn;
+
   const CombatStats({
     required this.attack,
     required this.health,
@@ -40,12 +85,25 @@ class CombatStats {
     required this.movement,
     required this.distance,
     this.defense = 0,
-    required this.accuracy,
+    this.accuracy = 0.85,
     required this.cost,
     this.isFlying = false,
     this.swarmSize = 0,
     this.radius = 1.5,
     this.damageFormula,
+    this.unitType = UnitType.squad,
+    this.unitCount = 1,
+    this.rangedDamage = 0.0,
+    this.rangedRange = 0.0,
+    this.rangedAttackSpeed = 1.0,
+    this.meleeDamage = 0.0,
+    this.meleeRange = 1.0,
+    this.meleeAttackSpeed = 1.0,
+    this.deploymentTime = 0.0,
+    this.targetingRule = TargetingRule.all,
+    this.trait = CombatTrait.none,
+    this.deathknell = DeathknellEffect.none,
+    this.battlehorn = BattlehornEffect.none,
   });
 
   CombatStats copyWith({
@@ -62,6 +120,19 @@ class CombatStats {
     int? swarmSize,
     double? radius,
     String? damageFormula,
+    UnitType? unitType,
+    int? unitCount,
+    double? rangedDamage,
+    double? rangedRange,
+    double? rangedAttackSpeed,
+    double? meleeDamage,
+    double? meleeRange,
+    double? meleeAttackSpeed,
+    double? deploymentTime,
+    TargetingRule? targetingRule,
+    CombatTrait? trait,
+    DeathknellEffect? deathknell,
+    BattlehornEffect? battlehorn,
   }) {
     return CombatStats(
       attack: attack ?? this.attack,
@@ -77,6 +148,19 @@ class CombatStats {
       swarmSize: swarmSize ?? this.swarmSize,
       radius: radius ?? this.radius,
       damageFormula: damageFormula ?? this.damageFormula,
+      unitType: unitType ?? this.unitType,
+      unitCount: unitCount ?? this.unitCount,
+      rangedDamage: rangedDamage ?? this.rangedDamage,
+      rangedRange: rangedRange ?? this.rangedRange,
+      rangedAttackSpeed: rangedAttackSpeed ?? this.rangedAttackSpeed,
+      meleeDamage: meleeDamage ?? this.meleeDamage,
+      meleeRange: meleeRange ?? this.meleeRange,
+      meleeAttackSpeed: meleeAttackSpeed ?? this.meleeAttackSpeed,
+      deploymentTime: deploymentTime ?? this.deploymentTime,
+      targetingRule: targetingRule ?? this.targetingRule,
+      trait: trait ?? this.trait,
+      deathknell: deathknell ?? this.deathknell,
+      battlehorn: battlehorn ?? this.battlehorn,
     );
   }
 
@@ -94,6 +178,19 @@ class CombatStats {
     'swarmSize': swarmSize,
     'radius': radius,
     'damageFormula': damageFormula,
+    'unitType': unitType.name,
+    'unitCount': unitCount,
+    'rangedDamage': rangedDamage,
+    'rangedRange': rangedRange,
+    'rangedAttackSpeed': rangedAttackSpeed,
+    'meleeDamage': meleeDamage,
+    'meleeRange': meleeRange,
+    'meleeAttackSpeed': meleeAttackSpeed,
+    'deploymentTime': deploymentTime,
+    'targetingRule': targetingRule.name,
+    'trait': trait.name,
+    'deathknell': deathknell.name,
+    'battlehorn': battlehorn.name,
   };
 
   factory CombatStats.fromJson(Map<String, dynamic> json) => CombatStats(
@@ -110,6 +207,19 @@ class CombatStats {
     swarmSize: json['swarmSize'] as int? ?? 0,
     radius: (json['radius'] as num? ?? 1.5).toDouble(),
     damageFormula: json['damageFormula'] as String?,
+    unitType: json['unitType'] != null ? UnitType.values.byName(json['unitType'] as String) : UnitType.squad,
+    unitCount: json['unitCount'] as int? ?? 1,
+    rangedDamage: (json['rangedDamage'] as num? ?? 0.0).toDouble(),
+    rangedRange: (json['rangedRange'] as num? ?? 0.0).toDouble(),
+    rangedAttackSpeed: (json['rangedAttackSpeed'] as num? ?? 1.0).toDouble(),
+    meleeDamage: (json['meleeDamage'] as num? ?? 0.0).toDouble(),
+    meleeRange: (json['meleeRange'] as num? ?? 1.0).toDouble(),
+    meleeAttackSpeed: (json['meleeAttackSpeed'] as num? ?? 1.0).toDouble(),
+    deploymentTime: (json['deploymentTime'] as num? ?? 0.0).toDouble(),
+    targetingRule: json['targetingRule'] != null ? TargetingRule.values.byName(json['targetingRule'] as String) : TargetingRule.all,
+    trait: json['trait'] != null ? CombatTrait.values.byName(json['trait'] as String) : CombatTrait.none,
+    deathknell: json['deathknell'] != null ? DeathknellEffect.values.byName(json['deathknell'] as String) : DeathknellEffect.none,
+    battlehorn: json['battlehorn'] != null ? BattlehornEffect.values.byName(json['battlehorn'] as String) : BattlehornEffect.none,
   );
 }
 

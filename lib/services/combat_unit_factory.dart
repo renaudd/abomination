@@ -14,7 +14,6 @@
 
 import 'package:flutter/material.dart';
 import '../models/npc.dart';
-
 import '../models/combat_stats.dart';
 import '../models/schedule.dart';
 import '../models/diet.dart';
@@ -47,10 +46,12 @@ class CombatUnitFactory {
         maxHealth: 300,
         speed: 1.0,
         movement: 1.0,
-        distance: 7.5, // Ranged (was 5.0)
+        distance: 7.5,
         defense: 0,
         accuracy: 0.85,
         cost: 0,
+        unitType: UnitType.squad,
+        unitCount: 1,
       ),
       abilities: [
         const Ability(
@@ -63,7 +64,7 @@ class CombatUnitFactory {
             'buff_speed': 1.0,
             'duration': 10.0,
             'range': 15.0,
-          }, // Buffed speed and duration
+          },
         ),
       ],
     );
@@ -72,17 +73,22 @@ class CombatUnitFactory {
   static NPC createFlaubert() {
     return NPC.initialButler().copyWith(
       combatStats: const CombatStats(
-        attack: 100, // Heavy melee hitter
-        health: 450, // Sturdy
-        maxHealth: 450,
-        speed: 1.5, // Slow attack
-        movement: 0.8,
-        distance: 1.8,
-        defense: 5,
-        accuracy: 0.85,
-        cost: 6, // Elite cost
-        radius: 3.5,
-        damageFormula: "90-110",
+        attack: 25,
+        health: 180,
+        maxHealth: 180,
+        speed: 1.2,
+        movement: 1.0,
+        distance: 8.0,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        rangedDamage: 30,
+        rangedRange: 8.0,
+        rangedAttackSpeed: 1.5,
+        meleeDamage: 25,
+        meleeRange: 1.2,
+        meleeAttackSpeed: 1.2,
+        radius: 1.5,
       ),
       abilities: [
         const Ability(
@@ -98,10 +104,237 @@ class CombatUnitFactory {
     );
   }
 
-  static NPC createRatsUnit() {
+  static NPC createCannoneer() {
     return NPC(
-      id: _generateId('rats_unit'),
-      name: 'Rats (x4)',
+      id: _generateId('cannoneer'),
+      name: 'Cannoneer',
+      role: 'Artillery',
+      age: 35,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 5,
+        health: 250,
+        maxHealth: 250,
+        speed: 2.0,
+        movement: 0.6,
+        distance: 15.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 90,
+        rangedRange: 15.0,
+        rangedAttackSpeed: 3.5,
+        meleeDamage: 5,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 2.0,
+        targetingRule: TargetingRule.towersOnly,
+        radius: 1.8,
+      ),
+    );
+  }
+
+  static NPC createMusketeers() {
+    return NPC(
+      id: _generateId('musketeers'),
+      name: 'Musketeers',
+      role: 'Troop',
+      age: 28,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 25,
+        health: 180,
+        maxHealth: 180,
+        speed: 1.2,
+        movement: 1.0,
+        distance: 8.0,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        rangedDamage: 30,
+        rangedRange: 8.0,
+        rangedAttackSpeed: 1.5,
+        meleeDamage: 25,
+        meleeRange: 1.2,
+        meleeAttackSpeed: 1.2,
+        radius: 1.5,
+      ),
+    );
+  }
+
+  static NPC createCavalry() {
+    return NPC(
+      id: _generateId('cavalry'),
+      name: 'Cavalry',
+      role: 'Troop',
+      age: 25,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 45,
+        health: 220,
+        maxHealth: 220,
+        speed: 1.0,
+        movement: 1.8,
+        distance: 1.5,
+        cost: 5,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 45,
+        meleeRange: 1.5,
+        meleeAttackSpeed: 1.0,
+        trait: CombatTrait.fireVulnerable,
+        targetingRule: TargetingRule.nonTowers,
+        radius: 1.8,
+      ),
+    );
+  }
+
+  static NPC createBicycleGang() {
+    return NPC(
+      id: _generateId('bicycle_gang'),
+      name: 'Bicycle Gang',
+      role: 'Troop',
+      age: 22,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 10,
+        health: 110,
+        maxHealth: 110,
+        speed: 1.0,
+        movement: 1.4,
+        distance: 6.0,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        rangedDamage: 15,
+        rangedRange: 6.0,
+        rangedAttackSpeed: 1.2,
+        meleeDamage: 10,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 1.0,
+        radius: 1.5,
+      ),
+    );
+  }
+
+  static NPC createMotorcycleGang() {
+    return NPC(
+      id: _generateId('motorcycle_gang'),
+      name: 'Motorcycle Gang',
+      role: 'Troop',
+      age: 24,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 15,
+        health: 165,
+        maxHealth: 165,
+        speed: 0.8,
+        movement: 2.2,
+        distance: 8.0,
+        cost: 5,
+        unitType: UnitType.squad,
+        unitCount: 2,
+        rangedDamage: 20,
+        rangedRange: 8.0,
+        rangedAttackSpeed: 1.0,
+        meleeDamage: 15,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 0.8,
+        deploymentTime: 2.5,
+        radius: 1.6,
+      ),
+    );
+  }
+
+  static NPC createArmoredCar() {
+    return NPC(
+      id: _generateId('armored_car'),
+      name: 'Armored Car',
+      role: 'Vehicle',
+      age: 30,
+      gender: 'Female',
+      specimenType: 'Machine',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 18,
+        health: 700,
+        maxHealth: 700,
+        speed: 0.8,
+        movement: 1.2,
+        distance: 7.0,
+        cost: 6,
+        unitType: UnitType.vehicle,
+        unitCount: 1,
+        rangedDamage: 18,
+        rangedRange: 7.0,
+        rangedAttackSpeed: 0.8,
+        radius: 2.5,
+      ),
+    );
+  }
+
+  static NPC createWoodenTank() {
+    return NPC(
+      id: _generateId('wooden_tank'),
+      name: 'Wooden Tank',
+      role: 'Vehicle',
+      age: 35,
+      gender: 'Male',
+      specimenType: 'Machine',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 110,
+        health: 850,
+        maxHealth: 850,
+        speed: 4.0,
+        movement: 0.5,
+        distance: 10.0,
+        cost: 7,
+        unitType: UnitType.vehicle,
+        unitCount: 1,
+        rangedDamage: 110,
+        rangedRange: 10.0,
+        rangedAttackSpeed: 4.0,
+        trait: CombatTrait.fireVulnerable,
+        radius: 3.0,
+      ),
+    );
+  }
+
+  static NPC createUndeadRats() {
+    return NPC(
+      id: _generateId('undead_rats'),
+      name: 'Undead Rats',
       role: 'Swarm',
       age: 1,
       gender: 'N/A',
@@ -111,117 +344,272 @@ class CombatUnitFactory {
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 30, // Low per-hit but swarm
-        health: 25, // Fragile swarm
-        maxHealth: 25,
-        speed: 0.6, // Fast bites
-        movement: 1.3, // Very fast
-        distance: 0.5,
-        defense: 0,
-        accuracy: 0.7,
+        attack: 12,
+        health: 65,
+        maxHealth: 65,
+        speed: 0.5,
+        movement: 1.2,
+        distance: 0.8,
         cost: 3,
-        radius: 1.2,
-        isFlying: true,
-        swarmSize: 4,
-        damageFormula: "28-32",
+        unitType: UnitType.squad,
+        unitCount: 4,
+        meleeDamage: 12,
+        meleeRange: 0.8,
+        meleeAttackSpeed: 0.5,
+        trait: CombatTrait.constantHeal,
+        radius: 1.0,
       ),
-      abilities: [
-        const Ability(
-          id: 'rats_plague',
-          name: 'Vermin Plague',
-          type: AbilityType.trait,
-          description:
-              'Each hit has a 20% chance to infect the target, reducing their health by 2 every second for 5s.',
-          effectData: {
-            'on_hit': true,
-            'dot': 2.0,
-            'duration': 5.0,
-            'chance': 0.2,
-          },
-        ),
-      ],
     );
   }
 
-  static NPC createWingedRat() {
+  static NPC createRats2() {
     return NPC(
-      id: _generateId('winged_rat'),
-      name: 'Winged Rat',
-      role: 'Flyer',
+      id: _generateId('rats_2'),
+      name: 'Rats 2',
+      role: 'Swarm',
       age: 1,
       gender: 'N/A',
-      specimenType: 'FlyingRat',
+      specimenType: 'Rat',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.grey.shade300,
-        hairColor: Colors.grey.shade600,
-        outfitColor: Colors.blueGrey.shade800,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 35,
-        health: 45, // Glass flyer
+        attack: 8,
+        health: 45,
         maxHealth: 45,
-        speed: 0.8,
-        movement: 1.2,
+        speed: 0.4,
+        movement: 1.5,
         distance: 0.8,
-        defense: 0,
-        accuracy: 0.8,
-        cost: 2,
-        radius: 1.8,
-        isFlying: true,
-        damageFormula: "32-38",
+        cost: 6,
+        unitType: UnitType.squad,
+        unitCount: 8,
+        meleeDamage: 8,
+        meleeRange: 0.8,
+        meleeAttackSpeed: 0.4,
+        trait: CombatTrait.fireVulnerable,
+        radius: 0.8,
       ),
-      abilities: [
-        const Ability(
-          id: 'ap_steal',
-          name: 'Knell: AP Steal',
-          type: AbilityType.knell,
-          description: 'Steal up to 1 AP from the enemy.',
-          effectData: {'steal_ap': 1.0},
-        ),
-      ],
     );
   }
 
-  static NPC createGoon() {
+  static NPC createWerewolf() {
     return NPC(
-      id: _generateId('goon'),
-      name: 'Goon',
-      role: 'Thug',
+      id: _generateId('werewolf'),
+      name: 'Werewolf',
+      role: 'Beast',
+      age: 40,
+      gender: 'Male',
+      specimenType: 'Beast',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 75,
+        health: 500,
+        maxHealth: 500,
+        speed: 0.9,
+        movement: 1.6,
+        distance: 1.5,
+        cost: 5,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 75,
+        meleeRange: 1.5,
+        meleeAttackSpeed: 0.9,
+        radius: 1.8,
+      ),
+    );
+  }
+
+  static NPC createChimera() {
+    return NPC(
+      id: _generateId('chimera'),
+      name: 'Chimera',
+      role: 'Beast',
+      age: 0,
+      gender: 'N/A',
+      specimenType: 'Beast',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 40,
+        health: 650,
+        maxHealth: 650,
+        speed: 1.2,
+        movement: 0.8,
+        distance: 5.0,
+        cost: 6,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 50,
+        rangedRange: 5.0,
+        rangedAttackSpeed: 2.0,
+        meleeDamage: 40,
+        meleeRange: 1.8,
+        meleeAttackSpeed: 1.2,
+        radius: 2.2,
+      ),
+    );
+  }
+
+  static NPC createFleshGolem() {
+    return NPC(
+      id: _generateId('flesh_golem'),
+      name: 'Flesh Golem',
+      role: 'Construct',
+      age: 0,
+      gender: 'Other',
+      specimenType: 'Construct',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 60,
+        health: 550,
+        maxHealth: 550,
+        speed: 1.4,
+        movement: 0.7,
+        distance: 1.2,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 60,
+        meleeRange: 1.2,
+        meleeAttackSpeed: 1.4,
+        trait: CombatTrait.magicImmune,
+        radius: 2.0,
+      ),
+    );
+  }
+
+  static NPC createVillagerMob() {
+    return NPC(
+      id: _generateId('villager_mob'),
+      name: 'Villager Mob',
+      role: 'Troop',
+      age: 32,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 15,
+        health: 90,
+        maxHealth: 90,
+        speed: 1.1,
+        movement: 0.9,
+        distance: 1.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 5,
+        meleeDamage: 15,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 1.1,
+        radius: 1.2,
+      ),
+    );
+  }
+
+  static NPC createSamurai() {
+    return NPC(
+      id: _generateId('samurai'),
+      name: 'Samurai',
+      role: 'Troop',
+      age: 29,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 45,
+        health: 160,
+        maxHealth: 160,
+        speed: 0.8,
+        movement: 1.2,
+        distance: 1.2,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 45,
+        meleeRange: 1.2,
+        meleeAttackSpeed: 0.8,
+        radius: 1.4,
+      ),
+    );
+  }
+
+  static NPC createMercenaries() {
+    return NPC(
+      id: _generateId('mercenaries'),
+      name: 'Mercenaries',
+      role: 'Troop',
       age: 30,
       gender: 'Male',
       specimenType: 'Human',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.brown.shade800,
-        hairStyle: HairStyle.short,
-        hairColor: Colors.black87,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 50,
-        health: 220,
-        maxHealth: 220,
+        attack: 12,
+        health: 120,
+        maxHealth: 120,
         speed: 1.2,
-        movement: 0.8,
-        distance: 0.6,
-        defense: 2,
-        accuracy: 0.8,
-        cost: 3, // Increased cost for durability
-        damageFormula: "45-55",
+        movement: 1.0,
+        distance: 7.0,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 4,
+        rangedDamage: 20,
+        rangedRange: 7.0,
+        rangedAttackSpeed: 1.4,
+        meleeDamage: 12,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 1.2,
+        radius: 1.4,
       ),
-      abilities: [
-        const Ability(
-          id: 'horn_heal',
-          name: 'Horn: Heal',
-          type: AbilityType.horn,
-          description: 'Heal nearest friendly unit by 100.',
-          effectData: {'heal': 100, 'range': 2.0},
-        ),
-      ],
+    );
+  }
+
+  static NPC createCommandos() {
+    return NPC(
+      id: _generateId('commandos'),
+      name: 'Commandos',
+      role: 'Troop',
+      age: 27,
+      gender: 'Female',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 35,
+        health: 150,
+        maxHealth: 150,
+        speed: 0.7,
+        movement: 1.3,
+        distance: 4.0,
+        cost: 5,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        rangedDamage: 40,
+        rangedRange: 4.0,
+        rangedAttackSpeed: 0.7,
+        meleeDamage: 35,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 0.7,
+        radius: 1.4,
+      ),
     );
   }
 
@@ -229,689 +617,474 @@ class CombatUnitFactory {
     return NPC(
       id: _generateId('sniper'),
       name: 'Sniper',
-      role: 'Sharpshooter',
+      role: 'Troop',
       age: 28,
-      gender: 'Female',
-      specimenType: 'Human',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.indigo.shade900,
-        hairStyle: HairStyle.long,
-        hairColor: Colors.black,
-      ),
-      combatStats: const CombatStats(
-        attack: 85,
-        health: 140,
-        maxHealth: 140,
-        speed: 2.8, // Very slow fire rate
-        movement: 0.6,
-        distance: 12.0, // Significant range
-        defense: 0,
-        accuracy: 0.9,
-        cost: 5, // High value target
-        damageFormula: "80-90",
-      ),
-      abilities: [
-        const Ability(
-          id: 'accuracy_boost',
-          name: 'Trait: Focus',
-          type: AbilityType.trait,
-          description:
-              'Increase accuracy by 0.05 after each successful attack.',
-          effectData: {'accuracy_inc': 0.05, 'on_hit': true},
-        ),
-      ],
-    );
-  }
-
-  static NPC createBully() {
-    return NPC(
-      id: _generateId('bully'),
-      name: 'Bully',
-      role: 'Bruiser',
-      age: 22,
       gender: 'Male',
       specimenType: 'Human',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.orange.shade700,
-        outfitColor: Colors.blueGrey.shade800,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 65,
-        health: 350,
-        maxHealth: 350,
-        speed: 1.6,
-        movement: 0.7,
-        distance: 1.8,
-        defense: 8,
-        accuracy: 0.7,
-        cost: 6, // Heavy tank
-        radius: 4.5,
-        damageFormula: "60-70",
+        attack: 0,
+        health: 90,
+        maxHealth: 90,
+        speed: 3.0,
+        movement: 0.8,
+        distance: 18.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 85,
+        rangedRange: 18.0,
+        rangedAttackSpeed: 3.0,
+        targetingRule: TargetingRule.nonTowers,
+        radius: 1.4,
       ),
-      abilities: [
-        const Ability(
-          id: 'bully_shove',
-          name: 'Intimidating Shove',
-          type: AbilityType.trait,
-          description: 'Attacks have a 30% chance to knock enemies back.',
-          effectData: {'on_hit': true, 'knockback': 2.0, 'chance': 0.3},
-        ),
-        const Ability(
-          id: 'bully_knell',
-          name: 'Desperate Grasp',
-          type: AbilityType.knell,
-          description: 'On death, deals 20 damage to the nearest enemy.',
-          effectData: {'damage': 20.0, 'range': 3.0},
-        ),
-      ],
     );
   }
 
-  static NPC createBatsUnit() {
+  static NPC createWildFoxes() {
     return NPC(
-      id: _generateId('bats_unit'),
-      name: 'Bats (x3)',
-      role: 'Swarm',
-      age: 1,
+      id: _generateId('wild_foxes'),
+      name: 'Wild Foxes',
+      role: 'Beast',
+      age: 2,
       gender: 'N/A',
-      specimenType: 'Bat',
+      specimenType: 'Fox',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 40,
-        health: 30,
-        maxHealth: 30,
-        speed: 0.8,
-        movement: 1.1,
-        distance: 0.125, // Near zero but slightly above (was 0.1)
-        defense: 0,
-        accuracy: 0.9,
-        cost: 4,
-        radius: 1.5,
-        isFlying: true,
-        swarmSize: 3,
-        damageFormula: "38-42",
+        attack: 8,
+        health: 45,
+        maxHealth: 45,
+        speed: 0.4,
+        movement: 1.6,
+        distance: 0.6,
+        cost: 2,
+        unitType: UnitType.squad,
+        unitCount: 4,
+        meleeDamage: 8,
+        meleeRange: 0.6,
+        meleeAttackSpeed: 0.4,
+        trait: CombatTrait.fireVulnerable,
+        radius: 0.9,
       ),
-      abilities: [
-        const Ability(
-          id: 'freeze_line',
-          name: 'Special: Freeze Line',
-          type: AbilityType.special,
-          description:
-              'Freeze enemies in a rectangle toward furthest foe for 4s.',
-          chargeTime: 8.0,
-          effectData: {'freeze_duration': 2.5, 'shape': 'line'},
-        ),
-      ],
     );
   }
 
-  static NPC createMilitia() {
+  static NPC createWildWolves() {
     return NPC(
-      id: _generateId('militia'),
-      name: 'Militia',
-      role: 'Soldier',
+      id: _generateId('wild_wolves'),
+      name: 'Wild Wolves',
+      role: 'Beast',
+      age: 4,
+      gender: 'N/A',
+      specimenType: 'Wolf',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 20,
+        health: 90,
+        maxHealth: 90,
+        speed: 0.8,
+        movement: 1.5,
+        distance: 1.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 20,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 0.8,
+        radius: 1.2,
+      ),
+    );
+  }
+
+  static NPC createWildBears() {
+    return NPC(
+      id: _generateId('wild_bears'),
+      name: 'Wild Bears',
+      role: 'Beast',
+      age: 6,
+      gender: 'N/A',
+      specimenType: 'Bear',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 55,
+        health: 420,
+        maxHealth: 420,
+        speed: 1.3,
+        movement: 0.8,
+        distance: 1.4,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 55,
+        meleeRange: 1.4,
+        meleeAttackSpeed: 1.3,
+        trait: CombatTrait.constantHeal,
+        radius: 2.2,
+      ),
+    );
+  }
+
+  static NPC createBandits() {
+    return NPC(
+      id: _generateId('bandits'),
+      name: 'Bandits',
+      role: 'Troop',
+      age: 26,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 15,
+        health: 60,
+        maxHealth: 60,
+        speed: 0.9,
+        movement: 1.3,
+        distance: 1.0,
+        cost: 2,
+        unitType: UnitType.squad,
+        unitCount: 4,
+        meleeDamage: 15,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 0.9,
+        radius: 1.2,
+      ),
+    );
+  }
+
+  static NPC createThugs() {
+    return NPC(
+      id: _generateId('thugs'),
+      name: 'Thugs',
+      role: 'Troop',
+      age: 30,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 22,
+        health: 130,
+        maxHealth: 130,
+        speed: 1.2,
+        movement: 0.9,
+        distance: 1.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 22,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 1.2,
+        radius: 1.4,
+      ),
+    );
+  }
+
+  static NPC createDeserters() {
+    return NPC(
+      id: _generateId('deserters'),
+      name: 'Deserters',
+      role: 'Troop',
       age: 24,
       gender: 'Male',
       specimenType: 'Human',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.blueGrey.shade700,
-        hairColor: Colors.brown,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 45,
-        health: 120,
-        maxHealth: 120,
-        speed: 1.0,
-        movement: 0.8,
-        distance: 1.25, // Increased reach (was 1.0)
-        defense: 5,
-        accuracy: 0.85,
-        cost: 3,
-        radius: 1.8,
-        damageFormula: "40-50",
-      ),
-      abilities: [
-        const Ability(
-          id: 'militia_thrust',
-          name: 'Spear Thrust',
-          type: AbilityType.special,
-          description: 'A quick piering strike that ignores 5 defense.',
-          chargeTime: 6.0,
-          effectData: {'ignore_defense': 5.0},
-        ),
-        const Ability(
-          id: 'militia_discipline',
-          name: 'Phalanx Discipline',
-          type: AbilityType.trait,
-          description: 'Nearby allies gain +3 Defense.',
-          effectData: {'buff_defense': 3.0, 'range': 4.0},
-        ),
-      ],
-    );
-  }
-
-  static NPC createBanditCaptain() {
-    return NPC(
-      id: _generateId('captain'),
-      name: 'Bandit Captain',
-      role: 'Leader',
-      age: 42,
-      gender: 'Male',
-      specimenType: 'Human',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.red.shade900,
-        hairStyle: HairStyle.bob,
-        facialHairStyle: FacialHairStyle.beard,
-      ),
-      combatStats: const CombatStats(
-        attack: 90,
-        health: 800, // True Boss/Leader stats
-        maxHealth: 800,
-        speed: 1.4,
-        movement: 0.8,
-        distance: 2.0,
-        defense: 12,
-        accuracy: 0.95,
-        cost: 9, // Peak cost
-      ),
-      abilities: [
-        const Ability(
-          id: 'captain_strike',
-          name: 'Tactical Strike',
-          type: AbilityType.special,
-          description:
-              'Directs all allies to focus fire on the nearest enemy for 5 seconds.',
-          chargeTime: 12.0,
-          effectData: {'focus_fire': true, 'duration': 5.0},
-        ),
-        const Ability(
-          id: 'captain_rally',
-          name: 'Horn: Rally',
-          type: AbilityType.horn,
-          description: 'Nearby allies gain +25% Speed.',
-          effectData: {'buff_speed': 0.25, 'range': 10.0},
-        ),
-      ],
-    );
-  }
-
-  static NPC createPeasant() {
-    return NPC(
-      id: _generateId('peasant'),
-      name: 'Peasant',
-      role: 'Laborer',
-      age: 19,
-      gender: 'Female',
-      specimenType: 'Human',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.brown.shade400,
-        hairStyle: HairStyle.long,
-      ),
-      combatStats: const CombatStats(
-        attack: 35,
-        health: 140,
-        maxHealth: 140,
-        speed: 1.0,
-        movement: 1.1, // Fast commoner
-        distance: 1.8,
-        defense: 0,
-        accuracy: 0.8,
-        cost: 2,
-        radius: 1.5,
-      ),
-      abilities: [
-        const Ability(
-          id: 'peasant_strength',
-          name: 'Desperate Strength',
-          type: AbilityType.trait,
-          description: 'Attack increases as health decreases (up to +100%).',
-          effectData: {'scaling_attack': true},
-        ),
-      ],
-    );
-  }
-
-  static NPC createStitchedHorror() {
-    return NPC(
-      id: _generateId('stitched_horror'),
-      name: 'Stitched Horror',
-      role: 'Tank',
-      age: 0,
-      gender: 'Other',
-      specimenType: 'Abomination',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.green.shade900,
-        outfitColor: Colors.brown.shade900,
-      ),
-      combatStats: const CombatStats(
-        attack: 75,
-        health: 600, // Massive Tank
-        maxHealth: 600,
-        speed: 2.0, // Slow
-        movement: 0.6,
-        distance: 2.2,
-        defense: 20,
-        accuracy: 0.8,
-        cost: 7, // High end
-        radius: 5.5,
-      ),
-      abilities: [
-        const Ability(
-          id: 'horror_stench',
-          name: 'Grave Stench',
-          type: AbilityType.trait,
-          description: 'Passively slows nearby enemies by 20%.',
-          effectData: {'slow': 0.2, 'range': 4.0},
-        ),
-        const Ability(
-          id: 'horror_knell',
-          name: 'Rotting Burst',
-          type: AbilityType.knell,
-          description: 'Explodes on death, dealing 40 damage in a large area.',
-          effectData: {
-            'damage': 120.0,
-            'range': 8.0,
-          }, // Buffed explosion damage
-        ),
-      ],
-    );
-  }
-
-  static NPC createGalvanizedCorpse() {
-    return NPC(
-      id: _generateId('galvanized_corpse'),
-      name: 'Galvanized Corpse',
-      role: 'Glass Cannon',
-      age: 0,
-      gender: 'Other',
-      specimenType: 'Abomination',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.blueGrey.shade200,
-        outfitColor: Colors.grey.shade800,
-      ),
-      combatStats: const CombatStats(
-        attack: 95,
+        attack: 10,
         health: 80,
         maxHealth: 80,
-        speed: 0.8,
-        movement: 1.1,
-        distance: 1.875, // (was 1.5)
-        defense: 0,
-        accuracy: 0.9,
-        cost: 5,
-        radius: 2.2, // Increased from 1.2
+        speed: 1.2,
+        movement: 0.9,
+        distance: 7.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        rangedDamage: 18,
+        rangedRange: 7.0,
+        rangedAttackSpeed: 1.6,
+        meleeDamage: 10,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 1.2,
+        radius: 1.4,
       ),
-      abilities: [
-        const Ability(
-          id: 'corpse_arc',
-          name: 'Unstable Arc',
-          type: AbilityType.special,
-          description:
-              'Strikes the nearest enemy with lightning (150 dmg) which then arcs to nearby foes (80 dmg).',
-          chargeTime: 10.0,
-          effectData: {
-            'damage': 150.0,
-            'aoe_damage': 80.0,
-            'range': 8.0,
-          }, // Buffed arc damage
-        ),
-      ],
     );
   }
 
-  static NPC createChemicalSlinger() {
+  static NPC createHalberdiers() {
     return NPC(
-      id: _generateId('chemical_slinger'),
-      name: 'Chemical Slinger',
-      role: 'Artillery',
-      age: 32,
+      id: _generateId('halberdiers'),
+      name: 'Halberdiers',
+      role: 'Troop',
+      age: 26,
       gender: 'Male',
       specimenType: 'Human',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.green.shade700,
-        hairColor: Colors.black,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 55,
-        health: 120,
-        maxHealth: 120,
-        speed: 2.2,
+        attack: 25,
+        health: 110,
+        maxHealth: 110,
+        speed: 1.1,
+        movement: 1.0,
+        distance: 1.4,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 25,
+        meleeRange: 1.4,
+        meleeAttackSpeed: 1.1,
+        targetingRule: TargetingRule.nonTowers,
+        radius: 1.4,
+      ),
+    );
+  }
+
+  static NPC createPikemen() {
+    return NPC(
+      id: _generateId('pikemen'),
+      name: 'Pikemen',
+      role: 'Troop',
+      age: 25,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 20,
+        health: 105,
+        maxHealth: 105,
+        speed: 1.3,
         movement: 0.8,
-        distance: 9.0, // Ranged (was 6.0)
-        defense: 2,
-        accuracy: 0.7,
-        cost: 4,
-        radius: 1.5,
+        distance: 1.6,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 20,
+        meleeRange: 1.6,
+        meleeAttackSpeed: 1.3,
+        radius: 1.4,
       ),
-      abilities: [
-        const Ability(
-          id: 'slinger_cloud',
-          name: 'Corrosive Cloud',
-          type: AbilityType.trait,
-          description:
-              'Attacks leave a toxic cloud that deals 5 damage per second for 3s.',
-          effectData: {'on_hit': true, 'dot': 5.0, 'duration': 3.0},
-        ),
-      ],
     );
   }
 
-  static NPC createShadowCreeper() {
+  static NPC createPolicemen() {
     return NPC(
-      id: _generateId('shadow_creeper'),
-      name: 'Shadow Creeper',
-      role: 'Assassin',
-      age: 0,
-      gender: 'Other',
-      specimenType: 'Spectre',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.black54,
-        outfitColor: Colors.black,
-      ),
-      combatStats: const CombatStats(
-        attack: 60,
-        health: 60,
-        maxHealth: 60,
-        speed: 0.6,
-        movement: 1.4,
-        distance: 2.25, // Stealthy reach (was 1.8)
-        defense: 0,
-        accuracy: 0.85,
-        cost: 4,
-        radius: 2.0, // Increased from 1.0
-      ),
-      abilities: [
-        const Ability(
-          id: 'creeper_phase',
-          name: 'Phase Shift',
-          type: AbilityType.trait,
-          description: 'Passively avoids 25% of incoming physical attacks.',
-          effectData: {'evasion': 0.25},
-        ),
-      ],
-    );
-  }
-
-  static NPC createGravedigger() {
-    return NPC(
-      id: _generateId('gravedigger'),
-      name: 'Gravedigger',
-      role: 'Brawler',
-      age: 45,
+      id: _generateId('policemen'),
+      name: 'Policemen',
+      role: 'Troop',
+      age: 31,
       gender: 'Male',
       specimenType: 'Human',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.brown.shade600,
-        facialHairStyle: FacialHairStyle.beard,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 55,
-        health: 240,
-        maxHealth: 240,
-        speed: 1.5,
-        movement: 0.8,
-        distance: 1.875, // Shovel reach (was 1.5)
-        defense: 8,
-        accuracy: 0.8,
-        cost: 5,
-        radius: 1.8,
-      ),
-      abilities: [
-        const Ability(
-          id: 'digger_bury',
-          name: 'Bury Alive',
-          type: AbilityType.special,
-          description: 'Stuns current target for 3s and deals 40 damage.',
-          chargeTime: 12.0,
-          effectData: {'stun': 5.0, 'damage': 120.0}, // Buffed stun and damage
-        ),
-      ],
-    );
-  }
-
-  static NPC createPlagueMonk() {
-    return NPC(
-      id: _generateId('plague_monk'),
-      name: 'Plague Monk',
-      role: 'Support',
-      age: 50,
-      gender: 'Male',
-      specimenType: 'Human',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.purple.shade900,
-        hairStyle: HairStyle.bald,
-      ),
-      combatStats: const CombatStats(
-        attack: 40,
+        attack: 15,
         health: 150,
         maxHealth: 150,
-        speed: 1.8,
-        movement: 0.9,
-        distance: 2.5, // Ceremonial staff reach (was 2.0)
-        defense: 5,
-        accuracy: 0.75,
-        cost: 5,
-        swarmSize: 2,
-        radius: 2.5, // Increased from 1.4
+        speed: 1.0,
+        movement: 1.0,
+        distance: 5.0,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 2,
+        rangedDamage: 25,
+        rangedRange: 5.0,
+        rangedAttackSpeed: 1.5,
+        meleeDamage: 15,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 1.0,
+        radius: 1.4,
       ),
-      abilities: [
-        const Ability(
-          id: 'monk_chant',
-          name: 'Dark Chant',
-          type: AbilityType.horn,
-          description: 'Nearby allies gain +10% Speed.',
-          effectData: {'buff_speed': 0.1, 'range': 6.0},
-        ),
-      ],
     );
   }
 
-  static NPC createInquisitor() {
+  static NPC createMarksmen() {
     return NPC(
-      id: _generateId('inquisitor'),
-      name: 'Inquisitor',
-      role: 'Marksman',
-      age: 38,
+      id: _generateId('marksmen'),
+      name: 'Marksmen',
+      role: 'Troop',
+      age: 28,
       gender: 'Female',
       specimenType: 'Human',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        outfitColor: Colors.red.shade700,
-        hairStyle: HairStyle.bob,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 85,
-        health: 140,
-        maxHealth: 140,
+        attack: 0,
+        health: 85,
+        maxHealth: 85,
         speed: 2.0,
-        movement: 0.8,
-        distance: 10.5, // Long range (was 7.0)
-        defense: 5,
-        accuracy: 0.95,
-        cost: 6,
-        radius: 1.5,
-      ),
-      abilities: [
-        const Ability(
-          id: 'inq_smite',
-          name: 'Divine Smite',
-          type: AbilityType.special,
-          description:
-              'A powerful shot that deals 100 pure damage to the target.',
-          chargeTime: 15.0,
-          effectData: {
-            'damage': 250.0,
-            'ignore_defense': true,
-          }, // Buffed pure damage
-        ),
-      ],
-    );
-  }
-
-  static NPC createIronMaiden() {
-    return NPC(
-      id: _generateId('iron_maiden'),
-      name: 'Iron Maiden',
-      role: 'Juggernaut',
-      age: 0,
-      gender: 'Female',
-      specimenType: 'Construct',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.grey.shade400,
-        outfitColor: Colors.blueGrey.shade900,
-      ),
-      combatStats: const CombatStats(
-        attack: 60,
-        health: 400,
-        maxHealth: 400,
-        speed: 2.5,
-        movement: 0.5,
-        distance: 1.75, // Spiked reach (was 1.4)
-        defense: 25,
-        accuracy: 0.7,
-        cost: 6,
-        radius: 5.0, // Increased from 3.0
-      ),
-      abilities: [
-        const Ability(
-          id: 'maiden_spikes',
-          name: 'Spiked Carapace',
-          type: AbilityType.trait,
-          description:
-              'Reflects 30% of incoming physical damage back to the attacker.',
-          effectData: {'reflect': 0.3},
-        ),
-      ],
-    );
-  }
-
-  static NPC createFleshHound() {
-    return NPC(
-      id: _generateId('flesh_hound'),
-      name: 'Flesh Hound',
-      role: 'Chaser',
-      age: 0,
-      gender: 'N/A',
-      specimenType: 'Hound',
-      bodyParts: _defaultBodyParts(),
-      schedule: NPCSchedule.visitor(),
-      diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.red.shade900,
-        outfitColor: Colors.brown.shade800,
-      ),
-      combatStats: const CombatStats(
-        attack: 55,
-        health: 180, // Glass-ier chaser
-        maxHealth: 180,
-        speed: 0.6, // Very fast attacks
-        movement: 1.6, // Elite speed
-        distance: 1.5,
-        defense: 0,
-        accuracy: 0.85,
-        cost: 4,
+        movement: 0.9,
+        distance: 10.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 2,
+        rangedDamage: 35,
+        rangedRange: 10.0,
+        rangedAttackSpeed: 2.0,
+        targetingRule: TargetingRule.squadsOnly,
         radius: 1.4,
-        damageFormula: "48-60",
+      ),
+    );
+  }
+
+  static NPC createArtilleryBarrage() {
+    return NPC(
+      id: _generateId('artillery_barrage'),
+      name: 'Artillery Barrage',
+      role: 'Support',
+      age: 0,
+      gender: 'N/A',
+      specimenType: 'Tactical',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 0,
+        health: 0,
+        maxHealth: 0,
+        speed: 0,
+        movement: 0,
+        distance: 0,
+        cost: 5,
+        unitType: UnitType.support,
+        unitCount: 0,
       ),
       abilities: [
         const Ability(
-          id: 'hound_leap',
-          name: 'Frenzied Leap',
+          id: 'artillery_barrage_effect',
+          name: 'Artillery Barrage',
           type: AbilityType.special,
-          description:
-              'Leaps to the farthest enemy, dealing 30 damage and stunning for 1s.',
-          chargeTime: 8.0,
-          effectData: {'leap': true, 'damage': 30.0, 'stun': 1.0},
+          description: 'Deals 80 DPS in a long lane-width rectangle for 4 seconds.',
         ),
       ],
     );
   }
 
-  static NPC createAlchemicalGolem() {
+  static NPC createTearGasGrenade() {
     return NPC(
-      id: _generateId('alchemical_golem'),
-      name: 'Alchemical Golem',
-      role: 'Elite Tank',
+      id: _generateId('tear_gas_grenade'),
+      name: 'Tear Gas Grenade',
+      role: 'Support',
       age: 0,
       gender: 'N/A',
-      specimenType: 'Golemic',
+      specimenType: 'Tactical',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random().copyWith(
-        bodyColor: Colors.blueGrey,
-        outfitColor: Colors.indigo,
-      ),
+      appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 95,
-        health: 500,
-        maxHealth: 500,
-        speed: 1.8,
-        movement: 0.6,
-        distance: 4.5,
-        defense: 15,
-        accuracy: 0.9,
-        cost: 8, // Elite Tank
-        damageFormula: "88-102",
-        radius: 5.0,
+        attack: 0,
+        health: 0,
+        maxHealth: 0,
+        speed: 0,
+        movement: 0,
+        distance: 0,
+        cost: 3,
+        unitType: UnitType.support,
+        unitCount: 0,
       ),
       abilities: [
         const Ability(
-          id: 'golem_slam',
-          name: 'Alchemical Slam',
+          id: 'tear_gas_effect',
+          name: 'Tear Gas Grenade',
           type: AbilityType.special,
-          description:
-              'A massive area slam that deals 50 damage and knocks back nearby enemies.',
-          chargeTime: 15.0,
-          effectData: {'damage': 50.0, 'range': 8.0, 'knockback': 5.0},
+          description: 'Slows enemies by 60% and deals 15 DPS in a circular area for 8 seconds.',
         ),
+      ],
+    );
+  }
+
+  static NPC createCaltrops() {
+    return NPC(
+      id: _generateId('caltrops'),
+      name: 'Caltrops',
+      role: 'Support',
+      age: 0,
+      gender: 'N/A',
+      specimenType: 'Tactical',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 0,
+        health: 0,
+        maxHealth: 0,
+        speed: 0,
+        movement: 0,
+        distance: 0,
+        cost: 3,
+        unitType: UnitType.support,
+        unitCount: 0,
+      ),
+      abilities: [
         const Ability(
-          id: 'golem_trait',
-          name: 'Reinforced Core',
-          type: AbilityType.trait,
-          description: 'Reduces all incoming damage by 5.',
-          effectData: {'damage_reduction': 5.0},
+          id: 'caltrops_effect',
+          name: 'Caltrops',
+          type: AbilityType.special,
+          description: 'Damages and slows enemies stepping over it. 2.5x damage to vehicles. Lasts 60 seconds.',
+        ),
+      ],
+    );
+  }
+
+  static NPC createVampiricTotem() {
+    return NPC(
+      id: _generateId('vampiric_totem'),
+      name: 'Vampiric Totem',
+      role: 'Support',
+      age: 0,
+      gender: 'N/A',
+      specimenType: 'Tactical',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 0,
+        health: 150,
+        maxHealth: 150,
+        speed: 0,
+        movement: 0,
+        distance: 0,
+        cost: 4,
+        unitType: UnitType.support,
+        unitCount: 0,
+      ),
+      abilities: [
+        const Ability(
+          id: 'totem_effect',
+          name: 'Vampiric Totem',
+          type: AbilityType.special,
+          description: 'Drains 12 HP/sec from nearby enemies, transferring it to heal active allies. Lasts 60 seconds.',
         ),
       ],
     );
@@ -927,4 +1100,23 @@ class CombatUnitFactory {
       BodyPart(type: BodyPartType.leftLeg, health: 100, maxHealth: 100),
     ];
   }
+
+  // Backwards-Compatible Squad Fallback Methods
+  static NPC createGoon() => createThugs().copyWith(name: 'Goon');
+  static NPC createMilitia() => createHalberdiers().copyWith(name: 'Militia');
+  static NPC createBanditCaptain() => createThugs().copyWith(name: 'Bandit Captain');
+  static NPC createFleshHound() => createWildWolves().copyWith(name: 'Flesh Hound');
+  static NPC createRatsUnit() => createUndeadRats().copyWith(name: 'Rats Unit');
+  static NPC createBatsUnit() => createWildFoxes().copyWith(name: 'Bats Unit');
+  static NPC createWingedRat() => createWildFoxes().copyWith(name: 'Winged Rat');
+  static NPC createBully() => createThugs().copyWith(name: 'Bully');
+  static NPC createStitchedHorror() => createFleshGolem().copyWith(name: 'Stitched Horror');
+  static NPC createGalvanizedCorpse() => createFleshGolem().copyWith(name: 'Galvanized Corpse');
+  static NPC createChemicalSlinger() => createMarksmen().copyWith(name: 'Chemical Slinger');
+  static NPC createShadowCreeper() => createThugs().copyWith(name: 'Shadow Creeper');
+  static NPC createGravedigger() => createThugs().copyWith(name: 'Gravedigger');
+  static NPC createPlagueMonk() => createThugs().copyWith(name: 'Plague Monk');
+  static NPC createInquisitor() => createMarksmen().copyWith(name: 'Inquisitor');
+  static NPC createIronMaiden() => createFleshGolem().copyWith(name: 'Iron Maiden');
+  static NPC createAlchemicalGolem() => createFleshGolem().copyWith(name: 'Alchemical Golem');
 }
