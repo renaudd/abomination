@@ -3228,13 +3228,40 @@ class _PlacementIndicatorPainter extends CustomPainter {
     if (isSupport) {
       // Render support area of effect shape
       if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
-        // Long rectangle (1/3 of lane length, lane width)
-        final rectWidth = manager.map.width / 3.0;
-        final rectHeight = 15.0;
-        final center = projection.project(worldX, worldY);
-        final rect = Rect.fromCenter(center: center, width: rectWidth * projection.zoomFactor, height: rectHeight * projection.zoomFactor);
-        canvas.drawRect(rect, paint);
-        canvas.drawRect(rect, strokePaint);
+        // Enormous rectangle (75% of battlefield width, 1 full lane height)
+        final rectWidth = manager.map.width * 0.75;
+        final rectHeight = manager.map.height / manager.map.laneCenters.length;
+        
+        final double leftX = (worldX - rectWidth / 2.0).clamp(0.0, manager.map.width);
+        final double rightX = (worldX + rectWidth / 2.0).clamp(0.0, manager.map.width);
+        
+        // Center the rectangle vertically on the closest lane to make it perfectly aligned to the lane
+        double closestLaneY = manager.map.laneCenters.first;
+        double minDist = 99999.0;
+        for (final ly in manager.map.laneCenters) {
+          final dist = (worldY - ly).abs();
+          if (dist < minDist) {
+            minDist = dist;
+            closestLaneY = ly;
+          }
+        }
+        final double topY = (closestLaneY - rectHeight / 2.0).clamp(0.0, manager.map.height);
+        final double bottomY = (closestLaneY + rectHeight / 2.0).clamp(0.0, manager.map.height);
+
+        final pTL = projection.project(leftX, topY);
+        final pTR = projection.project(rightX, topY);
+        final pBR = projection.project(rightX, bottomY);
+        final pBL = projection.project(leftX, bottomY);
+
+        final path = Path()
+          ..moveTo(pTL.dx, pTL.dy)
+          ..lineTo(pTR.dx, pTR.dy)
+          ..lineTo(pBR.dx, pBR.dy)
+          ..lineTo(pBL.dx, pBL.dy)
+          ..close();
+
+        canvas.drawPath(path, paint);
+        canvas.drawPath(path, strokePaint);
       } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
         // Shaded circle
         final center = projection.project(worldX, worldY);
