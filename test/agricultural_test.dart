@@ -91,7 +91,7 @@ void main() {
     test('Crops growth and moisture decay over time', () {
       final field = gameState.rooms.firstWhere((r) => r.type == RoomType.field);
       gameState.updateRoom(field.copyWith(tilledAmount: 1.0));
-      gameState.setResource('seeds_cabbage', 1);
+      gameState.setResource('seeds_cabbage', 10);
       gameState.plantCrops(CropType.cabbage, field.id);
 
       final initialCrop = gameState.crops[0];
@@ -113,11 +113,11 @@ void main() {
     test('waterCrops resets moisture level', () {
       final field = gameState.rooms.firstWhere((r) => r.type == RoomType.field);
       gameState.updateRoom(field.copyWith(tilledAmount: 1.0));
-      gameState.setResource('seeds_cabbage', 1);
+      gameState.setResource('seeds_cabbage', 10);
       gameState.plantCrops(CropType.cabbage, field.id);
 
       // Decay moisture
-      for (int i = 0; i < 100; i++) {
+      for (int i = 0; i < 40; i++) {
         gameState.tick();
       }
 

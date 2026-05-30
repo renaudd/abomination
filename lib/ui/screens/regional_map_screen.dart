@@ -14,6 +14,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
+import '../../state/game_state.dart';
+import '../../models/graduate_school_state.dart';
 import '../widgets/location_tile.dart';
 import '../widgets/time_speed_controls.dart';
 
@@ -107,15 +111,34 @@ class RegionalMapScreen extends StatelessWidget {
                           description: 'French spa town across the Lac Léman.',
                         ),
                       ),
-                      const Positioned(
-                        bottom: 40,
-                        left: 100,
-                        child: LocationTile(
-                          name: 'GENEVA',
-                          icon: Icons.location_city,
-                          description: 'The grand city to the Southwest.',
-                        ),
+                      
+                      // INTERACTIVE GENEVA GRADUATE SCHOOL
+                      Consumer<GameState>(
+                        builder: (context, state, child) {
+                          final player = state.npcs.firstWhereOrNull((n) => n.id == 'player');
+                          final bool isAtSchool = player?.worldDestinationId == 'graduate_school';
+                          final bool hasGraduated = state.playerHasGraduateDegree;
+                          
+                          return Positioned(
+                            bottom: 40,
+                            left: 100,
+                            child: LocationTile(
+                              name: 'GENEVA ACADEMY',
+                              icon: Icons.school,
+                              description: hasGraduated 
+                                  ? 'Academic degree completed (Advanced Practice License).'
+                                  : (isAtSchool 
+                                      ? 'Currently attending degree classes...' 
+                                      : 'The grand Swiss university. Study law or medicine.'),
+                              isCurrent: isAtSchool,
+                              onTap: () {
+                                _showGraduateSchoolDialog(context, state);
+                              },
+                            ),
+                          );
+                        }
                       ),
+
                       const Positioned(
                         top: 40,
                         left: 40,
@@ -200,6 +223,165 @@ class RegionalMapScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showGraduateSchoolDialog(BuildContext context, GameState state) {
+    final player = state.npcs.firstWhereOrNull((n) => n.id == 'player');
+    final bool isAtSchool = player?.worldDestinationId == 'graduate_school';
+    final double schoolProgress = player?.worldTravelProgress ?? 0.0;
+    final bool hasGraduated = state.playerHasGraduateDegree;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1E1A15),
+          shape: const RoundedRectangleBorder(),
+          child: Container(
+            width: 450,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFC4B89B)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "GENEVA ACADEMIC UNION",
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "SWISS IMPERIAL GRADUATE SCHOOL OF LAW & MEDICINE",
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
+                    fontSize: 9,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const Divider(color: Colors.white10, height: 24),
+                Text(
+                  "Attaining an advanced practice degree unlocks the capability to set up intricate practices like Gothic Law Chambers or Private Medical Clinics at the manor estate.",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (hasGraduated) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.verified, color: Colors.green, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        "DIPLOMA ATTAINED: MASTER OF LAWS & MEDICINE",
+                        style: GoogleFonts.oswald(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ] else if (isAtSchool) ...[
+                  Text(
+                    "STUDY STATUS: ${(schoolProgress * 100).toInt()}% ACADEMIC COMPLETION",
+                    style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: schoolProgress,
+                    color: const Color(0xFFC4B89B),
+                    backgroundColor: Colors.white10,
+                  ),
+                  const SizedBox(height: 24),
+                  if (schoolProgress >= 1.0)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          state.completeGraduation();
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Degree program complete! Advanced practice license attained."),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC4B89B),
+                          foregroundColor: Colors.black,
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        child: Text(
+                          "GRADUATE AND CONFER LICENSE",
+                          style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    )
+                  else
+                    Text(
+                      "Let time pass at faster speeds for Alphonse to complete his degree research program.",
+                      style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10, fontStyle: FontStyle.italic),
+                    ),
+                ] else ...[
+                  Text(
+                    "GENEVA REGISTRATION FEES: 150 CHF\nFACULTY PROGRAM TERM: 3 SEMESTERS & BOARD EXAMS",
+                    style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 11, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "CHOOSE FACULTY OF DISCIPLINE:",
+                    style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...AcademicSchoolType.values.map((type) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: (state.resources['funds'] ?? 0) < 150
+                            ? null
+                            : () {
+                                state.updateResource('funds', -150);
+                                state.enrollInGraduateSchool(type);
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Alphonse enrolled at ${type.displayName}!"),
+                                  ),
+                                );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF241F1A),
+                          foregroundColor: const Color(0xFFE5D5B0),
+                          side: const BorderSide(color: Color(0xFFC4B89B)),
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        child: Text(type.displayName.toUpperCase(), style: GoogleFonts.playfairDisplay(fontSize: 10)),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("CLOSE", style: GoogleFonts.oldStandardTt(color: Colors.white24)),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

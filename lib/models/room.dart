@@ -41,6 +41,9 @@ enum RoomType {
   cattlePasture,
   greenhouse,
   tenement,
+  dentalClinic,
+  mine,
+  oilWell,
 }
 
 enum Floor { basement, ground, second, attic }
@@ -177,6 +180,7 @@ class Room {
   final String? occupyingNpcId;
   final Map<String, PhysicalProject> activeProjects;
   final String? constructionTarget;
+  final Map<String, dynamic> metadata;
 
   Room({
     required this.id,
@@ -200,6 +204,7 @@ class Room {
     this.restorationProgress = 0.0,
     this.isUnderConstruction = false,
     this.constructionTarget,
+    this.metadata = const {},
   });
 
   factory Room.initial(
@@ -215,6 +220,7 @@ class Room {
     List<GameItem> inventory = const [],
     List<EnqueuedTask> taskQueue = const [],
     List<Bed> beds = const [],
+    Map<String, dynamic> metadata = const {},
   }) {
     return Room(
       id: id,
@@ -237,6 +243,7 @@ class Room {
       hasBeenTilledForReward: false,
       restorationProgress: isRestored ? 1.0 : 0.0,
       isUnderConstruction: false,
+      metadata: metadata,
     );
   }
 
@@ -266,6 +273,7 @@ class Room {
     double? restorationProgress,
     bool? isUnderConstruction,
     String? constructionTarget,
+    Map<String, dynamic>? metadata,
   }) {
     return Room(
       id: id ?? this.id,
@@ -292,6 +300,7 @@ class Room {
       restorationProgress: restorationProgress ?? this.restorationProgress,
       isUnderConstruction: isUnderConstruction ?? this.isUnderConstruction,
       constructionTarget: constructionTarget ?? this.constructionTarget,
+      metadata: metadata ?? this.metadata,
     );
   }
 
@@ -317,6 +326,7 @@ class Room {
     'restorationProgress': restorationProgress,
     'isUnderConstruction': isUnderConstruction,
     'constructionTarget': constructionTarget,
+    'metadata': metadata,
   };
 
   factory Room.fromJson(Map<String, dynamic> json) => Room(
@@ -352,6 +362,7 @@ class Room {
     restorationProgress: (json['restorationProgress'] as num?)?.toDouble() ?? 0.0,
     isUnderConstruction: json['isUnderConstruction'] as bool? ?? false,
     constructionTarget: json['constructionTarget'] as String?,
+    metadata: json['metadata'] as Map<String, dynamic>? ?? {},
   );
 
   bool get isInsideManor {
@@ -515,8 +526,15 @@ class Room {
           task_service.TaskType.defendManor,
         ]);
         break;
+      case RoomType.mine:
+      case RoomType.oilWell:
+        tasks.add(task_service.TaskType.mining);
+        break;
       case RoomType.toilet:
         // Autonomous hygiene behaviors are now handled automatically
+        break;
+      case RoomType.dentalClinic:
+        tasks.add(task_service.TaskType.dentalWork);
         break;
     }
 
@@ -690,6 +708,11 @@ class Room {
         baseDesc = "A private, tiled washroom with running water.";
         capabilities =
             "Essential for maintaining the hygiene and comfort of the manor's inhabitants.";
+        break;
+      case RoomType.dentalClinic:
+        baseDesc = "A spotless, sanitised clinic featuring a hydraulic chair, glass cuspidor, and sets of steel scalpels, forceps, and drills.";
+        capabilities =
+            "A dedicated dental facility where Alphonse Giles performs tooth extractions, cleanings, and advanced oral care on Glarus citizens and visiting patients.";
         break;
       default:
         baseDesc = description.isNotEmpty

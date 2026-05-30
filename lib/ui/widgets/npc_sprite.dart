@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import 'character_portrait_dialog.dart';
 import 'character_blob_renderer.dart';
+import 'visiting_merchant_trade_dialog.dart';
 
 class NpcSprite extends StatelessWidget {
   final NPC npc;
@@ -41,6 +42,8 @@ class NpcSprite extends StatelessWidget {
     final Offset currentPos = Offset.lerp(startPos, endPos, progress)!;
 
     final bool isWalking = npc.targetRoomId != null && progress < 1.0;
+    final bool isEntrywayGuest = !npc.isResident && npc.currentRoomId == 'entryway';
+    final bool isGreeted = npc.metadata['isGreeted'] == true;
 
     return Positioned(
       left: currentPos.dx - 20, // Center the sprite (approx 40px wide)
@@ -54,10 +57,24 @@ class NpcSprite extends StatelessWidget {
         childWhenDragging: const SizedBox.shrink(),
         child: InkWell(
           onTap: () {
-            showDialog(
-              context: context,
-              builder: (context) => CharacterPortraitDialog(npc: npc),
-            );
+            if (isEntrywayGuest) {
+              if (isGreeted) {
+                if (npc.metadata['guestType'] == 'merchant') {
+                  showDialog(
+                    context: context,
+                    builder: (context) => VisitingMerchantTradeDialog(merchant: npc),
+                  );
+                }
+              } else {
+                final state = context.read<GameState>();
+                state.receiveEntrywayGuest(npc.id);
+              }
+            } else {
+              showDialog(
+                context: context,
+                builder: (context) => CharacterPortraitDialog(npc: npc),
+              );
+            }
           },
           child: _buildSpriteContent(context, isWalking),
         ),
@@ -88,10 +105,57 @@ class NpcSprite extends StatelessWidget {
       }
     }
 
+    final bool isEntrywayGuest = !npc.isResident && npc.currentRoomId == 'entryway';
+    final bool isGreeted = npc.metadata['isGreeted'] == true;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (statusText != null && !isDragging) ...[
+        if (isEntrywayGuest && !isDragging) ...[
+          GestureDetector(
+            onTap: () {
+              if (isGreeted) {
+                if (npc.metadata['guestType'] == 'merchant') {
+                  showDialog(
+                    context: context,
+                    builder: (context) => VisitingMerchantTradeDialog(merchant: npc),
+                  );
+                }
+              } else {
+                state.receiveEntrywayGuest(npc.id);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isGreeted ? const Color(0xFFD5E8D4) : const Color(0xFFFFF2CC),
+                border: Border.all(
+                  color: isGreeted ? const Color(0xFF2D7F34) : const Color(0xFFD6B656),
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: isGreeted
+                  ? const Icon(Icons.storefront, size: 14, color: Color(0xFF2D7F34))
+                  : Text(
+                      "?",
+                      style: GoogleFonts.oldStandardTt(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF806000),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 4),
+        ] else if (statusText != null && !isDragging) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(

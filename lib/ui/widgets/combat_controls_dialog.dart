@@ -17,8 +17,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 
-class OptionsDialog extends StatelessWidget {
-  const OptionsDialog({super.key});
+class CombatControlsDialog extends StatelessWidget {
+  const CombatControlsDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +32,7 @@ class OptionsDialog extends StatelessWidget {
         side: BorderSide(color: Color(0xFFC4B89B), width: 1.5),
       ),
       child: Container(
-        width: 520,
+        width: 500,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
@@ -45,7 +45,7 @@ class OptionsDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'GAME OPTIONS',
+                  'COMBAT CONTROLS',
                   style: GoogleFonts.playfairDisplay(
                     color: const Color(0xFFE5D5B0),
                     fontSize: 20,
@@ -69,30 +69,29 @@ class OptionsDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Combat Controls Section
-                    _sectionTitle('1. COMBAT CONTROLS'),
+                    _sectionTitle('MOBILE MOVEMENT CONTROL'),
                     const SizedBox(height: 8),
-                    _subSectionTitle('MOBILE MOVEMENT CONTROL'),
                     _buildRadioOption<String>(
                       context: context,
-                      title: 'Directional Pad',
+                      title: 'Directional Pad (Virtual Joystick in Combat Screen)',
                       value: 'pad',
                       groupValue: state.combatControlMode,
                       onChanged: (val) => state.setCombatControlMode(val!),
                     ),
                     _buildRadioOption<String>(
                       context: context,
-                      title: 'Waypoint Click',
+                      title: 'Waypoint Click (Tap Screen to Set Destination)',
                       value: 'click',
                       groupValue: state.combatControlMode,
                       onChanged: (val) => state.setCombatControlMode(val!),
                     ),
-                    const SizedBox(height: 12),
-                    _subSectionTitle('DESKTOP KEY ASSIGNMENTS'),
-                    _buildKeyAssignmentRow('Move Left', 'A'),
-                    _buildKeyAssignmentRow('Move Up', 'W'),
-                    _buildKeyAssignmentRow('Move Right', 'D'),
-                    _buildKeyAssignmentRow('Move Down', 'S'),
+                    const Divider(color: Colors.white10, height: 32),
+                    _sectionTitle('DESKTOP KEY ASSIGNMENTS'),
+                    const SizedBox(height: 8),
+                    _buildKeyAssignmentRow('Move Left', 'A / ArrowLeft'),
+                    _buildKeyAssignmentRow('Move Up', 'W / ArrowUp'),
+                    _buildKeyAssignmentRow('Move Right', 'D / ArrowRight'),
+                    _buildKeyAssignmentRow('Move Down', 'S / ArrowDown'),
                     _buildKeyAssignmentRow('1st Special Action', 'R'),
                     _buildKeyAssignmentRow('2nd Special Action', 'F'),
                     _buildKeyAssignmentRow('Select Hand Card 1', '1'),
@@ -100,8 +99,9 @@ class OptionsDialog extends StatelessWidget {
                     _buildKeyAssignmentRow('Select Hand Card 3', '3'),
                     _buildKeyAssignmentRow('Select Hand Card 4', '4'),
                     _buildKeyAssignmentRow('Select Hand Card 5', '5'),
-                    const SizedBox(height: 12),
-                    _subSectionTitle('DESKTOP HOTKEYS'),
+                    const Divider(color: Colors.white10, height: 32),
+                    _sectionTitle('DESKTOP HOTKEYS'),
+                    const SizedBox(height: 8),
                     _buildKeyAssignmentRow('Pause', '0'),
                     _buildKeyAssignmentRow('Slow Speed', '1'),
                     _buildKeyAssignmentRow('Normal Speed', '2'),
@@ -111,79 +111,6 @@ class OptionsDialog extends StatelessWidget {
                     _buildKeyAssignmentRow('Manor Holdings', 'I'),
                     _buildKeyAssignmentRow('Chronicle Records', 'O'),
                     _buildKeyAssignmentRow('Survey Estate Map', 'P'),
-                    const SizedBox(height: 12),
-                    _subSectionTitle('DIALOGUE & NARRATIVE HOTKEYS'),
-                    _buildKeyAssignmentRow('Dialogue Option 1', '1'),
-                    _buildKeyAssignmentRow('Dialogue Option 2', '2'),
-                    _buildKeyAssignmentRow('Dialogue Option 3', '3'),
-                    _buildKeyAssignmentRow('Dialogue Option 4', '4'),
-                    _buildKeyAssignmentRow('Dialogue Option 5', '5'),
-                    _buildKeyAssignmentRow('Dialogue Option 6', '6'),
-                    _buildKeyAssignmentRow('Dialogue Option 7', '7'),
-                    _buildKeyAssignmentRow('Next Dialogue / Scene', '9'),
-                    _buildKeyAssignmentRow('Back Dialogue / Scene', '8'),
-                    const Divider(color: Colors.white10, height: 32),
-
-                    // 2. Emergency Behavior Section
-                    _sectionTitle('2. WHEN AN EMERGENCY OCCURS'),
-                    const SizedBox(height: 8),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Reduce game speed to Slow',
-                      value: 'slow',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Pause the game',
-                      value: 'pause',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Reduce game speed to Normal',
-                      value: 'normal',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Do nothing',
-                      value: 'nothing',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    const Divider(color: Colors.white10, height: 32),
-
-                    // 3. Sleep Acceleration Section
-                    _sectionTitle('3. WHEN ALL RESIDENTS ARE ASLEEP'),
-                    const SizedBox(height: 8),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Accelerate game speed to Lightning',
-                      value: 'lightning',
-                      groupValue: state.residentsAsleepBehavior,
-                      onChanged: (val) =>
-                          state.setResidentsAsleepBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Accelerate game speed to Fast',
-                      value: 'fast',
-                      groupValue: state.residentsAsleepBehavior,
-                      onChanged: (val) =>
-                          state.setResidentsAsleepBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Do nothing',
-                      value: 'nothing',
-                      groupValue: state.residentsAsleepBehavior,
-                      onChanged: (val) =>
-                          state.setResidentsAsleepBehavior(val!),
-                    ),
                   ],
                 ),
               ),
@@ -202,7 +129,7 @@ class OptionsDialog extends StatelessWidget {
                 ),
                 onPressed: () => Navigator.pop(context),
                 child: Text(
-                  'CONFIRM AND APPLY',
+                  'CLOSE AND APPLY',
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.5,
@@ -222,24 +149,9 @@ class OptionsDialog extends StatelessWidget {
       text,
       style: GoogleFonts.playfairDisplay(
         color: const Color(0xFFE5D5B0),
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.5,
-      ),
-    );
-  }
-
-  Widget _subSectionTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8.0, bottom: 4.0),
-      child: Text(
-        text,
-        style: GoogleFonts.outfit(
-          color: const Color(0xFFC4B89B),
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1,
-        ),
       ),
     );
   }
@@ -255,13 +167,13 @@ class OptionsDialog extends StatelessWidget {
     return InkWell(
       onTap: () => onChanged(value),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
         child: Row(
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
               color: isSelected ? const Color(0xFFE5D5B0) : Colors.white24,
-              size: 16,
+              size: 18,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -281,7 +193,7 @@ class OptionsDialog extends StatelessWidget {
 
   Widget _buildKeyAssignmentRow(String action, String key) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -293,7 +205,7 @@ class OptionsDialog extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: const Color(0xFF241F1A),
               border: Border.all(

@@ -13,25 +13,23 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../widgets/location_tile.dart';
 import '../widgets/prepare_journey_dialog.dart';
 import 'hamlet_screen.dart';
 import 'destination_screen.dart';
 import 'regional_map_screen.dart';
+import 'graduate_school_campus_screen.dart';
 import '../widgets/encounter_dialog.dart';
 import '../../models/npc.dart';
 import 'davinci_bridge_screen.dart';
 import 'main_menu_screen.dart';
-import 'records_screen.dart';
 import '../widgets/save_load_dialogs.dart';
 import '../../services/save_service.dart';
 import '../widgets/options_dialog.dart';
-import '../../models/manor_venture.dart';
+import '../widgets/cheat_codes_dialog.dart';
 class WorldMapScreen extends StatefulWidget {
   const WorldMapScreen({super.key});
 
@@ -69,6 +67,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             context,
             MaterialPageRoute(builder: (context) => const DaVinciBridgeScreen()),
           );
+        } else if (destination == 'graduate_school') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const GraduateSchoolCampusScreen()),
+          );
         } else {
           Navigator.push(
             context,
@@ -98,7 +101,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   @override
   Widget build(BuildContext context) {
     // Listen for state changes to trigger navigation
-    context.watch<GameState>();
+    final state = context.watch<GameState>();
     _checkNavigation();
 
     return Scaffold(
@@ -146,8 +149,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 );
               } else if (value == 'options') {
                 _showOptionsDialog(context);
-              } else if (value == 'ventures') {
-                _showVentureOperationsDialog(context, state);
+              } else if (value == 'cheat_codes') {
+                _showCheatCodesDialog(context, state);
               } else if (value == 'quit') {
                 Navigator.pushAndRemoveUntil(
                   context,
@@ -186,15 +189,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   ),
                 ),
               ),
-              PopupMenuItem<String>(
-                value: 'ventures',
-                child: Text(
-                  'Manor Ventures',
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFE5D5B0),
+              if (state.cheatCodesEnabled)
+                PopupMenuItem<String>(
+                  value: 'cheat_codes',
+                  child: Text(
+                    'Cheat Codes',
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFE5D5B0),
+                    ),
                   ),
                 ),
-              ),
               PopupMenuItem<String>(
                 value: 'quit',
                 child: Text(
@@ -617,114 +621,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     );
   }
 
-  void _showVentureOperationsDialog(BuildContext context, GameState state) {
-    showModalBottomSheet(
+  void _showCheatCodesDialog(BuildContext context, GameState state) {
+    showDialog(
       context: context,
-      backgroundColor: const Color(0xFF1A1612),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final diners = state.npcs.where((n) => n.metadata['isDiner'] == true).toList();
-            final guests = state.npcs.where((n) => n.metadata['isHotelGuest'] == true).toList();
-            
-            final studyRoom = state.rooms.firstWhereOrNull((r) => r.id == 'study');
-            final kompromatFolders = studyRoom?.inventory.where((i) => i.type == 'kompromat_folder').toList() ?? [];
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.8,
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'ESTATE OPERATIONS',
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 3,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFFE5D5B0)),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.white10, height: 32),
-                  
-                  Text(
-                    'MANOR VENTURE MODE',
-                    style: GoogleFonts.outfit(
-                      color: const Color(0xFFC4B89B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'MANOR ADAPTATION:',
-                          style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 13),
-                        ),
-                      ),
-                      DropdownButton<ManorVenture>(
-                        value: state.manorVenture,
-                        dropdownColor: const Color(0xFF241F1A),
-                        style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
-                        onChanged: (val) {
-                          if (val != null) {
-                            state.setManorVenture(val);
-                            setState(() {});
-                          }
-                        },
-                        items: ManorVenture.values.map((v) {
-                          return DropdownMenuItem<ManorVenture>(
-                            value: v,
-                            child: Text(v.name.toUpperCase()),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.white10, height: 24),
-                  
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        Text(
-                          'ACTIVE TRANSIENTS:',
-                          style: GoogleFonts.outfit(
-                            color: const Color(0xFFC4B89B),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'DINERS GATHERED: ${diners.length} / 12\nHOTEL GUESTS LODGED: ${guests.length} / 4\nKOMPROMAT ACQUIRED: ${kompromatFolders.length} FOLDERS',
-                          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 13, height: 1.6),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder: (context) => const CheatCodesDialog(),
     );
   }
 }

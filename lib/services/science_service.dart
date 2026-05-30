@@ -51,7 +51,7 @@ class ScienceService {
       ),
       ScienceActivity(
         id: 'small_dissection',
-        name: 'Small Specimen Anatomical Study',
+        name: 'Small Specimen Dissection',
         type: TaskType.dissect,
         ingredients: {'specimen': 1},
         baseDurationMinutes: 20,
@@ -61,7 +61,7 @@ class ScienceService {
       ),
       ScienceActivity(
         id: 'large_dissection',
-        name: 'Large Specimen Anatomical Study',
+        name: 'Large Specimen Dissection',
         type: TaskType.dissect,
         ingredients: {'large_specimen': 1},
         baseDurationMinutes: 90,
@@ -103,7 +103,7 @@ class ScienceService {
       ),
       ScienceActivity(
         id: 'deprivation_study',
-        name: 'Occult Studies',
+        name: 'Deprivation Study',
         type: TaskType.deprivationStudy,
         ingredients: {'specimen': 5},
         baseDurationMinutes: 2400, // 40 hours

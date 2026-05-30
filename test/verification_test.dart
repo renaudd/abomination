@@ -83,7 +83,7 @@ void main() {
       // Verify combat stats are initialized
       expect(deck[0].combatStats, isNotNull);
       expect(deck[0].combatStats!.attack, 25);
-      expect(deck[0].combatStats!.health, 280);
+      expect(deck[0].combatStats!.health, 180);
       expect(deck[0].abilities.length, 1);
       expect(deck[0].abilities[0].name, 'Execute');
     });

@@ -39,6 +39,28 @@ class CombatMap {
     required this.enemyCentralTowerX,
   });
 
+  CombatMapSize get sizeCategory {
+    final area = width * height;
+    if (area < 30000) {
+      return CombatMapSize.small;
+    } else if (area < 65000) {
+      return CombatMapSize.medium;
+    } else {
+      return CombatMapSize.colossal;
+    }
+  }
+
+  String get sizeDescription {
+    switch (sizeCategory) {
+      case CombatMapSize.small:
+        return 'Small Skirmish (${width.toInt()}x${height.toInt()})';
+      case CombatMapSize.medium:
+        return 'Medium Tactical (${width.toInt()}x${height.toInt()})';
+      case CombatMapSize.colossal:
+        return 'Colossal Grand (${width.toInt()}x${height.toInt()})';
+    }
+  }
+
   static List<CombatMap> get allMaps => [
     const CombatMap(
       name: 'Alpine Pass (Default)',
@@ -63,48 +85,48 @@ class CombatMap {
     ),
     const CombatMap(
       name: 'Saint Gotthard Ravine',
-      width: 240.0,
-      height: 120.0,
-      laneCenters: [25.0, 95.0],
+      width: 180.0,
+      height: 90.0,
+      laneCenters: [20.0, 70.0],
       walls: [
-        Rect.fromLTRB(60.0, 35.0, 80.0, 85.0),
-        Rect.fromLTRB(120.0, 35.0, 140.0, 85.0),
-        Rect.fromLTRB(180.0, 35.0, 200.0, 85.0),
+        Rect.fromLTRB(45.0, 25.0, 60.0, 65.0),
+        Rect.fromLTRB(90.0, 25.0, 105.0, 65.0),
+        Rect.fromLTRB(135.0, 25.0, 150.0, 65.0),
       ],
       cauldronPositions: [
-        Offset(15.0, 42.5),
-        Offset(15.0, 77.5),
-        Offset(225.0, 42.5),
-        Offset(225.0, 77.5),
+        Offset(10.0, 30.0),
+        Offset(10.0, 60.0),
+        Offset(170.0, 30.0),
+        Offset(170.0, 60.0),
       ],
-      playerCornerTowerX: 25.0,
-      playerCentralTowerX: 10.0,
-      enemyCornerTowerX: 215.0,
-      enemyCentralTowerX: 230.0,
+      playerCornerTowerX: 20.0,
+      playerCentralTowerX: 8.0,
+      enemyCornerTowerX: 160.0,
+      enemyCentralTowerX: 172.0,
     ),
     const CombatMap(
       name: 'Via Mala Abyss',
-      width: 400.0,
-      height: 200.0,
-      laneCenters: [35.0, 100.0, 165.0],
+      width: 540.0,
+      height: 270.0,
+      laneCenters: [45.0, 135.0, 225.0],
       walls: [
-        Rect.fromLTRB(100.0, 50.0, 120.0, 85.0),
-        Rect.fromLTRB(100.0, 115.0, 120.0, 150.0),
-        Rect.fromLTRB(200.0, 50.0, 220.0, 85.0),
-        Rect.fromLTRB(200.0, 115.0, 220.0, 150.0),
-        Rect.fromLTRB(300.0, 50.0, 320.0, 85.0),
-        Rect.fromLTRB(300.0, 115.0, 320.0, 150.0),
+        Rect.fromLTRB(135.0, 65.0, 160.0, 115.0),
+        Rect.fromLTRB(135.0, 155.0, 160.0, 205.0),
+        Rect.fromLTRB(270.0, 65.0, 295.0, 115.0),
+        Rect.fromLTRB(270.0, 155.0, 295.0, 205.0),
+        Rect.fromLTRB(405.0, 65.0, 430.0, 115.0),
+        Rect.fromLTRB(405.0, 155.0, 430.0, 205.0),
       ],
       cauldronPositions: [
-        Offset(25.0, 67.5),
-        Offset(25.0, 132.5),
-        Offset(375.0, 67.5),
-        Offset(375.0, 132.5),
+        Offset(35.0, 90.0),
+        Offset(35.0, 180.0),
+        Offset(505.0, 90.0),
+        Offset(505.0, 180.0),
       ],
-      playerCornerTowerX: 45.0,
-      playerCentralTowerX: 15.0,
-      enemyCornerTowerX: 355.0,
-      enemyCentralTowerX: 385.0,
+      playerCornerTowerX: 60.0,
+      playerCentralTowerX: 20.0,
+      enemyCornerTowerX: 480.0,
+      enemyCentralTowerX: 520.0,
     ),
     const CombatMap(
       name: 'Bernina Glacial Valley',
@@ -177,3 +199,10 @@ class CombatMap {
     ),
   ];
 }
+
+enum CombatMapSize {
+  small,
+  medium,
+  colossal,
+}
+

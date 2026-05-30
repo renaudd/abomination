@@ -342,7 +342,7 @@ class LaboratoryScreen extends StatelessWidget {
                 state,
                 npc,
                 ExperimentType.dissection,
-                "ANATOMICAL STUDY",
+                "DISSECTION",
                 "Analyze structure. (High risk)",
               ),
               _buildExperimentOption(

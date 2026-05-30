@@ -159,13 +159,13 @@ Below is the balance sheet mapping costs, troop sizes, attributes, and balancing
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :--- |
 | **Cannoneer** | 3 | 1 | 250 | 0.6 | 90 / 15.0 / 3.5 | 5 / 1.0 / 2.0 | Targets Towers | Long range, high tower damage. Extremely slow and vulnerable in melee. |
 | **Musketeers** | 4 | 3 | 180 | 1.0 | 30 / 8.0 / 1.5 | 25 / 1.2 / 1.2 | Well-rounded | High cost but durable, versatile at all ranges. |
-| **Cavalry** | 5 | 3 | 220 | 1.8 | 0 / 0.0 / 0.0 | 45 / 1.5 / 1.0 | Vulnerable to fire | Fast flanking unit. Weak to pikemen/fire, cannot damage towers. |
+| **Cavalry** | 5 | 3 | 150 | 1.8 | 0 / 0.0 / 0.0 | 35 / 1.5 / 1.0 | Vulnerable to fire | Fast flanking unit. Weak to pikemen/fire, cannot damage towers. |
 | **Bicycle Gang** | 4 | 3 | 110 | 1.4 | 15 / 6.0 / 1.2 | 10 / 1.0 / 1.0 | None | Fast, medium cost, but low toughness. |
 | **Motorcycle Gang** | 5 | 2 | 165 | 2.2 | 20 / 8.0 / 1.0 | 15 / 1.0 / 0.8 | High evasion | Extremely fast, high cost, but long deployment delay (2.5s). |
 | **Armored Car** | 6 | 1 | 700 | 1.2 | 18 / 7.0 / 0.8 | 0 / 0.0 / 0.0 | Magic Vulnerable | High tankiness, low damage output. |
 | **Wooden Tank** | 7 | 1 | 850 | 0.5 | 110 / 10.0 / 4.0 | 0 / 0.0 / 0.0 | Vulnerable to fire | Massive ranged attack, slow movement speed, high energy cost. |
 | **Undead Rats** | 3 | 4 | 65 | 1.2 | 0 / 0.0 / 0.0 | 12 / 0.8 / 0.5 | Constant Heal | Persistent swarm, hard to completely clear. |
-| **Rats 2** | 6 | 8 | 45 | 1.5 | 0 / 0.0 / 0.0 | 8 / 0.8 / 0.4 | Vulnerable to fire | Huge swarm size, low individual health, fast but fragile. |
+| **Brown Rats** | 4 | 8 | 45 | 1.5 | 0 / 0.0 / 0.0 | 8 / 0.8 / 0.4 | Vulnerable to fire | Huge swarm size, low individual health, fast but fragile. |
 | **Werewolf** | 5 | 1 | 500 | 1.6 | 0 / 0.0 / 0.0 | 75 / 1.5 / 0.9 | Hard to control | High damage, fast, but targets closest unit regardless of type. |
 | **Chimera** | 6 | 1 | 650 | 0.8 | 50 / 5.0 / 2.0 | 40 / 1.8 / 1.2 | Fire Breathing | Tough, slow, splash fire damage. |
 | **Flesh Golem** | 4 | 1 | 550 | 0.7 | 0 / 0.0 / 0.0 | 60 / 1.2 / 1.4 | Magic Immune | Highly resilient melee unit, immune to spell effects. |

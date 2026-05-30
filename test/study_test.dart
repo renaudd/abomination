@@ -36,6 +36,10 @@ void main() {
     });
 
     test('Generic meat recipes work in Kitchen', () {
+      // Clear kitchen inventory first so only rat meat is there
+      final kitchen = gameState.rooms.firstWhere((r) => r.id == 'kitchen');
+      gameState.updateRoom(kitchen.copyWith(inventory: []));
+
       // Add rat meat and generic meat
       final ratMeat = GameItem.create(
         name: 'Rat Meat',
@@ -122,7 +126,12 @@ void main() {
       gameState.addItemToRoom('study', rat);
 
       final worker = gameState.npcs.first;
-      final initialSatisfaction = worker.satisfaction;
+      final updatedWorker = worker.copyWith(
+        stats: Map<String, int>.from(worker.stats)..['judgment'] = 10,
+      );
+      gameState.updateNpcForTesting(updatedWorker);
+
+      final initialSatisfaction = gameState.npcs.first.satisfaction;
 
       final vivisectionTask = GameTask(
         id: 'vivisect_rat',

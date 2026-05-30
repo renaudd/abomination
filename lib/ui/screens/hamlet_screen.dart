@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
+import '../../models/active_business.dart';
 import '../widgets/hamlet_hotspot.dart';
 import '../widgets/encounter_dialog.dart';
 
@@ -1028,7 +1029,14 @@ class _HamletScreenState extends State<HamletScreen> {
           OutlinedButton(
             onPressed: () {
               state.hireNpc(npc);
-              Navigator.pop(context);
+              Navigator.pop(context); // Pop tavern sheet
+
+              final String guestType = npc.metadata['guestType'] as String? ?? '';
+              if (guestType.endsWith('_proposer')) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _showHireProposalDialog(context, state, npc);
+                });
+              }
             },
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Color(0xFFC4B89B)),
@@ -1049,7 +1057,121 @@ class _HamletScreenState extends State<HamletScreen> {
     );
   }
 
+  void _showHireProposalDialog(BuildContext context, GameState state, dynamic guest) {
+    final String guestType = guest.metadata['guestType'] as String? ?? '';
+    List<BusinessType> options = [];
+    
+    if (guestType == 'cook_proposer') {
+      options = [BusinessType.bistro, BusinessType.bakery, BusinessType.pizzeria, BusinessType.cafe];
+    } else if (guestType == 'chemist_proposer') {
+      options = [BusinessType.opiateLab];
+    } else if (guestType == 'lawyer_proposer') {
+      options = [BusinessType.lawPractice];
+    } else if (guestType == 'doctor_proposer') {
+      options = [BusinessType.medicalPractice];
+    } else if (guestType == 'actor_proposer') {
+      options = [BusinessType.theater];
+    }
 
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1E1A15),
+          shape: const RoundedRectangleBorder(),
+          child: Container(
+            width: 450,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFC4B89B)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "SPECIALIST RECRUIT PROPOSAL",
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "${guest.name.toUpperCase()} IS A SPECIALIST WHO OFFERS TO RUN A BUSINESS VENTURE AT THE MANOR. CHOOSE A VENTURE TO INITIATE:",
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B),
+                    fontSize: 9.5,
+                    height: 1.3,
+                  ),
+                ),
+                const Divider(color: Colors.white10, height: 24),
+                ...options.map((type) {
+                  final bool requiresDegree = type == BusinessType.lawPractice || type == BusinessType.medicalPractice || type == BusinessType.opiateLab;
+                  final bool locked = requiresDegree && !state.playerHasGraduateDegree;
+
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    title: Text(
+                      type.displayName.toUpperCase(),
+                      style: GoogleFonts.playfairDisplay(
+                        color: locked ? Colors.white24 : const Color(0xFFE5D5B0),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    subtitle: Text(
+                      requiresDegree 
+                          ? (locked 
+                              ? "LOCKED: ALPHONSE LACKS GRADUATE DEGREE. STUDY AT GRADUATE SCHOOL."
+                              : "GRADUATE DEGREE ATTAINED (UNLOCKED)")
+                          : "STANDARD ASSIGNMENTS SYSTEM INITIATED.",
+                      style: GoogleFonts.oldStandardTt(
+                        color: locked ? Colors.redAccent : Colors.white38,
+                        fontSize: 8.5,
+                      ),
+                    ),
+                    trailing: locked 
+                        ? const Icon(Icons.lock_outline, color: Colors.white12, size: 14)
+                        : const Icon(Icons.arrow_forward, color: Color(0xFFC4B89B), size: 14),
+                    onTap: locked 
+                        ? null 
+                        : () {
+                            state.proposeBusiness(type, guest.id, guest.name);
+                            final bus = state.activeBusinesses.firstWhere((b) => b.proposerId == guest.id);
+                            state.acceptBusinessProposal(bus.id);
+                            
+                            Navigator.pop(context); // Pop selection
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("${type.displayName} setup assignments initiated at Glarus!"),
+                                backgroundColor: const Color(0xFF241F1A),
+                              ),
+                            );
+                          },
+                  );
+                }),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "DECLINE BUSINESS VENTURE FOR NOW",
+                      style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void _showTownSquare(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(

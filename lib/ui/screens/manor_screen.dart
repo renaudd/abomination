@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../state/game_state.dart';
 import '../../models/room.dart';
+import '../../util/manor_layout.dart';
 import '../../services/task_service.dart';
 import '../../services/science_service.dart';
 import '../../services/kitchen_service.dart';
 import '../../services/save_service.dart';
 import '../../models/game_item.dart';
-import '../../models/manor_venture.dart';
 import '../../models/npc.dart';
 import '../widgets/manor_renderer.dart';
 import '../widgets/character_portrait_dialog.dart';
@@ -32,17 +32,25 @@ import '../widgets/room_ledger.dart';
 import '../widgets/bed_assignment_widget.dart';
 import 'study_screen.dart';
 import 'kitchen_screen.dart';
+import 'dining_room_screen.dart';
 import 'garden_screen.dart';
 import 'library_screen.dart';
 import 'laboratory_screen.dart';
 import 'chicken_coop_screen.dart';
 import 'world_map_screen.dart';
 import '../widgets/save_load_dialogs.dart';
+import '../widgets/visiting_merchant_trade_dialog.dart';
+import '../widgets/guest_conversation_dialog.dart';
 import '../widgets/encounter_dialog.dart';
 import 'game_over_screen.dart';
 import 'records_screen.dart';
 import 'main_menu_screen.dart';
 import '../widgets/options_dialog.dart';
+import '../widgets/cheat_codes_dialog.dart';
+import '../../models/active_business.dart';
+import '../widgets/flaubert_event_dialog.dart';
+import '../widgets/dental_event_dialog.dart';
+import '../widgets/restaurant_tycoon_dialog.dart';
 
 class ManorScreen extends StatefulWidget {
   const ManorScreen({super.key});
@@ -54,6 +62,7 @@ class ManorScreen extends StatefulWidget {
 class _ManorScreenState extends State<ManorScreen> {
   bool _hudExpanded = true;
   bool _isNavigatingToCombat = false;
+  bool _isShowingGuestConversation = false;
   bool _timeControlsExpanded = false;
   bool _isFirstVisit = true;
 
@@ -83,10 +92,122 @@ class _ManorScreenState extends State<ManorScreen> {
     }
   }
 
+  void _checkGuestConversation(GameState state) {
+    if (state.pendingGuestConversation && !_isShowingGuestConversation && ModalRoute.of(context)?.isCurrent == true) {
+      _isShowingGuestConversation = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const GuestConversationDialog(),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isShowingGuestConversation = false;
+            });
+          }
+        });
+      });
+    }
+  }
+
+  bool _isShowingFlaubertEvent = false;
+
+  void _checkFlaubertEvent(GameState state) {
+    if (state.activeFlaubertEvent != null && !_isShowingFlaubertEvent && ModalRoute.of(context)?.isCurrent == true) {
+      _isShowingFlaubertEvent = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const FlaubertEventDialog(),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isShowingFlaubertEvent = false;
+            });
+          }
+        });
+      });
+    }
+  }
+
+  bool _isShowingDentalSetup = false;
+
+  void _checkDentalSetup(GameState state) {
+    final isDentist = state.playerAcademicSpecialization == 'Dentistry';
+    final hasNoLoan = state.activeDentalLoan == 0;
+    final hasNoClinic = !state.rooms.any((r) => r.type == RoomType.dentalClinic);
+
+    if (isDentist && hasNoLoan && hasNoClinic && !_isShowingDentalSetup && ModalRoute.of(context)?.isCurrent == true) {
+      _isShowingDentalSetup = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const DentalSetupDialog(),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isShowingDentalSetup = false;
+            });
+          }
+        });
+      });
+    }
+  }
+
+  bool _isShowingDentalEvent = false;
+
+  void _checkDentalEvent(GameState state) {
+    if (state.activeDentalEvent != null && !_isShowingDentalEvent && ModalRoute.of(context)?.isCurrent == true) {
+      _isShowingDentalEvent = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const DentalEventDialog(),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isShowingDentalEvent = false;
+            });
+          }
+        });
+      });
+    }
+  }
+
+  bool _isShowingRestaurantTycoonEvent = false;
+
+  void _checkRestaurantTycoonEvent(GameState state) {
+    if (state.activeRestaurantTycoonEvent != null && !_isShowingRestaurantTycoonEvent && ModalRoute.of(context)?.isCurrent == true) {
+      _isShowingRestaurantTycoonEvent = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const RestaurantTycoonDialog(),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isShowingRestaurantTycoonEvent = false;
+            });
+          }
+        });
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = Provider.of<GameState>(context);
     _checkCombatEncounter(state);
+    _checkGuestConversation(state);
+    _checkFlaubertEvent(state);
+    _checkDentalSetup(state);
+    _checkDentalEvent(state);
+    _checkRestaurantTycoonEvent(state);
 
     if (state.isGameOver) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -232,8 +353,8 @@ class _ManorScreenState extends State<ManorScreen> {
                   );
                 } else if (value == 'options') {
                   _showOptionsDialog(context);
-                } else if (value == 'ventures') {
-                  _showVentureOperationsDialog(context, state);
+                } else if (value == 'cheat_codes') {
+                  _showCheatCodesDialog(context, state);
                 } else if (value == 'quit') {
                   Navigator.pushAndRemoveUntil(
                     context,
@@ -272,15 +393,16 @@ class _ManorScreenState extends State<ManorScreen> {
                     ),
                   ),
                 ),
-                PopupMenuItem<String>(
-                  value: 'ventures',
-                  child: Text(
-                    'Manor Ventures',
-                    style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFE5D5B0),
+                if (state.cheatCodesEnabled)
+                  PopupMenuItem<String>(
+                    value: 'cheat_codes',
+                    child: Text(
+                      'Cheat Codes',
+                      style: GoogleFonts.oldStandardTt(
+                        color: const Color(0xFFE5D5B0),
+                      ),
                     ),
                   ),
-                ),
                 PopupMenuItem<String>(
                   value: 'quit',
                   child: Text(
@@ -298,6 +420,12 @@ class _ManorScreenState extends State<ManorScreen> {
           ),
           body: Stack(
         children: [
+          if (_hudExpanded)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: _buildAbstractedTheaterCard(context, state),
+            ),
           Container(
             color: const Color(0xFF0A0C0E),
             child: Column(
@@ -395,51 +523,7 @@ class _ManorScreenState extends State<ManorScreen> {
     return Consumer<GameState>(
       builder: (context, state, child) {
         if (state.announcementHistory.isEmpty) return const SizedBox.shrink();
-
-        final displayLogs = state.announcementHistory.take(2).toList();
-
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF241F1A),
-            border: Border.all(
-              color: const Color(0xFFC4B89B).withValues(alpha: 0.3),
-            ),
-          ),
-          child: Column(
-            children: displayLogs
-                .map(
-                  (log) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2.0),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: Color(0xFFE5D5B0),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            log.toUpperCase(),
-                            style: GoogleFonts.playfairDisplay(
-                              color: const Color(0xFFE5D5B0),
-                              fontSize: 12,
-                              letterSpacing: 1.1,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-        );
+        return _AnnouncementBanner(history: state.announcementHistory);
       },
     );
   }
@@ -666,7 +750,114 @@ class _ManorScreenState extends State<ManorScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ROOM TASK QUEUE (Dynamic view of NPC intents)
+                    // Guest Greeting Section
+                    if (liveRoom.type == RoomType.entryway) ...[
+                      ...() {
+                        final entrywayGuests = state.npcs.where((n) => !n.isResident && n.currentRoomId == 'entryway').toList();
+                        if (entrywayGuests.isEmpty) return <Widget>[];
+                        return [
+                          Text(
+                            'VISITORS AT THE DOOR',
+                            style: GoogleFonts.playfairDisplay(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFFC4B89B),
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...entrywayGuests.map((guest) {
+                            final isGreeted = guest.metadata['isGreeted'] == true;
+                            final isMerchant = guest.metadata['guestType'] == 'merchant';
+                            
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
+                                ),
+                                color: Colors.black26,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "${guest.name.toUpperCase()} (${guest.role.toUpperCase()})",
+                                        style: GoogleFonts.oldStandardTt(
+                                          color: const Color(0xFFE5D5B0),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        isGreeted ? "WELCOMED" : "AWAITING RECEPTION",
+                                        style: GoogleFonts.oswald(
+                                          color: isGreeted ? Colors.green : const Color(0xFFC4B89B),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (!isGreeted)
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton(
+                                        onPressed: () => _showCharacterSelectionForGreeting(context, state, guest),
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: Color(0xFFC4B89B)),
+                                        ),
+                                        child: Text(
+                                          "SELECT RESIDENT TO RECEIVE",
+                                          style: GoogleFonts.playfairDisplay(
+                                            color: const Color(0xFFE5D5B0),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  else if (isMerchant)
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => VisitingMerchantTradeDialog(merchant: guest),
+                                          );
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: Colors.green),
+                                        ),
+                                        child: Text(
+                                          "OPEN TRADE WINDOW",
+                                          style: GoogleFonts.playfairDisplay(
+                                            color: Colors.green,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 24),
+                        ];
+                      }(),
+                    ],
+                    if (liveRoom.type == RoomType.unused && state.activeBusinesses.any((b) => b.type == BusinessType.theater && b.status == 'active')) ...[
+                      _buildTheaterCreativeRoomSection(context, state),
+                    ],
+                    const SizedBox(height: 24),
                     if (displayQueue.isNotEmpty) ...[
                       Text(
                         'ENQUEUED TASKS',
@@ -719,6 +910,316 @@ class _ManorScreenState extends State<ManorScreen> {
                       const SizedBox(height: 24),
                     ],
 
+                    // PROGRESSIVE EXCAVATION & RESOURCE BLOCKS UI
+                    if (liveRoom.name == 'Excavation Node' && !liveRoom.isRestored) ...[
+                      () {
+                        final nodeInfo = ManorLayout.grid[liveRoom.id];
+                        final depth = nodeInfo?.$2.abs() ?? 1;
+
+                        String requiredTool = "Simple Shovel";
+                        String toolType = "simple_shovel";
+                        if (depth == 2) { requiredTool = "Iron Pickaxe"; toolType = "iron_pickaxe"; }
+                        else if (depth == 3) { requiredTool = "Steel Pickaxe"; toolType = "steel_pickaxe"; }
+                        else if (depth == 4) { requiredTool = "Pneumatic Drill"; toolType = "pneumatic_drill"; }
+
+                        String requiredExpertise = "None";
+                        int requiredLevel = 0;
+                        if (depth == 2) { requiredExpertise = "Adept Mining (Lvl 2)"; requiredLevel = 2; }
+                        else if (depth == 3) { requiredExpertise = "Professional Mining (Lvl 5)"; requiredLevel = 5; }
+                        else if (depth == 4) { requiredExpertise = "Expert Mining (Lvl 8)"; requiredLevel = 8; }
+
+                        Map<String, int> costMap = {
+                          'funds': 2000,
+                          'wood': 500,
+                          'bricks': 200,
+                        };
+                        if (depth == 2) {
+                          costMap = {'funds': 4000, 'wood': 1000, 'bricks': 500, 'iron_ore': 100};
+                        } else if (depth == 3) {
+                          costMap = {'funds': 8000, 'wood': 2000, 'bricks': 1000, 'iron_ore': 300};
+                        } else if (depth == 4) {
+                          costMap = {'funds': 16000, 'wood': 4000, 'bricks': 2000, 'iron_ore': 500};
+                        }
+
+                        final isAccessible = state.isRoomAccessibleForExcavation(liveRoom.id);
+                        final hasTool = state.hasItemInManor(toolType);
+                        final activeMiner = state.npcs.firstWhereOrNull((n) => n.isResident && (n.metadata['proficiency_level_Mining'] as int? ?? 0) >= requiredLevel);
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 24),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "EXCAVATION REQUIREMENTS (DEPTH LEVEL $depth)",
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFE5D5B0),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("REQUIRED TOOL:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                                  Text(
+                                    requiredTool.toUpperCase(),
+                                    style: GoogleFonts.oldStandardTt(
+                                      color: hasTool ? Colors.green : Colors.redAccent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("EXPERTISE:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                                  Text(
+                                    requiredExpertise.toUpperCase(),
+                                    style: GoogleFonts.oldStandardTt(
+                                      color: activeMiner != null ? Colors.green : Colors.redAccent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("ACCESSIBILITY:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                                  Text(
+                                    isAccessible ? "READY TO EXCAVATE" : "LOCKED / UNREACHABLE",
+                                    style: GoogleFonts.oldStandardTt(
+                                      color: isAccessible ? Colors.green : Colors.redAccent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text("RESOURCES COST:", style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 11, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 6),
+                              ...costMap.entries.map((e) {
+                                final has = state.resources[e.key] ?? 0;
+                                final meet = has >= e.value;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 4.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(e.key.toUpperCase().replaceAll('_', ' '), style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10)),
+                                      Text(
+                                        "${has.round()} / ${e.value}",
+                                        style: GoogleFonts.oswald(
+                                          color: meet ? const Color(0xFFC4B89B) : Colors.redAccent,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        );
+                      }(),
+                    ],
+
+                    if (liveRoom.metadata['isResourceBlocked'] == true) ...[
+                      () {
+                        final resType = liveRoom.metadata['resourceType'] as String? ?? 'ore';
+                        final amount = liveRoom.metadata['resourceAmount'] as int? ?? 0;
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 24),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "RESOURCE BLOCKAGE ENCOUNTERED",
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFE5D5B0),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "This chamber is blocked by a rich vein of ${resType.toUpperCase()} containing $amount units. To clear the blockage, you must establish a specialized Mine.",
+                                style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 11, height: 1.4),
+                              ),
+                              const SizedBox(height: 16),
+                              if (liveRoom.isUnderConstruction)
+                                _buildExpandButton(
+                                  context,
+                                  'CANCEL MINE CONSTRUCTION',
+                                  'Halt current construction project.',
+                                  Icons.cancel,
+                                  () => state.cancelRoomConversion(liveRoom.id),
+                                )
+                              else
+                                _buildExpandButton(
+                                  context,
+                                  'ESTABLISH ${resType.toUpperCase()} MINE',
+                                  'Cost: ${state.getMineConstructionCost(resType, ManorLayout.grid[liveRoom.id]?.$2.abs().toInt() ?? 2)['funds'].toInt()} CHF, ${state.getMineConstructionCost(resType, ManorLayout.grid[liveRoom.id]?.$2.abs().toInt() ?? 2)['wood'].toInt()} Wood. Commences mine construction.',
+                                  Icons.construction,
+                                  () => state.convertRoomToMine(liveRoom.id),
+                                ),
+                            ],
+                          ),
+                        );
+                      }(),
+                    ],
+
+                    if (liveRoom.id == 'basement_e' && liveRoom.isRestored && liveRoom.type == RoomType.unused && liveRoom.metadata['isResourceBlocked'] != true) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: liveRoom.isUnderConstruction
+                            ? _buildExpandButton(
+                                context,
+                                'CANCEL RIG CONSTRUCTION',
+                                'Halt current oil well construction.',
+                                Icons.cancel,
+                                () => state.cancelRoomConversion(liveRoom.id),
+                              )
+                            : Column(
+                                children: [
+                                  _buildExpandButton(
+                                    context,
+                                    'ESTABLISH OIL WELL',
+                                    'Establish a pumping rig to extract crude oil from the manor\'s reserves.\nCost: 1500 CHF, 300 Wood.',
+                                    Icons.oil_barrel,
+                                    () => state.convertRoomToOilWell(liveRoom.id),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
+                      ),
+                    ],
+
+                    if (liveRoom.type == RoomType.oilWell && liveRoom.isRestored) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "MANOR OIL RESERVES",
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFE5D5B0),
+                                fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("TOTAL REMAINING:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                                Text(
+                                  "${state.manorOilReserve.round()} / ${state.manorOilReserveMax.round()} BARRELS",
+                                  style: GoogleFonts.oswald(
+                                    color: const Color(0xFFC4B89B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("PUMPING EFFICIENCY:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                                Text(
+                                  "${(state.getOilPumpingEfficiency() * 100).round()}%",
+                                  style: GoogleFonts.oswald(
+                                    color: state.getOilPumpingEfficiency() > 0.5 ? Colors.green : Colors.amber,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildExpandButton(
+                              context,
+                              'DECOMMISSION OIL WELL',
+                              'Safely dismantle the pumping rig and restore the chamber for normal basement use.',
+                              Icons.delete_forever,
+                              () => state.decommissionOilWell(liveRoom.id),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    if (liveRoom.type == RoomType.mine && liveRoom.isRestored) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "ORE DEPOSIT STATUS",
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFE5D5B0),
+                                fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("REMAINING IN VEIN:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                                Text(
+                                  "${liveRoom.metadata['resourceAmount'] ?? 0} / ${liveRoom.metadata['resourceAmountMax'] ?? 0} UNITS",
+                                  style: GoogleFonts.oswald(
+                                    color: const Color(0xFFC4B89B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     // BUILDING & CONVERSION OPTIONS
                     if (liveRoom.type == RoomType.unused &&
                         liveRoom.isRestored) ...[
@@ -762,18 +1263,27 @@ class _ManorScreenState extends State<ManorScreen> {
                           ),
                         ),
 
-                      // Laboratory (Attic/Basement)
+                      // Restored Attic or Basement Room Conversion
                       if (liveRoom.floor == Floor.attic ||
                           liveRoom.floor == Floor.basement)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12.0),
-                          child: _buildExpandButton(
-                            context,
-                            'CONVERT TO LABORATORY',
-                            'Outfit this secluded room for experimentation (12 Hours, 50 Wood, 1000 Funds)',
-                            Icons.biotech,
-                            () => state.convertRoomToLaboratory(liveRoom.id),
-                          ),
+                          child: liveRoom.isUnderConstruction
+                              ? _buildExpandButton(
+                                  context,
+                                  'CANCEL CONVERSION',
+                                  'Halt current construction. Recover 100% if uncommenced, or 50% if underway.',
+                                  Icons.cancel,
+                                  () => state.cancelRoomConversion(liveRoom.id),
+                                )
+                              : _buildExpandButton(
+                                  context,
+                                  'CONVERT ROOM',
+                                  'Convert this secluded room into a specialized workshop or facility.',
+                                  Icons.construction,
+                                  () => _showConversionOptionsDialog(context, state, liveRoom),
+                                  popOnPress: false,
+                                ),
                         ),
                     ],
                     if (liveRoom.isRestored &&
@@ -782,6 +1292,7 @@ class _ManorScreenState extends State<ManorScreen> {
                             liveRoom.type == RoomType.chickenCoop ||
                             liveRoom.type == RoomType.kitchen ||
                             liveRoom.type == RoomType.garden ||
+                            (liveRoom.type == RoomType.diningRoom && state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ||
                             liveRoom.type == RoomType.library))
                       SizedBox(
                         width: double.infinity,
@@ -800,6 +1311,13 @@ class _ManorScreenState extends State<ManorScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => const KitchenScreen(),
+                                ),
+                              );
+                            } else if (liveRoom.type == RoomType.diningRoom) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const DiningRoomScreen(),
                                 ),
                               );
                             } else if (liveRoom.type == RoomType.laboratory) {
@@ -967,381 +1485,96 @@ class _ManorScreenState extends State<ManorScreen> {
     );
   }
 
-  void _showVentureOperationsDialog(BuildContext context, GameState state) {
-    showModalBottomSheet(
+  void _showCharacterSelectionForGreeting(BuildContext context, GameState state, NPC guest) {
+    showDialog(
       context: context,
-      backgroundColor: const Color(0xFF1A1612),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
-      ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final diners = state.npcs.where((n) => n.metadata['isDiner'] == true).toList();
-            final guests = state.npcs.where((n) => n.metadata['isHotelGuest'] == true).toList();
-            
-            final studyRoom = state.rooms.firstWhereOrNull((r) => r.id == 'study');
-            final kompromatFolders = studyRoom?.inventory.where((i) => i.type == 'kompromat_folder').toList() ?? [];
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.8,
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'ESTATE OPERATIONS',
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 3,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFFE5D5B0)),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
+        final residents = state.npcs.where((n) => n.isResident && n.worldDestinationId == null).toList();
+        
+        return Dialog(
+          backgroundColor: const Color(0xFF1E1A15),
+          shape: const RoundedRectangleBorder(),
+          child: Container(
+            width: 400,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFC4B89B), width: 1),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "SELECT RECIPIENT",
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
                   ),
-                  const Divider(color: Colors.white10, height: 32),
-                  
-                  Text(
-                    'MANOR VENTURE MODE',
-                    style: GoogleFonts.outfit(
-                      color: const Color(0xFFC4B89B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "CHOOSE WHO WILL GREET ${guest.name.toUpperCase()}",
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
+                    fontSize: 8,
+                  ),
+                ),
+                const Divider(color: Colors.white10, height: 24),
+                if (residents.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Text(
+                      "NO RESIDENTS ARE CURRENTLY PRESENT.",
+                      style: GoogleFonts.oldStandardTt(color: Colors.white24),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: ManorVenture.values.map((v) {
-                      final isSelected = state.manorVenture == v;
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: OutlinedButton(
-                            onPressed: () {
-                              state.setManorVenture(v);
-                              setState(() {});
-                            },
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                color: isSelected ? const Color(0xFFE5D5B0) : Colors.white10,
-                                width: isSelected ? 2.0 : 1.0,
-                              ),
-                              backgroundColor: isSelected ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
-                              shape: const RoundedRectangleBorder(),
-                            ),
-                            child: Text(
-                              v.name.toUpperCase(),
-                              style: GoogleFonts.playfairDisplay(
-                                color: isSelected ? const Color(0xFFE5D5B0) : Colors.white24,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  
-                  const Divider(color: Colors.white10, height: 32),
-
-                  Expanded(
+                  )
+                else
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 250),
                     child: SingleChildScrollView(
-                      child: () {
-                        if (state.manorVenture == ManorVenture.restaurant) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'DINING ROOM SEATING (${diners.length}/4 DINERS)',
-                                style: GoogleFonts.outfit(
-                                  color: const Color(0xFFC4B89B),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.5,
-                                ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: residents.map((res) {
+                          return ListTile(
+                            title: Text(
+                              res.name.toUpperCase(),
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFE5D5B0),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                               ),
-                              const SizedBox(height: 12),
-                              if (diners.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                                  child: Center(
-                                    child: Text(
-                                      'NO DINERS CURRENTLY SEATED.',
-                                      style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 12),
-                                    ),
-                                  ),
-                                )
-                              else
-                                ...diners.map((diner) {
-                                  final orderedType = diner.metadata['orderedDishType'] as String? ?? 'any';
-                                  return Card(
-                                    color: Colors.black26,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: const RoundedRectangleBorder(),
-                                    child: ListTile(
-                                      title: Text(
-                                        diner.name.toUpperCase(),
-                                        style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
-                                      ),
-                                      subtitle: Text(
-                                        'ORDERING: ${orderedType.toUpperCase()}',
-                                        style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 11),
-                                      ),
-                                      trailing: OutlinedButton(
-                                        onPressed: () => _showServeDishDialog(context, state, diner),
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Color(0xFFE5D5B0)),
-                                          shape: const RoundedRectangleBorder(),
-                                        ),
-                                        child: Text(
-                                          'SERVE MEAL',
-                                          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                            ],
+                            ),
+                            subtitle: Text(
+                              res.role.toUpperCase(),
+                              style: GoogleFonts.oldStandardTt(
+                                color: Colors.white38,
+                                fontSize: 8,
+                              ),
+                            ),
+                            onTap: () {
+                              state.receiveEntrywayGuest(guest.id, res.id);
+                              Navigator.pop(context); // Pop selection dialog
+                              Navigator.pop(context); // Pop room details bottom sheet
+                            },
                           );
-                        } else if (state.manorVenture == ManorVenture.kompromatHotel) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'HOTEL LODGERS (${guests.length}/3 ROOMED)',
-                                style: GoogleFonts.outfit(
-                                  color: const Color(0xFFC4B89B),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              if (guests.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                                  child: Center(
-                                    child: Text(
-                                      'ALL BEDROOMS VACANT.',
-                                      style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 12),
-                                    ),
-                                  ),
-                                )
-                              else
-                                ...guests.map((guest) {
-                                  final guestFolder = kompromatFolders.firstWhereOrNull(
-                                    (i) => i.metadata['guestId'] == guest.id
-                                  );
-
-                                  return Card(
-                                    color: Colors.black26,
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: const RoundedRectangleBorder(),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                guest.name.toUpperCase(),
-                                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
-                                              ),
-                                              Text(
-                                                'ROOM: ${(state.rooms.firstWhereOrNull((r) => r.id == guest.metadata['roomId'])?.name ?? 'Bedroom').toUpperCase()}',
-                                                style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 10, fontWeight: FontWeight.bold),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: OutlinedButton.icon(
-                                                  onPressed: () => _showSpyOnGuestDialog(context, state, guest),
-                                                  icon: const Icon(Icons.visibility, size: 12, color: Color(0xFFE5D5B0)),
-                                                  label: Text(
-                                                    'SPY ON GUEST',
-                                                    style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold),
-                                                  ),
-                                                  style: OutlinedButton.styleFrom(
-                                                    side: const BorderSide(color: Color(0xFFE5D5B0)),
-                                                    shape: const RoundedRectangleBorder(),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: OutlinedButton.icon(
-                                                  onPressed: guestFolder != null
-                                                      ? () {
-                                                          state.blackmailGuest(guest.id, guestFolder.id);
-                                                          Navigator.pop(context);
-                                                        }
-                                                      : null,
-                                                  icon: const Icon(Icons.gavel, size: 12),
-                                                  label: Text(
-                                                    'BLACKMAIL (250 CHF)',
-                                                    style: GoogleFonts.playfairDisplay(fontSize: 9, fontWeight: FontWeight.bold),
-                                                  ),
-                                                  style: OutlinedButton.styleFrom(
-                                                    side: BorderSide(color: guestFolder != null ? Colors.red : Colors.white10),
-                                                    foregroundColor: guestFolder != null ? Colors.red : Colors.white12,
-                                                    shape: const RoundedRectangleBorder(),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }),
-                            ],
-                          );
-                        } else {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const SizedBox(height: 32),
-                              const Icon(Icons.gavel, size: 48, color: Colors.white12),
-                              const SizedBox(height: 16),
-                              Text(
-                                'A SECLUDED PRIVATE MANOR SANCTUARY.',
-                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 14, fontWeight: FontWeight.bold),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'NO ACTIVE BUSINESS VENTURES ESTABLISHED. GUESTS WILL OCCASIONALLY ARRIVE BUT WILL NOT PAY COMMERCIAL TARIFFS.',
-                                style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 11),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          );
-                        }
-                      }(),
+                        }).toList(),
+                      ),
                     ),
                   ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showServeDishDialog(BuildContext context, GameState state, NPC diner) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final viableDishes = state.pantry.toList();
-
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1612),
-          title: Text(
-            'SERVE ${diner.name.toUpperCase()}',
-            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: viableDishes.isEmpty
-                ? Text(
-                    'PANTRY IS COMPLETELY EMPTY.',
-                    style: GoogleFonts.oldStandardTt(color: Colors.white24),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: viableDishes.length,
-                    itemBuilder: (context, index) {
-                      final dish = viableDishes[index];
-                      return ListTile(
-                        title: Text(
-                          dish.name.toUpperCase(),
-                          style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 13),
-                        ),
-                        subtitle: Text(
-                          'QUALITY: ${dish.quality.name.toUpperCase()}',
-                          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Color(0xFFE5D5B0)),
-                        onTap: () {
-                          state.serveDiner(diner.id, dish.id);
-                          Navigator.pop(context); // close serve dialog
-                          Navigator.pop(context); // close operations modal
-                        },
-                      );
-                    },
-                  ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  void _showSpyOnGuestDialog(BuildContext context, GameState state, NPC guest) {
+  void _showCheatCodesDialog(BuildContext context, GameState state) {
     showDialog(
       context: context,
-      builder: (context) {
-        final residents = state.npcs.where((n) => n.isResident && n.status != NPCStatus.zombie && n.activeTaskId == null).toList();
-
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1612),
-          title: Text(
-            'CHOOSE AGENT FOR SPYCRAFT',
-            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: residents.isEmpty
-                ? Text(
-                    'NO IDLE RESIDENTS AVAILABLE FOR SPYING.',
-                    style: GoogleFonts.oldStandardTt(color: Colors.white24),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: residents.length,
-                    itemBuilder: (context, index) {
-                      final res = residents[index];
-                      final dexterity = res.stats['dexterity'] ?? 5;
-                      final perception = res.stats['perception'] ?? 5;
-
-                      return ListTile(
-                        title: Text(
-                          res.name.toUpperCase(),
-                          style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 13),
-                        ),
-                        subtitle: Text(
-                          'DEXTERITY: $dexterity | PERCEPTION: $perception',
-                          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11),
-                        ),
-                        trailing: const Icon(Icons.visibility, size: 14, color: Color(0xFFE5D5B0)),
-                        onTap: () {
-                          state.startSpyingOnGuest(res.id, guest.id);
-                          Navigator.pop(context); // close dialog
-                          Navigator.pop(context); // close operations modal
-                        },
-                      );
-                    },
-                  ),
-          ),
-        );
-      },
+      builder: (context) => const CheatCodesDialog(),
     );
   }
 
@@ -1380,10 +1613,29 @@ class _ManorScreenState extends State<ManorScreen> {
     } else if (type == TaskType.research && state.researchQueue.isNotEmpty) {
       final topic = state.getFirstUnassignedResearch();
       if (topic != null) {
-        final cleanTopic = topic.startsWith('activity:')
-            ? topic.replaceFirst('activity:', '')
-            : topic;
-        label = "RESEARCH ${cleanTopic.toUpperCase()}";
+        final parts = topic.split(':');
+        if (parts[0] == 'recipe' && parts.length >= 2) {
+          final recipeId = parts[1];
+          final recipe = KitchenService.getAvailableRecipes().firstWhereOrNull((r) => r.id == recipeId);
+          label = "STUDY EXPERIMENTAL ${recipe?.name.toUpperCase() ?? recipeId.toUpperCase()}";
+        } else if (parts.length >= 3) {
+          final activityId = parts[1];
+          final itemId = parts[2];
+          final item = state.inventory.firstWhereOrNull((i) => i.id == itemId);
+          final itemName = item?.name ?? "Alchemical Artifact";
+          if (activityId == 'generic_research') {
+            label = "RESEARCH ${itemName.toUpperCase()}";
+          } else if (activityId == 'small_dissection') {
+            label = "DISSECT ${itemName.toUpperCase()}";
+          } else {
+            label = "STUDY ${itemName.toUpperCase()}";
+          }
+        } else if (parts.length == 2) {
+          final activityId = parts[1];
+          label = "RESEARCH ${activityId.toUpperCase().replaceAll('_', ' ')}";
+        } else {
+          label = "RESEARCH ${topic.toUpperCase().replaceAll('_', ' ')}";
+        }
       }
     }
 
@@ -1691,6 +1943,8 @@ class _ManorScreenState extends State<ManorScreen> {
           (r) => r.type == RoomType.kitchen && r.isRestored,
         );
         return kitchenExists;
+      case TaskType.greetGuest:
+        return false;
       default:
         return true;
     }
@@ -1713,9 +1967,12 @@ class _ManorScreenState extends State<ManorScreen> {
         _showSpecimenSelection(context, state, room, type);
         break;
       case TaskType.cook:
+        final nextRecipe = state.getFirstUnassignedRecipe();
+        _showWorkerSelection(context, state, room, type, recipeId: nextRecipe);
+        break;
       case TaskType.research:
-        // No sub-selection anymore, just go straight to worker selection
-        _showWorkerSelection(context, state, room, type);
+        final nextTopic = state.getFirstUnassignedResearch();
+        _showWorkerSelection(context, state, room, type, recipeId: nextTopic);
         break;
       default:
         _showWorkerSelection(context, state, room, type);
@@ -2138,14 +2395,17 @@ class _ManorScreenState extends State<ManorScreen> {
     String title,
     String description,
     IconData icon,
-    VoidCallback onPressed,
-  ) {
+    VoidCallback onPressed, {
+    bool popOnPress = true,
+  }) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
         onPressed: () {
           onPressed();
-          Navigator.pop(context);
+          if (popOnPress) {
+            Navigator.pop(context);
+          }
         },
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Color(0xFFC4B89B)),
@@ -2292,6 +2552,8 @@ class _ManorScreenState extends State<ManorScreen> {
       case TaskType.surgicalOperation:
       case TaskType.surgery:
         return Icons.biotech;
+      case TaskType.dentalWork:
+        return Icons.medical_services;
       case TaskType.collectEggs:
         return Icons.egg;
       case TaskType.guardCoop:
@@ -2332,4 +2594,518 @@ class _ManorScreenState extends State<ManorScreen> {
         return Icons.assignment;
     }
   }
+
+  Widget _buildAbstractedTheaterCard(BuildContext context, GameState state) {
+    final theater = state.activeBusinesses.firstWhereOrNull((b) => b.type == BusinessType.theater && b.status == 'active');
+    if (theater == null) return const SizedBox.shrink();
+
+    final meta = theater.metadata;
+    final double rehearsal = (meta['rehearsalLevel'] as num? ?? 0.0).toDouble();
+    final double promotion = (meta['promotedLevel'] as num? ?? 0.0).toDouble();
+
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1612).withValues(alpha: 0.95),
+        border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "THEATER PRODUCTION CONTROL",
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0),
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const Divider(color: Colors.white10, height: 16),
+          Text(
+            "REHEARSAL LEVEL: ${(rehearsal * 100).toInt()}%",
+            style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 10),
+          ),
+          const SizedBox(height: 4),
+          LinearProgressIndicator(
+            value: rehearsal,
+            color: const Color(0xFFC4B89B),
+            backgroundColor: Colors.white10,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "PROMOTION LEVEL: ${(promotion * 100).toInt()}%",
+            style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 10),
+          ),
+          const SizedBox(height: 4),
+          LinearProgressIndicator(
+            value: promotion,
+            color: const Color(0xFFC4B89B),
+            backgroundColor: Colors.white10,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    state.rehearseTheaterShow(theater.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Cast members called to rehearsal stage.")),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF241F1A),
+                    foregroundColor: const Color(0xFFE5D5B0),
+                    side: const BorderSide(color: Color(0xFFC4B89B)),
+                    shape: const RoundedRectangleBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  child: Text("REHEARSE", style: GoogleFonts.oswald(fontSize: 9, letterSpacing: 0.5)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    state.promoteTheaterShow(theater.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Promoted the play in local hamlet.")),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF241F1A),
+                    foregroundColor: const Color(0xFFE5D5B0),
+                    side: const BorderSide(color: Color(0xFFC4B89B)),
+                    shape: const RoundedRectangleBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  child: Text("PROMOTE", style: GoogleFonts.oswald(fontSize: 9, letterSpacing: 0.5)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                state.launchTheaterShowProduction(theater.id);
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF1E1A15),
+                    title: Text(
+                      "SHOW LAUNCHED!",
+                      style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
+                    ),
+                    content: Text(
+                      "The curtains rise! Speeches delivered, music scored, ticket sales completed. Profit logged on Records balance sheet.",
+                      style: GoogleFonts.oldStandardTt(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("EXCELLENT", style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0))),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC4B89B),
+                foregroundColor: Colors.black,
+                shape: const RoundedRectangleBorder(),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+              child: Text("LAUNCH PRODUCTION", style: GoogleFonts.oswald(fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTheaterCreativeRoomSection(BuildContext context, GameState state) {
+    final theater = state.activeBusinesses.firstWhereOrNull((b) => b.type == BusinessType.theater && b.status == 'active');
+    if (theater == null) return const SizedBox.shrink();
+
+    final meta = theater.metadata;
+    final String scenery = meta['sceneryChoice'] ?? 'minimalist';
+    final String costume = meta['costumeChoice'] ?? 'period';
+    final String direction = meta['directionStyle'] ?? 'naturalistic';
+    final String score = meta['musicalScore'] ?? 'classical';
+
+    final TextEditingController feedbackController = TextEditingController(text: meta['directorFeedback'] ?? '');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(color: Colors.white24, height: 32),
+        Text(
+          "THEATER CREATIVE DESIGN",
+          style: GoogleFonts.playfairDisplay(
+            color: const Color(0xFFE5D5B0),
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "CONFIGURE THE CREATIVE DECISIONS FOR YOUR ACTIVE PLAYS AND THEATRICAL PRODUCTIONS:",
+          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
+        ),
+        const SizedBox(height: 16),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("SCENERY DESIGN STYLE:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
+            DropdownButton<String>(
+              value: scenery,
+              dropdownColor: const Color(0xFF1E1A15),
+              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
+              onChanged: (val) {
+                if (val != null) {
+                  state.updateTheaterCreativeChoices(theater.id, scenery: val);
+                }
+              },
+              items: const [
+                DropdownMenuItem(value: 'minimalist', child: Text("MINIMALIST")),
+                DropdownMenuItem(value: 'classical', child: Text("CLASSICAL")),
+                DropdownMenuItem(value: 'baroque', child: Text("BAROQUE (+20% TICKET BONUS)")),
+                DropdownMenuItem(value: 'avant-garde', child: Text("AVANT-GARDE (-10% APPEAL)")),
+              ],
+            ),
+          ],
+        ),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("COSTUME DESIGN:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
+            DropdownButton<String>(
+              value: costume,
+              dropdownColor: const Color(0xFF1E1A15),
+              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
+              onChanged: (val) {
+                if (val != null) {
+                  state.updateTheaterCreativeChoices(theater.id, costume: val);
+                }
+              },
+              items: const [
+                DropdownMenuItem(value: 'period', child: Text("PERIOD STYLE")),
+                DropdownMenuItem(value: 'elaborate', child: Text("ELABORATE GOWNS (+15% BONUS)")),
+                DropdownMenuItem(value: 'modern', child: Text("MODERN APPAREL")),
+                DropdownMenuItem(value: 'gothic', child: Text("GOTHIC PARCHMENT (+5% BONUS)")),
+              ],
+            ),
+          ],
+        ),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("ACTING DIRECTION:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
+            DropdownButton<String>(
+              value: direction,
+              dropdownColor: const Color(0xFF1E1A15),
+              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
+              onChanged: (val) {
+                if (val != null) {
+                  state.updateTheaterCreativeChoices(theater.id, direction: val);
+                }
+              },
+              items: const [
+                DropdownMenuItem(value: 'naturalistic', child: Text("NATURALISTIC STANCE")),
+                DropdownMenuItem(value: 'expressionist', child: Text("EXPRESSIONIST SHADOWS")),
+                DropdownMenuItem(value: 'melodramatic', child: Text("MELODRAMATIC SIGHS")),
+                DropdownMenuItem(value: 'operatic', child: Text("OPERATIC VIBRATO")),
+              ],
+            ),
+          ],
+        ),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("MUSICAL SCORING STYLE:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
+            DropdownButton<String>(
+              value: score,
+              dropdownColor: const Color(0xFF1E1A15),
+              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
+              onChanged: (val) {
+                if (val != null) {
+                  state.updateTheaterCreativeChoices(theater.id, score: val);
+                }
+              },
+              items: const [
+                DropdownMenuItem(value: 'classical', child: Text("CLASSICAL SYMPHONY")),
+                DropdownMenuItem(value: 'haunting', child: Text("HAUNTING STRING HARMONIES (+10%)")),
+                DropdownMenuItem(value: 'orchestral', child: Text("FULL ORCHESTRAL COMPOSITION (+5%)")),
+                DropdownMenuItem(value: 'silent piano', child: Text("SILENT PIANO ACCOMPANIMENT")),
+              ],
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+        Text("DIRECTOR'S FEEDBACK & CRITIQUE:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: feedbackController,
+                style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 12),
+                decoration: const InputDecoration(
+                  hintText: "Enter instructions (e.g., Speak louder, project emotion!)...",
+                  hintStyle: TextStyle(color: Colors.white10),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFC4B89B))),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () {
+                state.updateTheaterCreativeChoices(theater.id, feedback: feedbackController.text);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Critique submitted to the cast: '${feedbackController.text}'")),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC4B89B),
+                foregroundColor: Colors.black,
+                shape: const RoundedRectangleBorder(),
+              ),
+              child: Text("CRITIQUE", style: GoogleFonts.playfairDisplay(fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _showConversionOptionsDialog(BuildContext context, GameState state, Room room) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1A15),
+          shape: const RoundedRectangleBorder(),
+          title: Text(
+            "SELECT CONVERSION TYPE",
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0),
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              letterSpacing: 2,
+            ),
+          ),
+          content: SizedBox(
+            width: 360,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                  ),
+                  child: ListTile(
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                      state.convertRoomToLaboratory(room.id);
+                    },
+                    leading: const Icon(Icons.biotech, color: Color(0xFFC4B89B)),
+                    title: Text(
+                      "ALCHEMICAL LABORATORY",
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      "Outfit this secluded room for experimentation.\nCost: 1000 CHF, 50 Wood.",
+                      style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                "ABANDON",
+                style: GoogleFonts.playfairDisplay(color: Colors.white24, fontSize: 11),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
+
+class _AnnouncementBanner extends StatefulWidget {
+  final List<String> history;
+  const _AnnouncementBanner({required this.history});
+
+  @override
+  State<_AnnouncementBanner> createState() => _AnnouncementBannerState();
+}
+
+class _AnnouncementBannerState extends State<_AnnouncementBanner> {
+  late final ScrollController _scrollController;
+  Timer? _autoScrollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnnouncementBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.history.length != oldWidget.history.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _resetRecenterTimer() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 44,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFF241F1A),
+        border: Border.all(
+          color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
+        ),
+      ),
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is ScrollUpdateNotification && notification.dragDetails != null) {
+            _resetRecenterTimer();
+          }
+          return false;
+        },
+        child: ListView.builder(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          itemCount: widget.history.length,
+          padding: EdgeInsets.zero,
+          itemBuilder: (context, index) {
+            final log = widget.history[index];
+            
+            String dateStr = "";
+            String timeStr = "";
+            String contentStr = log;
+
+            final matchFull = RegExp(r'^\[([A-Za-z]{3})\s(\d{1,2})\s(\d{2}:\d{2})\]\s*(.*)$').firstMatch(log);
+            if (matchFull != null) {
+              final m = matchFull.group(1)!.toUpperCase();
+              final d = matchFull.group(2)!.padLeft(2, '0');
+              dateStr = "$m $d";
+              timeStr = matchFull.group(3)!;
+              contentStr = matchFull.group(4)!;
+            } else {
+              final matchTimeOnly = RegExp(r'^\[(\d{2}:\d{2})\]\s*(.*)$').firstMatch(log);
+              if (matchTimeOnly != null) {
+                timeStr = matchTimeOnly.group(1)!;
+                contentStr = matchTimeOnly.group(2)!;
+                dateStr = "LOG";
+              } else {
+                contentStr = log;
+                dateStr = "LOG";
+              }
+            }
+
+            final leftTag = timeStr.isNotEmpty ? "$dateStr $timeStr" : dateStr;
+            final displayText = contentStr;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 85,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      leftTag,
+                      style: GoogleFonts.oswald(
+                        color: const Color(0xFFC4B89B),
+                        fontSize: 10.0,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      displayText.toUpperCase(),
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontSize: 11.0,
+                        letterSpacing: 1.0,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+

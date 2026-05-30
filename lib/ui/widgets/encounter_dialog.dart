@@ -49,6 +49,13 @@ class EncounterDialog extends StatelessWidget {
         autofocus: true,
         onKeyEvent: (event) {
           if (event is KeyDownEvent) {
+            // Skip hotkeys if typing in a text field
+            final primaryFocus = FocusManager.instance.primaryFocus;
+            if (primaryFocus != null && primaryFocus.context != null) {
+              final hasTextFocus = primaryFocus.context!.findAncestorWidgetOfExactType<EditableText>() != null;
+              if (hasTextFocus) return;
+            }
+
             final key = event.physicalKey;
             final hasDemands = encounter.demands.isNotEmpty;
 

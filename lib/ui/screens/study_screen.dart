@@ -301,7 +301,7 @@ class StudyScreen extends StatelessWidget {
             );
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('ANATOMICAL STUDY ENQUEUED'),
+                content: Text('DISSECTION ENQUEUED'),
                 backgroundColor: Color(0xFFC4B89B),
                 duration: Duration(seconds: 1),
               ),

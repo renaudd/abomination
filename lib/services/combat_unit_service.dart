@@ -40,8 +40,8 @@ class CombatUnitService {
         return CombatUnitFactory.createWoodenTank();
       case 'undead_rats':
         return CombatUnitFactory.createUndeadRats();
-      case 'rats_2':
-        return CombatUnitFactory.createRats2();
+      case 'brown_rats':
+        return CombatUnitFactory.createBrownRats();
       case 'werewolf':
         return CombatUnitFactory.createWerewolf();
       case 'chimera':

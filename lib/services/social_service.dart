@@ -41,11 +41,12 @@ class SocialService {
         target.relationships[actor.id] ?? Relationship();
 
     String log = "";
+    String speechQuote = getDialogueQuote(actor, type);
 
     // Logic for how interactions affect relationship values
     switch (type) {
       case InteractionType.chat:
-        log = "${actor.name} and ${target.name} had a pleasant conversation.";
+        log = "${actor.name} and ${target.name} had a pleasant conversation. ${actor.name} remarked, $speechQuote";
         targetToActor = targetToActor.copyWith(
           admiration: targetToActor.admiration + 0.05,
           respect: targetToActor.respect + 0.02,
@@ -53,7 +54,7 @@ class SocialService {
         );
         break;
       case InteractionType.argument:
-        log = "${actor.name} and ${target.name} had a heated argument.";
+        log = "${actor.name} and ${target.name} had a heated argument. ${actor.name} declared, $speechQuote";
         targetToActor = targetToActor.copyWith(
           admiration: targetToActor.admiration - 0.1,
           respect: targetToActor.respect - 0.05,
@@ -65,14 +66,14 @@ class SocialService {
         );
         break;
       case InteractionType.praise:
-        log = "${actor.name} praised ${target.name}'s efforts.";
+        log = "${actor.name} praised ${target.name}'s efforts, saying, $speechQuote";
         targetToActor = targetToActor.copyWith(
           admiration: targetToActor.admiration + 0.1,
           respect: targetToActor.respect + 0.05,
         );
         break;
       case InteractionType.threaten:
-        log = "${actor.name} threatened ${target.name}.";
+        log = "${actor.name} threatened ${target.name}, warning: $speechQuote";
         targetToActor = targetToActor.copyWith(
           fear: targetToActor.fear + 0.2,
           admiration: targetToActor.admiration - 0.2,
@@ -80,14 +81,14 @@ class SocialService {
         );
         break;
       case InteractionType.encourage:
-        log = "${actor.name} encouraged ${target.name}.";
+        log = "${actor.name} encouraged ${target.name}, saying, $speechQuote";
         targetToActor = targetToActor.copyWith(
           respect: targetToActor.respect + 0.1,
           admiration: targetToActor.admiration + 0.05,
         );
         break;
       case InteractionType.workTogether:
-        log = "${actor.name} and ${target.name} worked together efficiently.";
+        log = "${actor.name} and ${target.name} worked together efficiently. ${actor.name} noted, $speechQuote";
         targetToActor = targetToActor.copyWith(
           respect: targetToActor.respect + 0.05,
           admiration: targetToActor.admiration + 0.02,
@@ -106,6 +107,115 @@ class SocialService {
       'targetRelationship': targetToActor,
       'log': log,
     };
+  }
+
+  static String getDialogueQuote(NPC actor, InteractionType type) {
+    final characterClass = actor.biography?.characterClass ?? actor.background;
+    final religion = actor.religion;
+    final hometown = actor.hometown;
+
+    // 1. Pick base phrase by InteractionType
+    String basePhrase = "";
+    switch (type) {
+      case InteractionType.chat:
+        basePhrase = "the weather is quite interesting today";
+        break;
+      case InteractionType.argument:
+        basePhrase = "I strongly disagree with your assessment";
+        break;
+      case InteractionType.praise:
+        basePhrase = "you have done an exceptional job";
+        break;
+      case InteractionType.threaten:
+        basePhrase = "you had better watch your step around here";
+        break;
+      case InteractionType.encourage:
+        basePhrase = "keep pushing forward, you are doing well";
+        break;
+      case InteractionType.workTogether:
+        basePhrase = "we make quite a productive team";
+        break;
+      default:
+        basePhrase = "it is good to see you";
+    }
+
+    // 2. Modify/style based on Class (Noble, Peasant, Merchant, Scholar, Servant, etc.)
+    String classPrefix = "";
+    String classSuffix = "";
+    if (characterClass == 'Noble') {
+      classPrefix = "Indeed, ";
+      classSuffix = ", as one must expect from high standing";
+      if (type == InteractionType.argument) {
+        basePhrase = "your lack of refinement is showing, and I must object";
+      } else if (type == InteractionType.praise) {
+        basePhrase = "your efforts are truly commendable and fitting";
+      }
+    } else if (characterClass == 'Peasant') {
+      classPrefix = "Ay, ";
+      classSuffix = ", reckon that's just how it is";
+      if (type == InteractionType.argument) {
+        basePhrase = "that's absolute nonsense, plain and simple";
+      } else if (type == InteractionType.praise) {
+        basePhrase = "you did a mighty fine job there";
+      }
+    } else if (characterClass == 'Merchant') {
+      classPrefix = "To be frank, ";
+      classSuffix = ", it is simply a matter of solid value";
+      if (type == InteractionType.argument) {
+        basePhrase = "this doesn't add up, the margin for error is too high";
+      } else if (type == InteractionType.praise) {
+        basePhrase = "your productivity is highly profitable for us all";
+      }
+    } else if (characterClass == 'Scholar') {
+      classPrefix = "Conclusively, ";
+      classSuffix = ", based on rational deduction";
+      if (type == InteractionType.argument) {
+        basePhrase = "your logic is fundamentally flawed and lacks evidence";
+      } else if (type == InteractionType.praise) {
+        basePhrase = "your execution demonstrates highly intellectual precision";
+      }
+    } else if (characterClass == 'Servant') {
+      classPrefix = "If I may say, ";
+      classSuffix = ", as duty demands";
+      if (type == InteractionType.argument) {
+        basePhrase = "that is quite irregular, and I must advise against it";
+      } else if (type == InteractionType.praise) {
+        basePhrase = "your service has been exemplary";
+      }
+    }
+
+    // 3. Religion influence (Protestant, Catholic, Atheist, Jewish, etc.)
+    String religionWord = "";
+    if (religion == 'Protestant' || religion == 'Calvinist') {
+      religionWord = " By God's grace, we must do our duty.";
+    } else if (religion == 'Catholic') {
+      religionWord = " Blessings of the saints upon us.";
+    } else if (religion == 'Jewish') {
+      religionWord = " Baruch Hashem, let us find peace.";
+    } else if (religion == 'Atheist' || religion == 'Agnostic') {
+      religionWord = " Human reason must guide us.";
+    }
+
+    // 4. Place of origin influence (French Swiss / Geneva / Lausanne / Zürich / etc.)
+    String originWord = "";
+    final ht = hometown.toLowerCase();
+    if (ht.contains('geneva') || ht.contains('lausanne') || actor.nationality.toLowerCase() == 'french') {
+      originWord = "Naturellement!";
+    } else if (ht.contains('zürich') || ht.contains('bern') || actor.nationality.toLowerCase() == 'german') {
+      originWord = "Ja, precisely.";
+    } else if (actor.nationality.toLowerCase() == 'italian') {
+      originWord = "Allora!";
+    }
+
+    String speech = "$classPrefix$basePhrase$classSuffix.";
+    if (religionWord.isNotEmpty && _random.nextDouble() < 0.5) {
+      speech += religionWord;
+    }
+    if (originWord.isNotEmpty && _random.nextDouble() < 0.5) {
+      speech = "$originWord $speech";
+    }
+
+    return "\"$speech\"";
   }
 
   static double calculateInitialAttraction(NPC observer, NPC target) {

@@ -16,6 +16,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/npc.dart';
+import '../models/game_date.dart';
 import '../models/body_part.dart';
 import '../models/schedule.dart';
 import '../models/diet.dart';
@@ -25,7 +26,7 @@ class NPCGenerator {
   static final _random = Random();
   static final _uuid = Uuid();
 
-  static NPC generateRefugee() {
+  static NPC generateRefugee({GameDate? currentDate}) {
     final gender = _random.nextBool() ? 'Male' : 'Female';
     final age = _generateAge();
     final name = _generateName(gender);
@@ -39,20 +40,35 @@ class NPCGenerator {
       weights: [40, 30, 5, 10, 10, 5],
     );
 
-    final stats = _generateStats(age);
-    final traits = _generateTraits(age);
+    final bioDate = currentDate ?? GameDate.initial();
+    final biographyRes = generateBiographyForCharacter(
+      role: 'Refugee',
+      age: age,
+      currentDate: bioDate,
+      gender: gender,
+    );
+
+    final background = biographyRes.biography.characterClass;
+
+    var stats = _generateStats(age);
+    for (var entry in biographyRes.statModifiers.entries) {
+      if (stats.containsKey(entry.key)) {
+        stats[entry.key] = (stats[entry.key]! + entry.value).clamp(0, 10);
+      }
+    }
+
+    var traits = _generateTraits(age);
+    traits.addAll(biographyRes.traitsToAdd);
+
     final bodyParts = _generateBodyParts();
     final profession = _generateProfession(gender, age);
     final appearance = _generateAppearance(gender, age);
     final orientation = _generateOrientation(gender);
-    final background = _pickOne([
-      'Noble',
-      'Merchant',
-      'Peasant',
-      'Scholar',
-      'Soldier',
-      'Criminal',
-    ]);
+
+    var proficiencies = _generateProficiencies(age, background, profession);
+    for (var entry in biographyRes.proficienciesToAdd.entries) {
+      proficiencies[entry.key] = (proficiencies[entry.key] ?? 0.0) + entry.value;
+    }
 
       // Base compensation structure
       int fee = 5 + _random.nextInt(15);
@@ -93,22 +109,17 @@ class NPCGenerator {
       sexualOrientation: orientation,
       appearance: appearance,
       isResident: true,
-      proficiencies: _generateProficiencies(age, background, profession),
+      proficiencies: proficiencies,
       chefStats: ChefSkills(
         knifeSkills: 10 + _random.nextInt(40),
         fireSkills: 10 + _random.nextInt(40),
         sanitation: 10 + _random.nextInt(40),
         nose: 10 + _random.nextInt(40),
       ),
-      bio: _generateBio(name, profession, age),
-      hometown: _pickOne([
-        'Zürich',
-        'Bern',
-        'Geneva',
-        'Basel',
-        'Lausanne',
-        'Lucerne',
-      ]),
+      bio: biographyRes.biography.toParagraph(),
+      biography: biographyRes.biography,
+      birthDate: biographyRes.biography.birthDate,
+      hometown: biographyRes.biography.placeOfBirth,
       background: background,
       combatStats: _generateCombatStats(profession, age),
       abilities: _generateRefugeeAbilities(profession),
@@ -481,21 +492,7 @@ class NPCGenerator {
     ],
   };
 
-  static String _generateBio(String name, String profession, int age) {
-    final backgrounds = [
-      "Born to a family of $profession practitioners, $name has spent years perfecting the craft.",
-      "After a tragic accident in their youth, $name turned to $profession to find meaning.",
-      "$name was once a prominent figure in their hometown, but political shifts forced them to flee.",
-      "A mysterious traveler who rarely speaks of the past, focusing entirely on being a $profession.",
-      "Descended from a line of explorers, $name seeks to apply $profession in ways never seen before.",
-      "$name spent their early years in a remote monastery, learning the discipline required for $profession.",
-      "A failed poet who found that $profession pays the bills far better than verse.",
-      "Formerly an apprentice to a legendary master, $name is now out to prove they are the superior $profession.",
-      "$name believes that $profession is the key to understanding the deeper mysteries of the world.",
-      "A cheerful soul who treats $profession as a game, though their results are surprisingly professional.",
-    ];
-    return backgrounds[_random.nextInt(backgrounds.length)];
-  }
+
 
   static const _traitNames = {
     'loyal': 'Loyal',
@@ -617,4 +614,359 @@ class NPCGenerator {
 
     return abilities;
   }
+
+  static GameDate generateBirthDate(int age, GameDate currentDate) {
+    final birthYear = currentDate.year - age;
+    final birthMonth = 1 + _random.nextInt(12);
+    final birthDay = 1 + _random.nextInt(30);
+    return GameDate(
+      minute: 0,
+      hour: 12,
+      day: birthDay,
+      month: birthMonth,
+      year: birthYear,
+    );
+  }
+
+  static BiographyResult generateBiographyForCharacter({
+    required String role,
+    required int age,
+    required GameDate currentDate,
+    required String gender,
+  }) {
+    final birthDate = generateBirthDate(age, currentDate);
+
+    String placeOfBirth = "";
+    String fatherProfession = "";
+    String fatherClass = "";
+    String fatherReligion = "";
+    String motherProfession = "";
+    String motherClass = "";
+    String motherReligion = "";
+    String parentsMaritalStatus = "";
+    String characterClass = "";
+
+    final statModifiers = <String, int>{};
+    final traitsToAdd = <NPCTrait>[];
+    final proficienciesToAdd = <String, double>{};
+
+    if (role == 'Master') {
+      // Player character constraints: suits inheritor of a large estate in French Switzerland
+      placeOfBirth = _pickOne(['Geneva', 'Lausanne', 'Neuchâtel', 'Vevey']);
+      fatherClass = 'Noble';
+      fatherProfession = _pickOne(['Landowner', 'Banker', 'Diplomat', 'Aristocrat']);
+      fatherReligion = _pickOne(['Protestant', 'Calvinist', 'Catholic'], weights: [60, 20, 20]);
+      motherClass = _pickOne(['Noble', 'Merchant']);
+      motherProfession = _pickOne(['None', 'Socialite']);
+      motherReligion = fatherReligion; // Match for high status families
+      parentsMaritalStatus = 'in wedlock';
+      characterClass = 'Noble';
+
+      // Apply variations based on player's age
+      if (age < 30) {
+        statModifiers['strength'] = 1;
+        statModifiers['endurance'] = 1;
+        statModifiers['walkSpeed'] = 5;
+        statModifiers['intellect'] = -1;
+        statModifiers['judgment'] = -1;
+        statModifiers['leadership'] = -1;
+        traitsToAdd.add(NPCTrait(id: 'track_finder', name: 'Track Finder', group: 'skill'));
+        proficienciesToAdd['Farming'] = 10.0;
+      } else if (age >= 30 && age < 46) {
+        // Standard/median stats
+        proficienciesToAdd['Research'] = 20.0;
+        proficienciesToAdd['Accounting'] = 20.0;
+      } else {
+        // Old player
+        statModifiers['intellect'] = 2;
+        statModifiers['judgment'] = 2;
+        statModifiers['leadership'] = 2;
+        statModifiers['strength'] = -2;
+        statModifiers['endurance'] = -2;
+        statModifiers['walkSpeed'] = -5;
+        traitsToAdd.add(NPCTrait(id: 'stoic', name: 'Stoic', group: 'character'));
+        proficienciesToAdd['Research'] = 40.0;
+        proficienciesToAdd['Accounting'] = 40.0;
+        proficienciesToAdd['Writing'] = 20.0;
+      }
+    } else if (role == 'Butler') {
+      // Giles caretaker constraints
+      placeOfBirth = _pickOne(['Lausanne', 'Fribourg', 'Sion', 'Vevey']);
+      fatherClass = 'Servant';
+      fatherProfession = _pickOne(['Butler', 'Valet', 'Clerk', 'Head Gardener']);
+      fatherReligion = _pickOne(['Protestant', 'Catholic'], weights: [50, 50]);
+      motherClass = 'Servant';
+      motherProfession = _pickOne(['None', 'Housekeeper', 'Cook']);
+      motherReligion = fatherReligion;
+      parentsMaritalStatus = 'in wedlock';
+      characterClass = 'Servant';
+    } else {
+      // Regular refugees
+      placeOfBirth = _pickOne([
+        'Geneva', 'Lausanne', 'Zürich', 'Bern', 'Basel', 'Lucerne',
+        'Paris', 'Lyon', 'Milan', 'Munich', 'Vienna'
+      ]);
+      fatherClass = _pickOne(['Noble', 'Merchant', 'Scholar', 'Soldier', 'Peasant', 'Criminal'], weights: [5, 15, 10, 15, 50, 5]);
+      fatherProfession = _generateRandomProfession(fatherClass);
+      fatherReligion = _pickOne(['Protestant', 'Catholic', 'Calvinist', 'Jewish', 'Atheist'], weights: [35, 45, 10, 5, 5]);
+      
+      motherClass = _pickOne(['Noble', 'Merchant', 'Scholar', 'Peasant', 'Servant'], weights: [5, 15, 5, 60, 15]);
+      motherProfession = _random.nextDouble() < 0.6 ? 'None' : _generateRandomProfession(motherClass);
+      motherReligion = _pickOne(['Protestant', 'Catholic', 'Calvinist', 'Jewish', 'Atheist'], weights: [35, 45, 10, 5, 5]);
+      
+      parentsMaritalStatus = _pickOne(['in wedlock', 'out of wedlock', 'spurious'], weights: [80, 15, 5]);
+      
+      // Determine character class
+      if (parentsMaritalStatus == 'in wedlock') {
+        characterClass = fatherClass;
+      } else if (parentsMaritalStatus == 'out of wedlock') {
+        if (fatherClass == 'Noble' || motherClass == 'Noble') {
+          characterClass = 'Merchant';
+        } else if (fatherClass == 'Merchant' || motherClass == 'Merchant') {
+          characterClass = 'Scholar';
+        } else {
+          characterClass = 'Peasant';
+        }
+      } else {
+        characterClass = _pickOne(['Peasant', 'Criminal'], weights: [80, 20]);
+      }
+    }
+
+    // Formative childhood event (if >10 years old)
+    String? childhoodEvent;
+    if (age > 10) {
+      final events = [
+        "Survived a harsh winter that taught them self-reliance.",
+        "Watched their family's workshop burn down, breeding a fear of fire.",
+        "Discovered an ancient Roman coin in the fields, sparking a love of history.",
+        "Spent summers reading in a grand library.",
+        "Suffered a severe illness but recovered miraculously."
+      ];
+      final idx = _random.nextInt(events.length);
+      childhoodEvent = events[idx];
+      switch (idx) {
+        case 0:
+          statModifiers['adaptability'] = (statModifiers['adaptability'] ?? 0) + 1;
+          break;
+        case 1:
+          statModifiers['perception'] = (statModifiers['perception'] ?? 0) + 1;
+          break;
+        case 2:
+          statModifiers['intellect'] = (statModifiers['intellect'] ?? 0) + 1;
+          break;
+        case 3:
+          statModifiers['judgment'] = (statModifiers['judgment'] ?? 0) + 1;
+          break;
+        case 4:
+          statModifiers['endurance'] = (statModifiers['endurance'] ?? 0) + 1;
+          break;
+      }
+    }
+
+    // Education or Apprenticeship (if >15 years old)
+    String? educationOrApprenticeship;
+    if (age > 15) {
+      final educationOptions = [
+        "Apprenticed to a local clockmaker.",
+        "Studied theology at a Swiss academy.",
+        "Trained under a renowned surgeon.",
+        "Worked the vines in the Vaud region.",
+        "Learned the trade of bookkeeping."
+      ];
+      final idx = _random.nextInt(educationOptions.length);
+      educationOrApprenticeship = educationOptions[idx];
+      switch (idx) {
+        case 0:
+          proficienciesToAdd['Construction'] = (proficienciesToAdd['Construction'] ?? 0.0) + 20.0;
+          proficienciesToAdd['Manufacturing'] = (proficienciesToAdd['Manufacturing'] ?? 0.0) + 20.0;
+          statModifiers['dexterity'] = (statModifiers['dexterity'] ?? 0) + 1;
+          break;
+        case 1:
+          proficienciesToAdd['Research'] = (proficienciesToAdd['Research'] ?? 0.0) + 20.0;
+          proficienciesToAdd['Writing'] = (proficienciesToAdd['Writing'] ?? 0.0) + 10.0;
+          statModifiers['morality'] = (statModifiers['morality'] ?? 0) + 1;
+          traitsToAdd.add(NPCTrait(id: 'religious', name: 'Religious', group: 'association'));
+          break;
+        case 2:
+          proficienciesToAdd['Surgery'] = (proficienciesToAdd['Surgery'] ?? 0.0) + 20.0;
+          proficienciesToAdd['Medicine'] = (proficienciesToAdd['Medicine'] ?? 0.0) + 20.0;
+          statModifiers['intellect'] = (statModifiers['intellect'] ?? 0) + 1;
+          break;
+        case 3:
+          proficienciesToAdd['Farming'] = (proficienciesToAdd['Farming'] ?? 0.0) + 30.0;
+          statModifiers['endurance'] = (statModifiers['endurance'] ?? 0) + 1;
+          break;
+        case 4:
+          proficienciesToAdd['Accounting'] = (proficienciesToAdd['Accounting'] ?? 0.0) + 30.0;
+          statModifiers['judgment'] = (statModifiers['judgment'] ?? 0) + 1;
+          break;
+      }
+    }
+
+    // Profession (if >20 years old)
+    String? finalProfession;
+    if (age > 20) {
+      finalProfession = role == 'Master' ? 'Estate Master' : (role == 'Butler' ? 'Butler' : _generateRandomProfession(characterClass));
+    }
+
+    // Relationship status (if >=25 years old)
+    String? relationshipStatus;
+    if (age >= 25) {
+      relationshipStatus = _pickOne(['married', 'widowed', 'spurned', 'engaged', 'bachelor'], weights: [40, 10, 10, 10, 30]);
+    }
+
+    // Tragic event (if >30 years old)
+    String? tragicEvent;
+    if (age > 30) {
+      final tragedies = [
+        "Lost their spouse to consumption, leaving them melancholic.",
+        "Betrayed by a business partner, making them cynical.",
+        "Fled their home city due to political turmoil, losing all their possessions.",
+        "Surrendered to a brief period of imprisonment for a debt they did not owe."
+      ];
+      final idx = _random.nextInt(tragedies.length);
+      tragicEvent = tragedies[idx];
+      switch (idx) {
+        case 0:
+          statModifiers['temperament'] = (statModifiers['temperament'] ?? 0) - 1;
+          traitsToAdd.add(NPCTrait(id: 'unpleasant', name: 'Unpleasant', group: 'character'));
+          break;
+        case 1:
+          statModifiers['morality'] = (statModifiers['morality'] ?? 0) - 1;
+          statModifiers['perception'] = (statModifiers['perception'] ?? 0) + 1;
+          traitsToAdd.add(NPCTrait(id: 'dishonest', name: 'Dishonest', group: 'character'));
+          break;
+        case 2:
+          statModifiers['adaptability'] = (statModifiers['adaptability'] ?? 0) + 1;
+          traitsToAdd.add(NPCTrait(id: 'stoic', name: 'Stoic', group: 'character'));
+          break;
+        case 3:
+          statModifiers['courage'] = (statModifiers['courage'] ?? 0) - 1;
+          break;
+      }
+    }
+
+    // Discovered passion (if >40 years old)
+    String? discoveredPassion;
+    if (age > 40) {
+      final passions = [
+        "Developed a deep love for classical piano, spending hours playing.",
+        "Began painting pastoral landscapes of the Swiss Alps.",
+        "Became obsessed with cataloging rare botanical specimens.",
+        "Took up fly fishing in mountain streams."
+      ];
+      final idx = _random.nextInt(passions.length);
+      discoveredPassion = passions[idx];
+      switch (idx) {
+        case 0:
+          statModifiers['beauty'] = (statModifiers['beauty'] ?? 0) + 1;
+          traitsToAdd.add(NPCTrait(id: 'perfect_pitch', name: 'Perfect Pitch', group: 'skill'));
+          break;
+        case 1:
+          statModifiers['beauty'] = (statModifiers['beauty'] ?? 0) + 1;
+          break;
+        case 2:
+          statModifiers['perception'] = (statModifiers['perception'] ?? 0) + 1;
+          traitsToAdd.add(NPCTrait(id: 'greenthumb', name: 'Green Thumb', group: 'skill'));
+          break;
+        case 3:
+          statModifiers['temperament'] = (statModifiers['temperament'] ?? 0) + 1;
+          break;
+      }
+    }
+
+    // Health issue (if >50 years old)
+    String? healthIssue;
+    if (age > 50) {
+      final healthIssues = [
+        "Developed a stiff knee, slowing their movements.",
+        "Suffers from chronic asthma, especially on damp mornings.",
+        "Slightly failing eyesight, requiring spectacles to read.",
+        "Gout in the left foot, causing periodic pain and irritability."
+      ];
+      final idx = _random.nextInt(healthIssues.length);
+      healthIssue = healthIssues[idx];
+      switch (idx) {
+        case 0:
+          statModifiers['walkSpeed'] = (statModifiers['walkSpeed'] ?? 0) - 5;
+          statModifiers['strength'] = (statModifiers['strength'] ?? 0) - 1;
+          break;
+        case 1:
+          statModifiers['endurance'] = (statModifiers['endurance'] ?? 0) - 1;
+          break;
+        case 2:
+          statModifiers['perception'] = (statModifiers['perception'] ?? 0) - 1;
+          traitsToAdd.add(NPCTrait(id: 'super_vision', name: 'Myopia', group: 'physical'));
+          break;
+        case 3:
+          statModifiers['temperament'] = (statModifiers['temperament'] ?? 0) - 1;
+          break;
+      }
+    }
+
+    final bioObj = CharacterBiography(
+      birthDate: birthDate,
+      placeOfBirth: placeOfBirth,
+      fatherProfession: fatherProfession,
+      fatherClass: fatherClass,
+      fatherReligion: fatherReligion,
+      motherProfession: motherProfession,
+      motherClass: motherClass,
+      motherReligion: motherReligion,
+      parentsMaritalStatus: parentsMaritalStatus,
+      characterClass: characterClass,
+      childhoodEvent: childhoodEvent,
+      educationOrApprenticeship: educationOrApprenticeship,
+      profession: finalProfession,
+      relationshipStatus: relationshipStatus,
+      tragicEvent: tragicEvent,
+      discoveredPassion: discoveredPassion,
+      healthIssue: healthIssue,
+    );
+
+    return BiographyResult(
+      biography: bioObj,
+      statModifiers: statModifiers,
+      traitsToAdd: traitsToAdd,
+      proficienciesToAdd: proficienciesToAdd,
+      finalClass: characterClass,
+    );
+  }
+
+  static String _generateRandomProfession(String className) {
+    switch (className) {
+      case 'Noble':
+        return _pickOne(['Landowner', 'Diplomat', 'Aristocrat', 'Officer']);
+      case 'Merchant':
+        return _pickOne(['Banker', 'Jeweler', 'Clockmaker', 'Merchant', 'Florist']);
+      case 'Scholar':
+        return _pickOne(['Surgeon', 'Doctor', 'Psychologist', 'Journalist', 'Inventor']);
+      case 'Soldier':
+        return _pickOne(['Officer', 'Soldier', 'Guard', 'Mercenary']);
+      case 'Peasant':
+        return _pickOne(['Farmer', 'Horticulturalist', 'Brewer', 'Cook', 'Carpenter', 'Blacksmith']);
+      case 'Criminal':
+        return _pickOne(['Thief', 'Smuggler', 'Burglar', 'Con Artist']);
+      case 'Servant':
+        return _pickOne(['Butler', 'Housekeeper', 'Cook', 'Valet', 'Maid']);
+      default:
+        return 'Commoner';
+    }
+  }
+}
+
+class BiographyResult {
+  final CharacterBiography biography;
+  final Map<String, int> statModifiers;
+  final List<NPCTrait> traitsToAdd;
+  final Map<String, double> proficienciesToAdd;
+  final String finalClass;
+
+  BiographyResult({
+    required this.biography,
+    required this.statModifiers,
+    required this.traitsToAdd,
+    required this.proficienciesToAdd,
+    required this.finalClass,
+  });
 }

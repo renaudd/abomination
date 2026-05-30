@@ -14,6 +14,7 @@
 
 class MarketService {
   static const Map<String, int> _baseBuyPrices = {
+    'shepherds_pie': 12,
     'wood': 5,
     'meat': 8,
     'eggs': 2,
@@ -47,9 +48,36 @@ class MarketService {
     'tobacco_leaves': 60,
     'hallucinogenic_mushrooms': 100,
     'hemp_fiber': 30,
+    // Ores & Mining
+    'coal': 10,
+    'iron_ore': 15,
+    'copper_ore': 15,
+    'gold_ore': 40,
+    'silver_ore': 30,
+    'cobalt_ore': 30,
+    'nickel_ore': 30,
+    'lithium_ore': 40,
+    'titanium_ore': 50,
+    'rough_diamonds': 100,
+    'uranium_ore': 100,
+    'jadeite_ore': 80,
+    'crude_oil': 12,
+    // Materials
+    'bricks': 8,
+    'stone': 3,
+    // Tools
+    'simple_shovel': 160,
+    'iron_pickaxe': 600,
+    'steel_pickaxe': 2000,
+    'pneumatic_drill': 10000,
+    // Cooked Meals
+    'boiled_cabbage': 8,
+    'scrambled_eggs': 6,
+    'protein_mistery_stew': 20,
   };
 
   static const Map<String, int> _baseSellPrices = {
+    'shepherds_pie': 6,
     'wood': 3,
     'meat': 5,
     'eggs': 1,
@@ -83,6 +111,7 @@ class MarketService {
     'tobacco_leaves': 30,
     'hallucinogenic_mushrooms': 50,
     'hemp_fiber': 15,
+    'gold_ore': 20,
   };
 
   int getBuyPrice(String resource) => _baseBuyPrices[resource] ?? 999;

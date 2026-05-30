@@ -88,6 +88,120 @@ class NPCTrait {
   );
 }
 
+class CharacterBiography {
+  final GameDate birthDate;
+  final String placeOfBirth;
+  final String fatherProfession;
+  final String fatherClass;
+  final String fatherReligion;
+  final String motherProfession;
+  final String motherClass;
+  final String motherReligion;
+  final String parentsMaritalStatus;
+  final String characterClass;
+  final String? childhoodEvent;
+  final String? educationOrApprenticeship;
+  final String? profession;
+  final String? relationshipStatus;
+  final String? tragicEvent;
+  final String? discoveredPassion;
+  final String? healthIssue;
+
+  CharacterBiography({
+    required this.birthDate,
+    required this.placeOfBirth,
+    required this.fatherProfession,
+    required this.fatherClass,
+    required this.fatherReligion,
+    required this.motherProfession,
+    required this.motherClass,
+    required this.motherReligion,
+    required this.parentsMaritalStatus,
+    required this.characterClass,
+    this.childhoodEvent,
+    this.educationOrApprenticeship,
+    this.profession,
+    this.relationshipStatus,
+    this.tragicEvent,
+    this.discoveredPassion,
+    this.healthIssue,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'birthDate': birthDate.toJson(),
+    'placeOfBirth': placeOfBirth,
+    'fatherProfession': fatherProfession,
+    'fatherClass': fatherClass,
+    'fatherReligion': fatherReligion,
+    'motherProfession': motherProfession,
+    'motherClass': motherClass,
+    'motherReligion': motherReligion,
+    'parentsMaritalStatus': parentsMaritalStatus,
+    'characterClass': characterClass,
+    'childhoodEvent': childhoodEvent,
+    'educationOrApprenticeship': educationOrApprenticeship,
+    'profession': profession,
+    'relationshipStatus': relationshipStatus,
+    'tragicEvent': tragicEvent,
+    'discoveredPassion': discoveredPassion,
+    'healthIssue': healthIssue,
+  };
+
+  factory CharacterBiography.fromJson(Map<String, dynamic> json) => CharacterBiography(
+    birthDate: GameDate.fromJson(json['birthDate'] as Map<String, dynamic>),
+    placeOfBirth: json['placeOfBirth'] as String,
+    fatherProfession: json['fatherProfession'] as String,
+    fatherClass: json['fatherClass'] as String,
+    fatherReligion: json['fatherReligion'] as String,
+    motherProfession: json['motherProfession'] as String,
+    motherClass: json['motherClass'] as String,
+    motherReligion: json['motherReligion'] as String,
+    parentsMaritalStatus: json['parentsMaritalStatus'] as String,
+    characterClass: json['characterClass'] as String,
+    childhoodEvent: json['childhoodEvent'] as String?,
+    educationOrApprenticeship: json['educationOrApprenticeship'] as String?,
+    profession: json['profession'] as String?,
+    relationshipStatus: json['relationshipStatus'] as String?,
+    tragicEvent: json['tragicEvent'] as String?,
+    discoveredPassion: json['discoveredPassion'] as String?,
+    healthIssue: json['healthIssue'] as String?,
+  );
+
+  String toParagraph() {
+    final sb = StringBuffer();
+    sb.write("Born on ${birthDate.formattedDate} in $placeOfBirth. ");
+    sb.write("Father: $fatherClass, by profession $fatherProfession, religion $fatherReligion. ");
+    if (motherProfession.isNotEmpty && motherProfession != 'None') {
+      sb.write("Mother: $motherClass, by profession $motherProfession, religion $motherReligion. ");
+    } else {
+      sb.write("Mother: $motherClass, religion $motherReligion. ");
+    }
+    sb.write("Born $parentsMaritalStatus, placing them in the $characterClass class. ");
+    if (childhoodEvent != null) {
+      sb.write("Formative childhood event: $childhoodEvent ");
+    }
+    if (educationOrApprenticeship != null) {
+      sb.write("Education/Apprenticeship: $educationOrApprenticeship ");
+    }
+    if (profession != null) {
+      sb.write("Profession: $profession. ");
+    }
+    if (relationshipStatus != null) {
+      sb.write("Relationship Status: $relationshipStatus. ");
+    }
+    if (tragicEvent != null) {
+      sb.write("Tragic midlife event: $tragicEvent ");
+    }
+    if (discoveredPassion != null) {
+      sb.write("Discovered passion: $discoveredPassion ");
+    }
+    if (healthIssue != null) {
+      sb.write("Late-life health issue: $healthIssue ");
+    }
+    return sb.toString().trim();
+  }
+}
+
 enum HairStyle { none, short, long, messy, bob, bald, curly, ponytail }
 
 enum FacialHairStyle { none, beard, mustache, goatee, stubble }
@@ -301,6 +415,7 @@ class NPC {
   // Bio and Relationships
   final List<String> taskQueue; // IDs of enqueued tasks
   final String bio;
+  final CharacterBiography? biography;
   final String hometown;
   final String background;
   final Map<String, Relationship> relationships;
@@ -378,6 +493,7 @@ class NPC {
     this.minutesStaying = 0,
     this.taskQueue = const [],
     this.bio = '',
+    this.biography,
     this.hometown = 'Unknown',
     this.background = 'Commoner',
     this.relationships = const {},
@@ -478,6 +594,7 @@ class NPC {
     List<String>? consumedDishes,
     int? minutesStaying,
     String? bio,
+    CharacterBiography? biography,
     String? hometown,
     String? background,
     String? specimenType,
@@ -568,6 +685,7 @@ class NPC {
       consumedDishes: consumedDishes ?? this.consumedDishes,
       minutesStaying: minutesStaying ?? this.minutesStaying,
       bio: bio ?? this.bio,
+      biography: biography ?? this.biography,
       hometown: hometown ?? this.hometown,
       background: background ?? this.background,
       relationships: relationships ?? this.relationships,
@@ -735,6 +853,7 @@ class NPC {
     'consumedDishes': consumedDishes,
     'minutesStaying': minutesStaying,
     'bio': bio,
+    'biography': biography?.toJson(),
     'hometown': hometown,
     'background': background,
     'relationships': relationships.map((k, v) => MapEntry(k, v.toJson())),
@@ -841,6 +960,7 @@ class NPC {
     consumedDishes: (json['consumedDishes'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
     minutesStaying: json['minutesStaying'] as int? ?? 0,
     bio: json['bio'] as String? ?? '',
+    biography: json['biography'] != null ? CharacterBiography.fromJson(json['biography'] as Map<String, dynamic>) : null,
     hometown: json['hometown'] as String? ?? 'Unknown',
     background: json['background'] as String? ?? 'Commoner',
     relationships: (json['relationships'] as Map? ?? {}).map(

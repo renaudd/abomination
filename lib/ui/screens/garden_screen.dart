@@ -314,14 +314,30 @@ class GardenScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "MANUALLY ENQUEUE GLOBAL ACTIONS",
-            style: GoogleFonts.playfairDisplay(
-              color: const Color(0xFFC4B89B),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "MANUALLY ENQUEUE GLOBAL ACTIONS",
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              // SECRET INVISIBLE BUTTON directly above Harvest All
+              GestureDetector(
+                onTap: () {
+                  _showSecretCheatTrigger(context, state);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: const SizedBox(
+                  width: 100,
+                  height: 24,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Row(
@@ -360,6 +376,57 @@ class GardenScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showSecretCheatTrigger(BuildContext context, GameState state) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1A15),
+          shape: const RoundedRectangleBorder(),
+          title: Text(
+            "A GOTHIC ENQUIRY",
+            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            "ARE YOU HERE FOR THE CHEAT CODES?",
+            style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 12),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text("NO", style: GoogleFonts.oldStandardTt(color: Colors.white38)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                state.setCheatCodesEnabled(true);
+                // Deduct 10 satisfaction from everyone in the manor
+                for (var npc in state.npcs) {
+                  state.adjustNpcSatisfaction(npc.id, -10.0);
+                }
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Temptation embraced. Cheat codes unlocked, but manor mood darkens..."),
+                    backgroundColor: Color(0xFF241F1A),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC4B89B),
+                foregroundColor: Colors.black,
+                shape: const RoundedRectangleBorder(),
+              ),
+              child: Text("YES", style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

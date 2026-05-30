@@ -119,6 +119,17 @@ class Combatant {
   double backstepDirX = 0.0;
   double backstepDirY = 0.0;
   int stuckFrames = 0;
+
+  double supportDurationRemaining = 0.0;
+  double gasSlowTimer = 0.0;
+
+  double get movementSpeedMultiplier {
+    double mult = 1.0;
+    if (gasSlowTimer > 0.0) {
+      mult *= 0.4; // 60% slow
+    }
+    return mult;
+  }
 }
 
 class Projectile {
@@ -230,6 +241,46 @@ class CombatManager extends ChangeNotifier {
   bool _isDefeat = false;
   double _combatTimeRemaining = 180.0;
   bool _isDraw = false;
+
+  bool _cameraFollowPlayer = true;
+  double? _targetCameraX;
+  double? _targetCameraY;
+  double _cameraResumeFollowDelay = 0.0;
+  String _combatControlMode = 'pad';
+
+  bool get cameraFollowPlayer => _cameraFollowPlayer;
+  set cameraFollowPlayer(bool val) {
+    if (_cameraFollowPlayer != val) {
+      _cameraFollowPlayer = val;
+      notifyListeners();
+    }
+  }
+
+  double? get targetCameraX => _targetCameraX;
+  double? get targetCameraY => _targetCameraY;
+
+  double get cameraResumeFollowDelay => _cameraResumeFollowDelay;
+  set cameraResumeFollowDelay(double val) {
+    if (_cameraResumeFollowDelay != val) {
+      _cameraResumeFollowDelay = val;
+      notifyListeners();
+    }
+  }
+
+  String get combatControlMode => _combatControlMode;
+  set combatControlMode(String val) {
+    if (_combatControlMode != val) {
+      _combatControlMode = val;
+      notifyListeners();
+    }
+  }
+
+  void moveCameraTo(double worldX, double worldY) {
+    _targetCameraX = worldX.clamp(0.0, _map.width);
+    _targetCameraY = worldY.clamp(0.0, _map.height);
+    _cameraFollowPlayer = false;
+    notifyListeners();
+  }
 
   final List<NPC> _killedEnemies = [];
   final Map<String, num> _accumulatedLoot = {'funds': 0, 'meat': 0};
@@ -493,6 +544,11 @@ class CombatManager extends ChangeNotifier {
     _isDraw = false;
     _killedEnemies.clear();
     _accumulatedLoot.updateAll((key, value) => 0);
+    _cameraFollowPlayer = true;
+    _targetCameraX = null;
+    _targetCameraY = null;
+    _cameraResumeFollowDelay = 0.0;
+    _combatControlMode = 'pad';
 
     _cauldrons.clear();
     _cauldrons.addAll([
@@ -534,6 +590,69 @@ class CombatManager extends ChangeNotifier {
     }
   }
 
+  bool isValidPlacement(NPC npc, double worldX, double worldY) {
+    final stats = npc.combatStats;
+    if (stats == null) return false;
+
+    final isSupport = npc.name.contains('Barrage') ||
+        npc.name.contains('Artillery') ||
+        npc.name.contains('Gas') ||
+        npc.name.contains('Tear') ||
+        npc.name.contains('Caltrops') ||
+        npc.name.contains('Totem') ||
+        stats.unitType == UnitType.support;
+
+    if (isSupport) {
+      final alphonse = _combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
+      if (alphonse == null) return false;
+
+      if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
+        if (worldX > 0.8 * _map.width) {
+          final hasPresence = _combatants.any((c) => c.side == CombatSide.player && !c.isDead && c.x >= 0.7 * _map.width);
+          if (!hasPresence) return false;
+        }
+        return true;
+      } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
+        final dist = sqrt(pow(worldX - alphonse.x, 2) + pow(worldY - alphonse.y, 2));
+        return dist <= 0.25 * _map.width;
+      } else if (npc.name.contains('Caltrops')) {
+        final dist = sqrt(pow(worldX - alphonse.x, 2) + pow(worldY - alphonse.y, 2));
+        return dist <= 5.0;
+      } else if (npc.name.contains('Totem') || npc.name.contains('Vampiric')) {
+        return isValidPlacementForTroop(worldX, worldY);
+      }
+      return true;
+    } else {
+      return isValidPlacementForTroop(worldX, worldY);
+    }
+  }
+
+  bool isValidPlacementForTroop(double worldX, double worldY) {
+    if (worldX > 0.8 * _map.width) return false;
+    final double startingZoneLimit = 0.2 * _map.width;
+    if (worldX > startingZoneLimit) {
+      int targetLaneIdx = -1;
+      for (int i = 0; i < _map.laneCenters.length; i++) {
+        if ((worldY - _map.laneCenters[i]).abs() <= 18.0) {
+          targetLaneIdx = i;
+          break;
+        }
+      }
+      if (targetLaneIdx == -1) return false;
+
+      double maxPlayerXOnLane = 0.0;
+      for (final c in _combatants) {
+        if (c.side == CombatSide.player && !c.isDead && !c.isTower) {
+          if ((c.y - _map.laneCenters[targetLaneIdx]).abs() <= 18.0) {
+            maxPlayerXOnLane = max(maxPlayerXOnLane, c.x);
+          }
+        }
+      }
+      if (worldX > maxPlayerXOnLane) return false;
+    }
+    return true;
+  }
+
   bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y}) {
     final stats = npc.combatStats;
     if (stats == null) return false;
@@ -544,33 +663,7 @@ class CombatManager extends ChangeNotifier {
 
     // 2. Enforce player spawn limits
     if (side == CombatSide.player) {
-      // Spawning must never exceed the 80% mark
-      if (spawnX > 0.8 * _map.width) return false;
-
-      // Spawning is valid anywhere inside the first 20% of the battlefield
-      final double startingZoneLimit = 0.2 * _map.width;
-      if (spawnX > startingZoneLimit) {
-        // Otherwise, must be on one of the defined channels/lanes no further towards
-        // the enemy's end than another player unit is leading on that lane.
-        int targetLaneIdx = -1;
-        for (int i = 0; i < _map.laneCenters.length; i++) {
-          if ((spawnY - _map.laneCenters[i]).abs() <= 18.0) {
-            targetLaneIdx = i;
-            break;
-          }
-        }
-        if (targetLaneIdx == -1) return false; // Must spawn on a lane if outside home base
-
-        double maxPlayerXOnLane = 0.0;
-        for (final c in _combatants) {
-          if (c.side == CombatSide.player && !c.isDead && !c.isTower) {
-            if ((c.y - _map.laneCenters[targetLaneIdx]).abs() <= 18.0) {
-              maxPlayerXOnLane = max(maxPlayerXOnLane, c.x);
-            }
-          }
-        }
-        if (spawnX > maxPlayerXOnLane) return false; // Cannot spawn ahead of allied units
-      }
+      if (!isValidPlacement(npc, spawnX, spawnY)) return false;
     }
 
     // 3. Check and deduct Action Points
@@ -593,21 +686,38 @@ class CombatManager extends ChangeNotifier {
       }
     }
 
+    // Snap Y coordinate to closest lane center for Artillery Barrage so it perfectly matches the preview
+    double finalSpawnY = spawnY;
+    if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
+      finalSpawnY = _map.laneCenters[closestLaneIdx];
+    }
+
     // Generate unique squad ID
     final String squadId = 'squad_${npc.id}_${DateTime.now().microsecondsSinceEpoch}';
+
+    double initialSupportDuration = 0.0;
+    if (stats.unitType == UnitType.support) {
+      if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
+        initialSupportDuration = 3.0;
+      } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
+        initialSupportDuration = 6.0;
+      } else {
+        initialSupportDuration = 60.0; // Default for Caltrops, Vampiric Totem, etc.
+      }
+    }
 
     // Spawn the Leader
     final leader = Combatant(
       npc: npc,
       side: side,
       x: spawnX,
-      y: spawnY,
+      y: finalSpawnY,
       laneIndex: closestLaneIdx,
       isTower: false,
       squadId: squadId,
       isSquadLeader: true,
       activeDeploymentTimer: stats.deploymentTime,
-    );
+    )..supportDurationRemaining = initialSupportDuration;
 
     _combatants.add(leader);
 
@@ -682,6 +792,11 @@ class CombatManager extends ChangeNotifier {
   void update(double dt) {
     if (!_isCombatActive) return;
 
+    // Decrement camera resume follow delay
+    if (_cameraResumeFollowDelay > 0.0) {
+      _cameraResumeFollowDelay = max(0.0, _cameraResumeFollowDelay - dt);
+    }
+
     // 0. Decrement combat timer
     _combatTimeRemaining = max(0.0, _combatTimeRemaining - dt);
 
@@ -713,7 +828,7 @@ class CombatManager extends ChangeNotifier {
       );
       _isScrolling = !hasEnemies;
 
-      if (_isScrolling) {
+      if (_isScrolling && _combatControlMode != 'click') {
         // Auto-drift Alphonse forward if they are not moving manually
         if (alphonse.moveDirX == 0) {
           alphonse.x += alphonse.npc.combatStats!.movement * dt * 3.75;
@@ -723,15 +838,22 @@ class CombatManager extends ChangeNotifier {
 
 
 
-      if (_manualCameraOverrideTimer <= 0.0) {
-        // Target scroll coordinates to center on as much battlefield as possible
-        // focused above and to the right of the character (shifting camera target to the right and up)
-        final targetFieldScroll = (alphonse.x + 35.0 / _zoomFactor).clamp(0.0, _map.width);
-        final targetYFieldScroll = (alphonse.y - 12.0 / _zoomFactor).clamp(0.0, _map.height);
+      if (_cameraFollowPlayer) {
+        if (_manualCameraOverrideTimer <= 0.0) {
+          // Target scroll coordinates to center on as much battlefield as possible
+          // focused above and to the right of the character (shifting camera target to the right and up)
+          final targetFieldScroll = (alphonse.x + 35.0 / _zoomFactor).clamp(0.0, _map.width);
+          final targetYFieldScroll = (alphonse.y - 12.0 / _zoomFactor).clamp(0.0, _map.height);
 
-        // Lerp smoothly with a factor of 1.5 so it takes ~2 full seconds to completely transition
-        _fieldScroll += (targetFieldScroll - _fieldScroll) * 1.5 * dt;
-        _yFieldScroll += (targetYFieldScroll - _yFieldScroll) * 1.5 * dt;
+          // Lerp smoothly with a factor of 1.5 so it takes ~2 full seconds to completely transition
+          _fieldScroll += (targetFieldScroll - _fieldScroll) * 1.5 * dt;
+          _yFieldScroll += (targetYFieldScroll - _yFieldScroll) * 1.5 * dt;
+        }
+      } else {
+        if (_targetCameraX != null && _targetCameraY != null) {
+          _fieldScroll += (_targetCameraX! - _fieldScroll) * 3.0 * dt;
+          _yFieldScroll += (_targetCameraY! - _yFieldScroll) * 3.0 * dt;
+        }
       }
     }
 
@@ -779,6 +901,7 @@ class CombatManager extends ChangeNotifier {
             // Invoke state callbacks
             if (c.side == CombatSide.player && c.npc.isPlayer) {
               onPlayerDeath?.call();
+              _cameraFollowPlayer = true;
             } else if (c.side == CombatSide.enemy && c.npc.id == 'ai_mirror') {
               onEnemyHeroDeath?.call(c.npc);
             }
@@ -803,8 +926,8 @@ class CombatManager extends ChangeNotifier {
             _applyAbilityEffect(c, ability);
           }
         }
-        // Return player units to deck
-        if (c.side == CombatSide.player && !c.npc.isPlayer) {
+        // Return player units to deck (Only recycle the main Squad Leader card to prevent flooding deck with degraded single-troop followers)
+        if (c.side == CombatSide.player && !c.npc.isPlayer && c.isSquadLeader) {
           // Reset unit state before recycling
           final resetNpc = c.npc.copyWith(
             combatStats: c.npc.combatStats?.copyWith(
@@ -886,6 +1009,7 @@ class CombatManager extends ChangeNotifier {
           
           if (c.npc.isPlayer) {
             _fieldScroll = 0.0; // Reset camera scroll to show home base respawn
+            _cameraFollowPlayer = true;
           }
           
           _addLog('${c.npc.name} has respawned!', side: c.side);
@@ -1072,9 +1196,120 @@ class CombatManager extends ChangeNotifier {
 
   void _processUnitTick(Combatant c, double dt) {
     if (c.isDead) return;
-    final stats = c.npc.combatStats!;
 
-    // A-1. Deployment Timer ticking
+    // Tick down gas slow timer
+    if (c.gasSlowTimer > 0.0) {
+      c.gasSlowTimer = max(0.0, c.gasSlowTimer - dt);
+    }
+
+    final stats = c.npc.combatStats!.copyWith(
+      movement: c.npc.combatStats!.movement * c.movementSpeedMultiplier,
+    );
+
+    // A-1. Support Unit Deployment & Action ticking
+    if (stats.unitType == UnitType.support) {
+      if (c.activeDeploymentTimer > 0.0) {
+        c.activeDeploymentTimer = max(0.0, c.activeDeploymentTimer - dt);
+        return; // Skip normal updates while deploying
+      }
+
+      c.supportDurationRemaining = max(0.0, c.supportDurationRemaining - dt);
+      if (c.supportDurationRemaining <= 0.0) {
+        c.isDead = true;
+        return;
+      }
+
+      // Apply support area of effect damage/slowing
+      final targets = _combatants.where((other) => other.side != c.side && !other.isDead).toList();
+
+      if (c.npc.name.contains('Barrage') || c.npc.name.contains('Artillery')) {
+        // Reduced rectangle bounds: width and length by half
+        final rectWidth = _map.width * 0.375;
+        final rectHeight = (_map.height / _map.laneCenters.length) * 0.5;
+
+        final double leftX = c.x - rectWidth / 2.0;
+        final double rightX = c.x + rectWidth / 2.0;
+        final double topY = c.y - rectHeight / 2.0;
+        final double bottomY = c.y + rectHeight / 2.0;
+
+        // High DPS: enough to kill median troop (120 health) in 3s. 55 DPS = 165 total damage.
+        final damageThisTick = 55.0 * dt;
+
+        for (final t in targets) {
+          if (t.x >= leftX && t.x <= rightX && t.y >= topY && t.y <= bottomY) {
+            final tStats = t.npc.combatStats!;
+            final newHealth = max(0.0, tStats.health - damageThisTick);
+            t.npc = t.npc.copyWith(
+              combatStats: tStats.copyWith(health: newHealth),
+            );
+            t.flashTimer = 0.25;
+            t.recentDamage += damageThisTick;
+            if (newHealth <= 0) {
+              t.isDead = true;
+            }
+          }
+        }
+      } else if (c.npc.name.contains('Gas') || c.npc.name.contains('Tear')) {
+        // Tear Gas: slows by 60%, deals 15 DPS in a circle of radius 15.0
+        const radius = 15.0;
+        final damageThisTick = 15.0 * dt;
+
+        for (final t in targets) {
+          final dx = t.x - c.x;
+          final dy = t.y - c.y;
+          final dist = sqrt(dx * dx + dy * dy);
+          if (dist <= radius) {
+            final tStats = t.npc.combatStats!;
+            final newHealth = max(0.0, tStats.health - damageThisTick);
+            t.npc = t.npc.copyWith(
+              combatStats: tStats.copyWith(health: newHealth),
+            );
+            t.flashTimer = 0.25;
+            t.recentDamage += damageThisTick;
+            t.gasSlowTimer = 0.5; // Keep slow refreshed
+            if (newHealth <= 0) {
+              t.isDead = true;
+            }
+          }
+        }
+      } else if (c.npc.name.contains('Caltrops')) {
+        // Caltrops: slows ground units by 60%, deals 10 DPS (2.5x / 25 DPS to vehicles) in a square
+        // Each side is 15.0 feet (long side of original layout)
+        const halfSide = 15.0;
+
+        final double leftX = c.x - halfSide;
+        final double rightX = c.x + halfSide;
+        final double topY = c.y - halfSide;
+        final double bottomY = c.y + halfSide;
+
+        final baseDamageThisTick = 10.0 * dt;
+
+        for (final t in targets) {
+          if (t.npc.combatStats!.isFlying) continue; // Caltrops only affects ground units
+
+          if (t.x >= leftX && t.x <= rightX && t.y >= topY && t.y <= bottomY) {
+            final isVehicle = t.npc.combatStats?.unitType == UnitType.vehicle;
+            final damageThisTick = baseDamageThisTick * (isVehicle ? 2.5 : 1.0);
+
+            final tStats = t.npc.combatStats!;
+            final newHealth = max(0.0, tStats.health - damageThisTick);
+            t.npc = t.npc.copyWith(
+              combatStats: tStats.copyWith(health: newHealth),
+            );
+            t.flashTimer = 0.25;
+            t.recentDamage += damageThisTick;
+            t.gasSlowTimer = 0.5; // Slow down
+            if (newHealth <= 0) {
+              t.isDead = true;
+            }
+          }
+        }
+      }
+
+      return; // Skip normal locomotion, auto-targeting, or auto-attacks for Support units
+    }
+
+    // A-1b. Standard Deployment Timer ticking
     if (c.activeDeploymentTimer > 0.0) {
       c.activeDeploymentTimer = max(0.0, c.activeDeploymentTimer - dt);
       return; // Skip normal updates while deploying
@@ -1098,6 +1333,7 @@ class CombatManager extends ChangeNotifier {
     // 0. Collision Repulsion (Push units apart if they overlap, respecting static towers)
     for (final other in _combatants) {
       if (other == c || other.isDead) continue;
+      if (stats.unitType == UnitType.support || other.npc.combatStats?.unitType == UnitType.support) continue;
       final otherStats = other.npc.combatStats!;
       final dx = other.x - c.x;
       final dy = other.y - c.y;

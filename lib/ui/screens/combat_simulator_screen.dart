@@ -17,7 +17,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/combat_unit_service.dart';
 import '../widgets/character_blob_renderer.dart';
+import '../widgets/combat_controls_dialog.dart';
 import 'combat_simulator_map_selection_screen.dart';
+
 
 class CombatSimulatorScreen extends StatefulWidget {
   const CombatSimulatorScreen({super.key});
@@ -41,7 +43,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
     'armored_car',
     'wooden_tank',
     'undead_rats',
-    'rats_2',
+    'brown_rats',
     'werewolf',
     'chimera',
     'flesh_golem',
@@ -182,6 +184,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                             leading: CharacterBlobRenderer(
                               npc: sampleUnit,
                               size: 30,
+                              isCombat: true,
                             ),
                             title: Text(
                               type.toUpperCase().replaceAll('_', ' '),
@@ -311,6 +314,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                                                       currentDeck[index],
                                                     ),
                                                 size: 30,
+                                                isCombat: true,
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
@@ -353,26 +357,58 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: _goToMapSelection,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFC4B89B),
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton(
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => const CombatControlsDialog(),
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFE5D5B0),
+                                side: const BorderSide(color: Color(0xFFC4B89B)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero,
+                                ),
+                              ),
+                              child: Text(
+                                "CONTROLS",
+                                style: GoogleFonts.playfairDisplay(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                              ),
                             ),
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.zero,
+                            const SizedBox(width: 16),
+                            ElevatedButton(
+                              onPressed: _goToMapSelection,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFC4B89B),
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero,
+                                ),
+                              ),
+                              child: Text(
+                                "SELECT MAP",
+                                style: GoogleFonts.playfairDisplay(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            "SELECT MAP",
-                            style: GoogleFonts.playfairDisplay(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),

@@ -15,10 +15,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../../services/kitchen_service.dart';
 import '../../services/task_service.dart';
 import '../../models/room.dart';
+import '../../models/active_business.dart';
 import '../widgets/room_ledger.dart';
 
 class KitchenScreen extends StatelessWidget {
@@ -81,20 +83,34 @@ class KitchenScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionTitle('KITCHEN LEDGER'),
-                        const SizedBox(height: 16),
                         Expanded(
                           child: SingleChildScrollView(
-                            child: RoomLedger(
-                              room: state.rooms.firstWhere((r) => r.type == RoomType.kitchen),
-                              state: state,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionTitle('KITCHEN LEDGER'),
+                                const SizedBox(height: 16),
+                                RoomLedger(
+                                  room: state.rooms.firstWhere((r) => r.type == RoomType.kitchen),
+                                  state: state,
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          child: Divider(color: Colors.white10, height: 1),
+                        ),
                         _buildSectionTitle('COOKING QUEUE'),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         _buildCookingQueue(state),
+                        if (state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ...[
+                          const SizedBox(height: 24),
+                          _buildDualQueuePanel(state),
+                          const SizedBox(height: 24),
+                          _buildAlchemicalSmoker(context, state),
+                        ],
                       ],
                     ),
                   ),
@@ -642,4 +658,204 @@ class KitchenScreen extends StatelessWidget {
       },
     );
   }
+
+  Widget _buildDualQueuePanel(GameState state) {
+    final activeCooks = state.activeTasks.where((t) => t.type == TaskType.cook).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('DUAL-COOKING PREPARATION SLOTS'),
+        const SizedBox(height: 12),
+        ...List.generate(2, (index) {
+          final hasCook = index < activeCooks.length;
+          if (!hasCook) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Text("SLOT ${index + 1}: IDLE (SOUS CHEF READY)", style: GoogleFonts.oswald(color: Colors.white24, fontSize: 10)),
+            );
+          }
+          final task = activeCooks[index];
+          final npcName = state.npcs.firstWhereOrNull((n) => n.id == task.npcId)?.name ?? "Cook";
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF211C18),
+              border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("SLOT ${index + 1}: PREPARING ${task.recipeId?.toUpperCase().replaceAll('_', ' ') ?? 'MEAL'}", style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text("Cook: ${npcName.toUpperCase()} | Time: ${task.minutesRemaining}m left", style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 9)),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildAlchemicalSmoker(BuildContext context, GameState state) {
+    final isSmokerActive = state.smokerItem != null;
+    final progress = state.smokerProgress;
+    final remaining = state.smokerMinutesRemaining;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
+        color: Colors.black26,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSectionTitle('ALCHEMICAL FOOD SMOKER'),
+              if (isSmokerActive)
+                const Icon(Icons.cloud, color: Color(0xFFE5D5B0), size: 16)
+              else
+                const Icon(Icons.cloud_off, color: Colors.white24, size: 16),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Slow cook raw ingredients for long periods to yield premium, exceptional delicacies.",
+            style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10),
+          ),
+          const SizedBox(height: 12),
+          if (!isSmokerActive) ...[
+            _buildSmokerOptionTile(context, state, 'smoked_meat', 'ELDRITCH SMOKED BEEF', '120 Minutes', 'Requires 1 Meat', () {
+              if ((state.resources['meat'] ?? 0) >= 1) {
+                state.loadSmoker('smoked_meat', 120);
+              } else {
+                _showErrorSnackBar(context, "INSUFFICIENT MEAT IN PANTRY.");
+              }
+            }),
+            _buildSmokerOptionTile(context, state, 'smoked_sausage', 'ARTISANAL SMOKED SAUSAGE', '180 Minutes', 'Requires 2 Pork', () {
+              if ((state.resources['meat_pork'] ?? 0) >= 2) {
+                state.loadSmoker('smoked_sausage', 180);
+              } else {
+                _showErrorSnackBar(context, "INSUFFICIENT PORK IN PANTRY.");
+              }
+            }),
+            _buildSmokerOptionTile(context, state, 'cured_salmon', 'CURED ALCHEMICAL SALMON', '90 Minutes', 'Requires 1 Fish', () {
+              if ((state.resources['fish'] ?? 0) >= 1) {
+                state.loadSmoker('cured_salmon', 90);
+              } else {
+                _showErrorSnackBar(context, "INSUFFICIENT FISH IN PANTRY.");
+              }
+            }),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C241E),
+                border: Border.all(color: const Color(0xFFC4B89B)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "ACTIVE SMOKING: ${state.smokerItem!.toUpperCase().replaceAll('_', ' ')}",
+                    style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "MINUTES REMAINING: $remaining MINS",
+                    style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 9),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.zero,
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.white10,
+                            color: const Color(0xFFC4B89B),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        "${(progress * 100).round()}%",
+                        style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 10),
+                      ),
+                    ],
+                  ),
+                  if (remaining <= 0) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          state.unloadSmoker();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC4B89B),
+                          foregroundColor: Colors.black,
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        child: Text(
+                          "HARVEST DELICACIES",
+                          style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmokerOptionTile(
+    BuildContext context,
+    GameState state,
+    String id,
+    String title,
+    String duration,
+    String reqs,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: Colors.black12,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        title: Text(title, style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold)),
+        subtitle: Text("$duration | $reqs", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 8)),
+        trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFFC4B89B), size: 10),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.oswald(color: Colors.black, fontSize: 11)),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
 }
+

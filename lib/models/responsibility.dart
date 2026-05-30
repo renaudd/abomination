@@ -90,6 +90,7 @@ class TaskCategoryMapping {
       case TaskType.treatIllness:
       case TaskType.checkBedridden:
       case TaskType.surgicalCombination:
+      case TaskType.dentalWork:
         return ResponsibilityCategory.medical;
 
       case TaskType.cook:

@@ -159,7 +159,9 @@ class _CombatScreenState extends State<CombatScreen>
     _previousSpeed = state.speed;
     state.setSpeed(GameSpeed.paused); // Pause background Manor updates to prevent main thread CPU starvation!
     
-    _combatManager = CombatManager()..map = state.selectedCombatMap;
+    _combatManager = CombatManager()
+      ..map = state.selectedCombatMap
+      ..combatControlMode = state.combatControlMode;
 
     _keyboardFocusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -328,6 +330,32 @@ class _CombatScreenState extends State<CombatScreen>
             }
             _lastTickTime = now;
             _combatManager.update(dt.clamp(0.0, 0.1));
+
+            // Check if player hero enters on-camera area to resume follow
+            final gameState = Provider.of<GameState>(context, listen: false);
+            if (gameState.combatControlMode == 'click' && 
+                !_combatManager.cameraFollowPlayer && 
+                _combatManager.cameraResumeFollowDelay <= 0.0) {
+              final alphonse = _combatManager.combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
+              if (alphonse != null) {
+                final screenSize = MediaQuery.of(context).size;
+                final projection = _CombatProjection(
+                  viewSize: screenSize,
+                  fieldScroll: _combatManager.fieldScroll,
+                  yFieldScroll: _combatManager.yFieldScroll,
+                  zoomFactor: _combatManager.zoomFactor,
+                );
+                final posOnScreen = projection.project(alphonse.x, alphonse.y);
+                final bool isInside = posOnScreen.dx >= 0 &&
+                                     posOnScreen.dx <= screenSize.width &&
+                                     posOnScreen.dy >= 0 &&
+                                     posOnScreen.dy <= (screenSize.height - 120.0);
+                if (isInside) {
+                  _combatManager.cameraFollowPlayer = true;
+                }
+              }
+            }
+
             if (mounted) setState(() {});
           });
     _tickController.repeat();
@@ -346,12 +374,28 @@ class _CombatScreenState extends State<CombatScreen>
 
   @override
   Widget build(BuildContext context) {
+    final gameState = Provider.of<GameState>(context);
+    _combatManager.combatControlMode = gameState.combatControlMode;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final defaultWidth = screenWidth * 0.4;
+    final handLeft = screenWidth - 566;
+    final maxWidth = handLeft - 16;
+    final navPadWidth = maxWidth > 0 ? (defaultWidth < maxWidth ? defaultWidth : maxWidth) : 0.0;
+
     return ChangeNotifierProvider.value(
       value: _combatManager,
       child: KeyboardListener(
         focusNode: _keyboardFocusNode,
         autofocus: true,
         onKeyEvent: (event) {
+          // Skip hotkeys if typing in a text field
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          if (primaryFocus != null && primaryFocus.context != null) {
+            final hasTextFocus = primaryFocus.context!.findAncestorWidgetOfExactType<EditableText>() != null;
+            if (hasTextFocus) return;
+          }
+
           final key = event.physicalKey;
           if (event is KeyDownEvent) {
             _pressedKeys.add(key);
@@ -363,29 +407,81 @@ class _CombatScreenState extends State<CombatScreen>
               // Hotkeys to select cards 1-5 from hand
               if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
                 if (_combatManager.hand.isNotEmpty) {
-                  _selectedCardIndex = 0;
-                  _showCardSelectedMessage(0);
+                  if (_selectedCardIndex == 0) {
+                    setState(() {
+                      _selectedCardIndex = null;
+                      _previewNpc = null;
+                      _previewLocalPosition = null;
+                    });
+                    _showNotification('SELECTION CANCELLED', Colors.blueGrey.shade800);
+                  } else {
+                    _selectedCardIndex = 0;
+                    _showCardSelectedMessage(0);
+                  }
                 }
               } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2) {
                 if (_combatManager.hand.length > 1) {
-                  _selectedCardIndex = 1;
-                  _showCardSelectedMessage(1);
+                  if (_selectedCardIndex == 1) {
+                    setState(() {
+                      _selectedCardIndex = null;
+                      _previewNpc = null;
+                      _previewLocalPosition = null;
+                    });
+                    _showNotification('SELECTION CANCELLED', Colors.blueGrey.shade800);
+                  } else {
+                    _selectedCardIndex = 1;
+                    _showCardSelectedMessage(1);
+                  }
                 }
               } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3) {
                 if (_combatManager.hand.length > 2) {
-                  _selectedCardIndex = 2;
-                  _showCardSelectedMessage(2);
+                  if (_selectedCardIndex == 2) {
+                    setState(() {
+                      _selectedCardIndex = null;
+                      _previewNpc = null;
+                      _previewLocalPosition = null;
+                    });
+                    _showNotification('SELECTION CANCELLED', Colors.blueGrey.shade800);
+                  } else {
+                    _selectedCardIndex = 2;
+                    _showCardSelectedMessage(2);
+                  }
                 }
               } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4) {
                 if (_combatManager.hand.length > 3) {
-                  _selectedCardIndex = 3;
-                  _showCardSelectedMessage(3);
+                  if (_selectedCardIndex == 3) {
+                    setState(() {
+                      _selectedCardIndex = null;
+                      _previewNpc = null;
+                      _previewLocalPosition = null;
+                    });
+                    _showNotification('SELECTION CANCELLED', Colors.blueGrey.shade800);
+                  } else {
+                    _selectedCardIndex = 3;
+                    _showCardSelectedMessage(3);
+                  }
                 }
               } else if (key == PhysicalKeyboardKey.digit5 || key == PhysicalKeyboardKey.numpad5) {
                 if (_combatManager.hand.length > 4) {
-                  _selectedCardIndex = 4;
-                  _showCardSelectedMessage(4);
+                  if (_selectedCardIndex == 4) {
+                    setState(() {
+                      _selectedCardIndex = null;
+                      _previewNpc = null;
+                      _previewLocalPosition = null;
+                    });
+                    _showNotification('SELECTION CANCELLED', Colors.blueGrey.shade800);
+                  } else {
+                    _selectedCardIndex = 4;
+                    _showCardSelectedMessage(4);
+                  }
                 }
+              } else if (key == PhysicalKeyboardKey.escape) {
+                setState(() {
+                  _selectedCardIndex = null;
+                  _previewNpc = null;
+                  _previewLocalPosition = null;
+                });
+                _showNotification('SELECTION CANCELLED', Colors.blueGrey.shade800);
               }
             } else {
               // Game Over Hotkeys
@@ -448,6 +544,16 @@ class _CombatScreenState extends State<CombatScreen>
                     }
                   },
                   child: GestureDetector(
+                    onSecondaryTapUp: (details) {
+                      if (_selectedCardIndex != null) {
+                        setState(() {
+                          _selectedCardIndex = null;
+                          _previewNpc = null;
+                          _previewLocalPosition = null;
+                        });
+                        _showNotification('SELECTION CANCELLED', Colors.blueGrey.shade800);
+                      }
+                    },
                     onScaleStart: (details) {
                       _keyboardFocusNode.requestFocus();
                       _dragStartZoom = _combatManager.zoomFactor;
@@ -456,10 +562,13 @@ class _CombatScreenState extends State<CombatScreen>
                       if (details.scale != 1.0) {
                         _combatManager.zoomFactor = _dragStartZoom * details.scale;
                       }
-                      final screenSize = MediaQuery.of(context).size;
-                      final dx = -details.focalPointDelta.dx * (100.0 / screenSize.width) / _combatManager.zoomFactor;
-                      final dy = -details.focalPointDelta.dy * (75.0 / screenSize.height) / _combatManager.zoomFactor;
-                      _combatManager.scrollField(dx, dy);
+                      final gameState = Provider.of<GameState>(context, listen: false);
+                      if (gameState.combatControlMode != 'click') {
+                        final screenSize = MediaQuery.of(context).size;
+                        final dx = -details.focalPointDelta.dx * (100.0 / screenSize.width) / _combatManager.zoomFactor;
+                        final dy = -details.focalPointDelta.dy * (75.0 / screenSize.height) / _combatManager.zoomFactor;
+                        _combatManager.scrollField(dx, dy);
+                      }
                     },
                      onTapUp: (details) {
                       _keyboardFocusNode.requestFocus();
@@ -540,7 +649,7 @@ class _CombatScreenState extends State<CombatScreen>
               Positioned(
                 bottom: 16,
                 left: 16,
-                width: MediaQuery.of(context).size.width * 0.4,
+                width: navPadWidth,
                 height: 160,
                 child: Consumer<CombatManager>(
                   builder: (context, manager, child) {
@@ -1008,6 +1117,30 @@ class _BattlefieldViewport extends StatelessWidget {
                   ),
                 ),
 
+              // Waypoint Destination Confirm Marker Overlay
+              if (manager.combatants.isNotEmpty) ...(() {
+                final alphonse = manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
+                if (alphonse != null && alphonse.waypointX != null && alphonse.waypointY != null) {
+                  final pos = projection.project(alphonse.waypointX!, alphonse.waypointY!);
+                  final ms = DateTime.now().millisecondsSinceEpoch;
+                  final pulsePercent = (ms % 1000) / 1000.0;
+                  return [
+                    Positioned(
+                      left: pos.dx - 16,
+                      top: pos.dy - 16,
+                      width: 32,
+                      height: 32,
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _WaypointMarkerPainter(pulsePercent: pulsePercent),
+                        ),
+                      ),
+                    ),
+                  ];
+                }
+                return const <Widget>[];
+              })(),
+
                 // Units, Cauldrons, Walls & Special Buttons (Depth-Sorted)
                 ...(() {
                   final List<dynamic> renderables = [];
@@ -1037,21 +1170,92 @@ class _BattlefieldViewport extends StatelessWidget {
 
                   final bodies = renderables.map((item) {
                     if (item is Combatant) {
-                      return _CombatantSprite(
-                        combatant: item,
-                        screenPos: projection.project(item.x, item.y),
-                      );
+                      if (item.npc.combatStats?.unitType == UnitType.support) {
+                        final npc = item.npc;
+                        if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
+                          return Positioned.fill(
+                            key: ValueKey('support_${item.npc.id}'),
+                            child: _ArtilleryVisual(
+                              combatant: item,
+                              projection: projection,
+                            ),
+                          );
+                        } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
+                          return Positioned.fill(
+                            key: ValueKey('support_${item.npc.id}'),
+                            child: _TearGasVisual(
+                              combatant: item,
+                              projection: projection,
+                            ),
+                          );
+                        } else if (npc.name.contains('Caltrops')) {
+                          return Positioned.fill(
+                            key: ValueKey('support_${item.npc.id}'),
+                            child: _CaltropsVisual(
+                              combatant: item,
+                              projection: projection,
+                            ),
+                          );
+                        } else {
+                          final pCenter = projection.project(item.x, item.y);
+                          return Positioned(
+                            key: ValueKey('support_${item.npc.id}'),
+                            left: pCenter.dx - 22.5,
+                            top: pCenter.dy - 45.0,
+                            width: 45.0,
+                            height: 67.5,
+                            child: CharacterBlobRenderer(
+                              npc: item.npc,
+                              size: 45.0,
+                              isWalking: false,
+                              showSpeechBubble: false,
+                              isCombat: true,
+                            ),
+                          );
+                        }
+                      } else {
+                        final stats = item.npc.combatStats!;
+                        final double baseSize = 40.0 * ((stats.radius) / 1.5).clamp(0.5, 2.2);
+                        final double boxWidth = baseSize * 1.5;
+                        final double boxHeight = baseSize * 2.25;
+                        final screenPos = projection.project(item.x, item.y);
+
+                        return Positioned(
+                          key: ValueKey('sprite_${item.npc.id}'),
+                          left: screenPos.dx - boxWidth / 2,
+                          top: screenPos.dy - boxHeight * 0.91,
+                          width: boxWidth,
+                          height: boxHeight,
+                          child: _CombatantSprite(
+                            combatant: item,
+                            projection: projection,
+                            baseSize: baseSize,
+                            boxWidth: boxWidth,
+                            boxHeight: boxHeight,
+                          ),
+                        );
+                      }
                     } else if (item is HealingCauldron) {
-                      return _CauldronSprite(
-                        cauldron: item,
-                        screenPos: projection.project(item.x, item.y),
+                      final screenPos = projection.project(item.x, item.y);
+                      return Positioned(
+                        key: ValueKey('cauldron_${item.id}'),
+                        left: screenPos.dx - 30,
+                        top: screenPos.dy - 75,
+                        width: 60,
+                        height: 80,
+                        child: _CauldronSprite(
+                          cauldron: item,
+                        ),
                       );
                     } else {
                       final wall = item as CombatWall;
-                      return _WallRenderer(
-                        rect: wall.rect,
-                        projection: projection,
-                        zoomFactor: zoomFactor,
+                      return Positioned.fill(
+                        key: ValueKey('wall_${wall.id}'),
+                        child: _WallRenderer(
+                          rect: wall.rect,
+                          projection: projection,
+                          zoomFactor: zoomFactor,
+                        ),
                       );
                     }
                   }).toList();
@@ -1141,11 +1345,17 @@ class _BattlefieldViewport extends StatelessWidget {
 
 class _CombatantSprite extends StatelessWidget {
   final Combatant combatant;
-  final Offset screenPos;
+  final _CombatProjection projection;
+  final double baseSize;
+  final double boxWidth;
+  final double boxHeight;
 
   const _CombatantSprite({
     required this.combatant,
-    required this.screenPos,
+    required this.projection,
+    required this.baseSize,
+    required this.boxWidth,
+    required this.boxHeight,
   });
 
   @override
@@ -1164,130 +1374,204 @@ class _CombatantSprite extends StatelessWidget {
     final double scale =
         (0.8 + (combatant.y / CombatManager.fieldWidth) * 0.4) * 0.9;
 
-    return Positioned(
-      left: screenPos.dx - 30,
-      top: screenPos.dy - 82, // aligns visual base shadow with physical y coordinate
-      child: IgnorePointer(
-        ignoring: combatant.isDead,
+    final manager = Provider.of<CombatManager>(context, listen: false);
+    final isHighlighted = manager.highlightedTargetIds.contains(combatant.npc.id);
+    final isFlashing = combatant.flashTimer > 0.0;
+
+    // Character Widget construction
+    final Widget characterWidget = Stack(
+      alignment: Alignment.center,
+      children: [
+        combatant.isTower
+            ? _TowerRenderer(combatant: combatant)
+            : (combatant.isDead
+                ? Transform.rotate(
+                    angle: pi / 2,
+                    child: CharacterBlobRenderer(
+                      npc: combatant.npc,
+                      size: baseSize,
+                      isWalking: false,
+                      showSpeechBubble: false,
+                      isCombat: true,
+                    ),
+                  )
+                : CharacterBlobRenderer(
+                    npc: combatant.npc,
+                    size: baseSize,
+                    isWalking: combatant.attackCooldown <= 0,
+                    showSpeechBubble: false,
+                    attackCooldown: combatant.attackCooldown,
+                    isCombat: true,
+                  )),
+
+        // Staggered recent damage numerical overlay
+        if (isFlashing && combatant.recentDamage > 0)
+          Center(
+            child: Text(
+              '-${combatant.recentDamage.toInt()}',
+              style: GoogleFonts.oswald(
+                color: const Color(0xFFD32F2F),
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                height: 1.0,
+                shadows: const [
+                  Shadow(
+                    color: Colors.black87,
+                    blurRadius: 1,
+                    offset: Offset(0.5, 0.5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+
+    final Widget visualRepresentation = isFlashing
+        ? ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              combatant.side == CombatSide.player
+                  ? Colors.red.withValues(alpha: 0.5)
+                  : Colors.red.withValues(alpha: 0.7),
+              BlendMode.srcATop,
+            ),
+            child: characterWidget,
+          )
+        : characterWidget;
+
+    // Determine horizontal facing direction (Default assets face LEFT)
+    bool faceRight = combatant.side == CombatSide.player; // Players face right by default
+    if (combatant.targetId != null) {
+      final targetCombatant = manager.combatants.firstWhereOrNull(
+        (c) => c.npc.id == combatant.targetId && !c.isDead,
+      );
+      if (targetCombatant != null) {
+        faceRight = targetCombatant.x > combatant.x;
+      }
+    } else if (combatant.moveDirX != 0) {
+      faceRight = combatant.moveDirX > 0;
+    }
+
+    final Widget flippedVisual = Transform(
+      transform: Matrix4.identity()..scale(faceRight ? -1.0 : 1.0, 1.0, 1.0),
+      alignment: Alignment.center,
+      child: visualRepresentation,
+    );
+
+    return IgnorePointer(
+      ignoring: combatant.isDead,
         child: Transform.scale(
           scale: scale,
           child: Opacity(
             opacity: opacity,
-          child: SizedBox(
-            width: 60,
-            height: 90, // Total height to include floating text & hit-test bounds
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                // Base Ring (Shadow)
-                // Centered at screenPos.dy (which is at local Y=104)
-                if (!combatant.isDead)
-                  Positioned(
-                    bottom: 4,
-                    child: Container(
-                      width: 24,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.all(
-                          Radius.elliptical(12, 3),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: combatant.side == CombatSide.player
-                                ? Colors.blue.withValues(alpha: 0.4)
-                                : Colors.red.withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            spreadRadius: 2,
+            child: SizedBox(
+              width: boxWidth,
+              height: boxHeight, // Total height to include floating text & hit-test bounds
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  // Base Ring (Shadow)
+                  if (!combatant.isDead)
+                    Positioned(
+                      bottom: 4,
+                      child: Container(
+                        width: baseSize * 0.6,
+                        height: baseSize * 0.18,
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.all(
+                            Radius.elliptical(12, 3),
                           ),
-                        ],
-                        border: Border.all(
-                          color: combatant.side == CombatSide.player
-                              ? Colors.blue.withValues(alpha: 0.8)
-                              : Colors.red.withValues(alpha: 0.8),
-                          width: 2,
+                          boxShadow: [
+                            BoxShadow(
+                              color: combatant.side == CombatSide.player
+                                  ? Colors.blue.withValues(alpha: 0.4)
+                                  : Colors.red.withValues(alpha: 0.4),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                          border: Border.all(
+                            color: combatant.side == CombatSide.player
+                                ? Colors.blue.withValues(alpha: 0.8)
+                                : Colors.red.withValues(alpha: 0.8),
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                // Main Body (Character + Health)
-                // Bottom edge should sit above/centered on shadow
-                Positioned(
-                  bottom: 10,
-                  child: GestureDetector(
-                    onTap: () {
-                      if (combatant.side == CombatSide.enemy) {
-                        final manager =
-                            Provider.of<CombatManager>(context, listen: false);
-                        manager.setPlayerTarget(combatant.npc.id);
-                      }
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Speech Bubble (if active)
-                        if (combatant.npc.currentThought != null &&
-                            combatant.npc.currentThought!.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            margin: const EdgeInsets.only(bottom: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(6),
-                              border:
-                                  Border.all(color: Colors.black54, width: 1),
-                            ),
-                            child: Text(
-                              combatant.npc.currentThought!,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 7,
-                                fontWeight: FontWeight.bold,
+                  // Main Body (Character + Health)
+                  // Bottom edge should sit above/centered on shadow
+                  Positioned(
+                    bottom: 10,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (combatant.side == CombatSide.enemy) {
+                          manager.setPlayerTarget(combatant.npc.id);
+                        }
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Speech Bubble (if active)
+                          if (combatant.npc.currentThought != null &&
+                              combatant.npc.currentThought!.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
                               ),
-                            ),
-                          ),
-
-                        // Floating text message overlay (staggered)
-                        Stack(
-                          alignment: Alignment.center,
-                          clipBehavior: Clip.none,
-                          children: combatant.floatingMessages.map((msg) {
-                            return Positioned(
-                              bottom: 45 + msg.offsetY, // Staggered height
-                              child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 100),
-                                opacity: min(1.0, msg.lifetime * 2),
-                                child: Text(
-                                  msg.text,
-                                  style: GoogleFonts.oswald(
-                                    color: msg.color,
-                                    fontSize: 6,
-                                    fontWeight: FontWeight.bold,
-                                    shadows: const [
-                                      Shadow(
-                                        color: Colors.black,
-                                        blurRadius: 2,
-                                        offset: Offset(1, 1),
-                                      ),
-                                    ],
-                                  ),
+                              margin: const EdgeInsets.only(bottom: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border:
+                                    Border.all(color: Colors.black54, width: 1),
+                              ),
+                              child: Text(
+                                combatant.npc.currentThought!,
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                            ),
 
-                        // Highlight target indicator (drawn below health bar)
-                        Consumer<CombatManager>(
-                          builder: (context, manager, child) {
-                            final isHighlighted = manager.highlightedTargetIds
-                                .contains(combatant.npc.id);
-                            if (!isHighlighted) return const SizedBox.shrink();
-                            return Container(
+                          // Floating text message overlay (staggered)
+                          Stack(
+                            alignment: Alignment.center,
+                            clipBehavior: Clip.none,
+                            children: combatant.floatingMessages.map((msg) {
+                              return Positioned(
+                                bottom: 45 + msg.offsetY, // Staggered height
+                                child: AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 100),
+                                  opacity: min(1.0, msg.lifetime * 2),
+                                  child: Text(
+                                    msg.text,
+                                    style: GoogleFonts.oswald(
+                                      color: msg.color,
+                                      fontSize: 6,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: const [
+                                        Shadow(
+                                          color: Colors.black,
+                                          blurRadius: 2,
+                                          offset: Offset(1, 1),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+
+                          // Highlight target indicator (drawn below health bar)
+                          if (isHighlighted)
+                            Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 4,
                                 vertical: 1,
@@ -1306,109 +1590,42 @@ class _CombatantSprite extends StatelessWidget {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-
-                        // Health Bar (allies: green, enemies: red)
-                        if (!combatant.isDead) ...[
-                          Container(
-                            width: (stats.maxHealth * 0.24).clamp(12.0, 72.0),
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1A1612),
-                              border: Border.all(color: const Color(0xFFC4B89B), width: 1),
                             ),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: healthPercent,
-                              child: Container(
-                                color: combatant.side == CombatSide.player
-                                    ? Colors.green.shade400
-                                    : Colors.red.shade400,
+
+                          // Health Bar (allies: green, enemies: red)
+                          if (!combatant.isDead) ...[
+                            Container(
+                              width: (stats.maxHealth * 0.24).clamp(12.0, 72.0),
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1A1612),
+                                border: Border.all(color: const Color(0xFFC4B89B), width: 1),
+                              ),
+                              child: FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: healthPercent,
+                                child: Container(
+                                  color: combatant.side == CombatSide.player
+                                      ? Colors.green.shade400
+                                      : Colors.red.shade400,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
+                            const SizedBox(height: 4),
+                          ],
+
+                          // Unit visual representation
+                          flippedVisual,
                         ],
-
-                        // Unit visual representation
-                        Consumer<CombatManager>(
-                          builder: (context, manager, child) {
-                            final isFlashing = combatant.flashTimer > 0.0;
-                            
-                            final Widget characterWidget = Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                combatant.isTower
-                                    ? _TowerRenderer(combatant: combatant)
-                                    : (combatant.isDead
-                                        ? Transform.rotate(
-                                            angle: pi / 2,
-                                            child: CharacterBlobRenderer(
-                                              npc: combatant.npc,
-                                              size: 40,
-                                              isWalking: false,
-                                              showSpeechBubble: false,
-                                            ),
-                                          )
-                                        : CharacterBlobRenderer(
-                                            npc: combatant.npc,
-                                            size: 40,
-                                            isWalking: combatant.attackCooldown <= 0,
-                                            showSpeechBubble: false,
-                                          )),
-
-                                // Staggered recent damage numerical overlay
-                                if (isFlashing && combatant.recentDamage > 0)
-                                  Center(
-                                    child: Text(
-                                      '-${combatant.recentDamage.toInt()}',
-                                      style: GoogleFonts.oswald(
-                                        color: const Color(0xFFD32F2F),
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                        height: 1.0,
-                                        shadows: const [
-                                          Shadow(
-                                            color: Colors.black87,
-                                            blurRadius: 1,
-                                            offset: Offset(0.5, 0.5),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            );
-
-                            if (isFlashing) {
-                              final flashColor = combatant.side == CombatSide.player
-                                  ? Colors.red.withValues(alpha: 0.5)
-                                  : Colors.red.withValues(alpha: 0.7);
-                              return ColorFiltered(
-                                colorFilter: ColorFilter.mode(
-                                  flashColor,
-                                  BlendMode.srcATop,
-                                ),
-                                child: characterWidget,
-                              );
-                            } else {
-                              return characterWidget;
-                            }
-                          },
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
-    );
+      );
   }
 }
 
@@ -1776,18 +1993,17 @@ class _UnitCardState extends State<_UnitCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CombatManager>(
-      builder: (context, manager, child) {
-        final cost = widget.npc.combatStats?.cost ?? 0;
-        final canAfford = manager.actionPoints >= cost;
+    final manager = Provider.of<CombatManager>(context, listen: false);
+    final cost = widget.npc.combatStats?.cost ?? 0;
+    final canAfford = manager.actionPoints >= cost;
 
-        return Draggable<NPC>(
+    return Draggable<NPC>(
           data: widget.npc,
           feedback: Material(
             color: Colors.transparent,
             child: Opacity(
               opacity: 0.8,
-              child: CharacterBlobRenderer(npc: widget.npc, size: 20, showSpeechBubble: false),
+              child: CharacterBlobRenderer(npc: widget.npc, size: 20, showSpeechBubble: false, isCombat: true),
             ),
           ),
           onDragStarted: () {
@@ -1821,30 +2037,37 @@ class _UnitCardState extends State<_UnitCard> {
               final dropX = worldPos.dx;
               final dropY = worldPos.dy;
 
-              if (dropX <= manager.fieldScroll + 100.0) {
-                final clampedY = dropY.clamp(
-                  0.0,
-                  manager.map.height,
+              final clampedY = dropY.clamp(
+                0.0,
+                manager.map.height,
+              );
+              final success = manager.spawnUnit(
+                widget.npc,
+                CombatSide.player,
+                x: dropX,
+                y: clampedY,
+              );
+              if (success) {
+                screenState?._showNotification(
+                  '${widget.npc.name} deployed!',
+                  Colors.blue.shade800,
+                  duration: const Duration(seconds: 1),
                 );
-                final success = manager.spawnUnit(
-                  widget.npc,
-                  CombatSide.player,
-                  x: dropX,
-                  y: clampedY,
+              } else {
+                final isSupport = widget.npc.name.contains('Barrage') ||
+                    widget.npc.name.contains('Artillery') ||
+                    widget.npc.name.contains('Gas') ||
+                    widget.npc.name.contains('Tear') ||
+                    widget.npc.name.contains('Caltrops') ||
+                    widget.npc.name.contains('Totem') ||
+                    (widget.npc.combatStats?.unitType == UnitType.support);
+                screenState?._showNotification(
+                  isSupport
+                      ? 'Deployment failed! Out of range or invalid support target.'
+                      : 'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
+                  Colors.red.shade900,
+                  duration: const Duration(seconds: 2),
                 );
-                if (success) {
-                  screenState?._showNotification(
-                    '${widget.npc.name} deployed!',
-                    Colors.blue.shade800,
-                    duration: const Duration(seconds: 1),
-                  );
-                } else {
-                  screenState?._showNotification(
-                    'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
-                    Colors.red.shade900,
-                    duration: const Duration(seconds: 2),
-                  );
-                }
               }
             }
           },
@@ -1966,6 +2189,7 @@ class _UnitCardState extends State<_UnitCard> {
                                 npc: widget.npc,
                                 size: 40,
                                 showSpeechBubble: false,
+                                isCombat: true,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -2029,8 +2253,6 @@ class _UnitCardState extends State<_UnitCard> {
             ),
           ),
         );
-      },
-    );
   }
 
   Widget _buildCardStat(String label, String value, Color color) {
@@ -2103,13 +2325,11 @@ class _WallRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: CustomPaint(
-        painter: _SingleWall3DPainter(
-          rect: rect,
-          projection: projection,
-          zoomFactor: zoomFactor,
-        ),
+    return CustomPaint(
+      painter: _SingleWall3DPainter(
+        rect: rect,
+        projection: projection,
+        zoomFactor: zoomFactor,
       ),
     );
   }
@@ -2128,59 +2348,108 @@ class _SingleWall3DPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final random = Random(rect.left.toInt() ^ rect.top.toInt());
+
     final wallPaintSide = Paint()
-      ..color = const Color(0xFF2E241F) // Darker stone for side faces
+      ..color = const Color(0xFF454B50) // Darker slate granite for cliff sides
       ..style = PaintingStyle.fill;
     final wallPaintTop = Paint()
-      ..color = const Color(0xFF4E3D34) // Lighter stone for top faces
+      ..color = const Color(0xFF646D75) // Lighter slate granite for cliff top
+      ..style = PaintingStyle.fill;
+    final mossPaint = Paint()
+      ..color = const Color(0xFF4A624E).withValues(alpha: 0.8) // Green organic moss patches
       ..style = PaintingStyle.fill;
     final wallStroke = Paint()
-      ..color = const Color(0xFF1A120E)
+      ..color = const Color(0xFF1F2224)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.8;
 
-    final double h3d = 24.0 * zoomFactor; // 3D extrusion height
+    final double h3d = 26.0 * zoomFactor; // 3D extrusion height
 
+    // Project the four corners
     final pTL = projection.project(rect.left, rect.top);
     final pTR = projection.project(rect.right, rect.top);
     final pBR = projection.project(rect.right, rect.bottom);
     final pBL = projection.project(rect.left, rect.bottom);
 
-    // Extruded top face vertices
-    final tTL = Offset(pTL.dx, pTL.dy - h3d);
-    final tTR = Offset(pTR.dx, pTR.dy - h3d);
-    final tBR = Offset(pBR.dx, pBR.dy - h3d);
-    final tBL = Offset(pBL.dx, pBL.dy - h3d);
+    // Create organic jagged offsets for vertices to look like real rock cliffs instead of blocks
+    Offset jitter(Offset p) {
+      final dx = (random.nextDouble() - 0.5) * 4.0 * zoomFactor;
+      final dy = (random.nextDouble() - 0.5) * 2.0 * zoomFactor;
+      return Offset(p.dx + dx, p.dy + dy);
+    }
 
-    // 1. Draw Front-Left Side shadow face
+    final jpTL = jitter(pTL);
+    final jpTR = jitter(pTR);
+    final jpBR = jitter(pBR);
+    final jpBL = jitter(pBL);
+
+    // Extruded top face vertices
+    final jtTL = Offset(jpTL.dx, jpTL.dy - h3d);
+    final jtTR = Offset(jpTR.dx, jpTR.dy - h3d);
+    final jtBR = Offset(jpBR.dx, jpBR.dy - h3d);
+    final jtBL = Offset(jpBL.dx, jpBL.dy - h3d);
+
+    // 1. Draw Front-Left Side shadow faces (Jagged side face)
     final pathSide = Path()
-      ..moveTo(pBL.dx, pBL.dy)
-      ..lineTo(pBR.dx, pBR.dy)
-      ..lineTo(tBR.dx, tBR.dy)
-      ..lineTo(tBL.dx, tBL.dy)
+      ..moveTo(jpBL.dx, jpBL.dy)
+      ..lineTo(jpBR.dx, jpBR.dy)
+      ..lineTo(jtBR.dx, jtBR.dy)
+      ..lineTo(jtBL.dx, jtBL.dy)
       ..close();
     canvas.drawPath(pathSide, wallPaintSide);
     canvas.drawPath(pathSide, wallStroke);
 
     // 2. Draw Top face
     final pathTop = Path()
-      ..moveTo(tTL.dx, tTL.dy)
-      ..lineTo(tTR.dx, tTR.dy)
-      ..lineTo(tBR.dx, tBR.dy)
-      ..lineTo(tBL.dx, tBL.dy)
+      ..moveTo(jtTL.dx, jtTL.dy)
+      ..lineTo(jtTR.dx, jtTR.dy)
+      ..lineTo(jtBR.dx, jtBR.dy)
+      ..lineTo(jtBL.dx, jtBL.dy)
       ..close();
     canvas.drawPath(pathTop, wallPaintTop);
     canvas.drawPath(pathTop, wallStroke);
 
-    // Inner sketch line textures on top face for premium sketched look
-    final texturePaint = Paint()
-      ..color = Colors.black26
+    // 3. Draw Moss Overlay patches on top of the rock
+    final mossPath = Path()
+      ..moveTo(jtTL.dx + (jtTR.dx - jtTL.dx) * 0.1, jtTL.dy + (jtBL.dy - jtTL.dy) * 0.1)
+      ..lineTo(jtTR.dx - (jtTR.dx - jtTL.dx) * 0.3, jtTR.dy + (jtBR.dy - jtTR.dy) * 0.15)
+      ..lineTo(jtBR.dx - (jtBR.dx - jtBL.dx) * 0.15, jtBR.dy - (jtBR.dy - jtTR.dy) * 0.2)
+      ..lineTo(jtBL.dx + (jtBR.dx - jtBL.dx) * 0.2, jtBL.dy - (jtBL.dy - jtTL.dy) * 0.3)
+      ..close();
+    canvas.drawPath(mossPath, mossPaint);
+
+    // 4. Draw fine fissures & rocky cracks on the cliff sides
+    final crackPaint = Paint()
+      ..color = const Color(0xFF282C2E)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    for (double tx = rect.left + 6.0; tx < rect.right; tx += 8.0) {
-      final topPt = Offset(projection.project(tx, rect.top).dx, projection.project(tx, rect.top).dy - h3d);
-      final bottomPt = Offset(projection.project(tx, rect.bottom).dx, projection.project(tx, rect.bottom).dy - h3d);
-      canvas.drawLine(topPt, bottomPt, texturePaint);
+      ..strokeWidth = 1.2;
+    
+    for (int i = 0; i < 3; i++) {
+      final double startRatio = 0.2 + i * 0.3;
+      final double startX = jpBL.dx + (jpBR.dx - jpBL.dx) * startRatio;
+      final double startY = jpBL.dy + (jpBR.dy - jpBL.dy) * startRatio;
+      
+      final Path crackPath = Path()
+        ..moveTo(startX, startY)
+        ..lineTo(startX + (random.nextDouble() - 0.5) * 6.0, startY - h3d * 0.4)
+        ..lineTo(startX + (random.nextDouble() - 0.5) * 8.0, startY - h3d * 0.8);
+      canvas.drawPath(crackPath, crackPaint);
+    }
+
+    // 5. Draw Bedrock Blending Boulders (circles) around the base of the cliff
+    final boulderPaint = Paint()
+      ..color = const Color(0xFF454B50)
+      ..style = PaintingStyle.fill;
+    
+    for (int i = 0; i < 4; i++) {
+      final double ratio = 0.15 + i * 0.25;
+      final double bx = jpBL.dx + (jpBR.dx - jpBL.dx) * ratio;
+      final double by = jpBL.dy + (jpBR.dy - jpBL.dy) * ratio;
+      final double r = (4.0 + random.nextDouble() * 4.0) * zoomFactor;
+
+      canvas.drawCircle(Offset(bx, by + 2.0), r, boulderPaint);
+      canvas.drawCircle(Offset(bx, by + 2.0), r, wallStroke);
     }
   }
 
@@ -2205,47 +2474,159 @@ class _BattlefieldArtPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final trackPaint = Paint()..color = const Color(0xFF2F2F2F); // Sleek concrete/stone grey
-    final grassPaint = Paint()..color = const Color(0xFF1B1E16); // Outer dark mossy ground
+    final meadowPaint = Paint()..color = const Color(0xFF1F3322); // Lush alpine forest green base
+    final random = Random(1337);
 
-    // Draw grass outside the concrete field
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), grassPaint);
+    // 1. Fill background with lush meadow green
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), meadowPaint);
 
-    // Project the outer racetrack corners
+    // Project outer arena bounds to clip detailed landscaping elegantly within map borders
     final pTL = projection.project(0.0, 0.0);
     final pTR = projection.project(map.width, 0.0);
     final pBR = projection.project(map.width, map.height);
     final pBL = projection.project(0.0, map.height);
 
-    final path = Path()
+    final arenaPath = Path()
       ..moveTo(pBL.dx, pBL.dy)
       ..lineTo(pTL.dx, pTL.dy)
       ..lineTo(pTR.dx, pTR.dy)
       ..lineTo(pBR.dx, pBR.dy)
       ..close();
 
-    canvas.drawPath(path, trackPaint);
+    canvas.save();
+    canvas.clipPath(arenaPath);
 
-    // Border white/grey curbs
-    final curbPaint = Paint()
-      ..color = const Color(0xFF555555)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-    canvas.drawLine(pTL, pTR, curbPaint);
-    canvas.drawLine(pBL, pBR, curbPaint);
-    canvas.drawLine(pTL, pBL, curbPaint);
-    canvas.drawLine(pTR, pBR, curbPaint);
-
-    // Add beautiful dirt patches/cracks texture on concrete
-    final random = Random(42);
-    final texturePaint = Paint()..color = Colors.black.withValues(alpha: 0.12);
-    for (int i = 0; i < 100; i++) {
-      final wx = random.nextDouble() * map.width;
-      final wy = random.nextDouble() * map.height;
-      final pos = projection.project(wx, wy);
-      final r = 1.5 + random.nextDouble() * 3.0;
-      canvas.drawCircle(pos, r, texturePaint);
+    // 2. Draw organic ground variations (darker/lighter mossy patches) in meadow
+    final mossPaint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 35; i++) {
+      final mx = random.nextDouble() * map.width;
+      final my = random.nextDouble() * map.height;
+      final radius = 12.0 + random.nextDouble() * 24.0;
+      final c1 = projection.project(mx, my);
+      
+      mossPaint.color = random.nextBool() 
+          ? const Color(0xFF17271B).withValues(alpha: 0.5) 
+          : const Color(0xFF28402B).withValues(alpha: 0.4);
+      canvas.drawCircle(c1, radius, mossPaint);
     }
+
+    // 3. Draw the horizontal Cobblestone & Gravel lane paths
+    final pathPaint = Paint()..color = const Color(0xFF8B8070); // Base weathered gravel
+    final stonePaint = Paint()..color = const Color(0xFF5C5449); // Dark grey cobblestones
+    final stoneHighlightPaint = Paint()..color = const Color(0xFFAD9E8C);
+
+    for (final ly in map.laneCenters) {
+      // Draw a horizontal textured pathway centered on ly (approx 26ft wide = 13ft each side)
+      final double laneHalfWidth = 13.0;
+      final double yTop = ly - laneHalfWidth;
+      final double yBottom = ly + laneHalfWidth;
+
+      // Build horizontal path polygon
+      final Path lanePath = Path();
+      final lTL = projection.project(0.0, yTop);
+      final lTR = projection.project(map.width, yTop);
+      final lBR = projection.project(map.width, yBottom);
+      final lBL = projection.project(0.0, yBottom);
+
+      lanePath.moveTo(lBL.dx, lBL.dy);
+      lanePath.lineTo(lTL.dx, lTL.dy);
+      lanePath.lineTo(lTR.dx, lTR.dy);
+      lanePath.lineTo(lBR.dx, lBR.dy);
+      lanePath.close();
+
+      canvas.drawPath(lanePath, pathPaint);
+
+      // Draw Cobblestones inside this path
+      for (double x = 4.0; x < map.width; x += 15.0) {
+        final double offsetOffset = (x.toInt() % 2 == 0) ? 4.0 : -4.0;
+        for (double y = yTop + 3.0; y < yBottom - 2.0; y += 6.0) {
+          final px = x + random.nextDouble() * 6.0;
+          final py = y + offsetOffset + random.nextDouble() * 2.0;
+          if (py >= yTop && py <= yBottom) {
+            final stonePos = projection.project(px, py);
+            final stoneW = 4.0 + random.nextDouble() * 4.0;
+            final stoneH = 2.0 + random.nextDouble() * 2.0;
+
+            // Draw a rounded cobblestone paver
+            canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                Rect.fromCenter(center: stonePos, width: stoneW, height: stoneH),
+                const Radius.circular(1.5),
+              ),
+              stonePaint,
+            );
+
+            // Subtle highlight edge for 3D touch
+            if (random.nextBool()) {
+              canvas.drawLine(
+                Offset(stonePos.dx - stoneW / 2, stonePos.dy - stoneH / 2),
+                Offset(stonePos.dx + stoneW / 2, stonePos.dy - stoneH / 2),
+                stoneHighlightPaint,
+              );
+            }
+          }
+        }
+      }
+
+      // Draw soft grass growing over the edges of the pathways (blending borders)
+      final grassBlendPaint = Paint()..color = const Color(0xFF1F3322)..style = PaintingStyle.stroke..strokeWidth = 2.5;
+      for (double x = 0; x < map.width; x += 8) {
+        final grassTop = projection.project(x, yTop + random.nextDouble() * 2.0);
+        final grassBottom = projection.project(x, yBottom - random.nextDouble() * 2.0);
+
+        canvas.drawCircle(grassTop, 2.0, grassBlendPaint);
+        canvas.drawCircle(grassBottom, 2.0, grassBlendPaint);
+      }
+    }
+
+    // 4. Draw Grass Tufts & Wildflowers across the meadow
+    final tuftPaint = Paint()
+      ..color = const Color(0xFF375E3D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    
+    final flowerYellow = Paint()..color = const Color(0xFFECC844);
+    final flowerWhite = Paint()..color = Colors.white70;
+
+    for (int i = 0; i < 150; i++) {
+      final tx = random.nextDouble() * map.width;
+      final ty = random.nextDouble() * map.height;
+
+      // Avoid drawing grass tufts directly in the middle of paths
+      bool inPath = false;
+      for (final ly in map.laneCenters) {
+        if ((ty - ly).abs() < 12.0) {
+          inPath = true;
+          break;
+        }
+      }
+      if (inPath) continue;
+
+      final pos = projection.project(tx, ty);
+
+      // Grass Blade lines
+      canvas.drawLine(pos, Offset(pos.dx - 1.5, pos.dy - 4.0), tuftPaint);
+      canvas.drawLine(pos, Offset(pos.dx + 1.5, pos.dy - 4.5), tuftPaint);
+      canvas.drawLine(pos, Offset(pos.dx + 0.5, pos.dy - 2.5), tuftPaint);
+
+      // Tiny wildflowers
+      if (random.nextDouble() > 0.6) {
+        final fPos = Offset(pos.dx + (random.nextDouble() - 0.5) * 8.0, pos.dy + (random.nextDouble() - 0.5) * 4.0);
+        canvas.drawCircle(fPos, 0.9, random.nextBool() ? flowerYellow : flowerWhite);
+      }
+    }
+
+    canvas.restore();
+
+    // Border weathered boundary paths
+    final boundaryPaint = Paint()
+      ..color = const Color(0xFF4E3D30)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0;
+    canvas.drawLine(pTL, pTR, boundaryPaint);
+    canvas.drawLine(pBL, pBR, boundaryPaint);
+    canvas.drawLine(pTL, pBL, boundaryPaint);
+    canvas.drawLine(pTR, pBR, boundaryPaint);
   }
 
   @override
@@ -2328,26 +2709,85 @@ class _SwissCountrysidePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Sky (Dark Slate)
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = const Color(0xFF121418),
-    );
+    // 1. Sky Gradient (Slate Blue to Dusk Warm Copper-Orange)
+    final skyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFF141B24),
+          const Color(0xFF2E2B3A),
+          const Color(0xFF5A3B35),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.35));
+    
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), skyPaint);
 
-    // 2. Distant Tonal Shapes (Hills)
-    final mountainPaint = Paint()..color = const Color(0xFF1A1D22);
+    // 2. Layered Distant Tonal Shapes (Mountains)
+    // Layer A: Far away dark purple mountains
+    final farMountainPaint = Paint()..color = const Color(0xFF221E26);
+    final random = Random(42);
+    for (int i = 0; i < 6; i++) {
+      final mWidth = size.width * 0.5;
+      final mHeight = size.height * 0.22;
+      final mX = (i * size.width * 0.25) - (fieldScroll * 0.2 % (size.width * 0.25));
+      final mY = size.height * 0.35;
+
+      final path = Path()
+        ..moveTo(mX - mWidth * 0.2, mY)
+        ..lineTo(mX + mWidth * 0.3, mY - mHeight)
+        ..lineTo(mX + mWidth * 0.5, mY - mHeight * 0.8)
+        ..lineTo(mX + mWidth * 0.7, mY - mHeight * 1.1)
+        ..lineTo(mX + mWidth, mY)
+        ..close();
+      canvas.drawPath(path, farMountainPaint);
+    }
+
+    // Layer B: Closer snow-capped slate peaks
+    final midMountainPaint = Paint()..color = const Color(0xFF2B323C);
+    final snowPaint = Paint()..color = const Color(0xFFEAEFF2);
     for (int i = 0; i < 8; i++) {
-      final mWidth = size.width * 0.4;
-      final mHeight = size.height * 0.2;
-      final mX = (i * size.width * 0.2) - (fieldScroll * 0.5 % (size.width * 0.2));
-      final mY = size.height * 0.3; // Horizon
+      final mWidth = size.width * 0.35;
+      final mHeight = size.height * 0.18;
+      final mX = (i * size.width * 0.18) - (fieldScroll * 0.4 % (size.width * 0.18));
+      final mY = size.height * 0.35;
+
+      final peakX = mX + mWidth / 2;
+      final peakY = mY - mHeight;
 
       final path = Path()
         ..moveTo(mX, mY)
-        ..lineTo(mX + mWidth / 2, mY - mHeight)
+        ..lineTo(peakX, peakY)
         ..lineTo(mX + mWidth, mY)
         ..close();
-      canvas.drawPath(path, mountainPaint);
+      canvas.drawPath(path, midMountainPaint);
+
+      // Draw Snowy cap
+      final snowPath = Path()
+        ..moveTo(peakX - size.width * 0.02, peakY + mHeight * 0.15)
+        ..lineTo(peakX, peakY)
+        ..lineTo(peakX + size.width * 0.02, peakY + mHeight * 0.15)
+        ..lineTo(peakX + size.width * 0.008, peakY + mHeight * 0.25)
+        ..lineTo(peakX, peakY + mHeight * 0.18)
+        ..lineTo(peakX - size.width * 0.008, peakY + mHeight * 0.25)
+        ..close();
+      canvas.drawPath(snowPath, snowPaint);
+    }
+
+    // 3. Horizon Pine Tree Silhouettes base
+    final treePaint = Paint()..color = const Color(0xFF14181C);
+    for (double tx = -50; tx < size.width + 50; tx += 14) {
+      final double scrollOffset = fieldScroll * 0.6 % 14;
+      final x = tx - scrollOffset;
+      final y = size.height * 0.35;
+      final tH = 12.0 + random.nextDouble() * 8.0;
+
+      final path = Path()
+        ..moveTo(x - 5, y)
+        ..lineTo(x, y - tH)
+        ..lineTo(x + 5, y)
+        ..close();
+      canvas.drawPath(path, treePaint);
     }
   }
 
@@ -2396,23 +2836,133 @@ class _AbilityHighlightPainter extends CustomPainter {
   bool shouldRepaint(covariant _AbilityHighlightPainter oldDelegate) => true;
 }
 
+class _WaypointMarkerPainter extends CustomPainter {
+  final double pulsePercent;
+
+  _WaypointMarkerPainter({required this.pulsePercent});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    // Expanding pulsing ring
+    final double maxRadius = size.width / 2;
+    final double outerRadius = 4.0 + (maxRadius - 4.0) * pulsePercent;
+    final double opacity = (1.0 - pulsePercent).clamp(0.0, 1.0);
+
+    paint.color = Colors.tealAccent.withValues(alpha: opacity * 0.85);
+    canvas.drawCircle(center, outerRadius, paint);
+
+    // Inner core glow
+    final corePaint = Paint()
+      ..color = Colors.tealAccent.withValues(alpha: 0.7)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 4.0, corePaint);
+
+    // Crosshair ticks
+    paint.color = Colors.tealAccent.withValues(alpha: 0.9);
+    paint.strokeWidth = 1.5;
+    canvas.drawLine(Offset(center.dx - 8, center.dy), Offset(center.dx - 4, center.dy), paint);
+    canvas.drawLine(Offset(center.dx + 4, center.dy), Offset(center.dx + 8, center.dy), paint);
+    canvas.drawLine(Offset(center.dx, center.dy - 8), Offset(center.dx, center.dy - 4), paint);
+    canvas.drawLine(Offset(center.dx, center.dy + 4), Offset(center.dx, center.dy + 8), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WaypointMarkerPainter oldDelegate) =>
+      oldDelegate.pulsePercent != pulsePercent;
+}
+
 class _TacticalMinimap extends StatelessWidget {
   const _TacticalMinimap();
 
   @override
   Widget build(BuildContext context) {
+    final gameState = Provider.of<GameState>(context);
     return Consumer<CombatManager>(
       builder: (context, manager, child) {
-        return SizedBox(
+        final screenSize = MediaQuery.of(context).size;
+        final projection = _CombatProjection(
+          viewSize: screenSize,
+          fieldScroll: manager.fieldScroll,
+          yFieldScroll: manager.yFieldScroll,
+          zoomFactor: manager.zoomFactor,
+        );
+
+        final pTL = projection.unproject(Offset(0, 0));
+        final pTR = projection.unproject(Offset(screenSize.width, 0));
+        final pBR = projection.unproject(Offset(screenSize.width, screenSize.height - 120.0));
+        final pBL = projection.unproject(Offset(0, screenSize.height - 120.0));
+        final viewportBounds = [pTL, pTR, pBR, pBL];
+
+        Widget minimap = SizedBox(
           width: 80,
           height: 53,
           child: CustomPaint(
             painter: _MinimapPainter(
               combatants: manager.combatants,
               map: manager.map,
+              viewportBounds: viewportBounds,
             ),
           ),
         );
+
+        if (gameState.combatControlMode == 'click') {
+          minimap = GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) {
+              final localPos = details.localPosition;
+              const double W = 80.0;
+              const double H = 53.0;
+              final double cx = W / 2;
+              final double cy = H / 2;
+
+              final map = manager.map;
+
+              // Scale factors derived from unified proportions (exact match to painter):
+              final double aScale = W / (map.width * 1.33);
+              final double bScale = W / (map.width * 1.24);
+              final double dScale = -H / (map.height * 3.2);
+              final double eScale = H / map.height;
+
+              final double dx = localPos.dx - cx;
+              final double dy = localPos.dy - cy;
+
+              final double det = aScale * eScale - bScale * dScale;
+              if (det.abs() >= 0.00001) {
+                final double rx = (dx * eScale - dy * bScale) / det;
+                final double ry = (-dx * dScale + dy * aScale) / det;
+
+                final double worldX = rx + (map.width / 2);
+                final double worldY = ry + (map.height / 2);
+
+                // Now, let's handle navigation and follow rules
+                final alphonse = manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer);
+                if (alphonse != null) {
+                  // Check distance between target (worldX, worldY) and alphonse (alphonse.x, alphonse.y)
+                  final dist = sqrt(pow(worldX - alphonse.x, 2) + pow(worldY - alphonse.y, 2));
+                  if (dist < 25.0) {
+                    // Close enough to the player character, resume follow immediately
+                    manager.cameraFollowPlayer = true;
+                    manager.cameraResumeFollowDelay = 0.0;
+                  } else {
+                    // Move camera to target, stop following, and set a significant follow delay
+                    manager.moveCameraTo(worldX, worldY);
+                    manager.cameraResumeFollowDelay = 3.0;
+                  }
+                } else {
+                  manager.moveCameraTo(worldX, worldY);
+                }
+              }
+            },
+            child: minimap,
+          );
+        }
+
+        return minimap;
       },
     );
   }
@@ -2421,10 +2971,12 @@ class _TacticalMinimap extends StatelessWidget {
 class _MinimapPainter extends CustomPainter {
   final List<Combatant> combatants;
   final CombatMap map;
+  final List<Offset>? viewportBounds;
 
   _MinimapPainter({
     required this.combatants,
     required this.map,
+    this.viewportBounds,
   });
 
   @override
@@ -2524,6 +3076,28 @@ class _MinimapPainter extends CustomPainter {
       }
 
       canvas.drawCircle(mPos, dotRadius, Paint()..color = dotColor);
+    }
+
+    // 5. Draw camera viewport box on minimap
+    if (viewportBounds != null && viewportBounds!.length == 4) {
+      final vmTL = project(viewportBounds![0].dx, viewportBounds![0].dy);
+      final vmTR = project(viewportBounds![1].dx, viewportBounds![1].dy);
+      final vmBR = project(viewportBounds![2].dx, viewportBounds![2].dy);
+      final vmBL = project(viewportBounds![3].dx, viewportBounds![3].dy);
+
+      final viewportPath = Path()
+        ..moveTo(vmBL.dx, vmBL.dy)
+        ..lineTo(vmTL.dx, vmTL.dy)
+        ..lineTo(vmTR.dx, vmTR.dy)
+        ..lineTo(vmBR.dx, vmBR.dy)
+        ..close();
+
+      final viewportPaint = Paint()
+        ..color = Colors.tealAccent.withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2;
+
+      canvas.drawPath(viewportPath, viewportPaint);
     }
   }
 
@@ -2947,61 +3521,55 @@ class _SpecialAbilityButton extends StatelessWidget {
 
 class _CauldronSprite extends StatelessWidget {
   final HealingCauldron cauldron;
-  final Offset screenPos;
 
   const _CauldronSprite({
     required this.cauldron,
-    required this.screenPos,
   });
 
   @override
   Widget build(BuildContext context) {
     final double scale = (0.8 + (cauldron.y / CombatManager.fieldWidth) * 0.4) * 1.3;
 
-    return Positioned(
-      left: screenPos.dx - 30,
-      top: screenPos.dy - 75,
-      child: Transform.scale(
-        scale: scale,
-        child: SizedBox(
-          width: 60,
-          height: 80,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Positioned(
-                bottom: 0,
-                child: Container(
-                  width: 36,
-                  height: 10,
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.all(Radius.elliptical(18, 5)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black45,
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
+    return Transform.scale(
+      scale: scale,
+      child: SizedBox(
+        width: 60,
+        height: 80,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              bottom: 0,
+              child: Container(
+                width: 36,
+                height: 10,
+                decoration: const BoxDecoration(
+                  borderRadius: BorderRadius.all(Radius.elliptical(18, 5)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black45,
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
               ),
-              Positioned(
-                bottom: 4,
-                child: CustomPaint(
-                  size: const Size(40, 36),
-                  painter: _CauldronPainter(),
-                ),
+            ),
+            Positioned(
+              bottom: 4,
+              child: CustomPaint(
+                size: const Size(40, 36),
+                painter: _CauldronPainter(),
               ),
-              Positioned(
-                top: 6,
-                child: _HeartIcon(
-                  isAvailable: cauldron.isAvailable,
-                  progress: cauldron.rechargeProgress,
-                ),
+            ),
+            Positioned(
+              top: 6,
+              child: _HeartIcon(
+                isAvailable: cauldron.isAvailable,
+                progress: cauldron.rechargeProgress,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -3208,13 +3776,8 @@ class _PlacementIndicatorPainter extends CustomPainter {
     final double worldY = worldPos.dy.clamp(0.0, manager.map.height);
 
     // Determine validation state
-    bool isValid = false;
+    final bool isValid = manager.isValidPlacement(npc, worldX, worldY);
     final isSupport = npc.name.contains('Barrage') || npc.name.contains('Artillery') || npc.name.contains('Gas') || npc.name.contains('Tear') || npc.name.contains('Caltrops') || npc.name.contains('Totem') || stats.unitType == UnitType.support;
-    if (isSupport) {
-      isValid = _isValidSupportPlacement(manager, npc.name, worldX, worldY);
-    } else {
-      isValid = _isValidPlacement(manager, worldX, worldY);
-    }
 
     final paint = Paint()
       ..color = isValid ? Colors.green.withValues(alpha: 0.35) : Colors.red.withValues(alpha: 0.35)
@@ -3228,9 +3791,9 @@ class _PlacementIndicatorPainter extends CustomPainter {
     if (isSupport) {
       // Render support area of effect shape
       if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
-        // Enormous rectangle (75% of battlefield width, 1 full lane height)
-        final rectWidth = manager.map.width * 0.75;
-        final rectHeight = manager.map.height / manager.map.laneCenters.length;
+        // Reduced footprint rectangle (reduced width and length by half)
+        final rectWidth = manager.map.width * 0.375;
+        final rectHeight = (manager.map.height / manager.map.laneCenters.length) * 0.5;
         
         final double leftX = (worldX - rectWidth / 2.0).clamp(0.0, manager.map.width);
         final double rightX = (worldX + rectWidth / 2.0).clamp(0.0, manager.map.width);
@@ -3263,21 +3826,38 @@ class _PlacementIndicatorPainter extends CustomPainter {
         canvas.drawPath(path, paint);
         canvas.drawPath(path, strokePaint);
       } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
-        // Shaded circle
-        final center = projection.project(worldX, worldY);
-        final radius = 15.0 * projection.zoomFactor;
-        canvas.drawCircle(center, radius, paint);
-        canvas.drawCircle(center, radius, strokePaint);
-      } else if (npc.name.contains('Caltrops')) {
-        // Square on player character position
-        final alphonse = manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
-        if (alphonse != null) {
-          final center = projection.project(alphonse.x, alphonse.y);
-          final sizeVal = 15.0 * projection.zoomFactor;
-          final rect = Rect.fromCenter(center: center, width: sizeVal, height: sizeVal);
-          canvas.drawRect(rect, paint);
-          canvas.drawRect(rect, strokePaint);
+        final path = Path();
+        const double radius = 15.0;
+        for (int i = 0; i < 32; i++) {
+          final double angle = i * (2.0 * pi / 32.0);
+          final double wx = worldX + cos(angle) * radius;
+          final double wy = worldY + sin(angle) * radius;
+          final p = projection.project(wx, wy);
+          if (i == 0) {
+            path.moveTo(p.dx, p.dy);
+          } else {
+            path.lineTo(p.dx, p.dy);
+          }
         }
+        path.close();
+        canvas.drawPath(path, paint);
+        canvas.drawPath(path, strokePaint);
+      } else if (npc.name.contains('Caltrops')) {
+        const double halfSize = 15.0; // 30.0 feet total side length (slightly larger)
+        final p1 = projection.project(worldX - halfSize, worldY - halfSize);
+        final p2 = projection.project(worldX + halfSize, worldY - halfSize);
+        final p3 = projection.project(worldX + halfSize, worldY + halfSize);
+        final p4 = projection.project(worldX - halfSize, worldY + halfSize);
+
+        final path = Path()
+          ..moveTo(p1.dx, p1.dy)
+          ..lineTo(p2.dx, p2.dy)
+          ..lineTo(p3.dx, p3.dy)
+          ..lineTo(p4.dx, p4.dy)
+          ..close();
+
+        canvas.drawPath(path, paint);
+        canvas.drawPath(path, strokePaint);
       } else {
         // Default circular support shape (Totems, etc.)
         final center = projection.project(worldX, worldY);
@@ -3321,54 +3901,6 @@ class _PlacementIndicatorPainter extends CustomPainter {
       case 7: return const Offset(-10.0, 0.0);
       default: return Offset(-2.5 * (index ~/ 2 + 1).toDouble(), (index % 2 == 0 ? -2.5 : 2.5));
     }
-  }
-
-  bool _isValidPlacement(CombatManager manager, double worldX, double worldY) {
-    if (worldX > 0.8 * manager.map.width) return false;
-    final double startingZoneLimit = 0.2 * manager.map.width;
-    if (worldX > startingZoneLimit) {
-      int targetLaneIdx = -1;
-      for (int i = 0; i < manager.map.laneCenters.length; i++) {
-        if ((worldY - manager.map.laneCenters[i]).abs() <= 18.0) {
-          targetLaneIdx = i;
-          break;
-        }
-      }
-      if (targetLaneIdx == -1) return false;
-
-      double maxPlayerXOnLane = 0.0;
-      for (final c in manager.combatants) {
-        if (c.side == CombatSide.player && !c.isDead && !c.isTower) {
-          if ((c.y - manager.map.laneCenters[targetLaneIdx]).abs() <= 18.0) {
-            maxPlayerXOnLane = max(maxPlayerXOnLane, c.x);
-          }
-        }
-      }
-      if (worldX > maxPlayerXOnLane) return false;
-    }
-    return true;
-  }
-
-  bool _isValidSupportPlacement(CombatManager manager, String cardName, double worldX, double worldY) {
-    final alphonse = manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
-    if (alphonse == null) return false;
-
-    if (cardName.contains('Barrage') || cardName.contains('Artillery')) {
-      if (worldX > 0.8 * manager.map.width) {
-        final hasPresence = manager.combatants.any((c) => c.side == CombatSide.player && !c.isDead && c.x >= 0.7 * manager.map.width);
-        if (!hasPresence) return false;
-      }
-      return true;
-    } else if (cardName.contains('Gas') || cardName.contains('Tear')) {
-      final dist = sqrt(pow(worldX - alphonse.x, 2) + pow(worldY - alphonse.y, 2));
-      return dist <= 0.1 * manager.map.width;
-    } else if (cardName.contains('Caltrops')) {
-      final dist = sqrt(pow(worldX - alphonse.x, 2) + pow(worldY - alphonse.y, 2));
-      return dist <= 5.0;
-    } else if (cardName.contains('Totem') || cardName.contains('Vampiric')) {
-      return _isValidPlacement(manager, worldX, worldY);
-    }
-    return true;
   }
 
   @override
@@ -3448,11 +3980,12 @@ void _showCombatMenuDialog(BuildContext context) {
                 context,
                 'LOAD GAME',
                 onPressed: () async {
+                  final navigator = Navigator.of(context);
                   final data = await SaveService.loadGame(slot: 1);
                   if (data != null) {
                     gameState.loadFromJson(data);
-                    Navigator.of(context).pop(); // close dialog
-                    Navigator.of(context).pop(); // close combat screen
+                    navigator.pop(); // close dialog
+                    navigator.pop(); // close combat screen
                   }
                 },
               ),
@@ -3525,4 +4058,572 @@ Widget _buildMenuButton(BuildContext context, String label, {required VoidCallba
       ),
     ),
   );
+}
+
+
+
+class _CaltropsVisual extends StatelessWidget {
+  final Combatant combatant;
+  final _CombatProjection projection;
+
+  const _CaltropsVisual({
+    required this.combatant,
+    required this.projection,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final manager = Provider.of<CombatManager>(context, listen: false);
+    final map = manager.map;
+    final isDeploying = combatant.activeDeploymentTimer > 0.0;
+
+    if (isDeploying) {
+      return CustomPaint(
+        painter: _SupportDeployPainter(
+          isCircle: false,
+          progress: 1.0 - (combatant.activeDeploymentTimer / 3.0),
+          label: 'PREPARING CALTROPS',
+          combatant: combatant,
+          projection: projection,
+          map: map,
+        ),
+        child: Center(
+          child: Text(
+            'PREPARING: ${combatant.activeDeploymentTimer.toStringAsFixed(1)}s',
+            style: GoogleFonts.oswald(
+              color: const Color(0xFFFFB300),
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+              shadows: const [Shadow(color: Colors.black, blurRadius: 3)],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return CustomPaint(
+      painter: _CaltropsPainter(
+        combatant: combatant,
+        projection: projection,
+      ),
+    );
+  }
+}
+
+class _CaltropsPainter extends CustomPainter {
+  final Combatant combatant;
+  final _CombatProjection projection;
+
+  _CaltropsPainter({
+    required this.combatant,
+    required this.projection,
+  });
+
+  double seededRandom(int seed) {
+    return (sin(seed * 12.9898 + 78.233) * 43758.5453).abs() % 1.0;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double halfSize = 15.0; // 30.0 feet total side length (slightly larger)
+
+    // Corner projection
+    final p1 = projection.project(combatant.x - halfSize, combatant.y - halfSize);
+    final p2 = projection.project(combatant.x + halfSize, combatant.y - halfSize);
+    final p3 = projection.project(combatant.x + halfSize, combatant.y + halfSize);
+    final p4 = projection.project(combatant.x - halfSize, combatant.y + halfSize);
+
+    final path = Path()
+      ..moveTo(p1.dx, p1.dy)
+      ..lineTo(p2.dx, p2.dy)
+      ..lineTo(p3.dx, p3.dy)
+      ..lineTo(p4.dx, p4.dy)
+      ..close();
+
+    // Rusted ground overlay
+    final basePaint = Paint()
+      ..color = const Color(0xFF795548).withValues(alpha: 0.12)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, basePaint);
+
+    // Draw sharp scattered spikes inside the projected polygon
+    final spikePaint = Paint()
+      ..color = const Color(0xFF3E2723)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+
+    for (int i = 0; i < 24; i++) {
+      final rx = seededRandom(i * 41);
+      final ry = seededRandom(i * 73);
+
+      // Map deterministic random factor inside the world square
+      final wx = combatant.x - halfSize + rx * 30.0;
+      final wy = combatant.y - halfSize + ry * 30.0;
+
+      // Project spike center to screen
+      final pCenter = projection.project(wx, wy);
+      final cx = pCenter.dx;
+      final cy = pCenter.dy;
+
+      const double spikeLen = 4.0;
+      canvas.drawLine(Offset(cx - spikeLen, cy), Offset(cx + spikeLen, cy), spikePaint);
+      canvas.drawLine(Offset(cx, cy - spikeLen), Offset(cx, cy + spikeLen), spikePaint);
+      canvas.drawLine(Offset(cx - spikeLen/2.0, cy - spikeLen/2.0), Offset(cx + spikeLen/2.0, cy + spikeLen/2.0), spikePaint);
+    }
+
+    // Weak pulsing dashed warning outline around the projected path
+    final borderPaint = Paint()
+      ..color = const Color(0xFFFF8F00).withValues(alpha: 0.25 + 0.1 * sin(DateTime.now().millisecondsSinceEpoch * 0.005))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CaltropsPainter oldDelegate) => true;
+}
+
+class _ArtilleryVisual extends StatelessWidget {
+  final Combatant combatant;
+  final _CombatProjection projection;
+
+  const _ArtilleryVisual({
+    required this.combatant,
+    required this.projection,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final manager = Provider.of<CombatManager>(context, listen: false);
+    final map = manager.map;
+    final isDeploying = combatant.activeDeploymentTimer > 0.0;
+
+    if (isDeploying) {
+      return CustomPaint(
+        painter: _SupportDeployPainter(
+          isCircle: false,
+          progress: 1.0 - (combatant.activeDeploymentTimer / 3.0),
+          label: 'INCOMING BARRAGE',
+          combatant: combatant,
+          projection: projection,
+          map: map,
+        ),
+        child: Center(
+          child: Text(
+            'INCOMING: ${combatant.activeDeploymentTimer.toStringAsFixed(1)}s',
+            style: GoogleFonts.oswald(
+              color: const Color(0xFFFF3D00),
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+              shadows: const [Shadow(color: Colors.black, blurRadius: 3)],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return CustomPaint(
+      painter: _ArtilleryBarragePainter(
+        combatant: combatant,
+        projection: projection,
+        map: map,
+      ),
+    );
+  }
+}
+
+class _TearGasVisual extends StatelessWidget {
+  final Combatant combatant;
+  final _CombatProjection projection;
+
+  const _TearGasVisual({
+    required this.combatant,
+    required this.projection,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final manager = Provider.of<CombatManager>(context, listen: false);
+    final map = manager.map;
+    final isDeploying = combatant.activeDeploymentTimer > 0.0;
+
+    if (isDeploying) {
+      final maxDeployTime = combatant.npc.combatStats?.deploymentTime ?? 1.5;
+      return CustomPaint(
+        painter: _SupportDeployPainter(
+          isCircle: true,
+          progress: (1.0 - (combatant.activeDeploymentTimer / maxDeployTime)).clamp(0.0, 1.0),
+          label: 'INCOMING TEAR GAS',
+          combatant: combatant,
+          projection: projection,
+          map: map,
+        ),
+        child: Center(
+          child: Text(
+            'INCOMING: ${combatant.activeDeploymentTimer.toStringAsFixed(1)}s',
+            style: GoogleFonts.oswald(
+              color: const Color(0xFF8BC34A),
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+              shadows: const [Shadow(color: Colors.black, blurRadius: 3)],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return CustomPaint(
+      painter: _TearGasPainter(
+        combatant: combatant,
+        projection: projection,
+      ),
+    );
+  }
+}
+
+class _SupportDeployPainter extends CustomPainter {
+  final bool isCircle;
+  final double progress;
+  final String label;
+  final Combatant combatant;
+  final _CombatProjection projection;
+  final CombatMap map;
+
+  _SupportDeployPainter({
+    required this.isCircle,
+    required this.progress,
+    required this.label,
+    required this.combatant,
+    required this.projection,
+    required this.map,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF3D00).withValues(alpha: 0.15 + 0.05 * sin(DateTime.now().millisecondsSinceEpoch * 0.01))
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = const Color(0xFFFF3D00)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    if (isCircle) {
+      final pCenter = projection.project(combatant.x, combatant.y);
+      final screenRadius = 15.0 * projection.zoomFactor;
+
+      canvas.drawCircle(pCenter, screenRadius, paint);
+      canvas.drawCircle(pCenter, screenRadius, borderPaint);
+
+      final progressPaint = Paint()
+        ..color = Colors.amber
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0;
+      canvas.drawArc(
+        Rect.fromCircle(center: pCenter, radius: screenRadius - 2),
+        -pi / 2,
+        2 * pi * progress,
+        false,
+        progressPaint,
+      );
+    } else {
+      final bool isCaltrops = combatant.npc.name.contains('Caltrops');
+      
+      double rectWidth = 0.0;
+      double rectHeight = 0.0;
+
+      if (isCaltrops) {
+        rectWidth = 30.0;
+        rectHeight = 30.0;
+      } else {
+        rectWidth = map.width * 0.375;
+        rectHeight = (map.height / map.laneCenters.length) * 0.5;
+      }
+
+      final double halfW = rectWidth / 2.0;
+      final double halfH = rectHeight / 2.0;
+
+      final p1 = projection.project(combatant.x - halfW, combatant.y - halfH);
+      final p2 = projection.project(combatant.x + halfW, combatant.y - halfH);
+      final p3 = projection.project(combatant.x + halfW, combatant.y + halfH);
+      final p4 = projection.project(combatant.x - halfW, combatant.y + halfH);
+
+      final path = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..lineTo(p3.dx, p3.dy)
+        ..lineTo(p4.dx, p4.dy)
+        ..close();
+
+      canvas.drawPath(path, paint);
+      canvas.drawPath(path, borderPaint);
+
+      final progressPaint = Paint()
+        ..color = Colors.amber
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0;
+      
+      final Offset progressEnd = Offset(
+        p4.dx + (p3.dx - p4.dx) * progress,
+        p4.dy + (p3.dy - p4.dy) * progress,
+      );
+
+      canvas.drawLine(p4, progressEnd, progressPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SupportDeployPainter oldDelegate) => true;
+}
+
+class _ArtilleryBarragePainter extends CustomPainter {
+  final Combatant combatant;
+  final _CombatProjection projection;
+  final CombatMap map;
+
+  _ArtilleryBarragePainter({
+    required this.combatant,
+    required this.projection,
+    required this.map,
+  });
+
+  double seededRandom(int seed) {
+    return (sin(seed * 12.9898 + 78.233) * 43758.5453).abs() % 1.0;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double elapsed = 3.0 - combatant.supportDurationRemaining;
+
+    final rectWidth = map.width * 0.375;
+    final rectHeight = (map.height / map.laneCenters.length) * 0.5;
+
+    final double halfW = rectWidth / 2.0;
+    final double halfH = rectHeight / 2.0;
+
+    final p1 = projection.project(combatant.x - halfW, combatant.y - halfH);
+    final p2 = projection.project(combatant.x + halfW, combatant.y - halfH);
+    final p3 = projection.project(combatant.x + halfW, combatant.y + halfH);
+    final p4 = projection.project(combatant.x - halfW, combatant.y + halfH);
+
+    final path = Path()
+      ..moveTo(p1.dx, p1.dy)
+      ..lineTo(p2.dx, p2.dy)
+      ..lineTo(p3.dx, p3.dy)
+      ..lineTo(p4.dx, p4.dy)
+      ..close();
+
+    // 1. Draw scorched earth background
+    final scorchPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, scorchPaint);
+
+    // Draw soft charcoal spots inside the projected bounds
+    for (int i = 0; i < 8; i++) {
+      final rx = seededRandom(i * 17);
+      final ry = seededRandom(i * 29);
+      final rRadius = (12.0 + rx * 20.0) * projection.zoomFactor;
+
+      final wx = combatant.x - halfW + rx * rectWidth;
+      final wy = combatant.y - halfH + ry * rectHeight;
+      final pSpot = projection.project(wx, wy);
+
+      final spotPaint = Paint()
+        ..color = const Color(0xFF111111).withValues(alpha: 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      canvas.drawCircle(pSpot, rRadius, spotPaint);
+    }
+
+    // 2. Draw dynamic explosion waves
+    for (int i = 0; i < 14; i++) {
+      final double birthTime = i * 0.18;
+      if (elapsed < birthTime) continue;
+
+      final double age = elapsed - birthTime;
+      const double duration = 0.45;
+
+      final int cycle = (age / duration).floor();
+      final double cycleAge = age % duration;
+
+      // Position seed based on index and cycle
+      final rx = seededRandom(i * 53 + cycle * 19);
+      final ry = seededRandom(i * 67 + cycle * 31);
+
+      final wx = combatant.x - halfW + rx * rectWidth;
+      final wy = combatant.y - halfH + ry * rectHeight;
+      final pExplosion = projection.project(wx, wy);
+
+      _drawSingleExplosion(canvas, pExplosion.dx, pExplosion.dy, rx, cycleAge / duration);
+    }
+  }
+
+  void _drawSingleExplosion(Canvas canvas, double cx, double cy, double rx, double t) {
+    final double maxRadius = (15.0 + rx * 18.0) * projection.zoomFactor;
+    final double currentRadius = t < 0.25 ? maxRadius * (t / 0.25) : maxRadius + (t - 0.25) * 5.0;
+
+    // 1. Shockwave ring
+    if (t > 0.05 && t < 0.8) {
+      final shockPaint = Paint()
+        ..color = Colors.white.withValues(alpha: (1.0 - t) * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawCircle(Offset(cx, cy), maxRadius * 1.4 * t, shockPaint);
+    }
+
+    // 2. Fireball layers
+    if (t < 0.35) {
+      // Core expansion phase: bright yellow/white hot core
+      final corePaint = Paint()
+        ..color = Colors.white
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      canvas.drawCircle(Offset(cx, cy), currentRadius * 0.4, corePaint);
+
+      final midPaint = Paint()
+        ..color = const Color(0xFFFFEB3B) // Bright Yellow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+      canvas.drawCircle(Offset(cx, cy), currentRadius * 0.75, midPaint);
+
+      final outerPaint = Paint()
+        ..color = const Color(0xFFFF3D00) // Deep Orange
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawCircle(Offset(cx, cy), currentRadius, outerPaint);
+    } else {
+      // Dissipation and smoke phase: transitions to dark orange/red and then charcoal gray
+      final double smokeT = (t - 0.35) / 0.65;
+      final Color smokeColor = Color.lerp(
+        const Color(0xFFFF5722), // Orange-Red
+        const Color(0xFF2E2E2E), // Dark grey smoke
+        smokeT,
+      )!.withValues(alpha: (1.0 - smokeT) * 0.85);
+
+      final smokePaint = Paint()
+        ..color = smokeColor
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4.0 + smokeT * 6.0);
+      canvas.drawCircle(Offset(cx, cy), currentRadius * (1.0 + smokeT * 0.25), smokePaint);
+
+      // Little leftover glowing ember core
+      if (smokeT < 0.5) {
+        final emberPaint = Paint()
+          ..color = const Color(0xFFFFC107).withValues(alpha: (1.0 - smokeT * 2.0) * 0.9)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+        canvas.drawCircle(Offset(cx, cy), currentRadius * 0.25, emberPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ArtilleryBarragePainter oldDelegate) {
+    return oldDelegate.combatant.supportDurationRemaining != combatant.supportDurationRemaining;
+  }
+}
+
+class _TearGasPainter extends CustomPainter {
+  final Combatant combatant;
+  final _CombatProjection projection;
+
+  _TearGasPainter({
+    required this.combatant,
+    required this.projection,
+  });
+
+  double seededRandom(int seed) {
+    return (sin(seed * 12.9898 + 78.233) * 43758.5453).abs() % 1.0;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double radius = 15.0; // 15.0 feet world radius matching placement area
+
+    // 1. Draw visible circle of effect area - beautiful semi-transparent green circular dome
+    final basePaint = Paint()
+      ..color = const Color(0xFF689F38).withValues(alpha: 0.18) // Vibrant green dome overlay
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    
+    final basePath = Path();
+    for (int i = 0; i < 32; i++) {
+      final double angle = i * (2.0 * pi / 32.0);
+      final double wx = combatant.x + cos(angle) * radius;
+      final double wy = combatant.y + sin(angle) * radius;
+      final p = projection.project(wx, wy);
+      if (i == 0) {
+        basePath.moveTo(p.dx, p.dy);
+      } else {
+        basePath.lineTo(p.dx, p.dy);
+      }
+    }
+    basePath.close();
+    canvas.drawPath(basePath, basePaint);
+
+    // 2. Elapsed duration (6.0 seconds total)
+    final double elapsed = 6.0 - combatant.supportDurationRemaining;
+
+    // 3. Render 32 dynamic dense rolling green smoke puffs to fill the dome area
+    for (int i = 0; i < 32; i++) {
+      final rx = seededRandom(i * 37);
+      final ry = seededRandom(i * 47);
+
+      // Angled path emanating from center in world space
+      final double angle = i * (2.0 * pi / 32.0) + rx * 0.3;
+      
+      // Compute expansion progress (0.0 near center to 1.0 at radius)
+      final double speed = 0.2 + ry * 0.25;
+      final double offset = rx;
+      final double dist = ((elapsed * speed) + offset) % 1.0;
+
+      // Calculate coordinates flowing outward within the world radius
+      final double wx = combatant.x + cos(angle) * (dist * radius);
+      final double wy = combatant.y + sin(angle) * (dist * radius);
+
+      // Project puff center to screen coordinates
+      final pPuff = projection.project(wx, wy);
+      final cx = pPuff.dx;
+      final cy = pPuff.dy;
+
+      // Puff radius grows as it rolls outward
+      final double puffRadius = (radius * (0.2 + dist * 0.4)) * projection.zoomFactor;
+
+      // Opacity fades out near boundary
+      final double opacity = (1.0 - dist) * 0.28;
+
+      final puffPaint = Paint()
+        ..color = Color.lerp(
+          const Color(0xFF4CAF50), // Herbal vibrant green smoke
+          const Color(0xFFCDDC39), // Lime yellow-green chemical mist
+          rx,
+        )!.withValues(alpha: opacity)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3.0 + dist * 5.0);
+
+      canvas.drawCircle(Offset(cx, cy), puffRadius, puffPaint);
+    }
+
+    // 4. Draw circular boundary border indicator ring - distinct glowing neon green line
+    final borderPulse = 0.4 + 0.2 * sin(DateTime.now().millisecondsSinceEpoch * 0.006);
+    final borderPaint = Paint()
+      ..color = const Color(0xFFCDDC39).withValues(alpha: borderPulse)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    
+    final borderPath = Path();
+    for (int i = 0; i < 32; i++) {
+      final double angle = i * (2.0 * pi / 32.0);
+      final double wx = combatant.x + cos(angle) * radius;
+      final double wy = combatant.y + sin(angle) * radius;
+      final p = projection.project(wx, wy);
+      if (i == 0) {
+        borderPath.moveTo(p.dx, p.dy);
+      } else {
+        borderPath.lineTo(p.dx, p.dy);
+      }
+    }
+    borderPath.close();
+    canvas.drawPath(borderPath, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TearGasPainter oldDelegate) => true;
 }

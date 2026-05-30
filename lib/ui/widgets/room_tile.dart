@@ -196,7 +196,7 @@ class RoomTile extends StatelessWidget {
                 ),
 
                 // Construction Progress Overlay
-                if (constructionProgress != null && occupants.any((n) => n.status == NPCStatus.working))
+                if (constructionProgress != null)
                   Positioned.fill(
                     child: Container(
                       color: Colors.black.withValues(alpha: 0.7),
@@ -347,6 +347,12 @@ class RoomTile extends StatelessWidget {
         return Icons.eco;
       case RoomType.tenement:
         return Icons.home_work;
+      case RoomType.dentalClinic:
+        return Icons.medical_services;
+      case RoomType.mine:
+        return Icons.construction;
+      case RoomType.oilWell:
+        return Icons.oil_barrel;
     }
   }
 

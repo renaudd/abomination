@@ -50,12 +50,23 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
   void initState() {
     super.initState();
     _introFocusNode = FocusNode();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _introFocusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _introFocusNode.dispose();
     super.dispose();
+  }
+
+  void _navigateToScene(int scene) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _currentScene = scene;
+    });
+    _introFocusNode.requestFocus();
   }
 
   void _triggerOptionByIndex(int index) {
@@ -96,20 +107,21 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       autofocus: true,
       onKeyEvent: (event) {
         if (event is KeyDownEvent) {
+          // Skip hotkeys if typing in a text field
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          if (primaryFocus != null && primaryFocus.context != null) {
+            final hasTextFocus = primaryFocus.context!.findAncestorWidgetOfExactType<EditableText>() != null;
+            if (hasTextFocus) return;
+          }
+
           final key = event.physicalKey;
-          if (key == PhysicalKeyboardKey.keyB) {
+          if (key == PhysicalKeyboardKey.digit8 || key == PhysicalKeyboardKey.numpad8) {
             if (_currentScene > 1) {
-              setState(() {
-                _currentScene--;
-                _introFocusNode.requestFocus();
-              });
+              _navigateToScene(_currentScene - 1);
             }
-          } else if (key == PhysicalKeyboardKey.keyN) {
+          } else if (key == PhysicalKeyboardKey.digit9 || key == PhysicalKeyboardKey.numpad9) {
             if (_currentScene < 6 && _currentScene != 1) {
-              setState(() {
-                _currentScene++;
-                _introFocusNode.requestFocus();
-              });
+              _navigateToScene(_currentScene + 1);
             }
           } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
             _triggerOptionByIndex(0);
@@ -119,49 +131,62 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
             _triggerOptionByIndex(2);
           } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4) {
             _triggerOptionByIndex(3);
+          } else if (key == PhysicalKeyboardKey.digit5 || key == PhysicalKeyboardKey.numpad5) {
+            _triggerOptionByIndex(4);
+          } else if (key == PhysicalKeyboardKey.digit6 || key == PhysicalKeyboardKey.numpad6) {
+            _triggerOptionByIndex(5);
+          } else if (key == PhysicalKeyboardKey.digit7 || key == PhysicalKeyboardKey.numpad7) {
+            _triggerOptionByIndex(6);
           }
         }
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF1A1612),
-      body: Stack(
-        children: [
-          // Background Spitzweg Image
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.4,
-              child: Image.asset(
-                'assets/images/Carl_Spitzweg_-_Der_Maler_im_Garten.jpg',
-                fit: BoxFit.cover,
-                color: Colors.black,
-                colorBlendMode: BlendMode.darken,
-              ),
-            ),
-          ),
-
-          // Content
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 40.0,
-              vertical: 60.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: SingleChildScrollView(child: _buildSceneContent()),
+        body: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            FocusManager.instance.primaryFocus?.unfocus();
+            _introFocusNode.requestFocus();
+          },
+          child: Stack(
+            children: [
+              // Background Spitzweg Image
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.4,
+                  child: Image.asset(
+                    'assets/images/Carl_Spitzweg_-_Der_Maler_im_Garten.jpg',
+                    fit: BoxFit.cover,
+                    color: Colors.black,
+                    colorBlendMode: BlendMode.darken,
+                  ),
                 ),
-                _buildFooter(),
-              ],
-            ),
+              ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40.0,
+                  vertical: 60.0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: SingleChildScrollView(child: _buildSceneContent()),
+                    ),
+                    _buildFooter(),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildHeader() {
     return Text(
@@ -252,15 +277,32 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _inputField("FIRST NAME", _firstNameController)),
+            Expanded(
+              child: _inputField(
+                "FIRST NAME",
+                _firstNameController,
+                textInputAction: TextInputAction.next,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _inputField("LAST NAME", _lastNameController)),
+            Expanded(
+              child: _inputField(
+                "LAST NAME",
+                _lastNameController,
+                textInputAction: TextInputAction.next,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
         _sceneText("as Junker of..."),
         const SizedBox(height: 8),
-        _inputField("ESTATE NAME", _estateNameController),
+        _inputField(
+          "ESTATE NAME",
+          _estateNameController,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _navigateToScene(3),
+        ),
       ],
     );
   }
@@ -407,9 +449,16 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
     );
   }
 
-  Widget _inputField(String label, TextEditingController controller) {
+  Widget _inputField(
+    String label,
+    TextEditingController controller, {
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
+  }) {
     return TextField(
       controller: controller,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       style: GoogleFonts.oldStandardTt(
         color: const Color(0xFFC4B89B),
         fontSize: 13,
@@ -474,7 +523,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       children: [
         if (_currentScene > 1)
           TextButton(
-            onPressed: () => setState(() => _currentScene--),
+            onPressed: () => _navigateToScene(_currentScene - 1),
             child: Text(
               "BACK",
               style: GoogleFonts.playfairDisplay(color: Colors.white24),
@@ -485,7 +534,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         if (_currentScene < 6 &&
             _currentScene != 1) // Scene 1 requires selection to advance
           TextButton(
-            onPressed: () => setState(() => _currentScene++),
+            onPressed: () => _navigateToScene(_currentScene + 1),
             child: Text(
               "NEXT",
               style: GoogleFonts.playfairDisplay(
@@ -498,34 +547,23 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
   }
 
   void _selectDeath(DeathCause cause) {
-    setState(() {
-      _deathCause = cause;
-      _currentScene = 2;
-    });
+    _deathCause = cause;
+    _navigateToScene(2);
   }
 
   void _selectAge(int age) {
-    setState(() {
-      _age = age;
-      _currentScene = 4;
-      _introFocusNode.requestFocus();
-    });
+    _age = age;
+    _navigateToScene(4);
   }
 
   void _selectGiles(GilesTrait trait) {
-    setState(() {
-      _gilesTrait = trait;
-      _currentScene = 5;
-      _introFocusNode.requestFocus();
-    });
+    _gilesTrait = trait;
+    _navigateToScene(5);
   }
 
   void _selectObjective(LifeObjective objective) {
-    setState(() {
-      _objective = objective;
-      _currentScene = 6;
-      _introFocusNode.requestFocus();
-    });
+    _objective = objective;
+    _navigateToScene(6);
   }
 
   void _finish(BuildContext context) {

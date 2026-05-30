@@ -103,6 +103,7 @@ enum TaskType {
   operation,
   relax,
   collectPayment,
+  dentalWork,
 }
 
 
@@ -281,6 +282,8 @@ extension TaskTypeExtensions on TaskType {
         return 'Relax';
       case TaskType.collectPayment:
         return 'Collect Wages';
+      case TaskType.dentalWork:
+        return 'Dental Work';
     }
   }
 }
@@ -420,6 +423,7 @@ class TaskService {
       case TaskType.treatIllness:
       case TaskType.checkBedridden:
       case TaskType.clinicalTrial:
+      case TaskType.dentalWork:
         return 'Medicine';
       case TaskType.paint:
         return 'Painting';
@@ -936,7 +940,7 @@ class TaskService {
       case TaskType.spyOnNeighbor:
         return "Spy on neighbor";
       case TaskType.deprivationStudy:
-        return "Conduct Occult Studies";
+        return "Perform Deprivation Study";
       case TaskType.clinicalTrial:
         return "Administer clinical trials";
       case TaskType.puzzleStudy:
@@ -1055,6 +1059,8 @@ class TaskService {
         return "Relax and restore focus";
       case TaskType.collectPayment:
         return "Collect wages from the Study";
+      case TaskType.dentalWork:
+        return "Perform dental work";
     }
   }
 }

@@ -14,11 +14,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../../models/room.dart';
 import '../../models/npc.dart';
+import '../../models/npc_intent.dart';
 import '../../models/manor_crisis.dart';
 import '../../services/construction_service.dart';
+import '../../services/task_service.dart';
 import 'room_tile.dart';
 import 'npc_sprite.dart';
 import '../../util/manor_layout.dart';
@@ -136,13 +139,60 @@ class ManorRenderer extends StatelessWidget {
                                       )
                                     : null,
                               ),
-                              child: RoomTile(
-                                room: room,
-                                occupants: npcs
-                                    .where((n) => n.currentRoomId == room.id)
-                                    .toList(),
-                                onTap: () => onRoomTap(room),
-                              ),
+                              child: () {
+                                final state = context.read<GameState>();
+                                double? progress;
+                                final cTask = state.activeTasks.firstWhereOrNull(
+                                  (t) => t.targetId == room.id && (t.type == TaskType.construction || t.type == TaskType.restoreRoom)
+                                );
+                                if (cTask != null) {
+                                  final total = cTask.totalMinutes;
+                                  if (total > 0) {
+                                    progress = 1.0 - (cTask.minutesRemaining / total);
+                                  }
+                                } else {
+                                  NPCIntent? pausedIntent;
+                                  for (var npc in state.npcs) {
+                                    final match = npc.intentQueue.firstWhereOrNull(
+                                      (i) => i.targetRoomId == room.id && (i.action == TaskType.construction || i.action == TaskType.restoreRoom)
+                                    );
+                                    if (match != null) {
+                                      pausedIntent = match;
+                                      break;
+                                    }
+                                  }
+                                  if (pausedIntent != null) {
+                                    final total = pausedIntent.expectedDurationMin;
+                                    if (total > 0) {
+                                      progress = 1.0 - ((pausedIntent.minutesRemaining ?? total) / total);
+                                    }
+                                  }
+                                }
+
+                                if (progress == null && !room.isRestored && room.restorationProgress > 0.0) {
+                                  final hasRestorationTask = state.activeTasks.any(
+                                    (t) => t.targetId == room.id && t.type == TaskType.restoreRoom
+                                  ) || state.npcs.any(
+                                    (n) => n.intentQueue.any((i) => i.targetRoomId == room.id && i.action == TaskType.restoreRoom)
+                                  );
+                                  if (hasRestorationTask) {
+                                    progress = room.restorationProgress;
+                                  }
+                                }
+
+                                if (progress != null && !(progress >= 0.01)) {
+                                  progress = null;
+                                }
+
+                                return RoomTile(
+                                  room: room,
+                                  occupants: npcs
+                                      .where((n) => n.currentRoomId == room.id)
+                                      .toList(),
+                                  onTap: () => onRoomTap(room),
+                                  constructionProgress: progress,
+                                );
+                              }(),
                             ),
                             if (isDiscovered)
                               Positioned.fill(
@@ -173,8 +223,11 @@ class ManorRenderer extends StatelessWidget {
                         description: bp.description,
                       ),
                       onTap: () {},
-                      constructionProgress:
-                          1.0 - (project.minutesRemaining / bp.durationMinutes),
+                      constructionProgress: () {
+                        if (!project.isStarted) return null;
+                        final prog = 1.0 - (project.minutesRemaining / bp.durationMinutes);
+                        return prog >= 0.01 ? prog : null;
+                      }(),
                     ),
                   );
                 }),
@@ -186,7 +239,9 @@ class ManorRenderer extends StatelessWidget {
                       .where(
                         (n) =>
                             n.worldDestinationId == null &&
-                            (n.isResident || n.currentRoomId == 'road'),
+                            (n.isResident ||
+                                n.currentRoomId == 'road' ||
+                                n.currentRoomId == 'entryway'),
                       )
                       .map((npc) {
                         final String currentId =

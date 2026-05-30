@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:flutter/material.dart';
 import '../models/npc.dart';
 import '../models/combat_stats.dart';
 import '../models/schedule.dart';
@@ -184,16 +183,16 @@ class CombatUnitFactory {
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 45,
-        health: 220,
-        maxHealth: 220,
+        attack: 35,
+        health: 150,
+        maxHealth: 150,
         speed: 1.0,
         movement: 1.8,
         distance: 1.5,
         cost: 5,
         unitType: UnitType.squad,
         unitCount: 3,
-        meleeDamage: 45,
+        meleeDamage: 35,
         meleeRange: 1.5,
         meleeAttackSpeed: 1.0,
         trait: CombatTrait.fireVulnerable,
@@ -217,15 +216,15 @@ class CombatUnitFactory {
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
         attack: 10,
-        health: 110,
-        maxHealth: 110,
+        health: 130,
+        maxHealth: 130,
         speed: 1.0,
         movement: 1.4,
         distance: 6.0,
         cost: 4,
         unitType: UnitType.squad,
         unitCount: 3,
-        rangedDamage: 15,
+        rangedDamage: 18,
         rangedRange: 6.0,
         rangedAttackSpeed: 1.2,
         meleeDamage: 10,
@@ -250,15 +249,15 @@ class CombatUnitFactory {
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
         attack: 15,
-        health: 165,
-        maxHealth: 165,
+        health: 200,
+        maxHealth: 200,
         speed: 0.8,
         movement: 2.2,
         distance: 8.0,
         cost: 5,
         unitType: UnitType.squad,
         unitCount: 2,
-        rangedDamage: 20,
+        rangedDamage: 30,
         rangedRange: 8.0,
         rangedAttackSpeed: 1.0,
         meleeDamage: 15,
@@ -362,10 +361,10 @@ class CombatUnitFactory {
     );
   }
 
-  static NPC createRats2() {
+  static NPC createBrownRats() {
     return NPC(
-      id: _generateId('rats_2'),
-      name: 'Rats 2',
+      id: _generateId('brown_rats'),
+      name: 'Brown Rats',
       role: 'Swarm',
       age: 1,
       gender: 'N/A',
@@ -381,7 +380,7 @@ class CombatUnitFactory {
         speed: 0.4,
         movement: 1.5,
         distance: 0.8,
-        cost: 6,
+        cost: 4,
         unitType: UnitType.squad,
         unitCount: 8,
         meleeDamage: 8,
@@ -626,7 +625,7 @@ class CombatUnitFactory {
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
-        attack: 0,
+        attack: 5,
         health: 90,
         maxHealth: 90,
         speed: 3.0,
@@ -635,10 +634,13 @@ class CombatUnitFactory {
         cost: 3,
         unitType: UnitType.squad,
         unitCount: 1,
-        rangedDamage: 85,
+        rangedDamage: 120,
         rangedRange: 18.0,
         rangedAttackSpeed: 3.0,
         targetingRule: TargetingRule.nonTowers,
+        meleeDamage: 5,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 1.0,
         radius: 1.4,
       ),
     );
@@ -937,10 +939,10 @@ class CombatUnitFactory {
       appearance: NPCAppearance.random(),
       combatStats: const CombatStats(
         attack: 0,
-        health: 85,
-        maxHealth: 85,
+        health: 100,
+        maxHealth: 100,
         speed: 2.0,
-        movement: 0.9,
+        movement: 1.0,
         distance: 10.0,
         cost: 3,
         unitType: UnitType.squad,
@@ -976,6 +978,7 @@ class CombatUnitFactory {
         cost: 5,
         unitType: UnitType.support,
         unitCount: 0,
+        deploymentTime: 3.0,
       ),
       abilities: [
         const Ability(
@@ -1010,13 +1013,15 @@ class CombatUnitFactory {
         cost: 3,
         unitType: UnitType.support,
         unitCount: 0,
+        deploymentTime: 1.5,
       ),
       abilities: [
         const Ability(
           id: 'tear_gas_effect',
           name: 'Tear Gas Grenade',
           type: AbilityType.special,
-          description: 'Slows enemies by 60% and deals 15 DPS in a circular area for 8 seconds.',
+          description:
+              'Slows enemies by 60% and deals 15 DPS in a circular area for 6 seconds.',
         ),
       ],
     );

@@ -21,6 +21,7 @@ import 'introduction_screen.dart';
 import 'manor_screen.dart';
 import 'combat_simulator_screen.dart';
 import '../widgets/save_load_dialogs.dart';
+import '../widgets/options_dialog.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -151,7 +152,12 @@ class MainMenuScreen extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                _buildMenuButton(context, 'OPTIONS', null),
+                _buildMenuButton(context, 'OPTIONS', () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => const OptionsDialog(),
+                  );
+                }),
 
                 const SizedBox(height: 12),
 
