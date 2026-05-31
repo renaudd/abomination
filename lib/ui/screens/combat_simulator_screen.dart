@@ -174,75 +174,85 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                               ),
                             ),
                           ),
-                          child: ListTile(
-                            dense: true,
-                            visualDensity: VisualDensity.compact,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 0,
-                            ),
-                            leading: CharacterBlobRenderer(
-                              npc: sampleUnit,
-                              size: 30,
-                              isCombat: true,
-                            ),
-                            title: Text(
-                              type.toUpperCase().replaceAll('_', ' '),
-                              style: GoogleFonts.playfairDisplay(
-                                color: const Color(0xFFE5D5B0),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "HP:${stats.maxHealth.toInt()} | ATK:${stats.attack.toInt()} | SPD:${stats.speed} | ACC:${(stats.accuracy * 100).toInt()}%",
-                                  style: GoogleFonts.playfairDisplay(
-                                    color: Colors.white54,
-                                    fontSize: 10,
-                                  ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: CharacterBlobRenderer(
+                                  npc: sampleUnit,
+                                  size: 28,
+                                  isCombat: true,
                                 ),
-                                const SizedBox(height: 4),
-                                ...sampleUnit.abilities.map(
-                                  (a) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 2),
-                                    child: Text(
-                                      "• ${a.name}: ${a.description}",
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      type.toUpperCase().replaceAll('_', ' '),
                                       style: GoogleFonts.playfairDisplay(
-                                        color: Colors.white38,
-                                        fontSize: 9,
-                                        fontStyle: FontStyle.italic,
+                                        color: const Color(0xFFE5D5B0),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "HP:${stats.maxHealth.toInt()} | ATK:${stats.attack.toInt()} | SPD:${stats.speed} | ACC:${(stats.accuracy * 100).toInt()}%",
+                                      style: GoogleFonts.playfairDisplay(
+                                        color: Colors.white70,
+                                        fontSize: 9.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    ...sampleUnit.abilities.map(
+                                      (a) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 2),
+                                        child: Text(
+                                          "• ${a.name}: ${a.description}",
+                                          style: GoogleFonts.playfairDisplay(
+                                            color: Colors.white38,
+                                            fontSize: 8.5,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "${stats.cost} AP",
-                                  style: GoogleFonts.oswald(
-                                    color: Colors.cyanAccent,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                              ),
+                              const SizedBox(width: 6),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "${stats.cost} AP",
+                                    style: GoogleFonts.oswald(
+                                      color: Colors.cyanAccent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.add_circle_outline,
-                                    size: 20,
-                                    color: Color(0xFFC4B89B),
+                                  const SizedBox(height: 2),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add_circle_outline,
+                                      size: 18,
+                                      color: Color(0xFFC4B89B),
+                                    ),
+                                    onPressed: () => _addUnit(type),
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
                                   ),
-                                  onPressed: () => _addUnit(type),
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ),
                         );
                       },

@@ -9547,6 +9547,10 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSpeedSilent(GameSpeed newSpeed) {
+    _speed = newSpeed;
+  }
+
   void cookRecipe(String recipeId, String npcId, {bool isPrepared = false}) {
     final recipe = KitchenService.getAvailableRecipes().firstWhere(
       (r) => r.id == recipeId,

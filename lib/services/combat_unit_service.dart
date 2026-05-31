@@ -86,6 +86,14 @@ class CombatUnitService {
         return CombatUnitFactory.createCaltrops();
       case 'vampiric_totem':
         return CombatUnitFactory.createVampiricTotem();
+      case 'militia':
+        return CombatUnitFactory.createMilitia();
+      case 'goon':
+        return CombatUnitFactory.createGoon();
+      case 'rats_unit':
+        return CombatUnitFactory.createRatsUnit();
+      case 'bandit_captain':
+        return CombatUnitFactory.createBanditCaptain();
       default:
         return CombatUnitFactory.createVillagerMob();
     }

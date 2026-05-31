@@ -72,24 +72,24 @@ class _CombatSimulatorMapSelectionScreenState
             children: [
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   children: [
                     _buildSectionHeader("SMALL SKIRMISH BATTLEFIELDS (1.0x Area Baseline)"),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     ...smallMaps.map((map) => _buildMapItem(context, state, map)),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     _buildSectionHeader("MEDIUM TACTICAL BATTLEFIELDS (approx. 2.5x - 3.5x Area Scale)"),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     ...mediumMaps.map((map) => _buildMapItem(context, state, map)),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     _buildSectionHeader("COLOSSAL GRAND BATTLEFIELDS (approx. 9.0x Area Scale)"),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     ...colossalMaps.map((map) => _buildMapItem(context, state, map)),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 color: Colors.black.withValues(alpha: 0.5),
                 child: ElevatedButton(
                   onPressed: () => _startSimulation(state),
@@ -97,20 +97,20 @@ class _CombatSimulatorMapSelectionScreenState
                     backgroundColor: const Color(0xFFC4B89B),
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 48,
-                      vertical: 20,
+                      horizontal: 32,
+                      vertical: 12,
                     ),
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero,
                     ),
-                    minimumSize: const Size(double.infinity, 60),
+                    minimumSize: const Size(double.infinity, 44),
                   ),
                   child: Text(
                     "START SIMULATION",
                     style: GoogleFonts.playfairDisplay(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,
-                      fontSize: 16,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -130,12 +130,12 @@ class _CombatSimulatorMapSelectionScreenState
           title,
           style: GoogleFonts.playfairDisplay(
             color: const Color(0xFFE5D5B0),
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
-            letterSpacing: 2,
+            letterSpacing: 1.5,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         const Divider(color: Colors.white24, height: 1),
       ],
     );
@@ -150,8 +150,8 @@ class _CombatSimulatorMapSelectionScreenState
         state.setSelectedCombatMap(map);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
               ? Colors.white.withValues(alpha: 0.1)
@@ -170,9 +170,9 @@ class _CombatSimulatorMapSelectionScreenState
               color: isSelected
                   ? const Color(0xFFC4B89B)
                   : Colors.white54,
-              size: 40,
+              size: 28,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,20 +183,20 @@ class _CombatSimulatorMapSelectionScreenState
                       color: isSelected
                           ? const Color(0xFFE5D5B0)
                           : Colors.white70,
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     "DIMENSIONS: ${map.width.toInt()} x ${map.height.toInt()} | AREA: ${area.toInt()} SQ. UNITS",
                     style: GoogleFonts.oswald(
                       color: isSelected
                           ? const Color(0xFFC4B89B).withValues(alpha: 0.8)
                           : Colors.white38,
-                      fontSize: 11,
-                      letterSpacing: 1,
+                      fontSize: 9.5,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -206,6 +206,7 @@ class _CombatSimulatorMapSelectionScreenState
               const Icon(
                 Icons.check_circle,
                 color: Color(0xFFC4B89B),
+                size: 20,
               ),
           ],
         ),

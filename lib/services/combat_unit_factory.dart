@@ -1124,4 +1124,193 @@ class CombatUnitFactory {
   static NPC createInquisitor() => createMarksmen().copyWith(name: 'Inquisitor');
   static NPC createIronMaiden() => createFleshGolem().copyWith(name: 'Iron Maiden');
   static NPC createAlchemicalGolem() => createFleshGolem().copyWith(name: 'Alchemical Golem');
+
+  // AI Boss Generals for Arena Campaigns and Tournaments
+  static NPC createBossRudolf() {
+    return NPC(
+      id: 'boss_rudolf',
+      name: 'General Rudolf',
+      role: 'Warlord',
+      age: 48,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 40,
+        health: 500,
+        maxHealth: 500,
+        speed: 0.8,
+        movement: 0.9,
+        distance: 1.5,
+        defense: 10,
+        accuracy: 0.9,
+        cost: 0,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 40,
+        meleeRange: 1.5,
+        meleeAttackSpeed: 0.8,
+      ),
+      abilities: [
+        const Ability(
+          id: 'shield_wall',
+          name: 'Shield Wall',
+          type: AbilityType.special,
+          description: 'Rudolf and nearby allies gain +20 Defense for 8 seconds.',
+          chargeTime: 15.0,
+        ),
+        const Ability(
+          id: 'battle_cry',
+          name: 'Battle Cry',
+          type: AbilityType.special,
+          description: 'Rudolf rallies his troops, increasing their Attack by +15 for 6 seconds.',
+          chargeTime: 22.0,
+        ),
+      ],
+    );
+  }
+
+  static NPC createBossGearbox() {
+    return NPC(
+      id: 'boss_gearbox',
+      name: 'Baron von Gearbox',
+      role: 'Engineer',
+      age: 52,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 25,
+        health: 280,
+        maxHealth: 280,
+        speed: 1.2,
+        movement: 1.0,
+        distance: 10.0,
+        defense: 2,
+        accuracy: 0.88,
+        cost: 0,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 25,
+        rangedRange: 10.0,
+        rangedAttackSpeed: 1.2,
+      ),
+      abilities: [
+        const Ability(
+          id: 'overclock',
+          name: 'Overclock',
+          type: AbilityType.special,
+          description: 'All clockwork units on the field gain +60% Attack Speed for 10 seconds.',
+          chargeTime: 18.0,
+        ),
+        const Ability(
+          id: 'tesla_discharge',
+          name: 'Tesla Discharge',
+          type: AbilityType.special,
+          description: 'Discharges electric current, dealing 40 damage and stunning nearby enemies for 2 seconds.',
+          chargeTime: 25.0,
+        ),
+      ],
+    );
+  }
+
+  static NPC createBossElizabeth() {
+    return NPC(
+      id: 'boss_elizabeth',
+      name: 'Lady Elizabeth',
+      role: 'Vampire',
+      age: 200,
+      gender: 'Female',
+      specimenType: 'Undead',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 45,
+        health: 320,
+        maxHealth: 320,
+        speed: 1.3,
+        movement: 1.2,
+        distance: 1.2,
+        defense: 0,
+        accuracy: 0.92,
+        cost: 0,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 45,
+        meleeRange: 1.2,
+        meleeAttackSpeed: 1.3,
+      ),
+      abilities: [
+        const Ability(
+          id: 'vampiric_mist',
+          name: 'Vampiric Mist',
+          type: AbilityType.special,
+          description: 'Elizabeth recovers HP equal to 50% of damage dealt by her and her allies for 10 seconds.',
+          chargeTime: 16.0,
+        ),
+        const Ability(
+          id: 'bat_swarm',
+          name: 'Bat Swarm',
+          type: AbilityType.special,
+          description: 'Summons a swarm of bats that deals 15 damage per second and slows enemies by 30% for 6 seconds.',
+          chargeTime: 20.0,
+        ),
+      ],
+    );
+  }
+
+  static NPC createBossThorne() {
+    return NPC(
+      id: 'boss_thorne',
+      name: 'Keeper Thorne',
+      role: 'Ranger',
+      age: 38,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.random(),
+      combatStats: const CombatStats(
+        attack: 30,
+        health: 260,
+        maxHealth: 260,
+        speed: 1.1,
+        movement: 1.1,
+        distance: 9.0,
+        defense: 1,
+        accuracy: 0.95,
+        cost: 0,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 30,
+        rangedRange: 9.0,
+        rangedAttackSpeed: 1.1,
+      ),
+      abilities: [
+        const Ability(
+          id: 'entangling_roots',
+          name: 'Entangling Roots',
+          type: AbilityType.special,
+          description: 'Roots entangle and slow the player hero by 70% for 5 seconds.',
+          chargeTime: 14.0,
+        ),
+        const Ability(
+          id: 'feral_howl',
+          name: 'Feral Howl',
+          type: AbilityType.special,
+          description: 'Summons a spectral wolf and increases speed of all beast units by +40% for 8 seconds.',
+          chargeTime: 24.0,
+        ),
+      ],
+    );
+  }
 }

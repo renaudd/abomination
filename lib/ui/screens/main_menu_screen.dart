@@ -20,6 +20,7 @@ import '../../services/save_service.dart';
 import 'introduction_screen.dart';
 import 'manor_screen.dart';
 import 'combat_simulator_screen.dart';
+import 'arena_menu_screen.dart';
 import '../widgets/save_load_dialogs.dart';
 import '../widgets/options_dialog.dart';
 
@@ -161,11 +162,11 @@ class MainMenuScreen extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                _buildMenuButton(context, 'COMBAT SIMULATOR', () {
+                _buildMenuButton(context, 'ARENA MODE', () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CombatSimulatorScreen(),
+                      builder: (context) => const ArenaMenuScreen(),
                     ),
                   );
                 }),

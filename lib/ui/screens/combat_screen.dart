@@ -30,7 +30,22 @@ import '../../services/save_service.dart';
 import '../widgets/options_dialog.dart';
 
 class CombatScreen extends StatefulWidget {
-  const CombatScreen({super.key});
+  final List<NPC>? customPlayerDeck;
+  final List<NPC>? customAiDeck;
+  final NPC? customEnemyHero;
+  final VoidCallback? onVictory;
+  final VoidCallback? onDefeat;
+  final VoidCallback? onDraw;
+
+  const CombatScreen({
+    super.key,
+    this.customPlayerDeck,
+    this.customAiDeck,
+    this.customEnemyHero,
+    this.onVictory,
+    this.onDefeat,
+    this.onDraw,
+  });
 
   @override
   State<CombatScreen> createState() => _CombatScreenState();
@@ -40,9 +55,11 @@ class _CombatScreenState extends State<CombatScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _tickController;
   late CombatManager _combatManager;
+  late final GameState _gameState;
   GameSpeed? _previousSpeed;
   int? _selectedCardIndex;
   DateTime? _lastTickTime;
+  Size? _screenSize;
 
   // Real-Time Drag & Placement Preview State
   NPC? _previewNpc;
@@ -155,9 +172,10 @@ class _CombatScreenState extends State<CombatScreen>
   void initState() {
     super.initState();
     
-    final state = Provider.of<GameState>(context, listen: false);
-    _previousSpeed = state.speed;
-    state.setSpeed(GameSpeed.paused); // Pause background Manor updates to prevent main thread CPU starvation!
+    _gameState = Provider.of<GameState>(context, listen: false);
+    final state = _gameState;
+    _previousSpeed = _gameState.speed;
+    _gameState.setSpeedSilent(GameSpeed.paused); // Pause background Manor updates synchronously and silently to prevent thread/state concurrency issues!
     
     _combatManager = CombatManager()
       ..map = state.selectedCombatMap
@@ -168,9 +186,15 @@ class _CombatScreenState extends State<CombatScreen>
       _keyboardFocusNode.requestFocus();
     });
 
-    final isSimulation = state.simulationPlayerDeck != null;
+    final isCustomCombat = widget.customPlayerDeck != null;
+    final isSimulation = state.simulationPlayerDeck != null || isCustomCombat;
 
-    if (isSimulation) {
+    if (isCustomCombat) {
+      _combatManager.setupSimulation(
+        widget.customPlayerDeck!,
+        widget.customAiDeck ?? [],
+      );
+    } else if (isSimulation) {
       _combatManager.setupSimulation(
         state.simulationPlayerDeck!,
         state.simulationAiDeck!,
@@ -271,12 +295,13 @@ class _CombatScreenState extends State<CombatScreen>
     );
 
     // Spawn Mobile AI Leader
+    final enemyHero = widget.customEnemyHero ?? CombatUnitFactory.createAlphonse().copyWith(
+      id: 'ai_mirror',
+      name: 'Bandit Captain',
+      isPlayer: false,
+    );
     _combatManager.spawnUnit(
-      CombatUnitFactory.createAlphonse().copyWith(
-        id: 'ai_mirror',
-        name: 'Bandit Captain',
-        isPlayer: false,
-      ),
+      enemyHero.copyWith(isPlayer: false),
       CombatSide.enemy,
       x: _combatManager.map.width - 30.0,
       y: _combatManager.map.height / 2,
@@ -335,10 +360,11 @@ class _CombatScreenState extends State<CombatScreen>
             final gameState = Provider.of<GameState>(context, listen: false);
             if (gameState.combatControlMode == 'click' && 
                 !_combatManager.cameraFollowPlayer && 
-                _combatManager.cameraResumeFollowDelay <= 0.0) {
+                _combatManager.cameraResumeFollowDelay <= 0.0 &&
+                _screenSize != null) {
               final alphonse = _combatManager.combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
               if (alphonse != null) {
-                final screenSize = MediaQuery.of(context).size;
+                final screenSize = _screenSize!;
                 final projection = _CombatProjection(
                   viewSize: screenSize,
                   fieldScroll: _combatManager.fieldScroll,
@@ -364,8 +390,9 @@ class _CombatScreenState extends State<CombatScreen>
   @override
   void dispose() {
     if (_previousSpeed != null) {
-      final state = Provider.of<GameState>(context, listen: false);
-      state.setSpeed(_previousSpeed!);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _gameState.setSpeed(_previousSpeed!);
+      });
     }
     _keyboardFocusNode.dispose();
     _tickController.dispose();
@@ -375,7 +402,13 @@ class _CombatScreenState extends State<CombatScreen>
   @override
   Widget build(BuildContext context) {
     final gameState = Provider.of<GameState>(context);
-    _combatManager.combatControlMode = gameState.combatControlMode;
+    _screenSize = MediaQuery.of(context).size;
+    final screenSizeVal = _screenSize!;
+    if (_combatManager.combatControlMode != gameState.combatControlMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _combatManager.combatControlMode = gameState.combatControlMode;
+      });
+    }
 
     final screenWidth = MediaQuery.of(context).size.width;
     final defaultWidth = screenWidth * 0.4;
@@ -564,7 +597,7 @@ class _CombatScreenState extends State<CombatScreen>
                       }
                       final gameState = Provider.of<GameState>(context, listen: false);
                       if (gameState.combatControlMode != 'click') {
-                        final screenSize = MediaQuery.of(context).size;
+                        final screenSize = screenSizeVal;
                         final dx = -details.focalPointDelta.dx * (100.0 / screenSize.width) / _combatManager.zoomFactor;
                         final dy = -details.focalPointDelta.dy * (75.0 / screenSize.height) / _combatManager.zoomFactor;
                         _combatManager.scrollField(dx, dy);
@@ -574,7 +607,7 @@ class _CombatScreenState extends State<CombatScreen>
                       _keyboardFocusNode.requestFocus();
                       final gameState = Provider.of<GameState>(context, listen: false);
                       final localPosition = details.localPosition;
-                      final screenSize = MediaQuery.of(context).size;
+                      final screenSize = screenSizeVal;
                       final projection = _CombatProjection(
                         viewSize: screenSize,
                         fieldScroll: _combatManager.fieldScroll,
@@ -852,10 +885,15 @@ class _CombatScreenState extends State<CombatScreen>
                 shape: const RoundedRectangleBorder(),
               ),
               onPressed: () {
-                final state = Provider.of<GameState>(context, listen: false);
-                state.addResources(_combatManager.accumulatedLoot);
-                state.clearEncounterState();
-                Navigator.pop(context);
+                if (widget.onVictory != null) {
+                  Navigator.pop(context);
+                  widget.onVictory!();
+                } else {
+                  final state = Provider.of<GameState>(context, listen: false);
+                  state.addResources(_combatManager.accumulatedLoot);
+                  state.clearEncounterState();
+                  Navigator.pop(context);
+                }
               },
               child: Text(
                 'COLLECT & CONTINUE',
@@ -913,36 +951,47 @@ class _CombatScreenState extends State<CombatScreen>
               ),
             ),
             const SizedBox(height: 64),
-            _DefeatButton(
-              label: 'TRY BATTLE AGAIN',
-              onPressed: () {
-                // Reset combat manager and restart
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CombatScreen()),
-                );
-              },
-              primary: true,
-            ),
-            const SizedBox(height: 16),
-            _DefeatButton(
-              label: 'LOAD LAST SAVE',
-              onPressed: () {
-                // Load save logic would go here
-                final state = Provider.of<GameState>(context, listen: false);
-                state.clearEncounterState();
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 16),
-            _DefeatButton(
-              label: 'ACCEPT FATE (QUIT)',
-              onPressed: () {
-                final state = Provider.of<GameState>(context, listen: false);
-                state.clearEncounterState();
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-            ),
+            if (widget.onDefeat != null) ...[
+              _DefeatButton(
+                label: 'CONTINUE',
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onDefeat!();
+                },
+                primary: true,
+              ),
+            ] else ...[
+              _DefeatButton(
+                label: 'TRY BATTLE AGAIN',
+                onPressed: () {
+                  // Reset combat manager and restart
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CombatScreen()),
+                  );
+                },
+                primary: true,
+              ),
+              const SizedBox(height: 16),
+              _DefeatButton(
+                label: 'LOAD LAST SAVE',
+                onPressed: () {
+                  // Load save logic would go here
+                  final state = Provider.of<GameState>(context, listen: false);
+                  state.clearEncounterState();
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 16),
+              _DefeatButton(
+                label: 'ACCEPT FATE (QUIT)',
+                onPressed: () {
+                  final state = Provider.of<GameState>(context, listen: false);
+                  state.clearEncounterState();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -974,25 +1023,40 @@ class _CombatScreenState extends State<CombatScreen>
               ),
             ),
             const SizedBox(height: 64),
-            _DefeatButton(
-              label: 'TRY BATTLE AGAIN',
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CombatScreen()),
-                );
-              },
-              primary: true,
-            ),
-            const SizedBox(height: 16),
-            _DefeatButton(
-              label: 'RETREAT TO SAFETY',
-              onPressed: () {
-                final state = Provider.of<GameState>(context, listen: false);
-                state.clearEncounterState();
-                Navigator.pop(context);
-              },
-            ),
+            if (widget.onDraw != null || widget.onDefeat != null) ...[
+              _DefeatButton(
+                label: 'CONTINUE',
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (widget.onDraw != null) {
+                    widget.onDraw!();
+                  } else {
+                    widget.onDefeat!();
+                  }
+                },
+                primary: true,
+              ),
+            ] else ...[
+              _DefeatButton(
+                label: 'TRY BATTLE AGAIN',
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CombatScreen()),
+                  );
+                },
+                primary: true,
+              ),
+              const SizedBox(height: 16),
+              _DefeatButton(
+                label: 'RETREAT TO SAFETY',
+                onPressed: () {
+                  final state = Provider.of<GameState>(context, listen: false);
+                  state.clearEncounterState();
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -1540,33 +1604,37 @@ class _CombatantSprite extends StatelessWidget {
                             ),
 
                           // Floating text message overlay (staggered)
-                          Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: combatant.floatingMessages.map((msg) {
-                              return Positioned(
-                                bottom: 45 + msg.offsetY, // Staggered height
-                                child: AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 100),
-                                  opacity: min(1.0, msg.lifetime * 2),
-                                  child: Text(
-                                    msg.text,
-                                    style: GoogleFonts.oswald(
-                                      color: msg.color,
-                                      fontSize: 6,
-                                      fontWeight: FontWeight.bold,
-                                      shadows: const [
-                                        Shadow(
-                                          color: Colors.black,
-                                          blurRadius: 2,
-                                          offset: Offset(1, 1),
-                                        ),
-                                      ],
+                          SizedBox(
+                            width: 80,
+                            height: 20,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: combatant.floatingMessages.map((msg) {
+                                return Positioned(
+                                  bottom: 45 + msg.offsetY, // Staggered height
+                                  child: AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 100),
+                                    opacity: min(1.0, msg.lifetime * 2),
+                                    child: Text(
+                                      msg.text,
+                                      style: GoogleFonts.oswald(
+                                        color: msg.color,
+                                        fontSize: 6,
+                                        fontWeight: FontWeight.bold,
+                                        shadows: const [
+                                          Shadow(
+                                            color: Colors.black,
+                                            blurRadius: 2,
+                                            offset: Offset(1, 1),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            }).toList(),
+                                );
+                              }).toList(),
+                            ),
                           ),
 
                           // Highlight target indicator (drawn below health bar)
@@ -1996,6 +2064,7 @@ class _UnitCardState extends State<_UnitCard> {
     final manager = Provider.of<CombatManager>(context, listen: false);
     final cost = widget.npc.combatStats?.cost ?? 0;
     final canAfford = manager.actionPoints >= cost;
+    final screenSizeVal = MediaQuery.of(context).size;
 
     return Draggable<NPC>(
           data: widget.npc,
@@ -2019,7 +2088,7 @@ class _UnitCardState extends State<_UnitCard> {
             final screenState = context.findAncestorStateOfType<_CombatScreenState>();
             screenState?.clearDragPreview();
 
-            final screenSize = MediaQuery.of(context).size;
+            final screenSize = screenSizeVal;
             final projection = _CombatProjection(
               viewSize: screenSize,
               fieldScroll: manager.fieldScroll,

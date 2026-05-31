@@ -2521,10 +2521,10 @@ class CharacterBlobRenderer extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(width: 3, height: size * 0.24, color: Colors.black),
-                Container(width: 3, height: size * 0.24, color: Colors.black),
-                Container(width: 3, height: size * 0.24, color: Colors.black),
-                Container(width: 3, height: size * 0.24, color: Colors.black),
+                Container(width: size * 0.08, height: size * 0.24, color: Colors.black),
+                Container(width: size * 0.08, height: size * 0.24, color: Colors.black),
+                Container(width: size * 0.08, height: size * 0.24, color: Colors.black),
+                Container(width: size * 0.08, height: size * 0.24, color: Colors.black),
               ],
             ),
           ),
