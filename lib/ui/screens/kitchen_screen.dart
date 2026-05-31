@@ -31,19 +31,20 @@ class KitchenScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1612),
       appBar: AppBar(
+        toolbarHeight: 40,
         title: Text(
           'THE KITCHEN',
           style: GoogleFonts.playfairDisplay(
             fontWeight: FontWeight.bold,
             letterSpacing: 4,
-            fontSize: 18,
+            fontSize: 15,
             color: const Color(0xFFE5D5B0),
           ),
         ),
         backgroundColor: Colors.black.withValues(alpha: 0.5),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFFE5D5B0)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFE5D5B0), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -72,7 +73,7 @@ class KitchenScreen extends StatelessWidget {
                 Expanded(
                   flex: 1,
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       border: Border(
                         right: BorderSide(
@@ -84,33 +85,54 @@ class KitchenScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSectionTitle('KITCHEN LEDGER'),
-                                const SizedBox(height: 16),
-                                RoomLedger(
-                                  room: state.rooms.firstWhere((r) => r.type == RoomType.kitchen),
-                                  state: state,
+                          flex: 7,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionTitle('KITCHEN LEDGER'),
+                              const SizedBox(height: 8),
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  child: RoomLedger(
+                                    room: state.rooms.firstWhere((r) => r.type == RoomType.kitchen),
+                                    state: state,
+                                    isCompact: true,
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                         const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
                           child: Divider(color: Colors.white10, height: 1),
                         ),
-                        _buildSectionTitle('COOKING QUEUE'),
-                        const SizedBox(height: 12),
-                        _buildCookingQueue(state),
-                        if (state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ...[
-                          const SizedBox(height: 24),
-                          _buildDualQueuePanel(state),
-                          const SizedBox(height: 24),
-                          _buildAlchemicalSmoker(context, state),
-                        ],
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionTitle('COOKING QUEUE'),
+                              const SizedBox(height: 6),
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildCookingQueue(state),
+                                      if (state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ...[
+                                        const SizedBox(height: 12),
+                                        _buildDualQueuePanel(state),
+                                        const SizedBox(height: 12),
+                                        _buildAlchemicalSmoker(context, state),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -120,7 +142,7 @@ class KitchenScreen extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -173,9 +195,9 @@ class KitchenScreen extends StatelessWidget {
       title,
       style: GoogleFonts.playfairDisplay(
         color: const Color(0xFFE5D5B0),
-        fontSize: 14,
+        fontSize: 11,
         fontWeight: FontWeight.bold,
-        letterSpacing: 2,
+        letterSpacing: 1.5,
       ),
     );
   }
@@ -197,7 +219,7 @@ class KitchenScreen extends StatelessWidget {
     final metadata = TaskService.getMetadata(TaskType.cook);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         border: Border.all(
           color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
@@ -205,7 +227,7 @@ class KitchenScreen extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.3),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -346,7 +368,7 @@ class KitchenScreen extends StatelessWidget {
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
                 child: Text(
                   'COMMENCE PREPARATION',
@@ -369,7 +391,7 @@ class KitchenScreen extends StatelessWidget {
     if (state.cookingQueue.isEmpty) {
       return Text(
         'NO ORDERS.',
-        style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 12),
+        style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 10),
       );
     }
 
@@ -393,7 +415,7 @@ class KitchenScreen extends StatelessWidget {
             displayName = "EXPERIMENT: ${recipeId.split('|').skip(1).join(', ').replaceAll('_', ' ').toUpperCase()}";
           } else {
             final recipe = recipes.firstWhere(
-              (r) => r.id == baseId,
+               (r) => r.id == baseId,
               orElse: () => recipes.first,
             );
             displayName = recipe.name.toUpperCase();
@@ -401,7 +423,7 @@ class KitchenScreen extends StatelessWidget {
         }
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
+          padding: const EdgeInsets.only(bottom: 2.0),
           child: Row(
             children: [
               Expanded(
@@ -409,15 +431,16 @@ class KitchenScreen extends StatelessWidget {
                   '${index + 1}. $displayName',
                   style: GoogleFonts.oldStandardTt(
                     color: const Color(0xFFC4B89B),
-                    fontSize: 12,
+                    fontSize: 10.5,
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 14, color: Colors.white24),
-                onPressed: () => state.removeFromCookingQueue(index),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+              GestureDetector(
+                onTap: () => state.removeFromCookingQueue(index),
+                child: const Padding(
+                  padding: EdgeInsets.all(2.0),
+                  child: Icon(Icons.close, size: 10, color: Colors.white24),
+                ),
               ),
             ],
           ),

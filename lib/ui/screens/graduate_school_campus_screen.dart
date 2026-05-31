@@ -136,138 +136,146 @@ class _GraduateSchoolCampusScreenState extends State<GraduateSchoolCampusScreen>
 
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1A15),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               title: Text(
                 "ACADEMIC EXAM - QUESTION ${currentQ + 1}/${questions.length}",
                 style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    q.question,
-                    style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 12, height: 1.4),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // CONSULT LIBRARY BUTTON
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        _showReferenceTomesDialog(context);
-                      },
-                      icon: const Icon(Icons.menu_book, color: Color(0xFFC4B89B), size: 14),
-                      label: Text(
-                        "CONSULT ACADEMIC TOMES",
-                        style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 10, letterSpacing: 1),
+              content: SizedBox(
+                width: 450,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        q.question.replaceFirst(RegExp(r'^[^:\n]+:\n'), ''),
+                        style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 11.5, height: 1.4),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white24),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      const SizedBox(height: 12),
+                      
+                      // CONSULT LIBRARY BUTTON
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            _showReferenceTomesDialog(context);
+                          },
+                          icon: const Icon(Icons.menu_book, color: Color(0xFFC4B89B), size: 13),
+                          label: Text(
+                            "CONSULT ACADEMIC TOMES",
+                            style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 9.5, letterSpacing: 1),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white24),
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                      const SizedBox(height: 12),
 
-                  ...List.generate(q.choices.length, (cIdx) {
-                    final choice = q.choices[cIdx];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          if (cIdx == q.correct) {
-                            score++;
-                          }
-                          
-                          if (currentQ + 1 < questions.length) {
-                            setModalState(() {
-                              currentQ++;
-                            });
-                          } else {
-                            Navigator.pop(context); // close test dialog
+                      ...List.generate(q.choices.length, (cIdx) {
+                        final choice = q.choices[cIdx];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              if (cIdx == q.correct) {
+                                score++;
+                              }
+                              
+                              if (currentQ + 1 < questions.length) {
+                                setModalState(() {
+                                  currentQ++;
+                                });
+                              } else {
+                                Navigator.pop(context); // close test dialog
 
-                            final isSurgery = grad.specialization == 'Surgery';
-                            final finalSemester = isSurgery ? 5 : 4;
-                            final isBoard = grad.currentSemester == finalSemester;
-                            final int threshold = isBoard ? 5 : 3;
-                            final bool passed = score >= threshold;
-                            
-                            state.checkAcademicExam(passed, score: score);
+                                final isSurgery = grad.specialization == 'Surgery';
+                                final finalSemester = isSurgery ? 5 : 4;
+                                final isBoard = grad.currentSemester == finalSemester;
+                                final int threshold = isBoard ? 5 : 3;
+                                final bool passed = score >= threshold;
+                                
+                                state.checkAcademicExam(passed, score: score);
 
-                            if (passed) {
-                              String bonusMsg = "";
-                              if (!isBoard && score == 4) {
-                                // Perfect score bonus!
-                                if (grad.type == AcademicSchoolType.law) {
-                                  state.updateResource('funds', 100);
-                                  state.adjustNpcSatisfaction('player', 30.0);
-                                  bonusMsg = "\n\nHONOR: INDUCTED INTO THE ORDER OF THE COIF! (+30 Satisfaction, +100 CHF).";
-                                } else if (grad.type == AcademicSchoolType.pharmacy) {
-                                  state.updateResource('funds', 150);
-                                  bonusMsg = "\n\nHONOR: APPOINTED TO A COVETED TEACHING ASSISTANT POSITION! (+150 CHF).";
-                                } else if (grad.type == AcademicSchoolType.medicine) {
-                                  state.updateResource('funds', 250);
-                                  bonusMsg = "\n\nHONOR: IMPERIAL MEDICAL CASH SCHOLARSHIP CONFERRED! (+250 CHF).";
+                                if (passed) {
+                                  String bonusMsg = "";
+                                  if (!isBoard && score == 4) {
+                                    // Perfect score bonus!
+                                    if (grad.type == AcademicSchoolType.law) {
+                                      state.updateResource('funds', 100);
+                                      state.adjustNpcSatisfaction('player', 30.0);
+                                      bonusMsg = "\n\nHONOR: INDUCTED INTO THE ORDER OF THE COIF! (+30 Satisfaction, +100 CHF).";
+                                    } else if (grad.type == AcademicSchoolType.pharmacy) {
+                                      state.updateResource('funds', 150);
+                                      bonusMsg = "\n\nHONOR: APPOINTED TO A COVETED TEACHING ASSISTANT POSITION! (+150 CHF).";
+                                    } else if (grad.type == AcademicSchoolType.medicine) {
+                                      state.updateResource('funds', 250);
+                                      bonusMsg = "\n\nHONOR: IMPERIAL MEDICAL CASH SCHOLARSHIP CONFERRED! (+250 CHF).";
+                                    }
+                                  }
+
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      backgroundColor: const Color(0xFF1E1A15),
+                                      title: Text("EXAMINATION PASSED!", style: GoogleFonts.playfairDisplay(color: Colors.green)),
+                                      content: Text(
+                                        isBoard 
+                                            ? "BOARD DECREE: CONGRATULATIONS! Alfonso Giles has successfully met the qualifying standards of the Imperial Board."
+                                            : "TERM RESULT: Alfonso passed the practical test with a score of $score/4.$bonusMsg",
+                                        style: GoogleFonts.oldStandardTt(color: Colors.white70),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: Text("EXCELLENT", style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0))),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                } else {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      backgroundColor: const Color(0xFF1E1A15),
+                                      title: Text("EXAMINATION FAILED!", style: GoogleFonts.playfairDisplay(color: Colors.redAccent)),
+                                      content: Text(
+                                        isBoard 
+                                            ? "BOARD DECREE: FAILED. Alphonse Giles has failed to meet the strict passing standards of the Imperial Board."
+                                            : "TERM RESULT: Alfonso failed the practical test with a score of $score/4. Spend more time studying to prepare a retake.",
+                                        style: GoogleFonts.oldStandardTt(color: Colors.white70),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: Text("UNDERSTOOD", style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0))),
+                                        ),
+                                      ],
+                                    ),
+                                  );
                                 }
                               }
-
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor: const Color(0xFF1E1A15),
-                                  title: Text("EXAMINATION PASSED!", style: GoogleFonts.playfairDisplay(color: Colors.green)),
-                                  content: Text(
-                                    isBoard 
-                                        ? "BOARD DECREE: CONGRATULATIONS! Alfonso Giles has successfully met the qualifying standards of the Imperial Board."
-                                        : "TERM RESULT: Alfonso passed the practical test with a score of $score/4.$bonusMsg",
-                                    style: GoogleFonts.oldStandardTt(color: Colors.white70),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text("EXCELLENT", style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0))),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            } else {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor: const Color(0xFF1E1A15),
-                                  title: Text("EXAMINATION FAILED!", style: GoogleFonts.playfairDisplay(color: Colors.redAccent)),
-                                  content: Text(
-                                    isBoard 
-                                        ? "BOARD DECREE: FAILED. Alphonse Giles has failed to meet the strict passing standards of the Imperial Board."
-                                        : "TERM RESULT: Alfonso failed the practical test with a score of $score/4. Spend more time studying to prepare a retake.",
-                                    style: GoogleFonts.oldStandardTt(color: Colors.white70),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text("UNDERSTOOD", style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0))),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFC4B89B)),
-                          shape: const RoundedRectangleBorder(),
-                          padding: const EdgeInsets.all(12),
-                        ),
-                        child: Text(
-                          choice.toUpperCase(),
-                          style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0), fontSize: 10),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFC4B89B)),
+                              shape: const RoundedRectangleBorder(),
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            ),
+                            child: Text(
+                              choice.toUpperCase(),
+                              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0), fontSize: 9.5),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
               ),
             );
           },

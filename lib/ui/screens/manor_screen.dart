@@ -645,7 +645,7 @@ class _ManorScreenState extends State<ManorScreen> {
             }).toList();
 
             return Container(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
@@ -661,30 +661,30 @@ class _ManorScreenState extends State<ManorScreen> {
                     Text(
                       liveRoom.name.toUpperCase(),
                       style: GoogleFonts.outfit(
-                        fontSize: 24,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
                         color: const Color(0xFFE5D5B0),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       liveRoom.isRestored
                           ? 'RESTORED AND FUNCTIONAL.'
                           : 'THIS ROOM IS IN DISREPAIR AND REQUIRES RESTORATION.',
                       style: GoogleFonts.oldStandardTt(
-                        fontSize: 14,
+                        fontSize: 11,
                         color: const Color(0xFFC4B89B),
                         letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
                     ...state.activeTasks.where((t) => t.targetId == liveRoom.id).map((
                       activeTask,
                     ) {
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: const Color(
@@ -699,15 +699,15 @@ class _ManorScreenState extends State<ManorScreen> {
                             const Icon(
                               Icons.hourglass_bottom,
                               color: Color(0xFFE5D5B0),
-                              size: 18,
+                              size: 14,
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 "${state.npcs.firstWhereOrNull((n) => n.id == activeTask.npcId)?.name.toUpperCase() ?? "WORKER"} IS CURRENTLY ${state.getTaskDescription(activeTask).toUpperCase()}",
                                 style: GoogleFonts.oldStandardTt(
                                   color: const Color(0xFFE5D5B0),
-                                  fontSize: 12,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -719,36 +719,36 @@ class _ManorScreenState extends State<ManorScreen> {
                                   : "${(activeTask.minutesRemaining ~/ 60)}H ${activeTask.minutesRemaining % 60}M",
                               style: GoogleFonts.oswald(
                                 color: const Color(0xFFC4B89B),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: () => state.cancelTask(activeTask.id),
-                              icon: const Icon(
-                                Icons.close,
-                                color: Colors.redAccent,
-                                size: 20,
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () => state.cancelTask(activeTask.id),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.redAccent,
+                                  size: 16,
+                                ),
+                                tooltip: 'CANCEL TASK',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                               ),
-                              tooltip: 'CANCEL TASK',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 16),
+                            ],
+                          ),
+                        );
+                      }),
+                    const SizedBox(height: 6),
                     Text(
                       liveRoom.description,
                       style: GoogleFonts.oldStandardTt(
-                        fontSize: 14,
+                        fontSize: 12,
                         color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
-                        height: 1.5,
+                        height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
 
                     // Guest Greeting Section
                     if (liveRoom.type == RoomType.entryway) ...[
@@ -857,29 +857,28 @@ class _ManorScreenState extends State<ManorScreen> {
                     if (liveRoom.type == RoomType.unused && state.activeBusinesses.any((b) => b.type == BusinessType.theater && b.status == 'active')) ...[
                       _buildTheaterCreativeRoomSection(context, state),
                     ],
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
                     if (displayQueue.isNotEmpty) ...[
                       Text(
                         'ENQUEUED TASKS',
-
                         style: GoogleFonts.playfairDisplay(
-                          fontSize: 14,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFFC4B89B),
                           letterSpacing: 1.5,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       ...displayQueue.map(
                         (task) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6.0),
+                          padding: const EdgeInsets.only(bottom: 3.0),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Text(
                                   "• ${task.description.toUpperCase()}",
                                   style: GoogleFonts.oldStandardTt(
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     color: const Color(
                                       0xFFE5D5B0,
                                     ).withValues(alpha: 0.6),
@@ -1355,7 +1354,7 @@ class _ManorScreenState extends State<ManorScreen> {
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Color(0xFFC4B89B)),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
                             shape: const RoundedRectangleBorder(
                               borderRadius: BorderRadius.zero,
                             ),
@@ -1366,12 +1365,14 @@ class _ManorScreenState extends State<ManorScreen> {
                           icon: const Icon(
                             Icons.login,
                             color: Color(0xFFE5D5B0),
+                            size: 16,
                           ),
                           label: Text(
                             'ENTER ${liveRoom.name.toUpperCase()}',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFE5D5B0),
                               fontWeight: FontWeight.bold,
+                              fontSize: 11,
                               letterSpacing: 2,
                             ),
                           ),
@@ -1380,21 +1381,21 @@ class _ManorScreenState extends State<ManorScreen> {
                     if (liveRoom.type == RoomType.study ||
                         liveRoom.type == RoomType.library ||
                         liveRoom.type == RoomType.chickenCoop) ...[
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                       const Divider(color: Colors.white10),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                       Text(
                         'ROOM LEDGER',
                         style: GoogleFonts.playfairDisplay(
                           color: const Color(0xFFE5D5B0),
-                          fontSize: 16,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                          letterSpacing: 1.5,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      RoomLedger(room: liveRoom, state: state),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 6),
+                      RoomLedger(room: liveRoom, state: state, isCompact: true),
+                      const SizedBox(height: 12),
                     ],
                     if (liveRoom.type == RoomType.field)
                       _buildFieldStatus(context, state, liveRoom),
@@ -1430,19 +1431,19 @@ class _ManorScreenState extends State<ManorScreen> {
                             liveRoom.type == RoomType.attic ||
                             liveRoom.type == RoomType.basement))
                       BedAssignmentWidget(room: liveRoom),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
                     if (state.npcs.any(
                       (n) => n.currentRoomId == liveRoom.id,
                     )) ...[
                       Text(
                         "OCCUPANTS:",
                         style: GoogleFonts.playfairDisplay(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFFC4B89B),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Wrap(
                         spacing: 8,
                         children: state.npcs
@@ -1460,13 +1461,14 @@ class _ManorScreenState extends State<ManorScreen> {
                                   label: Text(
                                     npc.name.toUpperCase(),
                                     style: GoogleFonts.oldStandardTt(
-                                      fontSize: 10,
+                                      fontSize: 9,
                                     ),
                                   ),
                                   avatar: Icon(
                                     npc.isPlayer ? Icons.stars : Icons.person,
-                                    size: 14,
+                                    size: 11,
                                   ),
+                                  visualDensity: VisualDensity.compact,
                                   backgroundColor: Colors.black26,
                                 ),
                               ),
@@ -1642,7 +1644,7 @@ class _ManorScreenState extends State<ManorScreen> {
     final icon = _getTaskIcon(type);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       width: double.infinity,
       child: OutlinedButton(
         onPressed: onPressed,
@@ -1652,7 +1654,7 @@ class _ManorScreenState extends State<ManorScreen> {
                 ? const Color(0xFFC4B89B).withValues(alpha: 0.2)
                 : const Color(0xFFE5D5B0),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           backgroundColor: isGreyed ? Colors.transparent : Colors.black12,
         ),
@@ -1666,9 +1668,9 @@ class _ManorScreenState extends State<ManorScreen> {
                   color: isGreyed
                       ? const Color(0xFFC4B89B).withValues(alpha: 0.2)
                       : const Color(0xFFE5D5B0),
-                  size: 18,
+                  size: 15,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Text(
                   label,
                   style: GoogleFonts.outfit(
@@ -1676,8 +1678,8 @@ class _ManorScreenState extends State<ManorScreen> {
                         ? const Color(0xFFC4B89B).withValues(alpha: 0.2)
                         : const Color(0xFFE5D5B0),
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
-                    fontSize: 14,
+                    letterSpacing: 1,
+                    fontSize: 11.5,
                   ),
                 ),
                 const Spacer(),
@@ -1686,23 +1688,23 @@ class _ManorScreenState extends State<ManorScreen> {
                     durationLabel,
                     style: GoogleFonts.oldStandardTt(
                       color: const Color(0xFFC4B89B),
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
               ],
             ),
             if (!isGreyed) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 metadata.explanation,
                 style: GoogleFonts.oldStandardTt(
                   color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
-                  fontSize: 11,
+                  fontSize: 10,
                   fontStyle: FontStyle.italic,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1805,8 +1807,8 @@ class _ManorScreenState extends State<ManorScreen> {
     final roomCrops = state.crops.where((c) => c.roomId == room.id).toList();
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.black26,
         border: Border.all(
@@ -1817,34 +1819,34 @@ class _ManorScreenState extends State<ManorScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _statusRow("SOIL TILLING:", room.tilledAmount),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           _statusRow("FERTILIZATION:", room.fertilizedAmount),
           if (roomCrops.isNotEmpty) ...[
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.0),
+              padding: EdgeInsets.symmetric(vertical: 6.0),
               child: Divider(color: Colors.white10),
             ),
             Text(
               "ACTIVE CROPS:",
               style: GoogleFonts.oswald(
-                fontSize: 10,
+                fontSize: 9,
                 color: const Color(0xFFC4B89B),
                 letterSpacing: 1,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _statusRow("GROWTH PROGRESS:", roomCrops[0].growthProgress),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _statusRow("MOISTURE LEVEL:", roomCrops[0].moistureLevel),
           ] else ...[
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.0),
+              padding: EdgeInsets.symmetric(vertical: 6.0),
               child: Divider(color: Colors.white10),
             ),
             Text(
               "NO CROPS PLANTED",
               style: GoogleFonts.oswald(
-                fontSize: 10,
+                fontSize: 9,
                 color: Colors.white24,
                 letterSpacing: 1,
               ),

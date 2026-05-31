@@ -164,21 +164,23 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
               ),
 
               // Content
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40.0,
-                  vertical: 60.0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: SingleChildScrollView(child: _buildSceneContent()),
-                    ),
-                    _buildFooter(),
-                  ],
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 12.0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: SingleChildScrollView(child: _buildSceneContent()),
+                      ),
+                      _buildFooter(),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -224,7 +226,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sceneText("Your parents have died. It was a..."),
-        const SizedBox(height: 40),
+        const SizedBox(height: 12),
         _optionButton(
           "TERRIBLE DISEASE.",
           () => _selectDeath(DeathCause.disease),
@@ -312,7 +314,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sceneText("A terrible fate to befall a boy who is only..."),
-        const SizedBox(height: 40),
+        const SizedBox(height: 12),
         _optionButton(
           "15 YEARS OLD.",
           () => _selectAge(15),
@@ -348,9 +350,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         _sceneText(
           "In this time of great mourning, take comfort in the continued servitude of your everloyal butler, Flaubert Giles.",
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         _sceneText("Giles was always really good at..."),
-        const SizedBox(height: 40),
+        const SizedBox(height: 12),
         _optionButton(
           "GIVING SAGE ADVICE.",
           () => _selectGiles(GilesTrait.sage),
@@ -388,7 +390,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sceneText(intro),
-        const SizedBox(height: 40),
+        const SizedBox(height: 12),
         _optionButton(
           "WOMEN.",
           () => _selectObjective(LifeObjective.women),
@@ -422,9 +424,9 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sceneText("The manor stands silent, awaiting your command."),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         _sceneText("'First, this house really needs to be cleaned up.'"),
-        const SizedBox(height: 40),
+        const SizedBox(height: 12),
         Center(
           child: _optionButton(
             "BEGIN THE WORK",
@@ -489,12 +491,12 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
   }) {
     final displayLabel = label;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
+      padding: const EdgeInsets.only(bottom: 4.0),
       child: InkWell(
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
           decoration: BoxDecoration(
             border: Border.all(
               color: isSelected ? const Color(0xFFC4B89B) : Colors.white10,

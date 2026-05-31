@@ -65,9 +65,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(height: 16),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: state.npcs.length,
+                    itemCount: state.npcs.where((n) => n.isResident).length,
                     itemBuilder: (context, index) {
-                      final npc = state.npcs[index];
+                      final residents = state.npcs.where((n) => n.isResident).toList();
+                      final npc = residents[index];
                       final isCoopRestored = state.rooms.any(
                         (r) => r.type == RoomType.chickenCoop && r.isRestored,
                       );
@@ -76,7 +77,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         child: HorizontalScheduleEditor(
                           npc: npc,
                           showHeader: index == 0,
-                          showLegend: index == state.npcs.length - 1,
+                          showLegend: index == residents.length - 1,
                           showName: true,
                           isCoopRestored: isCoopRestored,
                           dayIndex: _selectedDayIndex,
