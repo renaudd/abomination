@@ -15,6 +15,7 @@
 import 'dart:math';
 import '../services/combat_unit_service.dart';
 import '../models/npc.dart';
+import 'survival_state.dart';
 
 class CampaignProgress {
   final String campaignId;
@@ -22,6 +23,7 @@ class CampaignProgress {
   List<String> playerDeckIds; // card types in player's campaign deck
   Map<String, int> cardUpgrades; // HP, ATK, SPD levels per card type, e.g. {'cavalry_hp': 2}
   int campaignCoins;
+  String playerLeaderId; // Selected player leader character, defaults to 'alphonse'
 
   CampaignProgress({
     required this.campaignId,
@@ -29,6 +31,7 @@ class CampaignProgress {
     required this.playerDeckIds,
     required this.cardUpgrades,
     this.campaignCoins = 0,
+    this.playerLeaderId = 'alphonse',
   });
 
   Map<String, dynamic> toJson() => {
@@ -37,6 +40,7 @@ class CampaignProgress {
         'playerDeckIds': playerDeckIds,
         'cardUpgrades': cardUpgrades,
         'campaignCoins': campaignCoins,
+        'playerLeaderId': playerLeaderId,
       };
 
   factory CampaignProgress.fromJson(Map<String, dynamic> json) => CampaignProgress(
@@ -45,6 +49,7 @@ class CampaignProgress {
         playerDeckIds: List<String>.from(json['playerDeckIds'] as List),
         cardUpgrades: Map<String, int>.from(json['cardUpgrades'] as Map),
         campaignCoins: json['campaignCoins'] as int? ?? 0,
+        playerLeaderId: json['playerLeaderId'] as String? ?? 'alphonse',
       );
 }
 
@@ -83,6 +88,7 @@ class TournamentProgress {
   Map<String, List<String>> participantDecks; // Deck card types for each participant
   List<TournamentMatch> matches; // Complete history of matches in all rounds
   bool isEliminated;
+  String playerLeaderId; // Selected player leader character, defaults to 'alphonse'
 
   TournamentProgress({
     required this.playerDeckIds,
@@ -91,6 +97,7 @@ class TournamentProgress {
     required this.participantDecks,
     required this.matches,
     this.isEliminated = false,
+    this.playerLeaderId = 'alphonse',
   });
 
   Map<String, dynamic> toJson() => {
@@ -100,6 +107,7 @@ class TournamentProgress {
         'participantDecks': participantDecks,
         'matches': matches.map((m) => m.toJson()).toList(),
         'isEliminated': isEliminated,
+        'playerLeaderId': playerLeaderId,
       };
 
   factory TournamentProgress.fromJson(Map<String, dynamic> json) => TournamentProgress(
@@ -113,6 +121,7 @@ class TournamentProgress {
             .map((m) => TournamentMatch.fromJson(m as Map<String, dynamic>))
             .toList(),
         isEliminated: json['isEliminated'] as bool? ?? false,
+        playerLeaderId: json['playerLeaderId'] as String? ?? 'alphonse',
       );
 
   /// Formulaic evaluator for deck power based on stats, median casting cost, and melee/ranged balance.
@@ -198,12 +207,14 @@ class ArenaProgress {
   DateTime saveTime;
   CampaignProgress? campaign;
   TournamentProgress? tournament;
+  SurvivalProgress? survival;
 
   ArenaProgress({
     required this.slot,
     required this.saveTime,
     this.campaign,
     this.tournament,
+    this.survival,
   });
 
   Map<String, dynamic> toJson() => {
@@ -211,6 +222,7 @@ class ArenaProgress {
         'saveTime': saveTime.toIso8601String(),
         'campaign': campaign?.toJson(),
         'tournament': tournament?.toJson(),
+        'survival': survival?.toJson(),
       };
 
   factory ArenaProgress.fromJson(Map<String, dynamic> json) => ArenaProgress(
@@ -221,6 +233,9 @@ class ArenaProgress {
             : null,
         tournament: json['tournament'] != null
             ? TournamentProgress.fromJson(json['tournament'] as Map<String, dynamic>)
+            : null,
+        survival: json['survival'] != null
+            ? SurvivalProgress.fromJson(json['survival'] as Map<String, dynamic>)
             : null,
       );
 }

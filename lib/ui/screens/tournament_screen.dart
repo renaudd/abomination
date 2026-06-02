@@ -79,6 +79,23 @@ class _TournamentScreenState extends State<TournamentScreen> {
     }
   }
 
+  NPC _getPlayerLeader() {
+    final String leaderId = _tournament.playerLeaderId;
+    final NPC leader;
+    if (leaderId == 'alphonse') {
+      leader = CombatUnitFactory.createAlphonse();
+    } else if (leaderId == 'boss_rudolf') {
+      leader = CombatUnitFactory.createBossRudolf().copyWith(id: 'boss_rudolf', isPlayer: true);
+    } else if (leaderId == 'boss_gearbox') {
+      leader = CombatUnitFactory.createBossGearbox().copyWith(id: 'boss_gearbox', isPlayer: true);
+    } else if (leaderId == 'boss_elizabeth') {
+      leader = CombatUnitFactory.createBossElizabeth().copyWith(id: 'boss_elizabeth', isPlayer: true);
+    } else { // boss_thorne
+      leader = CombatUnitFactory.createBossThorne().copyWith(id: 'boss_thorne', isPlayer: true);
+    }
+    return leader;
+  }
+
   void _launchBattle() {
     // Find the player's active match
     final playerMatch = _tournament.matches.firstWhereOrNull(
@@ -118,6 +135,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
           customPlayerDeck: playerDeck,
           customAiDeck: aiDeck,
           customEnemyHero: bossEnemy,
+          customPlayerHero: _getPlayerLeader(),
           onVictory: () async {
             // Player won!
             playerMatch.winner = 'Player';

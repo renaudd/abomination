@@ -33,6 +33,8 @@ class CombatScreen extends StatefulWidget {
   final List<NPC>? customPlayerDeck;
   final List<NPC>? customAiDeck;
   final NPC? customEnemyHero;
+  final NPC? customPlayerHero;
+  final Map<String, int>? cardUpgrades;
   final VoidCallback? onVictory;
   final VoidCallback? onDefeat;
   final VoidCallback? onDraw;
@@ -42,6 +44,8 @@ class CombatScreen extends StatefulWidget {
     this.customPlayerDeck,
     this.customAiDeck,
     this.customEnemyHero,
+    this.customPlayerHero,
+    this.cardUpgrades,
     this.onVictory,
     this.onDefeat,
     this.onDraw,
@@ -179,7 +183,8 @@ class _CombatScreenState extends State<CombatScreen>
     
     _combatManager = CombatManager()
       ..map = state.selectedCombatMap
-      ..combatControlMode = state.combatControlMode;
+      ..combatControlMode = state.combatControlMode
+      ..upgrades = widget.cardUpgrades ?? {};
 
     _keyboardFocusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -288,7 +293,7 @@ class _CombatScreenState extends State<CombatScreen>
 
     // Spawn Mobile Player Hero
     _combatManager.spawnUnit(
-      CombatUnitFactory.createAlphonse(),
+      widget.customPlayerHero ?? CombatUnitFactory.createAlphonse(),
       CombatSide.player,
       x: 30.0,
       y: _combatManager.map.height / 2,
@@ -305,6 +310,7 @@ class _CombatScreenState extends State<CombatScreen>
       CombatSide.enemy,
       x: _combatManager.map.width - 30.0,
       y: _combatManager.map.height / 2,
+      isAiLeader: true,
     );
 
     if (!isSimulation) {
@@ -2146,9 +2152,9 @@ class _UnitCardState extends State<_UnitCard> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
-              width: 82,
-              height: 52,
-              margin: const EdgeInsets.only(right: 14),
+              width: 88,
+              height: 56,
+              margin: const EdgeInsets.only(right: 12),
               transform: Matrix4.translationValues(0, _isExpanded ? -10 : 0, 0),
               decoration: BoxDecoration(
                 color: const Color(0xFFFDF5E6), // Old Lace/Parchment
@@ -2184,27 +2190,48 @@ class _UnitCardState extends State<_UnitCard> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  widget.npc.name.toUpperCase(),
-                                  style: GoogleFonts.oldStandardTt(
-                                    color: const Color(0xFF2E1A0A), // Dark Ink
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.2,
+                                SizedBox(
+                                  width: 54,
+                                  height: 10,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      widget.npc.name.toUpperCase(),
+                                      style: GoogleFonts.oldStandardTt(
+                                        color: const Color(0xFF2E1A0A), // Dark Ink
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const Spacer(),
-                                Text(
-                                  'COST: $cost',
-                                  style: GoogleFonts.oldStandardTt(
-                                    color: canAfford
-                                        ? const Color(0xFF388E3C)
-                                        : const Color(0xFFD32F2F),
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (widget.npc.combatStats?.isFlying == true)
+                                      const Padding(
+                                        padding: EdgeInsets.only(right: 2.0),
+                                        child: Icon(Icons.flutter_dash, size: 8.0, color: Color(0xFF4E342E)),
+                                      ),
+                                    if (widget.npc.combatStats!.distance >= 3.0 || widget.npc.combatStats!.rangedRange > 2.0)
+                                      const Padding(
+                                        padding: EdgeInsets.only(right: 2.0),
+                                        child: Icon(Icons.gps_fixed, size: 8.0, color: Color(0xFF4E342E)),
+                                      ),
+                                    if (widget.npc.combatStats?.trait == CombatTrait.magicImmune)
+                                      const Padding(
+                                        padding: EdgeInsets.only(right: 2.0),
+                                        child: Icon(Icons.block, size: 8.0, color: Color(0xFFC62828)),
+                                      ),
+                                    if (widget.npc.combatStats?.unitType == UnitType.support)
+                                      const Padding(
+                                        padding: EdgeInsets.only(right: 2.0),
+                                        child: Icon(Icons.local_fire_department, size: 8.0, color: Color(0xFFE64A19)),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -2218,20 +2245,60 @@ class _UnitCardState extends State<_UnitCard> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               _buildCardStat(
-                                'D',
-                                '${(widget.npc.combatStats!.attack * 1.5).toInt()}', // Single median value
+                                DaggerIcon(color: Colors.deepOrange.shade800, size: 7.5),
+                                '${(widget.npc.combatStats!.attack * 1.5).toInt()}',
                                 Colors.deepOrange.shade800,
                               ),
                               const SizedBox(height: 2),
                               _buildCardStat(
-                                'H',
+                                Icon(Icons.favorite, size: 7.5, color: Colors.green.shade900),
                                 '${widget.npc.combatStats?.maxHealth.toInt() ?? 0}',
                                 Colors.green.shade900,
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.group,
+                                    size: 8.0,
+                                    color: Color(0xFF4E342E),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${widget.npc.combatStats?.unitCount ?? 1}',
+                                    style: GoogleFonts.oldStandardTt(
+                                      color: const Color(0xFF4E342E),
+                                      fontSize: 8.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  Positioned(
+                    left: 4,
+                    bottom: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: canAfford ? const Color(0xFF3E2723) : const Color(0xFFB71C1C),
+                        border: Border.all(color: const Color(0xFFC4B89B), width: 0.8),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Text(
+                        '$cost',
+                        style: GoogleFonts.oldStandardTt(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   // Expanded Detail Panel (Lifted up above the main card)
@@ -2324,30 +2391,23 @@ class _UnitCardState extends State<_UnitCard> {
         );
   }
 
-  Widget _buildCardStat(String label, String value, Color color) {
+  Widget _buildCardStat(Widget icon, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$label:',
-            style: GoogleFonts.oldStandardTt(
-              color: color,
-              fontSize: 8,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 2),
+          icon,
+          const SizedBox(width: 1.5),
           Text(
             value,
             style: GoogleFonts.oldStandardTt(
               color: color,
-              fontSize: 9,
+              fontSize: 8,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -2369,6 +2429,61 @@ class _UnitCardState extends State<_UnitCard> {
           style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 8),
         ),
       ],
+    );
+  }
+}
+
+class DaggerPainter extends CustomPainter {
+  final Color color;
+  DaggerPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final w = size.width;
+    final h = size.height;
+    
+    // Blade pointing up
+    path.moveTo(w * 0.5, 0); // Tip
+    path.lineTo(w * 0.75, h * 0.55);
+    path.lineTo(w * 0.25, h * 0.55);
+    path.close();
+    
+    // Crossguard
+    path.moveTo(w * 0.1, h * 0.55);
+    path.lineTo(w * 0.9, h * 0.55);
+    path.lineTo(w * 0.9, h * 0.68);
+    path.lineTo(w * 0.1, h * 0.68);
+    path.close();
+
+    // Grip / Handle
+    path.moveTo(w * 0.38, h * 0.68);
+    path.lineTo(w * 0.62, h * 0.68);
+    path.lineTo(w * 0.62, h * 0.95);
+    path.lineTo(w * 0.38, h * 0.95);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class DaggerIcon extends StatelessWidget {
+  final Color color;
+  final double size;
+  const DaggerIcon({super.key, required this.color, this.size = 8});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size * 0.7, size),
+      painter: DaggerPainter(color),
     );
   }
 }

@@ -16,11 +16,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/arena_progress.dart';
 import '../../models/npc.dart';
-import '../../models/combat_stats.dart';
 import '../../services/arena_save_service.dart';
 import '../../services/combat_unit_service.dart';
 import '../../services/combat_unit_factory.dart';
 import 'combat_screen.dart';
+import '../widgets/character_blob_renderer.dart';
 
 class CampaignScreen extends StatefulWidget {
   final ArenaProgress progress;
@@ -38,7 +38,8 @@ class CampaignScreen extends StatefulWidget {
 
 class _CampaignScreenState extends State<CampaignScreen> {
   late CampaignProgress _campaign;
-  String _selectedTab = 'PROGRESS'; // 'PROGRESS', 'UPGRADES', 'SHOP'
+  String _selectedTab = 'PROGRESS'; // 'PROGRESS', 'DECK', 'SHOP'
+  int _selectedDeckIndex = 0;
 
   @override
   void initState() {
@@ -76,10 +77,66 @@ class _CampaignScreenState extends State<CampaignScreen> {
     }).toList();
   }
 
+  NPC _getPlayerLeader() {
+    final String leaderId = _campaign.playerLeaderId;
+    final NPC leader;
+    if (leaderId == 'alphonse') {
+      leader = CombatUnitFactory.createAlphonse();
+    } else if (leaderId == 'boss_rudolf') {
+      leader = CombatUnitFactory.createBossRudolf().copyWith(id: 'boss_rudolf', isPlayer: true);
+    } else if (leaderId == 'boss_gearbox') {
+      leader = CombatUnitFactory.createBossGearbox().copyWith(id: 'boss_gearbox', isPlayer: true);
+    } else if (leaderId == 'boss_elizabeth') {
+      leader = CombatUnitFactory.createBossElizabeth().copyWith(id: 'boss_elizabeth', isPlayer: true);
+    } else { // boss_thorne
+      leader = CombatUnitFactory.createBossThorne().copyWith(id: 'boss_thorne', isPlayer: true);
+    }
+
+    final stats = leader.combatStats;
+    if (stats != null) {
+      final hpLvl = _campaign.cardUpgrades['leader_hp'] ?? 0;
+      final atkLvl = _campaign.cardUpgrades['leader_atk'] ?? 0;
+      final spdLvl = _campaign.cardUpgrades['leader_spd'] ?? 0;
+
+      final newMaxHp = stats.maxHealth * (1.0 + hpLvl * 0.15); // +15% HP per level
+      final newAtk = stats.attack * (1.0 + atkLvl * 0.15);     // +15% ATK per level
+      final newSpeed = stats.speed * (1.0 + spdLvl * 0.05);     // +5% Speed per level
+
+      return leader.copyWith(
+        combatStats: stats.copyWith(
+          maxHealth: newMaxHp,
+          health: newMaxHp,
+          attack: newAtk,
+          speed: newSpeed,
+          meleeDamage: stats.meleeDamage * (1.0 + atkLvl * 0.15),
+          rangedDamage: stats.rangedDamage * (1.0 + atkLvl * 0.15),
+        ),
+      );
+    }
+    return leader;
+  }
+
   /// Progressive Opponent Deck generator
   List<NPC> _generateAiDeck() {
     final List<String> opponentDeckIds = _getCampaignOpponentDeck(_campaign.campaignId, _campaign.currentStage);
-    return opponentDeckIds.map((id) => CombatUnitService.createUnit(id)).toList();
+    return opponentDeckIds.map((id) {
+      final troop = CombatUnitService.createUnit(id);
+      final stats = troop.combatStats;
+      if (stats != null) {
+        // Scale troop stats: +4% health and +4% attack per stage
+        final stageMultiplier = 1.0 + _campaign.currentStage * 0.04;
+        return troop.copyWith(
+          combatStats: stats.copyWith(
+            maxHealth: stats.maxHealth * stageMultiplier,
+            health: stats.maxHealth * stageMultiplier,
+            attack: stats.attack * stageMultiplier,
+            meleeDamage: stats.meleeDamage * stageMultiplier,
+            rangedDamage: stats.rangedDamage * stageMultiplier,
+          ),
+        );
+      }
+      return troop;
+    }).toList();
   }
 
   /// Progressive Opponent Deck card IDs
@@ -174,9 +231,23 @@ class _CampaignScreenState extends State<CampaignScreen> {
     if (_campaign.currentStage == 19) {
       bossEnemy = _getOpponentBoss();
     } else {
-      bossEnemy = CombatUnitFactory.createBossRudolf().copyWith(
+      final baseLeader = CombatUnitFactory.createBossRudolf();
+      final baseStats = baseLeader.combatStats!;
+
+      // Scale leader stats progressively: +6% health and attack per stage
+      final stageMultiplier = 1.0 + _campaign.currentStage * 0.06;
+      final scaledStats = baseStats.copyWith(
+        maxHealth: baseStats.maxHealth * stageMultiplier,
+        health: baseStats.maxHealth * stageMultiplier,
+        attack: baseStats.attack * stageMultiplier,
+        meleeDamage: baseStats.meleeDamage * stageMultiplier,
+        rangedDamage: baseStats.rangedDamage * stageMultiplier,
+      );
+
+      bossEnemy = baseLeader.copyWith(
         name: opponentName,
         id: 'campaign_opponent_leader',
+        combatStats: scaledStats,
       );
     }
 
@@ -187,6 +258,8 @@ class _CampaignScreenState extends State<CampaignScreen> {
           customPlayerDeck: playerDeck,
           customAiDeck: aiDeck,
           customEnemyHero: bossEnemy,
+          customPlayerHero: _getPlayerLeader(),
+          cardUpgrades: _campaign.cardUpgrades,
           onVictory: () async {
             // Victory Callback!
             final goldReward = 150 + _campaign.currentStage * 15; // Increasing rewards
@@ -344,12 +417,12 @@ class _CampaignScreenState extends State<CampaignScreen> {
         color: const Color(0xFF1D1712), // Deep mahogany
         child: Column(
           children: [
-            // Tabs selector (Progress, Upgrades, Card Shop)
+            // Tabs selector (Progress, DECK, Card Shop)
             Container(
               color: const Color(0xFF15100B),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: ['PROGRESS', 'UPGRADES', 'SHOP'].map((tab) {
+                children: ['PROGRESS', 'LEADER', 'DECK', 'TOWERS', 'SHOP'].map((tab) {
                   final isSelected = _selectedTab == tab;
                   return InkWell(
                     onTap: () => setState(() => _selectedTab = tab),
@@ -393,8 +466,12 @@ class _CampaignScreenState extends State<CampaignScreen> {
 
   Widget _buildTabContent() {
     switch (_selectedTab) {
-      case 'UPGRADES':
-        return _buildUpgradesTab();
+      case 'LEADER':
+        return _buildLeaderTab();
+      case 'DECK':
+        return _buildDeckTab();
+      case 'TOWERS':
+        return _buildTowersTab();
       case 'SHOP':
         return _buildShopTab();
       default:
@@ -544,51 +621,177 @@ class _CampaignScreenState extends State<CampaignScreen> {
   }
 
   /// 2. Tab - Upgrade Card Stat Tiers
-  Widget _buildUpgradesTab() {
-    final uniqueCardTypes = _campaign.playerDeckIds.toSet().toList();
-
-    if (uniqueCardTypes.isEmpty) {
-      return Center(
-        child: Text(
-          'YOUR DECK IS EMPTY',
-          style: GoogleFonts.playfairDisplay(color: Colors.white24),
+  Widget _buildDeckTab() {
+    final deck = _campaign.playerDeckIds;
+    
+    return Column(
+      children: [
+        // Twelve spots grid
+        SizedBox(
+          height: 110,
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 6,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.5,
+            ),
+            itemCount: 12,
+            itemBuilder: (context, index) {
+              final isOccupied = index < deck.length;
+              final isSelected = _selectedDeckIndex == index;
+              
+              if (isOccupied) {
+                final cardId = deck[index];
+                final npc = CombatUnitService.createUnit(cardId);
+                
+                return InkWell(
+                  onTap: () => setState(() => _selectedDeckIndex = index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF3E2C1E) : const Color(0xFF211B15),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFFD4AF37) : const Color(0xFFC4B89B).withValues(alpha: 0.25),
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CharacterBlobRenderer(npc: npc, size: 20, isCombat: true),
+                        const SizedBox(height: 2),
+                        Text(
+                          npc.name.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0), fontSize: 8, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              } else {
+                return InkWell(
+                  onTap: () => setState(() => _selectedDeckIndex = index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF15100B),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFFD4AF37) : Colors.white12,
+                        style: BorderStyle.solid,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'EMPTY SLOT',
+                        style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 8),
+                      ),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
         ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: uniqueCardTypes.length,
-      itemBuilder: (context, index) {
-        final cardId = uniqueCardTypes[index];
-        final npcSample = CombatUnitService.createUnit(cardId);
+        const SizedBox(height: 12),
+        const Divider(color: Color(0xFF352B24)),
+        const SizedBox(height: 6),
         
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12.0),
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            color: Colors.black26,
-            border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.15)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                npcSample.name.toUpperCase(),
-                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildUpgradeButton(cardId, 'hp', 'HP (+15%)', Icons.favorite),
-                  _buildUpgradeButton(cardId, 'atk', 'ATK (+15%)', Icons.flash_on),
-                  _buildUpgradeButton(cardId, 'spd', 'SPD (+5%)', Icons.speed),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+        // Selected card detailed info and upgrades panel
+        Expanded(
+          child: _selectedDeckIndex < deck.length
+              ? _buildSelectedDeckCardDetails(deck[_selectedDeckIndex])
+              : Center(
+                  child: Text(
+                    'Empty Deck Slot. Recruit new units from the Card Shop to expand your deck.',
+                    style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11, fontStyle: FontStyle.italic),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedDeckCardDetails(String cardId) {
+    final npc = CombatUnitService.createUnit(cardId);
+    final stats = npc.combatStats!;
+    
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.15)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  npc.name.toUpperCase(),
+                  style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  npc.specimenType.toUpperCase(),
+                  style: GoogleFonts.oldStandardTt(color: const Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Combat stats & training details. Upgrade attributes using campaign coins.',
+              style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10),
+            ),
+            const SizedBox(height: 12),
+            
+            // Stats Table
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(1),
+                1: FlexColumnWidth(1),
+                2: FlexColumnWidth(1),
+              },
+              children: [
+                TableRow(
+                  children: [
+                    _buildStatDetailCell('HEALTH (HP)', stats.health.toInt().toString()),
+                    _buildStatDetailCell('ATTACK POWER', stats.attack.toInt().toString()),
+                    _buildStatDetailCell('SPEED', '${stats.speed.toStringAsFixed(1)}x'),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Upgrade buttons row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildUpgradeButton(cardId, 'hp', 'HP (+15%)', Icons.favorite),
+                _buildUpgradeButton(cardId, 'atk', 'ATK (+15%)', Icons.flash_on),
+                _buildUpgradeButton(cardId, 'spd', 'SPD (+5%)', Icons.speed),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatDetailCell(String label, String val) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: GoogleFonts.oldStandardTt(color: Colors.white30, fontSize: 8)),
+          const SizedBox(height: 2),
+          Text(val, style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
@@ -731,6 +934,249 @@ class _CampaignScreenState extends State<CampaignScreen> {
                 ),
               );
             },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLeaderTab() {
+    final leader = _getPlayerLeader();
+    
+    return Container(
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                leader.name.toUpperCase(),
+                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+              ),
+              Text(
+                leader.role.toUpperCase(),
+                style: GoogleFonts.oldStandardTt(color: const Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Your chosen commander on the battlefield. Upgrade stats dynamically by spending campaign coins.",
+            style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 11, height: 1.4),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildLeaderUpgradeButton('hp', 'HP (+15%)', Icons.favorite),
+              _buildLeaderUpgradeButton('atk', 'ATK (+15%)', Icons.flash_on),
+              _buildLeaderUpgradeButton('spd', 'SPD (+5%)', Icons.speed),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeaderUpgradeButton(String stat, String label, IconData icon) {
+    final key = 'leader_$stat';
+    final currentLvl = _campaign.cardUpgrades[key] ?? 0;
+    final cost = 50 + currentLvl * 25; // Slightly more expensive baseline for leader upgrades
+    final canAfford = _campaign.campaignCoins >= cost;
+
+    return Column(
+      children: [
+        Text(
+          'Lvl $currentLvl',
+          style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 11),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: 140,
+          height: 32,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: canAfford ? const Color(0xFFC4B89B) : Colors.white10),
+              backgroundColor: canAfford ? Colors.black26 : Colors.transparent,
+              padding: EdgeInsets.zero,
+              shape: const RoundedRectangleBorder(),
+            ),
+            onPressed: canAfford
+                ? () async {
+                    _campaign.campaignCoins -= cost;
+                    _campaign.cardUpgrades[key] = currentLvl + 1;
+                    await ArenaSaveService.saveProgress(widget.progress);
+                    setState(() {});
+                    widget.onUpdate();
+                  }
+                : null,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 10, color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24),
+                const SizedBox(width: 4),
+                Text(
+                  '$label: $cost c',
+                  style: GoogleFonts.playfairDisplay(
+                    color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTowersTab() {
+    final hpLvl = _campaign.cardUpgrades['tower_hp'] ?? 0;
+    final atkLvl = _campaign.cardUpgrades['tower_atk'] ?? 0;
+
+    final rangeUnlocked = hpLvl >= 3 && atkLvl >= 3;
+    final speedUnlocked = hpLvl >= 6 && atkLvl >= 6;
+
+    return Container(
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'DEFENSIVE TOWERS',
+            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Upgrade your covered wagons' defensive capabilities. High-tier modifications (Range, Rate of Fire) require standard reinforcing upgrades first.",
+            style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 11, height: 1.4),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildTowerUpgradeButton('hp', 'HEALTH (+15%)', Icons.shield, 40, 20, true, ""),
+              _buildTowerUpgradeButton('atk', 'DAMAGE (+15%)', Icons.local_fire_department, 40, 20, true, ""),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildTowerUpgradeButton(
+                'range', 
+                'RANGE (+2.5)', 
+                Icons.gps_fixed, 
+                120, 
+                50, 
+                rangeUnlocked, 
+                "Req: Health & Damage Lvl 3",
+              ),
+              _buildTowerUpgradeButton(
+                'speed', 
+                'RATE OF FIRE (+10%)', 
+                Icons.flash_on, 
+                200, 
+                80, 
+                speedUnlocked, 
+                "Req: Health & Damage Lvl 6",
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTowerUpgradeButton(
+    String stat, 
+    String label, 
+    IconData icon, 
+    int baseCost, 
+    int costMultiplier, 
+    bool isUnlocked, 
+    String reqMessage,
+  ) {
+    final key = 'tower_$stat';
+    final currentLvl = _campaign.cardUpgrades[key] ?? 0;
+    final cost = baseCost + currentLvl * costMultiplier;
+    final canAfford = _campaign.campaignCoins >= cost && isUnlocked;
+
+    return Column(
+      children: [
+        Text(
+          'Lvl $currentLvl',
+          style: GoogleFonts.oldStandardTt(
+            color: isUnlocked ? Colors.white70 : Colors.white24,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: 175,
+          height: 36,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: canAfford 
+                    ? const Color(0xFFC4B89B) 
+                    : (isUnlocked ? Colors.white10 : Colors.redAccent.withValues(alpha: 0.15)),
+              ),
+              backgroundColor: canAfford ? Colors.black26 : Colors.transparent,
+              padding: EdgeInsets.zero,
+              shape: const RoundedRectangleBorder(),
+            ),
+            onPressed: canAfford
+                ? () async {
+                    _campaign.campaignCoins -= cost;
+                    _campaign.cardUpgrades[key] = currentLvl + 1;
+                    await ArenaSaveService.saveProgress(widget.progress);
+                    setState(() {});
+                    widget.onUpdate();
+                  }
+                : null,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 10, color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24),
+                    const SizedBox(width: 4),
+                    Text(
+                      isUnlocked ? '$label: $cost c' : 'LOCKED',
+                      style: GoogleFonts.playfairDisplay(
+                        color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
+                        fontSize: 9.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                if (!isUnlocked) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    reqMessage,
+                    style: GoogleFonts.oldStandardTt(
+                      color: Colors.redAccent.withValues(alpha: 0.8),
+                      fontSize: 7.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ],

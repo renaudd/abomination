@@ -69,8 +69,8 @@ class MarketService {
     'simple_shovel': 160,
     'iron_pickaxe': 600,
     'steel_pickaxe': 2000,
-    'pneumatic_drill': 10000,
     // Cooked Meals
+    'pneumatic_drill': 10000,
     'boiled_cabbage': 8,
     'scrambled_eggs': 6,
     'protein_mistery_stew': 20,

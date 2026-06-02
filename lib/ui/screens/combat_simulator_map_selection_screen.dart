@@ -5,6 +5,7 @@ import '../../state/game_state.dart';
 import '../../models/combat_map.dart';
 import '../../services/combat_unit_service.dart';
 import 'combat_screen.dart';
+import 'combat_simulator_leader_selection_screen.dart';
 
 class CombatSimulatorMapSelectionScreen extends StatefulWidget {
   final List<String> playerDeckTypes;
@@ -24,20 +25,14 @@ class CombatSimulatorMapSelectionScreen extends StatefulWidget {
 class _CombatSimulatorMapSelectionScreenState
     extends State<CombatSimulatorMapSelectionScreen> {
   void _startSimulation(GameState state) {
-    // Create NPC instances for the decks
-    final playerUnits = widget.playerDeckTypes
-        .map((t) => CombatUnitService.createUnit(t))
-        .toList();
-    final aiUnits = widget.aiDeckTypes
-        .map((t) => CombatUnitService.createUnit(t))
-        .toList();
-
-    // Setup simulator state
-    state.startCombatSimulation(playerUnits, aiUnits);
-
-    Navigator.pushReplacement(
+    Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CombatScreen()),
+      MaterialPageRoute(
+        builder: (context) => CombatSimulatorLeaderSelectionScreen(
+          playerDeckTypes: widget.playerDeckTypes,
+          aiDeckTypes: widget.aiDeckTypes,
+        ),
+      ),
     );
   }
 
@@ -106,7 +101,7 @@ class _CombatSimulatorMapSelectionScreenState
                     minimumSize: const Size(double.infinity, 44),
                   ),
                   child: Text(
-                    "START SIMULATION",
+                    "SELECT LEADERS",
                     style: GoogleFonts.playfairDisplay(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,

@@ -81,6 +81,7 @@ class Combatant {
   double? waypointY;
   double? detourX;
   double? detourY;
+  bool isAiLeader = false;
 
   // Regiment/Squad Fields
   String? squadId;
@@ -104,6 +105,7 @@ class Combatant {
     this.waypointY,
     this.detourX,
     this.detourY,
+    this.isAiLeader = false,
     this.squadId,
     this.leaderId,
     this.isSquadLeader = false,
@@ -230,6 +232,7 @@ class CombatManager extends ChangeNotifier {
   double _aiActionPoints = 6.0;
   final List<NPC> _aiDeck = [];
   final List<NPC> _aiHand = [];
+  Map<String, int> upgrades = {};
 
   double _fieldScroll = 0.0;
   double _yFieldScroll = 0.0;
@@ -441,15 +444,25 @@ class CombatManager extends ChangeNotifier {
     }
 
     // Spawn 3 player towers
+    final int hpLvl = upgrades['tower_hp'] ?? 0;
+    final int atkLvl = upgrades['tower_atk'] ?? 0;
+    final int rangeLvl = upgrades['tower_range'] ?? 0;
+    final int speedLvl = upgrades['tower_speed'] ?? 0;
+
+    final double upgradedMaxHealth = 600.0 * (1.0 + hpLvl * 0.15);
+    final double upgradedAttack = 15.0 * (1.0 + atkLvl * 0.15);
+    final double upgradedRange = 20.0 + rangeLvl * 2.5;
+    final double upgradedSpeed = 2.0 * (1.0 + speedLvl * 0.10);
+
     for (int lane = 0; lane < 3; lane++) {
       spawnTower(
         name: '$playerTowerName ${lane + 1}',
         side: CombatSide.player,
         lane: lane,
-        maxHealth: 600.0,
-        attack: 15.0,
-        range: 20.0, // Overlapping field of fire
-        speed: 2.0,
+        maxHealth: upgradedMaxHealth,
+        attack: upgradedAttack,
+        range: upgradedRange,
+        speed: upgradedSpeed,
         towerType: playerTowerType,
       );
     }
@@ -653,7 +666,7 @@ class CombatManager extends ChangeNotifier {
     return true;
   }
 
-  bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y}) {
+  bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y, bool isAiLeader = false}) {
     final stats = npc.combatStats;
     if (stats == null) return false;
 
@@ -714,6 +727,7 @@ class CombatManager extends ChangeNotifier {
       y: finalSpawnY,
       laneIndex: closestLaneIdx,
       isTower: false,
+      isAiLeader: isAiLeader,
       squadId: squadId,
       isSquadLeader: true,
       activeDeploymentTimer: stats.deploymentTime,
@@ -884,8 +898,8 @@ class CombatManager extends ChangeNotifier {
     _combatants.removeWhere((c) {
       if (c.isDead) {
         // If it is a tower or a hero, DO NOT remove it from the active battlefield!
-        if (c.isTower || c.npc.isPlayer || c.npc.id == 'ai_mirror') {
-          if (c.respawnTimer == null && (c.npc.isPlayer || c.npc.id == 'ai_mirror')) {
+        if (c.isTower || c.npc.isPlayer || c.isAiLeader) {
+          if (c.respawnTimer == null && (c.npc.isPlayer || c.isAiLeader)) {
             // Trigger first-time death and set respawn
             c.deathCount++;
             double respawnDuration = 5.0;
@@ -902,7 +916,7 @@ class CombatManager extends ChangeNotifier {
             if (c.side == CombatSide.player && c.npc.isPlayer) {
               onPlayerDeath?.call();
               _cameraFollowPlayer = true;
-            } else if (c.side == CombatSide.enemy && c.npc.id == 'ai_mirror') {
+            } else if (c.side == CombatSide.enemy && c.isAiLeader) {
               onEnemyHeroDeath?.call(c.npc);
             }
           } else if (c.isTower) {
@@ -1046,7 +1060,21 @@ class CombatManager extends ChangeNotifier {
             // Pick a random lane Y coordinate to spawn
             final lane = Random().nextInt(_map.laneCenters.length);
             final spawnYs = _map.laneCenters;
-            final spawnX = (_fieldScroll + 120.0).clamp(100.0, _map.width - 20.0);
+            
+            // Find the active AI Leader if alive
+            final aiLeader = _combatants.firstWhereOrNull(
+              (c) => c.side == CombatSide.enemy && c.isAiLeader && !c.isDead
+            );
+            
+            // If AI Leader is alive, spawn slightly behind them (to their right, since they march left).
+            // Otherwise, spawn near the enemy base/corner tower.
+            final double spawnX;
+            if (aiLeader != null) {
+              spawnX = (aiLeader.x + 25.0).clamp(100.0, _map.width - 20.0);
+            } else {
+              spawnX = (_map.enemyCornerTowerX - 20.0).clamp(100.0, _map.width - 20.0);
+            }
+            
             spawnUnit(unit, CombatSide.enemy, x: spawnX, y: spawnYs[lane]);
             break; // One per tick
           }
@@ -1065,7 +1093,7 @@ class CombatManager extends ChangeNotifier {
 
       // Check proximity to player's character or opponent's character
       if (cauldron.isAvailable) {
-        final characters = _combatants.where((c) => !c.isDead && (c.npc.isPlayer || c.npc.id == 'ai_mirror'));
+        final characters = _combatants.where((c) => !c.isDead && (c.npc.isPlayer || c.isAiLeader));
         for (final character in characters) {
           final dist = sqrt(pow(character.x - cauldron.x, 2) + pow(character.y - cauldron.y, 2));
           if (dist < 8.0) {
@@ -1135,15 +1163,30 @@ class CombatManager extends ChangeNotifier {
     return false;
   }
 
+  bool _segmentsIntersect(double ax, double ay, double bx, double by, double cx, double cy, double dx, double dy) {
+    final double denominator = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+    if (denominator == 0) return false; // Parallel or collinear
+
+    final double u = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / denominator;
+    final double v = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / denominator;
+
+    return u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0;
+  }
+
   bool isPathObstructed(double x1, double y1, double x2, double y2) {
-    final double centerY = _map.height / 2;
-    if ((y1 < centerY && y2 > centerY) || (y1 > centerY && y2 < centerY)) {
-      final t = (centerY - y1) / (y2 - y1);
-      final intersectX = x1 + t * (x2 - x1);
-      for (final rect in _map.walls) {
-        if (intersectX >= rect.left - 2.0 && intersectX <= rect.right + 2.0) {
-          return true;
-        }
+    for (final rect in _map.walls) {
+      // Padded walls check to ensure safe buffer clearance
+      final double L = rect.left - 2.0;
+      final double T = rect.top - 2.0;
+      final double R = rect.right + 2.0;
+      final double B = rect.bottom + 2.0;
+
+      // Path is obstructed if it intersects any of the 4 edges of the padded wall
+      if (_segmentsIntersect(x1, y1, x2, y2, L, T, L, B) ||
+          _segmentsIntersect(x1, y1, x2, y2, R, T, R, B) ||
+          _segmentsIntersect(x1, y1, x2, y2, L, T, R, T) ||
+          _segmentsIntersect(x1, y1, x2, y2, L, B, R, B)) {
+        return true;
       }
     }
     return false;
@@ -1182,7 +1225,7 @@ class CombatManager extends ChangeNotifier {
       case TargetingRule.towersOnly:
         return candidates.where((c) => c.isTower).toList();
       case TargetingRule.enemyCharacterOnly:
-        return candidates.where((c) => c.npc.isPlayer || c.npc.id == 'ai_mirror').toList();
+        return candidates.where((c) => c.npc.isPlayer || c.isAiLeader).toList();
       case TargetingRule.squadsOnly:
         return candidates.where((c) => !c.isTower && c.npc.combatStats?.unitType == UnitType.squad).toList();
       case TargetingRule.vehiclesOnly:
@@ -1360,16 +1403,6 @@ class CombatManager extends ChangeNotifier {
           c.x -= nx * pushFactor * 2.0;
           c.y -= ny * pushFactor * 2.0;
           enforceUnitBoundaries(c);
-        } else if (c.npc.isPlayer) {
-          // Player hero is unpushable by mobile units; push only the other unit
-          other.x += nx * pushFactor * 2.0;
-          other.y += ny * pushFactor * 2.0;
-          enforceUnitBoundaries(other);
-        } else if (other.npc.isPlayer) {
-          // Only push c
-          c.x -= nx * pushFactor * 2.0;
-          c.y -= ny * pushFactor * 2.0;
-          enforceUnitBoundaries(c);
         } else {
           // Both are mobile units, push both
           c.x -= nx * pushFactor;
@@ -1483,6 +1516,59 @@ class CombatManager extends ChangeNotifier {
         c.formationOffset = null;
       }
     }
+
+    // Dynamic Lane/Channel index tracking based on Y position
+    int currentLaneIdx = 0;
+    double minLaneDist = 99999.0;
+    for (int i = 0; i < _map.laneCenters.length; i++) {
+      final dist = (c.y - _map.laneCenters[i]).abs();
+      if (dist < minLaneDist) {
+        minLaneDist = dist;
+        currentLaneIdx = i;
+      }
+    }
+    c.laneIndex = currentLaneIdx;
+
+    // Channel engagement prioritization
+    List<Combatant> prioritizedTargets = [];
+    for (final t in targets) {
+      final double dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+      final double dx = (t.x - c.x).abs();
+      final bool sameLane = t.laneIndex == c.laneIndex;
+
+      if (sameLane) {
+        prioritizedTargets.add(t);
+      } else {
+        final int laneDiff = (t.laneIndex - c.laneIndex).abs();
+        if (_map.laneCenters.length == 3) {
+          // 3-lane map rules: neighboring lane crossover if very close (dist <= 45.0), passing (dx <= 25.0), and clear line-of-sight
+          if (laneDiff == 1) {
+            if (dist <= 45.0 && dx <= 25.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
+              prioritizedTargets.add(t);
+            }
+          }
+          // Far lane (laneDiff == 2) is blocked from direct targeting
+        } else if (_map.laneCenters.length == 2) {
+          // 2-lane map rules: neighboring lane crossover if close (dist <= 40.0) and clear LOS,
+          // or a leader standing near vertical center (within 20ft) and close horizontally (dx <= 35.0)
+          final double centerY = _map.height / 2;
+          final bool isLeader = t.npc.isPlayer || t.isAiLeader;
+          final bool leaderNearCenter = isLeader && (t.y - centerY).abs() <= 20.0;
+
+          if (leaderNearCenter && dx <= 35.0) {
+            prioritizedTargets.add(t);
+          } else if (dist <= 40.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
+            prioritizedTargets.add(t);
+          }
+        }
+      }
+    }
+
+    // Fallback to all visible/reachable targets if the prioritized channel is clear
+    if (prioritizedTargets.isEmpty) {
+      prioritizedTargets = targets;
+    }
+    targets = prioritizedTargets;
 
     if (targets.isNotEmpty && !c.npc.isPlayer) {
       // Prefer nearest targets that are NOT obstructed by the centerline walls
@@ -1619,7 +1705,7 @@ class CombatManager extends ChangeNotifier {
     }
 
     // 3. Mobile AI Hero (Opponent Leader) Locomotion & Attack AI
-    if (c.npc.id == 'ai_mirror') {
+    if (c.isAiLeader) {
       if (targets.isNotEmpty) {
         targets.sort((a, b) {
           final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));

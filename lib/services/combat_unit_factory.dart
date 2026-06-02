@@ -65,6 +65,13 @@ class CombatUnitFactory {
             'range': 15.0,
           },
         ),
+        const Ability(
+          id: 'lightning_strike',
+          name: 'Lightning Strike',
+          type: AbilityType.special,
+          description: 'Strikes the nearest enemy with lightning, dealing 150 damage and stunning them for 4 seconds.',
+          chargeTime: 25.0,
+        ),
       ],
     );
   }

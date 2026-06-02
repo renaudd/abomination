@@ -16,10 +16,17 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/arena_progress.dart';
+import '../../models/npc.dart';
 import '../../services/arena_save_service.dart';
+import '../../services/combat_unit_factory.dart';
+import '../widgets/character_blob_renderer.dart';
 import 'combat_simulator_screen.dart';
 import 'campaign_screen.dart';
 import 'tournament_screen.dart';
+import '../../services/survival_service.dart';
+import 'survival_estate_map_screen.dart';
+import 'package:provider/provider.dart';
+import '../../models/survival_state.dart';
 
 class ArenaMenuScreen extends StatefulWidget {
   const ArenaMenuScreen({super.key});
@@ -89,8 +96,8 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
           // Central Menu Panel
           Center(
             child: Container(
-              width: 580,
-              height: 380,
+              width: 600,
+              height: 400,
               decoration: BoxDecoration(
                 color: const Color(0xFF1D1712), // Deep mahogany box
                 border: Border.all(
@@ -235,43 +242,79 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                                             ),
                                         ],
                                       )
-                                    : Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'TOURNAMENT ACTIVE',
-                                            style: GoogleFonts.playfairDisplay(
-                                              color: Colors.cyanAccent,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            _loadedProgress!.tournament!.isEliminated
-                                                ? 'ELIMINATED'
-                                                : _loadedProgress!.tournament!.currentRound == 5
-                                                    ? 'FINALS'
-                                                    : 'ROUND OF ${32 ~/ (1 << (_loadedProgress!.tournament!.currentRound - 1))}',
-                                            style: GoogleFonts.playfairDisplay(
-                                              color: const Color(0xFFE5D5B0),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                              _loadedProgress!.tournament!.isEliminated
-                                                  ? 'Tournament Run ended.\n\nYou can clear/delete this slot to restart.'
-                                                  : 'Round: ${_loadedProgress!.tournament!.currentRound} / 5\nRemaining: ${_loadedProgress!.tournament!.participants.length} players\nDeck: ${_loadedProgress!.tournament!.playerDeckIds.length} cards',
-                                              style: GoogleFonts.oldStandardTt(
-                                                color: Colors.white70,
-                                                fontSize: 11,
-                                                height: 1.6,
+                                    : _loadedProgress!.survival != null
+                                        ? Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'SURVIVAL ACTIVE',
+                                                style: GoogleFonts.playfairDisplay(
+                                                  color: const Color(0xFFC4B89B),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
-                                            ),
-                                        ],
-                                      ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                'TURN ${_loadedProgress!.survival!.currentTurn}',
+                                                style: GoogleFonts.playfairDisplay(
+                                                  color: const Color(0xFFE5D5B0),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Text(
+                                                'Cash: ${_loadedProgress!.survival!.cash} CHF\n'
+                                                'Food: ${_loadedProgress!.survival!.food} FOOD\n'
+                                                'Wood: ${_loadedProgress!.survival!.wood} WOOD\n'
+                                                'Iron: ${_loadedProgress!.survival!.iron} IRON\n'
+                                                'Deck Size: ${_loadedProgress!.survival!.playerDeckIds.length} cards',
+                                                style: GoogleFonts.oldStandardTt(
+                                                  color: Colors.white70,
+                                                  fontSize: 11,
+                                                  height: 1.6,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'TOURNAMENT ACTIVE',
+                                                style: GoogleFonts.playfairDisplay(
+                                                  color: Colors.cyanAccent,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                _loadedProgress!.tournament!.isEliminated
+                                                    ? 'ELIMINATED'
+                                                    : _loadedProgress!.tournament!.currentRound == 5
+                                                        ? 'FINALS'
+                                                        : 'ROUND OF ${32 ~/ (1 << (_loadedProgress!.tournament!.currentRound - 1))}',
+                                                style: GoogleFonts.playfairDisplay(
+                                                  color: const Color(0xFFE5D5B0),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Text(
+                                                _loadedProgress!.tournament!.isEliminated
+                                                    ? 'Tournament Run ended.\n\nYou can clear/delete this slot to restart.'
+                                                    : 'Round: ${_loadedProgress!.tournament!.currentRound} / 5\nRemaining: ${_loadedProgress!.tournament!.participants.length} players\nDeck: ${_loadedProgress!.tournament!.playerDeckIds.length} cards',
+                                                style: GoogleFonts.oldStandardTt(
+                                                  color: Colors.white70,
+                                                  fontSize: 11,
+                                                  height: 1.6,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                           ),
                       ],
                     ),
@@ -302,7 +345,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                               letterSpacing: 1.0,
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 14),
 
                           _buildHubButton('SKIRMISH (SIMULATOR)', () {
                             Navigator.push(
@@ -312,7 +355,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                               ),
                             );
                           }),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 6),
 
                           _buildHubButton('CAMPAIGN PROGRESS', () {
                             if (_loadedProgress?.campaign != null) {
@@ -321,7 +364,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                               _showCampaignSelection();
                             }
                           }),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 6),
 
                           _buildHubButton('TOURNAMENT RUN', () {
                             if (_loadedProgress?.tournament != null) {
@@ -330,12 +373,21 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                               _showTournamentSetup();
                             }
                           }),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 6),
+
+                          _buildHubButton('SURVIVAL MODE', () {
+                            if (_loadedProgress?.survival != null) {
+                              _enterSurvival(_loadedProgress!.survival!);
+                            } else {
+                              _showSurvivalSetup();
+                            }
+                          }),
+                          const SizedBox(height: 6),
 
                           _buildHubButton('CLEAR SAVE DATA', _loadedProgress == null ? null : () => _clearSlotConfirm()),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           const Divider(color: Color(0xFF352B24)),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 6),
 
                           _buildHubButton('RETURN TO MAIN MENU', () {
                             Navigator.pop(context);
@@ -356,7 +408,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
   Widget _buildHubButton(String label, VoidCallback? onPressed, {bool isAccent = false}) {
     return SizedBox(
       width: double.infinity,
-      height: 34,
+      height: 29,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
@@ -385,12 +437,14 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
   }
 
   /// Pushes the Campaign screen
-  void _enterCampaign(CampaignProgress campaign) {
+  void _enterCampaign(CampaignProgress campaign, {ArenaProgress? explicitProgress}) {
+    final progressObj = explicitProgress ?? _loadedProgress;
+    if (progressObj == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CampaignScreen(
-          progress: _loadedProgress!,
+          progress: progressObj,
           onUpdate: _loadActiveSlot,
         ),
       ),
@@ -398,16 +452,52 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
   }
 
   /// Pushes the Tournament screen
-  void _enterTournament(TournamentProgress tournament) {
+  void _enterTournament(TournamentProgress tournament, {ArenaProgress? explicitProgress}) {
+    final progressObj = explicitProgress ?? _loadedProgress;
+    if (progressObj == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => TournamentScreen(
-          progress: _loadedProgress!,
+          progress: progressObj,
           onUpdate: _loadActiveSlot,
         ),
       ),
     ).then((_) => _loadActiveSlot());
+  }
+
+  /// Pushes the Survival screen
+  void _enterSurvival(SurvivalProgress survival, {ArenaProgress? explicitProgress}) {
+    final progressObj = explicitProgress ?? _loadedProgress;
+    if (progressObj == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider<SurvivalService>(
+          create: (context) => SurvivalService(_activeSlot, survival),
+          child: const SurvivalEstateMapScreen(),
+        ),
+      ),
+    ).then((_) => _loadActiveSlot());
+  }
+
+  /// Shows setup for a new Survival game
+  void _showSurvivalSetup() {
+    _showLeaderSelection(
+      onLeaderSelected: (leaderId) async {
+        final service = SurvivalService(_activeSlot);
+        service.initializeNewSurvivalGame(leaderId);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+              value: service,
+              child: const SurvivalEstateMapScreen(),
+            ),
+          ),
+        ).then((_) => _loadActiveSlot());
+      },
+    );
   }
 
   /// Opens the modal selector to choose and start a Campaign
@@ -472,23 +562,28 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
     required String id,
   }) {
     return InkWell(
-      onTap: () async {
+      onTap: () {
         Navigator.pop(context); // Close dialog
-        final newCampaign = CampaignProgress(
-          campaignId: id,
-          currentStage: 0,
-          playerDeckIds: deck,
-          cardUpgrades: {},
-          campaignCoins: 100, // Initial coins to spend
+        _showLeaderSelection(
+          onLeaderSelected: (leaderId) async {
+            final newCampaign = CampaignProgress(
+              campaignId: id,
+              currentStage: 0,
+              playerDeckIds: deck,
+              cardUpgrades: {},
+              campaignCoins: 100, // Initial coins to spend
+              playerLeaderId: leaderId,
+            );
+            final progress = ArenaProgress(
+              slot: _activeSlot,
+              saveTime: DateTime.now(),
+              campaign: newCampaign,
+            );
+            await ArenaSaveService.saveProgress(progress);
+            await _loadActiveSlot();
+            _enterCampaign(progress.campaign!, explicitProgress: progress);
+          },
         );
-        final progress = ArenaProgress(
-          slot: _activeSlot,
-          saveTime: DateTime.now(),
-          campaign: newCampaign,
-        );
-        await ArenaSaveService.saveProgress(progress);
-        await _loadActiveSlot();
-        _enterCampaign(progress.campaign!);
       },
       child: Container(
         padding: const EdgeInsets.all(10.0),
@@ -568,72 +663,343 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
           side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
           shape: const RoundedRectangleBorder(),
         ),
-        onPressed: () async {
+        onPressed: () {
           Navigator.pop(context); // Close dialog
-          
-          // Generate 31 Opponent Names
-          final List<String> opponentNames = [
-            'Baron von Richter', 'Gladiator Titus', 'Inquisitor Sarah', 'Vagrant Jack',
-            'Lady Isabella', 'Commander Krieger', 'Outlaw Jesse', 'Sniper Vance',
-            'Warlord Marcus', 'Engineer Geller', 'Mercenary Hawke', 'Necromancer Silas',
-            'Dragoons Captain', 'Priestess Sophia', 'Feral Houndmaster', 'Keeper Bran',
-            'Bandit King Silas', 'Royal Guard Justin', 'Cultist Brother Paul', 'Alchemist Victor',
-            'Forest Warden Cedric', 'Steam Mechanic Hans', 'Saber Master Ray', 'Highwayman Rex',
-            'Bounty Hunter Clint', 'Plague Carrier Sean', 'Dread Golem Master', 'Squire Dennis',
-            'Swiss Scout Lukas', 'Knight Commander Gerald', 'Wild Wolf Alfa'
-          ];
+          _showLeaderSelection(
+            onLeaderSelected: (leaderId) async {
+              // Generate 31 Opponent Names
+              final List<String> opponentNames = [
+                'Baron von Richter', 'Gladiator Titus', 'Inquisitor Sarah', 'Vagrant Jack',
+                'Lady Isabella', 'Commander Krieger', 'Outlaw Jesse', 'Sniper Vance',
+                'Warlord Marcus', 'Engineer Geller', 'Mercenary Hawke', 'Necromancer Silas',
+                'Dragoons Captain', 'Priestess Sophia', 'Feral Houndmaster', 'Keeper Bran',
+                'Bandit King Silas', 'Royal Guard Justin', 'Cultist Brother Paul', 'Alchemist Victor',
+                'Forest Warden Cedric', 'Steam Mechanic Hans', 'Saber Master Ray', 'Highwayman Rex',
+                'Bounty Hunter Clint', 'Plague Carrier Sean', 'Dread Golem Master', 'Squire Dennis',
+                'Swiss Scout Lukas', 'Knight Commander Gerald', 'Wild Wolf Alfa'
+              ];
 
-          // 32 participants (Player at index 0 + 31 generated)
-          final List<String> allParticipants = ['Player', ...opponentNames];
+              // 32 participants (Player at index 0 + 31 generated)
+              final List<String> allParticipants = ['Player', ...opponentNames];
 
-          // Generate decks for all 32 participants
-          final Map<String, List<String>> participantDecks = {'Player': deck};
-          
-          final List<List<String>> deckPools = [
-            ['militia', 'militia', 'pikemen', 'marksmen'],
-            ['bicycle_gang', 'bicycle_gang', 'musketeers', 'cannoneer'],
-            ['rats_unit', 'rats_unit', 'bats_unit', 'undead_rats'],
-            ['wild_wolves', 'wild_wolves', 'wild_foxes', 'wild_bears'],
-            ['cavalry', 'cavalry', 'pikemen', 'musketeers'],
-            ['wooden_tank', 'armored_car', 'cannoneer', 'motorcycle_gang']
-          ];
+              // Generate decks for all 32 participants
+              final Map<String, List<String>> participantDecks = {'Player': deck};
+              
+              final List<List<String>> deckPools = [
+                ['militia', 'militia', 'pikemen', 'marksmen'],
+                ['bicycle_gang', 'bicycle_gang', 'musketeers', 'cannoneer'],
+                ['rats_unit', 'rats_unit', 'bats_unit', 'undead_rats'],
+                ['wild_wolves', 'wild_wolves', 'wild_foxes', 'wild_bears'],
+                ['cavalry', 'cavalry', 'pikemen', 'musketeers'],
+                ['wooden_tank', 'armored_car', 'cannoneer', 'motorcycle_gang']
+              ];
 
-          for (var oppName in opponentNames) {
-            participantDecks[oppName] = deckPools[Random().nextInt(deckPools.length)];
-          }
+              for (var oppName in opponentNames) {
+                participantDecks[oppName] = deckPools[Random().nextInt(deckPools.length)];
+              }
 
-          final newTournament = TournamentProgress(
-            playerDeckIds: deck,
-            currentRound: 1,
-            participants: allParticipants,
-            participantDecks: participantDecks,
-            matches: [],
-            isEliminated: false,
+              final newTournament = TournamentProgress(
+                playerDeckIds: deck,
+                currentRound: 1,
+                participants: allParticipants,
+                participantDecks: participantDecks,
+                matches: [],
+                isEliminated: false,
+                playerLeaderId: leaderId,
+              );
+
+              // Populate the bracket matches for Round 1 (16 pairings)
+              for (int i = 0; i < 16; i++) {
+                newTournament.matches.add(TournamentMatch(
+                  round: 1,
+                  p1: allParticipants[i * 2],
+                  p2: allParticipants[i * 2 + 1],
+                ));
+              }
+
+              final progress = ArenaProgress(
+                slot: _activeSlot,
+                saveTime: DateTime.now(),
+                tournament: newTournament,
+              );
+              
+              await ArenaSaveService.saveProgress(progress);
+              await _loadActiveSlot();
+              _enterTournament(progress.tournament!, explicitProgress: progress);
+            },
           );
-
-          // Populate the bracket matches for Round 1 (16 pairings)
-          for (int i = 0; i < 16; i++) {
-            newTournament.matches.add(TournamentMatch(
-              round: 1,
-              p1: allParticipants[i * 2],
-              p2: allParticipants[i * 2 + 1],
-            ));
-          }
-
-          final progress = ArenaProgress(
-            slot: _activeSlot,
-            saveTime: DateTime.now(),
-            tournament: newTournament,
-          );
-          
-          await ArenaSaveService.saveProgress(progress);
-          await _loadActiveSlot();
-          _enterTournament(progress.tournament!);
         },
         child: Text(
           label,
           style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 11, fontWeight: FontWeight.bold),
         ),
+      ),
+    );
+  }
+
+  void _showLeaderSelection({
+    required Function(String leaderId) onLeaderSelected,
+  }) {
+    final List<NPC> leaders = [
+      CombatUnitFactory.createAlphonse(),
+      CombatUnitFactory.createBossRudolf().copyWith(id: 'boss_rudolf', isPlayer: true),
+      CombatUnitFactory.createBossGearbox().copyWith(id: 'boss_gearbox', isPlayer: true),
+      CombatUnitFactory.createBossElizabeth().copyWith(id: 'boss_elizabeth', isPlayer: true),
+      CombatUnitFactory.createBossThorne().copyWith(id: 'boss_thorne', isPlayer: true),
+    ];
+
+    int currentIndex = 0;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final currentLeader = leaders[currentIndex];
+            final stats = currentLeader.combatStats!;
+            
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1D1712),
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.4), width: 1.5),
+              ),
+              title: Text(
+                'CHOOSE YOUR LEADER',
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0), 
+                  fontSize: 15, 
+                  fontWeight: FontWeight.bold, 
+                  letterSpacing: 2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Carousel controls with larger portrait
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left, color: Color(0xFFC4B89B), size: 32),
+                            onPressed: () {
+                              setState(() {
+                                currentIndex = (currentIndex - 1 + leaders.length) % leaders.length;
+                              });
+                            },
+                          ),
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.black38,
+                              border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2), width: 1.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: CharacterBlobRenderer(
+                                npc: currentLeader,
+                                size: 80,
+                                isIdle: true,
+                                showSpeechBubble: false,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, color: Color(0xFFC4B89B), size: 32),
+                            onPressed: () {
+                              setState(() {
+                                currentIndex = (currentIndex + 1) % leaders.length;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Leader Name
+                      Text(
+                        currentLeader.name.toUpperCase(),
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      // Leader Role
+                      Text(
+                        currentLeader.role.toUpperCase(),
+                        style: GoogleFonts.oldStandardTt(
+                          color: const Color(0xFFD4AF37),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Stats Grid
+                      Container(
+                        padding: const EdgeInsets.all(10.0),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.15)),
+                        ),
+                        child: Table(
+                          columnWidths: const {
+                            0: FlexColumnWidth(1),
+                            1: FlexColumnWidth(1),
+                          },
+                          children: [
+                            TableRow(
+                              children: [
+                                _buildStatRow('HP / Max HP', '${stats.health.toInt()} / ${stats.maxHealth.toInt()}'),
+                                _buildStatRow('Attack Power', '${stats.attack.toInt()}'),
+                              ],
+                            ),
+                            TableRow(
+                              children: [
+                                _buildStatRow('Attack Range', '${stats.distance.toStringAsFixed(1)} ft'),
+                                _buildStatRow('Speed Factor', '${stats.speed.toStringAsFixed(1)}x'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Special Abilities Section
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'SPECIAL ABILITIES',
+                          style: GoogleFonts.playfairDisplay(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      if (currentLeader.abilities.isEmpty)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'No active special abilities.',
+                            style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9.5),
+                          ),
+                        )
+                      else
+                        Column(
+                          children: currentLeader.abilities.map((ability) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8.0),
+                              padding: const EdgeInsets.all(8.0),
+                              decoration: BoxDecoration(
+                                color: Colors.black38,
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        ability.name,
+                                        style: GoogleFonts.playfairDisplay(
+                                          color: const Color(0xFFE5D5B0),
+                                          fontSize: 11.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Charge: ${ability.chargeTime?.toInt() ?? 0}s',
+                                        style: GoogleFonts.oldStandardTt(
+                                          color: const Color(0xFFD4AF37),
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    ability.description,
+                                    style: GoogleFonts.oldStandardTt(
+                                      color: Colors.white70,
+                                      fontSize: 9.5,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      const SizedBox(height: 20),
+                      
+                      // Select Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 38,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFC4B89B), width: 1.5),
+                            backgroundColor: const Color(0xFF15100B),
+                            shape: const RoundedRectangleBorder(),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(context); // Close dialog
+                            onLeaderSelected(currentLeader.id);
+                          },
+                          child: Text(
+                            'SELECT THIS LEADER',
+                            style: GoogleFonts.playfairDisplay(
+                              color: Colors.white, 
+                              fontSize: 11.5, 
+                              fontWeight: FontWeight.bold, 
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildStatRow(String name, String val) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name.toUpperCase(),
+            style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 7.5, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            val,
+            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10.5, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
