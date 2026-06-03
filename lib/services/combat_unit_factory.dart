@@ -121,7 +121,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Cannoneer'),
       combatStats: const CombatStats(
         attack: 5,
         health: 250,
@@ -155,7 +155,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Musketeers'),
       combatStats: const CombatStats(
         attack: 25,
         health: 180,
@@ -188,7 +188,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Cavalry'),
       combatStats: const CombatStats(
         attack: 35,
         health: 150,
@@ -220,7 +220,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Bicycle Gang'),
       combatStats: const CombatStats(
         attack: 10,
         health: 130,
@@ -253,7 +253,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Motorcycle Gang'),
       combatStats: const CombatStats(
         attack: 15,
         health: 200,
@@ -287,7 +287,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Armored Car'),
       combatStats: const CombatStats(
         attack: 18,
         health: 700,
@@ -317,7 +317,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Wooden Tank'),
       combatStats: const CombatStats(
         attack: 110,
         health: 850,
@@ -348,7 +348,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Undead Rats'),
       combatStats: const CombatStats(
         attack: 12,
         health: 65,
@@ -379,7 +379,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Brown Rats'),
       combatStats: const CombatStats(
         attack: 8,
         health: 45,
@@ -410,7 +410,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Werewolf'),
       combatStats: const CombatStats(
         attack: 75,
         health: 500,
@@ -440,7 +440,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Chimera'),
       combatStats: const CombatStats(
         attack: 40,
         health: 650,
@@ -473,7 +473,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Flesh Golem'),
       combatStats: const CombatStats(
         attack: 60,
         health: 550,
@@ -504,7 +504,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Villager Mob'),
       combatStats: const CombatStats(
         attack: 15,
         health: 90,
@@ -534,7 +534,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Samurai'),
       combatStats: const CombatStats(
         attack: 45,
         health: 160,
@@ -564,7 +564,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Mercenaries'),
       combatStats: const CombatStats(
         attack: 12,
         health: 120,
@@ -597,11 +597,11 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Commandos'),
       combatStats: const CombatStats(
         attack: 35,
-        health: 150,
-        maxHealth: 150,
+        health: 260,
+        maxHealth: 260,
         speed: 0.7,
         movement: 1.3,
         distance: 4.0,
@@ -630,7 +630,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Sniper'),
       combatStats: const CombatStats(
         attack: 5,
         health: 90,
@@ -664,7 +664,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Wild Foxes'),
       combatStats: const CombatStats(
         attack: 8,
         health: 45,
@@ -695,7 +695,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Wild Wolves'),
       combatStats: const CombatStats(
         attack: 20,
         health: 90,
@@ -725,7 +725,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Wild Bears'),
       combatStats: const CombatStats(
         attack: 55,
         health: 420,
@@ -756,7 +756,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Bandits'),
       combatStats: const CombatStats(
         attack: 15,
         health: 60,
@@ -786,7 +786,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Thugs'),
       combatStats: const CombatStats(
         attack: 22,
         health: 130,
@@ -816,7 +816,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Deserters'),
       combatStats: const CombatStats(
         attack: 10,
         health: 80,
@@ -849,7 +849,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Halberdiers'),
       combatStats: const CombatStats(
         attack: 25,
         health: 110,
@@ -880,7 +880,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Pikemen'),
       combatStats: const CombatStats(
         attack: 20,
         health: 105,
@@ -910,7 +910,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Policemen'),
       combatStats: const CombatStats(
         attack: 15,
         health: 150,
@@ -943,7 +943,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Marksmen'),
       combatStats: const CombatStats(
         attack: 0,
         health: 100,
@@ -974,7 +974,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Artillery Barrage'),
       combatStats: const CombatStats(
         attack: 0,
         health: 0,
@@ -1009,7 +1009,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Tear Gas Grenade'),
       combatStats: const CombatStats(
         attack: 0,
         health: 0,
@@ -1045,7 +1045,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Caltrops'),
       combatStats: const CombatStats(
         attack: 0,
         health: 0,
@@ -1079,7 +1079,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Vampiric Totem'),
       combatStats: const CombatStats(
         attack: 0,
         health: 150,
@@ -1144,7 +1144,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('General Rudolf'),
       combatStats: const CombatStats(
         attack: 40,
         health: 500,
@@ -1191,7 +1191,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Baron von Gearbox'),
       combatStats: const CombatStats(
         attack: 25,
         health: 280,
@@ -1238,7 +1238,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Lady Elizabeth'),
       combatStats: const CombatStats(
         attack: 45,
         health: 320,
@@ -1285,7 +1285,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.random(),
+      appearance: NPCAppearance.deterministic('Keeper Thorne'),
       combatStats: const CombatStats(
         attack: 30,
         health: 260,

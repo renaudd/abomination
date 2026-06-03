@@ -16,7 +16,7 @@ enum SurvivalBuildingType {
   farm,
   lumberMill,
   mine,
-  weaponsmith,
+  arsenal,
   garage,
   munitionsFactory,
 }
@@ -60,7 +60,7 @@ class SurvivalBuilding {
       case SurvivalBuildingType.mine:
         final caps = const [1, 2, 2, 3, 3, 1, 2];
         return caps[(level - 1).clamp(0, 6)];
-      case SurvivalBuildingType.weaponsmith:
+      case SurvivalBuildingType.arsenal:
       case SurvivalBuildingType.garage:
       case SurvivalBuildingType.munitionsFactory:
         // Advanced facilities: level 1: 1 slot, 2: 2 slots, 3: 3 slots (Max Level 3)
@@ -86,6 +86,7 @@ class SurvivalProgress {
   Map<String, int> bondageDebuffCount; // cardType -> negative debuffs accumulated
   List<String> trainingUnitIds; // Unit cardTypes currently assigned to training
   Map<String, int> cardUpgrades; // e.g. {'peasant_hp': 1, 'leader_hp': 0}
+  int villageHealth;
 
   SurvivalProgress({
     this.currentTurn = 1,
@@ -103,8 +104,9 @@ class SurvivalProgress {
     required this.starvationInfractions,
     required this.bondageDebuffCount,
     this.trainingUnitIds = const [],
-    this.cardUpgrades = const {},
-  });
+    Map<String, int>? cardUpgrades,
+    this.villageHealth = 100,
+  }) : this.cardUpgrades = cardUpgrades ?? {};
 
   Map<String, dynamic> toJson() => {
         'currentTurn': currentTurn,
@@ -123,6 +125,7 @@ class SurvivalProgress {
         'bondageDebuffCount': bondageDebuffCount,
         'trainingUnitIds': trainingUnitIds,
         'cardUpgrades': cardUpgrades,
+        'villageHealth': villageHealth,
       };
 
   factory SurvivalProgress.fromJson(Map<String, dynamic> json) => SurvivalProgress(
@@ -148,6 +151,7 @@ class SurvivalProgress {
         bondageDebuffCount: Map<String, int>.from(json['bondageDebuffCount'] as Map? ?? {}),
         trainingUnitIds: List<String>.from(json['trainingUnitIds'] as List? ?? []),
         cardUpgrades: Map<String, int>.from(json['cardUpgrades'] as Map? ?? {}),
+        villageHealth: json['villageHealth'] as int? ?? 100,
       );
 
   // Progressive Level milestones

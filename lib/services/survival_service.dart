@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import '../models/arena_progress.dart';
 import '../models/survival_state.dart';
 import '../models/npc.dart';
+import '../models/combat_stats.dart';
 import 'combat_unit_service.dart';
 import 'arena_save_service.dart';
 
@@ -82,14 +83,14 @@ class SurvivalService extends ChangeNotifier {
     _progress = SurvivalProgress(
       currentTurn: 1,
       cash: 1000,
-      food: 50,
-      wood: 200,
-      iron: 30,
+      food: 15,
+      wood: 40,
+      iron: 20,
       selectedLeaderId: leaderId,
       playerDeckIds: [], // Embark shop draft fills this
       buildings: [
         // Starting Farm at Level 1
-        SurvivalBuilding(id: 'start_farm', type: SurvivalBuildingType.farm, level: 1, assignedUnitIds: []),
+        SurvivalBuilding(id: 'plot_c', type: SurvivalBuildingType.farm, level: 1, assignedUnitIds: []),
       ],
       purchasedPlots: [],
       towerLevels: {
@@ -144,6 +145,24 @@ class SurvivalService extends ChangeNotifier {
     return true;
   }
 
+  bool buyTrainingPoints(String cardId, int xpAmount, int cashCost) {
+    if (_progress == null || _progress!.cash < cashCost) return false;
+    _progress!.cash -= cashCost;
+    final currentXp = _progress!.unitExp[cardId] ?? 0.0;
+    final nextXp = currentXp + xpAmount;
+    _progress!.unitExp[cardId] = nextXp;
+    
+    final oldLvl = SurvivalProgress.getLevelFromXp(currentXp);
+    final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
+    if (newLvl > oldLvl) {
+      addLog('LEVEL UP! Bought training points for ${cardId.toUpperCase()} promoting to Level $newLvl!');
+    } else {
+      addLog('Bought +$xpAmount XP for ${cardId.toUpperCase()} for $cashCost CHF.');
+    }
+    _save();
+    return true;
+  }
+
   bool upgradeLeader(String stat, int cost) {
     if (_progress == null || _progress!.cash < cost) return false;
     _progress!.cash -= cost;
@@ -161,7 +180,18 @@ class SurvivalService extends ChangeNotifier {
     final key = 'tower_$stat';
     final currentLvl = _progress!.cardUpgrades[key] ?? 0;
     _progress!.cardUpgrades[key] = currentLvl + 1;
-    addLog('Upgraded Tower $stat to Lvl ${currentLvl + 1} for $cost CHF.');
+    addLog('Upgraded Watchtower Covenant $stat to Lvl ${currentLvl + 1} for $cost CHF.');
+    _save();
+    return true;
+  }
+
+  bool upgradeIndividualTower(String towerId, String stat, int cost) {
+    if (_progress == null || _progress!.cash < cost) return false;
+    _progress!.cash -= cost;
+    final key = '${towerId}_$stat';
+    final currentLvl = _progress!.cardUpgrades[key] ?? 0;
+    _progress!.cardUpgrades[key] = currentLvl + 1;
+    addLog('Upgraded $towerId $stat to Lvl ${currentLvl + 1} for $cost CHF.');
     _save();
     return true;
   }
@@ -196,11 +226,14 @@ class SurvivalService extends ChangeNotifier {
            npc.name.toLowerCase().contains('undead') || 
            npc.name.toLowerCase().contains('corpse') || 
            npc.name.toLowerCase().contains('horror') ||
-           npc.name.toLowerCase().contains('rats');
+           (npc.name.toLowerCase().contains('rats') && !npc.id.contains('brown_rats'));
   }
 
   static bool isWildAnimal(NPC npc) {
-    return npc.specimenType == 'Beast' && !npc.name.toLowerCase().contains('chimera');
+    final type = npc.specimenType.toLowerCase();
+    return (type == 'beast' || type == 'fox' || type == 'wolf' || type == 'bear' || 
+            (type == 'rat' && npc.id.contains('brown_rats'))) && 
+           !npc.name.toLowerCase().contains('chimera');
   }
 
   static bool isChimera(NPC npc) {
@@ -212,9 +245,8 @@ class SurvivalService extends ChangeNotifier {
   }
 
   static int getFoodCost(NPC npc) {
-    if (isChimera(npc)) return 2;
     if (isUndead(npc) || isWildAnimal(npc) || isConstruct(npc)) return 0;
-    return 1; // standard squad and vehicles
+    return npc.combatStats?.unitCount ?? 1;
   }
 
   // Worker Assignment Mechanics
@@ -284,7 +316,11 @@ class SurvivalService extends ChangeNotifier {
 
   // Plot and Building Upgrades
   bool unlockPlot(String plotKey, int costGhc) {
-    if (_progress == null || _progress!.cash < costGhc) return false;
+    if (_progress == null) return false;
+    if (_progress!.cash < costGhc) {
+      addLog('Cannot unlock plot: Insufficient CHF (needs $costGhc CHF).');
+      return false;
+    }
     _progress!.cash -= costGhc;
     _progress!.purchasedPlots.add(plotKey);
     addLog('Unlocked Estate Plot slot $plotKey.');
@@ -296,24 +332,43 @@ class SurvivalService extends ChangeNotifier {
     if (_progress == null) return false;
 
     // Enforce basic vs advanced plot validation
-    final isAdvancedType = type == SurvivalBuildingType.weaponsmith ||
+    final isAdvancedType = type == SurvivalBuildingType.arsenal ||
                            type == SurvivalBuildingType.garage ||
                            type == SurvivalBuildingType.munitionsFactory;
-    final isAdvancedPlot = plotKey == 'plot_d' || plotKey == 'plot_e';
+    final isAdvancedPlot = plotKey == 'plot_a' || plotKey == 'plot_b';
 
     if (isAdvancedType != isAdvancedPlot) {
       addLog('Cannot construct ${type.name.toUpperCase()} on ${isAdvancedPlot ? 'ADVANCED' : 'BASIC'} plot.');
       return false;
     }
 
-    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < cashCost) return false;
+    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < cashCost) {
+      addLog('Cannot build: Insufficient resources. Requires $woodCost Wood, $ironCost Iron, $cashCost CHF.');
+      return false;
+    }
 
     _progress!.wood -= woodCost;
     _progress!.iron -= ironCost;
     _progress!.cash -= cashCost;
 
+    _progress!.cardUpgrades.remove('${plotKey}_fallow');
     _progress!.buildings.add(SurvivalBuilding(id: plotKey, type: type, level: 1, assignedUnitIds: []));
-    addLog('Constructed ${type.name.replaceAll("_", " ").toUpperCase()} on Plot $plotKey.');
+    addLog('Constructed ${type.name.replaceAll("_", " ").toUpperCase()} on Plot ${plotKey.replaceAll("plot_", "").toUpperCase()}.');
+    _save();
+    return true;
+  }
+
+  bool demolishBuilding(String plotKey) {
+    if (_progress == null) return false;
+    final index = _progress!.buildings.indexWhere((x) => x.id == plotKey);
+    if (index == -1) return false;
+
+    final b = _progress!.buildings[index];
+    b.assignedUnitIds.clear();
+    _progress!.buildings.removeAt(index);
+    _progress!.cardUpgrades['${plotKey}_fallow'] = 1;
+
+    addLog('Demolished building on Plot ${plotKey.replaceAll("plot_", "").toUpperCase()}.');
     _save();
     return true;
   }
@@ -321,12 +376,15 @@ class SurvivalService extends ChangeNotifier {
   bool upgradeBuilding(String id, int woodCost, int ironCost, int cashCost) {
     if (_progress == null) return false;
     final b = _progress!.buildings.firstWhere((x) => x.id == id);
-    final maxLvl = (b.type == SurvivalBuildingType.weaponsmith ||
+    final maxLvl = (b.type == SurvivalBuildingType.arsenal ||
                     b.type == SurvivalBuildingType.garage ||
                     b.type == SurvivalBuildingType.munitionsFactory) ? 3 : 7;
     
     if (b.level >= maxLvl) return false;
-    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < cashCost) return false;
+    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < cashCost) {
+      addLog('Cannot upgrade: Insufficient resources. Requires $woodCost Wood, $ironCost Iron, $cashCost CHF.');
+      return false;
+    }
 
     _progress!.wood -= woodCost;
     _progress!.iron -= ironCost;
@@ -353,8 +411,8 @@ class SurvivalService extends ChangeNotifier {
 
   // Resource production calculation
   int getFarmOutput(int level, int workers) {
-    // Farm yields 30 food per worker per level
-    return workers * 30 * level;
+    // Farm yields 15 food per worker per level
+    return workers * 15 * level;
   }
 
   int getLumberMillOutput(int level, int workers) {
@@ -404,7 +462,7 @@ class SurvivalService extends ChangeNotifier {
     addLog('--- TURN ${_progress!.currentTurn} RESOLUTION ---');
 
     // 1. Deduct food cost
-    int totalFoodCost = 0;
+    int totalFoodCost = 1; // 1 unit of food for the player's character (Alphonse)
     final Map<String, int> unitCosts = {};
     for (var type in _progress!.playerDeckIds) {
       final npc = CombatUnitService.createUnit(type);
@@ -416,7 +474,7 @@ class SurvivalService extends ChangeNotifier {
     final deficit = totalFoodCost - _progress!.food;
     if (deficit <= 0) {
       _progress!.food -= totalFoodCost;
-      addLog('Fed entire army (-$totalFoodCost Food).');
+      addLog('Fed entire army and leader Alphonse (-$totalFoodCost Food).');
       // Cure basic temporary starvation infractions
       _progress!.starvationInfractions.clear();
     } else {
@@ -510,20 +568,60 @@ class SurvivalService extends ChangeNotifier {
   }
 
   // Apply combat details to progress state
-  void processCombatOutcome(bool playerWon, bool isTie, Map<String, double> towerFinalHealth, Map<String, double> combatExpAwarded) {
+  void processCombatOutcome(
+    bool playerWon,
+    bool isTie,
+    Map<String, double> towerFinalHealth,
+    Map<String, double> combatExpAwarded, {
+    List<NPC>? opponentDeck,
+    int destroyedEnemyTowers = 0,
+    int? customSpoilsFood,
+    int? customSpoilsCash,
+    int? customSpoilsIron,
+    int? customSpoilsWood,
+  }) {
     if (_progress == null) return;
 
     addLog('--- COMBAT POST-ACTION REPORT ---');
 
     // Apply spoils of combat
     if (playerWon && !isTie) {
-      final spoilsCash = 150 + _progress!.currentTurn * 40;
-      final spoilsWood = 40 + _progress!.currentTurn * 10;
-      final spoilsFood = 10 + _progress!.currentTurn * 5;
+      final rand = Random();
+      final currentTurn = _progress!.currentTurn;
+
+      int wildAnimals = 0;
+      int humans = 0;
+      int vehicles = 0;
+
+      if (opponentDeck != null) {
+        for (var npc in opponentDeck) {
+          if (isWildAnimal(npc)) {
+            wildAnimals++;
+          } else if (npc.combatStats?.unitType == UnitType.vehicle || npc.specimenType == 'Machine') {
+            vehicles++;
+          } else {
+            // Standard human troops / support / constructs
+            humans++;
+          }
+        }
+      }
+
+      // Calculate Dynamic Spoils based on Opponent Deck and Destroyed Towers!
+      // 1) Food: 2-3 per animal card + 10 baseline
+      final spoilsFood = customSpoilsFood ?? (10 + wildAnimals * (2 + rand.nextInt(2)));
+      // 2) Cash: 10-15 chf per human card + 100 + turn * 20 baseline
+      final spoilsCash = customSpoilsCash ?? (100 + currentTurn * 20 + humans * (10 + rand.nextInt(6)));
+      // 3) Iron: 4-6 per vehicle card
+      final spoilsIron = customSpoilsIron ?? (vehicles * (4 + rand.nextInt(3)));
+      // 4) Wood: 10 wood per enemy tower level destroyed (tower level = currentTurn) + 30 baseline
+      final spoilsWood = customSpoilsWood ?? (30 + destroyedEnemyTowers * 10 * currentTurn);
+
       _progress!.cash += spoilsCash;
       _progress!.wood += spoilsWood;
       _progress!.food += spoilsFood;
-      addLog('Victory spoils: +$spoilsCash CHF | +$spoilsWood Wood | +$spoilsFood Food.');
+      _progress!.iron += spoilsIron;
+
+      addLog('Victory spoils: +$spoilsCash CHF | +$spoilsWood Wood | +$spoilsFood Food | +$spoilsIron Iron.');
     } else if (isTie) {
       addLog('Combat ended in a Draw! No spoils collected.');
     }

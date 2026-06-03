@@ -300,6 +300,49 @@ class NPCAppearance {
     );
   }
 
+  factory NPCAppearance.deterministic(String seed) {
+    final skinTones = [
+      const Color(0xFFFFDBAC),
+      const Color(0xFFF1C27D),
+      const Color(0xFFE0AC69),
+      const Color(0xFF8D5524),
+      const Color(0xFFC68642),
+    ];
+    final hairColors = [
+      const Color(0xFF4B3621), // Brown
+      const Color(0xFF090806), // Black
+      const Color(0xFFE6BE8A), // Blonde
+      const Color(0xFFA52A2A), // Red
+      const Color(0xFFE8E8E8), // Grey
+    ];
+    final outfitColors = [
+      const Color(0xFF5D4037), // Saddle Brown
+      const Color(0xFF3E2723), // Dark Mahogany
+      const Color(0xFF2E7D32), // Dark Green
+      const Color(0xFF37474F), // Dark Slate
+      const Color(0xFF4E342E), // Deep Umber
+      const Color(0xFF1A237E), // Dark Navy Blue
+    ];
+
+    final int hash = seed.hashCode;
+    final HairStyle hairStyle = HairStyle.values[hash.abs() % HairStyle.values.length];
+    final FacialHairStyle facialHairStyle = FacialHairStyle.values[(hash * 3).abs() % FacialHairStyle.values.length];
+    final BodyType bodyType = BodyType.values[(hash * 7).abs() % BodyType.values.length];
+
+    final bodyColor = skinTones[hash.abs() % skinTones.length];
+    final hairColor = hairColors[(hash * 2).abs() % hairColors.length];
+    final outfitColor = outfitColors[(hash * 5).abs() % outfitColors.length];
+
+    return NPCAppearance(
+      hairStyle: hairStyle,
+      facialHairStyle: facialHairStyle,
+      bodyType: bodyType,
+      bodyColor: bodyColor,
+      hairColor: hairColor,
+      outfitColor: outfitColor,
+    );
+  }
+
   NPCAppearance copyWith({
     HairStyle? hairStyle,
     FacialHairStyle? facialHairStyle,

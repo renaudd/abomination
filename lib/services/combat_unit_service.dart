@@ -22,6 +22,8 @@ class CombatUnitService {
 
   static NPC createUnit(String type) {
     switch (type) {
+      case 'alphonse':
+        return CombatUnitFactory.createAlphonse();
       case 'giles':
         return CombatUnitFactory.createFlaubert();
       case 'cannoneer':

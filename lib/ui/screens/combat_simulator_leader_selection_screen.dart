@@ -221,7 +221,7 @@ class _CombatSimulatorLeaderSelectionScreenState
           const SizedBox(height: 16),
 
           // Large Frame / Animated Portrait Carousel
-          Container(
+          SizedBox(
             height: 160,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,

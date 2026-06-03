@@ -191,6 +191,7 @@ class _DaVinciBridgeScreenState extends State<DaVinciBridgeScreen> {
       });
 
       final isOver = await _showOverUnderDialog(existingLog);
+      if (!mounted) return;
       if (isOver == null) {
         setState(() {
           _highlightedLogId = null;
@@ -404,17 +405,6 @@ class _DaVinciBridgeScreenState extends State<DaVinciBridgeScreen> {
     if (_placedLogs.isEmpty || _isSuccess) return;
     setState(() {
       _placedLogs.removeLast();
-    });
-  }
-
-  void _resetAttempt() {
-    setState(() {
-      _placedLogs.clear();
-      _isSuccess = false;
-      _highlightedLogId = null;
-      _previewX = 0;
-      _previewY = 18;
-      _isPreviewHorizontal = true;
     });
   }
 
@@ -677,14 +667,7 @@ class _BridgeGridPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
     }
 
-    // 3. Placed Logs
-    final woodPaint = Paint()
-      ..color = const Color(0xFF8B4513)
-      ..style = PaintingStyle.fill;
-    final woodBorder = Paint()
-      ..color = const Color(0xFFC4B89B).withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+
 
     for (var log in placedLogs) {
       final isHighlighted = log.id == highlightedLogId;

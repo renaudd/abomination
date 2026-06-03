@@ -280,10 +280,12 @@ class GameState extends ChangeNotifier {
   void unloadSmoker() {
     if (_smokerItem == null) return;
     String finishedItem = 'meat'; // fallback
-    if (_smokerItem == 'smoked_meat')
+    if (_smokerItem == 'smoked_meat') {
       finishedItem = 'meat_beef'; // high quality beef outcome!
-    if (_smokerItem == 'smoked_sausage')
+    }
+    if (_smokerItem == 'smoked_sausage') {
       finishedItem = 'meat_pork'; // high quality pork outcome!
+    }
     if (_smokerItem == 'cured_salmon') finishedItem = 'fish';
 
     // Add high quality output items
@@ -6685,8 +6687,7 @@ class GameState extends ChangeNotifier {
       if (_veterinaryExperience < 5) {
         result = TaskResult(
           message:
-              result.message +
-              "\n\nWARNING: Due to Alfonso's animal veterinary specialty, his unfamiliarity with human anatomy causes clinical complications (-60% surgical precision penalty).",
+              "${result.message}\n\nWARNING: Due to Alfonso's animal veterinary specialty, his unfamiliarity with human anatomy causes clinical complications (-60% surgical precision penalty).",
           quality: result.quality * 0.4,
           resourcesGained: result.resourcesGained,
           itemsFound: result.itemsFound,
@@ -6694,8 +6695,7 @@ class GameState extends ChangeNotifier {
       } else {
         result = TaskResult(
           message:
-              result.message +
-              "\n\nAlfonso has overcome his veterinary human-patient unfamiliarity with surgical experience!",
+              "${result.message}\n\nAlfonso has overcome his veterinary human-patient unfamiliarity with surgical experience!",
           quality: result.quality,
           resourcesGained: result.resourcesGained,
           itemsFound: result.itemsFound,
@@ -8525,8 +8525,11 @@ class GameState extends ChangeNotifier {
               newMeta['resourceAmount'] = newAmt;
 
               String itemType = resType;
-              if (resType == 'diamonds') itemType = 'rough_diamonds';
-              else if (resType != 'coal') itemType = '${resType}_ore';
+              if (resType == 'diamonds') {
+                itemType = 'rough_diamonds';
+              } else if (resType != 'coal') {
+                itemType = '${resType}_ore';
+              }
 
               updateResource(itemType, mined);
 
@@ -9896,7 +9899,7 @@ class GameState extends ChangeNotifier {
       if (playerOffset > 0) {
         updateResource('funds', -playerOffset);
       }
-      _lastAnnouncement = "Financed transaction with a ${loanAmount} CHF loan from $loanProvider.";
+      _lastAnnouncement = "Financed transaction with a $loanAmount CHF loan from $loanProvider.";
     } else {
       // Regular payment (positive netCost = player pays, negative netCost = player earns)
       updateResource('funds', -netCost);
@@ -13345,8 +13348,9 @@ class GameState extends ChangeNotifier {
     String proposerId,
     String proposerName,
   ) {
-    if (_activeBusinesses.any((b) => b.type == type && b.status != 'shutDown'))
+    if (_activeBusinesses.any((b) => b.type == type && b.status != 'shutDown')) {
       return;
+    }
 
     String name = "";
     List<String> assignmentsList = [];
@@ -13920,10 +13924,12 @@ class GameState extends ChangeNotifier {
     );
 
     double performanceScore = 0.5;
-    if (leadNpc != null)
+    if (leadNpc != null) {
       performanceScore += (leadNpc.stats['perception'] ?? 5) * 0.05;
-    if (suppNpc != null)
+    }
+    if (suppNpc != null) {
       performanceScore += (suppNpc.stats['beauty'] ?? 5) * 0.03;
+    }
 
     final scenery = meta['sceneryChoice'] ?? 'minimalist';
     final costumes = meta['costumeChoice'] ?? 'period';

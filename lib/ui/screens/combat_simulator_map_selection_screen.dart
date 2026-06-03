@@ -3,8 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import '../../models/combat_map.dart';
-import '../../services/combat_unit_service.dart';
-import 'combat_screen.dart';
 import 'combat_simulator_leader_selection_screen.dart';
 
 class CombatSimulatorMapSelectionScreen extends StatefulWidget {

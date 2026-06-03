@@ -2406,76 +2406,71 @@ class CharacterBlobRenderer extends StatelessWidget {
     final bool isFiring = progress > 0.75;
     final double musketRecoilX = isFiring ? 4.0 : 0.0;
 
-    return Positioned(
-      bottom: size * 0.12,
-      left: -size * 0.18 + musketRecoilX, // Kickback recoil
-      child: Transform.rotate(
-        angle: -0.1,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.centerLeft,
-          children: [
-            Stack(
-              alignment: Alignment.centerLeft,
-              clipBehavior: Clip.none,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Curved Wood Stock
-                    Container(
-                      width: size * 0.22,
-                      height: 4.5,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF4E3629), // Darker walnut wood
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(1.5),
-                          bottomLeft: Radius.circular(3.5),
-                        ),
+    if (isFiring) {
+      // Firing State: lateral (horizontal), barrel pointing to the left (away), stock to the right
+      return Positioned(
+        bottom: size * 0.16,
+        left: -size * 0.42 + musketRecoilX,
+        child: Transform.rotate(
+          angle: -0.05,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.centerRight,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Long Steel rifled barrel (pointing away / left)
+                  Container(
+                    width: size * 0.44,
+                    height: 2.0,
+                    color: const Color(0xFF78909C),
+                  ),
+                  // Curved Wood Stock (butt)
+                  Container(
+                    width: size * 0.22,
+                    height: 4.5,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF4E3629),
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(1.5),
+                        bottomRight: Radius.circular(3.5),
                       ),
                     ),
-                    // Long Steel rifled barrel
-                    Container(
-                      width: size * 0.44,
-                      height: 2.0,
-                      color: const Color(0xFF78909C),
-                    ),
-                  ],
-                ),
-                // Lockplate mechanism (Flintlock Hammer & Pan)
-                Positioned(
-                  left: size * 0.18,
-                  top: -2.0,
-                  child: Container(
-                    width: 4.5,
-                    height: 3.0,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF37474F),
-                      border: Border.all(color: Colors.black87, width: 0.5),
-                      borderRadius: BorderRadius.circular(0.5),
-                    ),
                   ),
-                ),
-                // Brass Trigger guard loop underneath
-                Positioned(
-                  left: size * 0.14,
-                  bottom: -3.0,
-                  child: Container(
-                    width: 5.0,
-                    height: 3.0,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFD4AF37), width: 0.8),
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(2.0)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Muzzle flash starburst during attack trigger
-            if (isFiring)
+                ],
+              ),
+              // Lockplate mechanism
               Positioned(
-                left: -16.0,
-                top: -6.0,
+                right: size * 0.12,
+                top: -2.0,
+                child: Container(
+                  width: 4.5,
+                  height: 3.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF37474F),
+                    border: Border.all(color: Colors.black87, width: 0.5),
+                    borderRadius: BorderRadius.circular(0.5),
+                  ),
+                ),
+              ),
+              // Brass Trigger guard loop
+              Positioned(
+                right: size * 0.16,
+                bottom: -3.0,
+                child: Container(
+                  width: 5.0,
+                  height: 3.0,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFD4AF37), width: 0.8),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(2.0)),
+                  ),
+                ),
+              ),
+              // Muzzle flash starburst
+              Positioned(
+                left: -6.0,
+                top: -5.0,
                 child: Container(
                   width: 12,
                   height: 12,
@@ -2492,7 +2487,40 @@ class CharacterBlobRenderer extends StatelessWidget {
           ),
         ),
       );
+    } else {
+      // Rest State: default upright, butt pointing down, barrel pointing to the sky
+      return Positioned(
+        bottom: size * 0.08,
+        left: size * 0.15,
+        child: Transform.rotate(
+          angle: -0.05, // slightly angled for natural look
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Long Steel rifled barrel pointing UP
+              Container(
+                width: 2.0,
+                height: size * 0.44,
+                color: const Color(0xFF78909C),
+              ),
+              // Wood Stock (butt) pointing down
+              Container(
+                width: 4.5,
+                height: size * 0.22,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF4E3629),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(1.5),
+                    bottomRight: Radius.circular(3.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
+  }
 
   Widget _buildCavalry(double size) {
     double progress = 0.0;

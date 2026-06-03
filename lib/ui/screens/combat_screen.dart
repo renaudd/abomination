@@ -20,6 +20,7 @@ import '../../services/combat_manager.dart';
 import '../../models/npc.dart';
 import '../../models/game_item.dart';
 import '../../services/combat_unit_factory.dart';
+import '../../services/survival_service.dart';
 import '../../state/game_state.dart';
 import '../../models/combat_map.dart';
 import '../widgets/character_blob_renderer.dart';
@@ -38,6 +39,18 @@ class CombatScreen extends StatefulWidget {
   final VoidCallback? onVictory;
   final VoidCallback? onDefeat;
   final VoidCallback? onDraw;
+  final void Function(
+    int destroyedTowersCount,
+    List<NPC> enemyDeck,
+    int spoilsFood,
+    int spoilsCash,
+    int spoilsIron,
+    int spoilsWood,
+    Map<String, double> playerTowerHealth,
+  )? onSurvivalVictory;
+  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth)? onSurvivalDefeat;
+  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth)? onSurvivalDraw;
+  final int? survivalTurn;
 
   const CombatScreen({
     super.key,
@@ -49,6 +62,10 @@ class CombatScreen extends StatefulWidget {
     this.onVictory,
     this.onDefeat,
     this.onDraw,
+    this.onSurvivalVictory,
+    this.onSurvivalDefeat,
+    this.onSurvivalDraw,
+    this.survivalTurn,
   });
 
   @override
@@ -64,6 +81,12 @@ class _CombatScreenState extends State<CombatScreen>
   int? _selectedCardIndex;
   DateTime? _lastTickTime;
   Size? _screenSize;
+
+  bool _survivalSpoilsCalculated = false;
+  int _spoilsFood = 0;
+  int _spoilsCash = 0;
+  int _spoilsIron = 0;
+  int _spoilsWood = 0;
 
   // Real-Time Drag & Placement Preview State
   NPC? _previewNpc;
@@ -92,6 +115,58 @@ class _CombatScreenState extends State<CombatScreen>
       _previewNpc = null;
       _previewLocalPosition = null;
     });
+  }
+
+  void _calculateSurvivalSpoils() {
+    if (_survivalSpoilsCalculated) return;
+
+    final rand = Random();
+    final currentTurn = widget.survivalTurn ?? 1;
+
+    int wildAnimals = 0;
+    int humans = 0;
+    int vehicles = 0;
+
+    final opponentDeck = widget.customAiDeck ?? [];
+    for (var npc in opponentDeck) {
+      if (SurvivalService.isWildAnimal(npc)) {
+        wildAnimals++;
+      } else if (npc.combatStats?.unitType == UnitType.vehicle || npc.specimenType == 'Machine') {
+        vehicles++;
+      } else {
+        humans++;
+      }
+    }
+
+    final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+    final destroyedEnemyTowers = enemyTowers.where((t) => t.isDead).length;
+
+    // Calculate Dynamic Spoils based on Opponent Deck and Destroyed Towers!
+    // 1) Food: 2-3 per animal card + 10 baseline
+    _spoilsFood = 10 + wildAnimals * (2 + rand.nextInt(2));
+    // 2) Cash: 10-15 chf per human card + 100 + turn * 20 baseline
+    _spoilsCash = 100 + currentTurn * 20 + humans * (10 + rand.nextInt(6));
+    // 3) Iron: 4-6 per vehicle card
+    _spoilsIron = vehicles * (4 + rand.nextInt(3));
+    // 4) Wood: 10 wood per enemy tower level destroyed (tower level = currentTurn) + 30 baseline
+    _spoilsWood = 30 + destroyedEnemyTowers * 10 * currentTurn;
+
+    _survivalSpoilsCalculated = true;
+  }
+
+  Map<String, double> _getPlayerTowerHealthMap() {
+    final Map<String, double> healths = {};
+    for (int i = 1; i <= 3; i++) {
+      final towerId = 'tower_$i';
+      final npcId = 'player_tower_${i == 2 ? 2 : (i == 3 ? 1 : 0)}';
+      final c = _combatManager.combatants.firstWhereOrNull((c) => c.npc.id == npcId);
+      if (c == null || c.isDead) {
+        healths[towerId] = 0.0;
+      } else {
+        healths[towerId] = 1.0;
+      }
+    }
+    return healths;
   }
 
   // Custom Top-Right Notifications State
@@ -816,6 +891,10 @@ class _CombatScreenState extends State<CombatScreen>
   }
 
   Widget _buildVictoryOverlay(BuildContext context) {
+    if (widget.onSurvivalVictory != null) {
+      _calculateSurvivalSpoils();
+    }
+
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
       child: Center(
@@ -855,17 +934,28 @@ class _CombatScreenState extends State<CombatScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ..._combatManager.accumulatedLoot.entries
-                      .where((e) => e.value > 0)
-                      .map((e) {
-                        final icon = e.key == 'funds'
-                            ? Icons.monetization_on
-                            : Icons.restaurant;
-                        return _buildSpoilRow(
-                          icon,
-                          '${e.value} ${e.key.toUpperCase()}',
-                        );
-                      }),
+                  if (widget.onSurvivalVictory != null) ...[
+                    if (_spoilsCash > 0)
+                      _buildSpoilRow(Icons.monetization_on, '$_spoilsCash CHF', color: Colors.amber.shade700),
+                    if (_spoilsFood > 0)
+                      _buildSpoilRow(Icons.restaurant, '$_spoilsFood FOOD', color: Colors.green.shade700),
+                    if (_spoilsWood > 0)
+                      _buildSpoilRow(Icons.forest, '$_spoilsWood WOOD', color: Colors.brown.shade700),
+                    if (_spoilsIron > 0)
+                      _buildSpoilRow(Icons.construction, '$_spoilsIron IRON', color: Colors.blueGrey.shade600),
+                  ] else ...[
+                    ..._combatManager.accumulatedLoot.entries
+                        .where((e) => e.value > 0)
+                        .map((e) {
+                          final icon = e.key == 'funds'
+                              ? Icons.monetization_on
+                              : Icons.restaurant;
+                          return _buildSpoilRow(
+                            icon,
+                            '${e.value} ${e.key.toUpperCase()}',
+                          );
+                        }),
+                  ],
                   if (_combatManager.killedEnemies.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text(
@@ -891,7 +981,21 @@ class _CombatScreenState extends State<CombatScreen>
                 shape: const RoundedRectangleBorder(),
               ),
               onPressed: () {
-                if (widget.onVictory != null) {
+                if (widget.onSurvivalVictory != null) {
+                  final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+                  final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
+                  final playerTowerHealth = _getPlayerTowerHealthMap();
+                  Navigator.pop(context);
+                  widget.onSurvivalVictory!(
+                    destroyedTowersCount,
+                    widget.customAiDeck ?? [],
+                    _spoilsFood,
+                    _spoilsCash,
+                    _spoilsIron,
+                    _spoilsWood,
+                    playerTowerHealth,
+                  );
+                } else if (widget.onVictory != null) {
                   Navigator.pop(context);
                   widget.onVictory!();
                 } else {
@@ -915,13 +1019,13 @@ class _CombatScreenState extends State<CombatScreen>
     );
   }
 
-  Widget _buildSpoilRow(IconData icon, String text) {
+  Widget _buildSpoilRow(IconData icon, String text, {Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.yellow, size: 16),
+          Icon(icon, color: color ?? Colors.yellow, size: 16),
           const SizedBox(width: 8),
           Text(
             text,
@@ -957,7 +1061,19 @@ class _CombatScreenState extends State<CombatScreen>
               ),
             ),
             const SizedBox(height: 64),
-            if (widget.onDefeat != null) ...[
+            if (widget.onSurvivalDefeat != null) ...[
+              _DefeatButton(
+                label: 'CONTINUE',
+                onPressed: () {
+                  final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+                  final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
+                  final playerTowerHealth = _getPlayerTowerHealthMap();
+                  Navigator.pop(context);
+                  widget.onSurvivalDefeat!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth);
+                },
+                primary: true,
+              ),
+            ] else if (widget.onDefeat != null) ...[
               _DefeatButton(
                 label: 'CONTINUE',
                 onPressed: () {
@@ -1029,7 +1145,19 @@ class _CombatScreenState extends State<CombatScreen>
               ),
             ),
             const SizedBox(height: 64),
-            if (widget.onDraw != null || widget.onDefeat != null) ...[
+            if (widget.onSurvivalDraw != null) ...[
+              _DefeatButton(
+                label: 'CONTINUE',
+                onPressed: () {
+                  final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+                  final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
+                  final playerTowerHealth = _getPlayerTowerHealthMap();
+                  Navigator.pop(context);
+                  widget.onSurvivalDraw!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth);
+                },
+                primary: true,
+              ),
+            ] else if (widget.onDraw != null || widget.onDefeat != null) ...[
               _DefeatButton(
                 label: 'CONTINUE',
                 onPressed: () {
@@ -1523,7 +1651,7 @@ class _CombatantSprite extends StatelessWidget {
     }
 
     final Widget flippedVisual = Transform(
-      transform: Matrix4.identity()..scale(faceRight ? -1.0 : 1.0, 1.0, 1.0),
+      transform: Matrix4.diagonal3Values(faceRight ? -1.0 : 1.0, 1.0, 1.0),
       alignment: Alignment.center,
       child: visualRepresentation,
     );
@@ -2216,11 +2344,6 @@ class _UnitCardState extends State<_UnitCard> {
                                         padding: EdgeInsets.only(right: 2.0),
                                         child: Icon(Icons.flutter_dash, size: 8.0, color: Color(0xFF4E342E)),
                                       ),
-                                    if (widget.npc.combatStats!.distance >= 3.0 || widget.npc.combatStats!.rangedRange > 2.0)
-                                      const Padding(
-                                        padding: EdgeInsets.only(right: 2.0),
-                                        child: Icon(Icons.gps_fixed, size: 8.0, color: Color(0xFF4E342E)),
-                                      ),
                                     if (widget.npc.combatStats?.trait == CombatTrait.magicImmune)
                                       const Padding(
                                         padding: EdgeInsets.only(right: 2.0),
@@ -2246,9 +2369,17 @@ class _UnitCardState extends State<_UnitCard> {
                             children: [
                               _buildCardStat(
                                 DaggerIcon(color: Colors.deepOrange.shade800, size: 7.5),
-                                '${(widget.npc.combatStats!.attack * 1.5).toInt()}',
+                                '${widget.npc.combatStats!.meleeDamage.toInt()}',
                                 Colors.deepOrange.shade800,
                               ),
+                              if (widget.npc.combatStats!.rangedDamage > 0) ...[
+                                const SizedBox(height: 2),
+                                _buildCardStat(
+                                  Icon(Icons.gps_fixed, size: 7.5, color: Colors.deepOrange.shade800),
+                                  '${widget.npc.combatStats!.rangedDamage.toInt()}',
+                                  Colors.deepOrange.shade800,
+                                ),
+                              ],
                               const SizedBox(height: 2),
                               _buildCardStat(
                                 Icon(Icons.favorite, size: 7.5, color: Colors.green.shade900),

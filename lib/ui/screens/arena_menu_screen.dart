@@ -347,6 +347,15 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                           ),
                           const SizedBox(height: 14),
 
+                          _buildHubButton('SURVIVAL MODE', () {
+                            if (_loadedProgress?.survival != null) {
+                              _enterSurvival(_loadedProgress!.survival!);
+                            } else {
+                              _showSurvivalSetup();
+                            }
+                          }),
+                          const SizedBox(height: 6),
+
                           _buildHubButton('SKIRMISH (SIMULATOR)', () {
                             Navigator.push(
                               context,
@@ -371,15 +380,6 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                               _enterTournament(_loadedProgress!.tournament!);
                             } else {
                               _showTournamentSetup();
-                            }
-                          }),
-                          const SizedBox(height: 6),
-
-                          _buildHubButton('SURVIVAL MODE', () {
-                            if (_loadedProgress?.survival != null) {
-                              _enterSurvival(_loadedProgress!.survival!);
-                            } else {
-                              _showSurvivalSetup();
                             }
                           }),
                           const SizedBox(height: 6),

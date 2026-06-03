@@ -21,6 +21,7 @@ import '../models/combat_stats.dart';
 import '../models/schedule.dart';
 import '../models/diet.dart';
 import '../models/combat_map.dart';
+import 'combat_unit_factory.dart';
 
 enum CombatSide { player, enemy }
 
@@ -449,12 +450,18 @@ class CombatManager extends ChangeNotifier {
     final int rangeLvl = upgrades['tower_range'] ?? 0;
     final int speedLvl = upgrades['tower_speed'] ?? 0;
 
-    final double upgradedMaxHealth = 600.0 * (1.0 + hpLvl * 0.15);
-    final double upgradedAttack = 15.0 * (1.0 + atkLvl * 0.15);
-    final double upgradedRange = 20.0 + rangeLvl * 2.5;
-    final double upgradedSpeed = 2.0 * (1.0 + speedLvl * 0.10);
-
     for (int lane = 0; lane < 3; lane++) {
+      final String towerId = lane == 0 ? 'tower_1' : (lane == 1 ? 'tower_3' : 'tower_2');
+      final int indHpLvl = upgrades['${towerId}_hp'] ?? 0;
+      final int indAtkLvl = upgrades['${towerId}_atk'] ?? 0;
+      final int indRangeLvl = upgrades['${towerId}_range'] ?? 0;
+      final int indSpeedLvl = upgrades['${towerId}_speed'] ?? 0;
+
+      final double upgradedMaxHealth = 600.0 * (1.0 + hpLvl * 0.15 + indHpLvl * 0.08);
+      final double upgradedAttack = 15.0 * (1.0 + atkLvl * 0.15 + indAtkLvl * 0.08);
+      final double upgradedRange = 20.0 + (rangeLvl * 2.5) + (indRangeLvl * 1.5);
+      final double upgradedSpeed = (2.0 - (speedLvl * 0.2) - (indSpeedLvl * 0.1)).clamp(0.4, 2.0);
+
       spawnTower(
         name: '$playerTowerName ${lane + 1}',
         side: CombatSide.player,
@@ -1018,6 +1025,18 @@ class CombatManager extends ChangeNotifier {
           } else {
             c.x = _map.enemyCornerTowerX;
             c.y = _map.height / 2;
+            
+            if (c.isAiLeader) {
+              // Clear and refill AI deck/hand upon respawn so they continue summoning fresh guards!
+              _aiDeck.clear();
+              _aiHand.clear();
+              _aiDeck.addAll([
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createMilitia(),
+                CombatUnitFactory.createMilitia(),
+              ]);
+            }
           }
           c.attackCooldown = 0.0;
           
