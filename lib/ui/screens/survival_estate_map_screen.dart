@@ -2091,7 +2091,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         customAiDeck: aiUnits,
                         cardUpgrades: progress.cardUpgrades,
                         survivalTurn: progress.currentTurn,
-                        onSurvivalVictory: (destroyedTowersCount, enemyDeck, spoilsFood, spoilsCash, spoilsIron, spoilsWood, playerTowerHealth) {
+                        onSurvivalVictory: (destroyedTowersCount, enemyDeck, spoilsFood, spoilsCash, spoilsIron, spoilsWood, playerTowerHealth, activeContext) {
                           service.processCombatOutcome(
                             true,
                             false,
@@ -2106,11 +2106,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           );
                           state.clearEncounterState();
                           Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const SurvivalEstateMapScreen()),
+                            activeContext,
+                            MaterialPageRoute(
+                              builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                                value: service,
+                                child: const SurvivalEstateMapScreen(),
+                              ),
+                            ),
                           );
                         },
-                        onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth) {
+                        onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, activeContext) {
                           service.processCombatOutcome(
                             false,
                             false,
@@ -2125,11 +2130,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           );
                           state.clearEncounterState();
                           Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const SurvivalEstateMapScreen()),
+                            activeContext,
+                            MaterialPageRoute(
+                              builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                                value: service,
+                                child: const SurvivalEstateMapScreen(),
+                              ),
+                            ),
                           );
                         },
-                        onSurvivalDraw: (destroyedTowersCount, enemyDeck, playerTowerHealth) {
+                        onSurvivalDraw: (destroyedTowersCount, enemyDeck, playerTowerHealth, activeContext) {
                           service.processCombatOutcome(
                             false,
                             true,
@@ -2144,8 +2154,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           );
                           state.clearEncounterState();
                           Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const SurvivalEstateMapScreen()),
+                            activeContext,
+                            MaterialPageRoute(
+                              builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                                value: service,
+                                child: const SurvivalEstateMapScreen(),
+                              ),
+                            ),
                           );
                         },
                       ),

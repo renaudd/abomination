@@ -47,9 +47,10 @@ class CombatScreen extends StatefulWidget {
     int spoilsIron,
     int spoilsWood,
     Map<String, double> playerTowerHealth,
+    BuildContext context,
   )? onSurvivalVictory;
-  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth)? onSurvivalDefeat;
-  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth)? onSurvivalDraw;
+  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth, BuildContext context)? onSurvivalDefeat;
+  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth, BuildContext context)? onSurvivalDraw;
   final int? survivalTurn;
 
   const CombatScreen({
@@ -985,7 +986,6 @@ class _CombatScreenState extends State<CombatScreen>
                   final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
                   final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
                   final playerTowerHealth = _getPlayerTowerHealthMap();
-                  Navigator.pop(context);
                   widget.onSurvivalVictory!(
                     destroyedTowersCount,
                     widget.customAiDeck ?? [],
@@ -994,6 +994,7 @@ class _CombatScreenState extends State<CombatScreen>
                     _spoilsIron,
                     _spoilsWood,
                     playerTowerHealth,
+                    context,
                   );
                 } else if (widget.onVictory != null) {
                   Navigator.pop(context);
@@ -1068,8 +1069,7 @@ class _CombatScreenState extends State<CombatScreen>
                   final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
                   final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
                   final playerTowerHealth = _getPlayerTowerHealthMap();
-                  Navigator.pop(context);
-                  widget.onSurvivalDefeat!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth);
+                  widget.onSurvivalDefeat!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth, context);
                 },
                 primary: true,
               ),
@@ -1152,8 +1152,7 @@ class _CombatScreenState extends State<CombatScreen>
                   final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
                   final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
                   final playerTowerHealth = _getPlayerTowerHealthMap();
-                  Navigator.pop(context);
-                  widget.onSurvivalDraw!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth);
+                  widget.onSurvivalDraw!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth, context);
                 },
                 primary: true,
               ),
@@ -2362,45 +2361,57 @@ class _UnitCardState extends State<_UnitCard> {
                         ),
                         // Damage & Health (Right)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
+                          padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 4.0),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              _buildCardStat(
-                                DaggerIcon(color: Colors.deepOrange.shade800, size: 7.5),
-                                '${widget.npc.combatStats!.meleeDamage.toInt()}',
-                                Colors.deepOrange.shade800,
-                              ),
-                              if (widget.npc.combatStats!.rangedDamage > 0) ...[
-                                const SizedBox(height: 2),
-                                _buildCardStat(
-                                  Icon(Icons.gps_fixed, size: 7.5, color: Colors.deepOrange.shade800),
+                              if (widget.npc.combatStats!.meleeDamage > 0 && widget.npc.combatStats!.rangedDamage > 0)
+                                _buildCombinedCardStat(
+                                  DaggerIcon(color: Colors.deepOrange.shade800, size: 6.5),
+                                  '${widget.npc.combatStats!.meleeDamage.toInt()}',
+                                  Icon(Icons.gps_fixed, size: 6.5, color: Colors.deepOrange.shade800),
                                   '${widget.npc.combatStats!.rangedDamage.toInt()}',
                                   Colors.deepOrange.shade800,
-                                ),
+                                )
+                              else ...[
+                                if (widget.npc.combatStats!.meleeDamage > 0 || widget.npc.combatStats!.rangedDamage == 0)
+                                  _buildCardStat(
+                                    DaggerIcon(color: Colors.deepOrange.shade800, size: 7.0),
+                                    '${widget.npc.combatStats!.meleeDamage.toInt() > 0 ? widget.npc.combatStats!.meleeDamage.toInt() : widget.npc.combatStats!.attack.toInt()}',
+                                    Colors.deepOrange.shade800,
+                                  ),
+                                if (widget.npc.combatStats!.rangedDamage > 0) ...[
+                                  if (widget.npc.combatStats!.meleeDamage > 0 || widget.npc.combatStats!.rangedDamage == 0)
+                                    const SizedBox(height: 1.0),
+                                  _buildCardStat(
+                                    Icon(Icons.gps_fixed, size: 7.0, color: Colors.deepOrange.shade800),
+                                    '${widget.npc.combatStats!.rangedDamage.toInt()}',
+                                    Colors.deepOrange.shade800,
+                                  ),
+                                ],
                               ],
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 1.0),
                               _buildCardStat(
-                                Icon(Icons.favorite, size: 7.5, color: Colors.green.shade900),
+                                Icon(Icons.favorite, size: 7.0, color: Colors.green.shade900),
                                 '${widget.npc.combatStats?.maxHealth.toInt() ?? 0}',
                                 Colors.green.shade900,
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 1.0),
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const Icon(
                                     Icons.group,
-                                    size: 8.0,
+                                    size: 7.5,
                                     color: Color(0xFF4E342E),
                                   ),
-                                  const SizedBox(width: 2),
+                                  const SizedBox(width: 1.5),
                                   Text(
                                     '${widget.npc.combatStats?.unitCount ?? 1}',
                                     style: GoogleFonts.oldStandardTt(
                                       color: const Color(0xFF4E342E),
-                                      fontSize: 8.0,
+                                      fontSize: 7.5,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -2524,7 +2535,7 @@ class _UnitCardState extends State<_UnitCard> {
 
   Widget _buildCardStat(Widget icon, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 0.5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(2),
@@ -2533,12 +2544,58 @@ class _UnitCardState extends State<_UnitCard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           icon,
-          const SizedBox(width: 1.5),
+          const SizedBox(width: 1.0),
           Text(
             value,
             style: GoogleFonts.oldStandardTt(
               color: color,
-              fontSize: 8,
+              fontSize: 7.5,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCombinedCardStat(Widget icon1, String value1, Widget icon2, String value2, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 0.5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          icon1,
+          const SizedBox(width: 0.5),
+          Text(
+            value1,
+            style: GoogleFonts.oldStandardTt(
+              color: color,
+              fontSize: 7.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0.5),
+            child: Text(
+              '/',
+              style: GoogleFonts.oldStandardTt(
+                color: color.withValues(alpha: 0.4),
+                fontSize: 6.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          icon2,
+          const SizedBox(width: 0.5),
+          Text(
+            value2,
+            style: GoogleFonts.oldStandardTt(
+              color: color,
+              fontSize: 7.0,
               fontWeight: FontWeight.bold,
             ),
           ),

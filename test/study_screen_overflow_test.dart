@@ -18,16 +18,18 @@ import 'package:provider/provider.dart';
 import 'package:abomination/state/game_state.dart';
 import 'package:abomination/ui/screens/study_screen.dart';
 import 'package:abomination/models/game_item.dart';
+import 'package:abomination/models/room.dart';
 
 void main() {
   testWidgets('StudyScreen should not have overflow with many items', (
     WidgetTester tester,
   ) async {
     final gameState = GameState();
+    final List<GameItem> items = [];
 
     // Add many items to inventory to force a long list
     for (int i = 0; i < 20; i++) {
-      gameState.inventory.add(
+      items.add(
         GameItem.create(
           name: 'Specimen $i',
           type: 'specimen',
@@ -35,6 +37,13 @@ void main() {
         ),
       );
     }
+    gameState.addRoomForTesting(Room.initial(
+      'study',
+      'Study',
+      RoomType.study,
+      Floor.ground,
+      inventory: items,
+    ));
 
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
