@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:abomination/main.dart';
 import 'package:abomination/state/game_state.dart';
 import 'package:abomination/services/game_engine.dart';
+import 'package:abomination/ui/screens/combat_screen.dart';
+import 'package:abomination/services/combat_unit_factory.dart';
 import 'package:flutter/services.dart';
 
 void main() {
@@ -64,6 +66,62 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
     
     await tester.pump(const Duration(seconds: 1));
+    gameEngine.dispose();
+  });
+
+  testWidgets('Test pressing key events (WASD, numbers) in CombatScreen does not crash global KeyboardListener', (WidgetTester tester) async {
+    final gameState = GameState();
+    final gameEngine = GameEngine(gameState);
+    addTearDown(() => gameEngine.dispose());
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<GameState>.value(value: gameState),
+          Provider<GameEngine>.value(value: gameEngine),
+        ],
+        child: const AbominationApp(),
+      ),
+    );
+
+    // Complete loading screen
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+
+    // Push CombatScreen
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => CombatScreen(
+          customPlayerHero: CombatUnitFactory.createAlphonse(),
+          customPlayerDeck: const [],
+          customAiDeck: const [],
+          cardUpgrades: const {},
+          survivalTurn: 1,
+          onSurvivalVictory: (towers, enemyDeck, f, c, ir, w, hp, ctx) {},
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Fire WASD keys and digits
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyW);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
+    await tester.pump();
+
+    // Verify no crash occurred and CombatScreen is still active
+    expect(find.byType(CombatScreen), findsOneWidget);
     gameEngine.dispose();
   });
 }

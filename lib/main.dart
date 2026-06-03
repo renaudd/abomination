@@ -36,6 +36,7 @@ void main() async {
   await audioService.initialize();
 
   final gameState = GameState();
+  globalGameState = gameState;
   final gameEngine = GameEngine(gameState);
 
   // Play placeholder bleak music (user can replace URL)
@@ -51,6 +52,8 @@ void main() async {
     ),
   );
 }
+
+GameState? globalGameState;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -96,12 +99,13 @@ class _AbominationAppState extends State<AbominationApp> {
                 if (hasTextFocus) return;
               }
 
-              final activeContext = navigatorKey.currentContext;
-              if (activeContext == null) return;
-              final GameState state;
-              try {
-                state = activeContext.read<GameState>();
-              } catch (_) {
+              final state = globalGameState;
+              if (state == null) return;
+
+              // If player is not initialized yet (e.g. game setup screen) or if we are in active combat/combat simulator,
+              // do not handle global keys!
+              final player = state.npcs.firstWhereOrNull((n) => n.isPlayer);
+              if (player == null || state.simulationPlayerDeck != null) {
                 return;
               }
 
@@ -127,10 +131,7 @@ class _AbominationAppState extends State<AbominationApp> {
                 }
               }
 
-              final player = state.npcs.firstWhereOrNull((n) => n.isPlayer);
-              final bool isAtManor = player != null && 
-                  (player.worldTravelProgress == 0.0 || player.worldTravelProgress >= 1.0) &&
-                  state.simulationPlayerDeck == null;
+              final bool isAtManor = (player.worldTravelProgress == 0.0 || player.worldTravelProgress >= 1.0);
 
               if (isAtManor) {
                 if (key == PhysicalKeyboardKey.keyU) {

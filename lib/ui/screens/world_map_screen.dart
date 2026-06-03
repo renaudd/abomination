@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -217,11 +218,18 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         children: [
           // Zoomable Map Content
           Positioned.fill(
-            child: InteractiveViewer(
-              minScale: 0.1,
-              maxScale: 3.0,
-              constrained: false,
-              child: SizedBox(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double minScaleX = constraints.maxWidth / 1200;
+                final double minScaleY = constraints.maxHeight / 800;
+                final double computedMinScale = max(minScaleX, minScaleY).clamp(0.1, 3.0);
+
+                return InteractiveViewer(
+                  minScale: computedMinScale,
+                  maxScale: 3.0,
+                  constrained: false,
+                  boundaryMargin: EdgeInsets.zero,
+                  child: SizedBox(
                 width: 1200,
                 height: 800,
                 child: Stack(
@@ -421,8 +429,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   ],
                 ),
               ),
-            ),
-          ),
+            );
+          },
+        ),
+      ),
       // Time Controls Overlay
           if (_timeControlsExpanded)
             Positioned(
