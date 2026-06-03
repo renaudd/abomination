@@ -70,9 +70,9 @@ class SurvivalBuilding {
 }
 
 enum SurvivalDifficulty {
-  childPlay,
   elementary,
   classic,
+  arcade,
 }
 
 class SurvivalProgress {
@@ -96,6 +96,7 @@ class SurvivalProgress {
   SurvivalDifficulty difficulty;
   bool autoSaveEnabled;
   Map<String, int> factionStandings; // e.g. {'Freemasons': 0, 'Rosicrucians': 0, 'Glarus': 0, 'Army': 0...}
+  Map<String, List<String>> towerRepairWorkers; // towerId -> list of cardTypes
 
   SurvivalProgress({
     this.currentTurn = 1,
@@ -118,6 +119,7 @@ class SurvivalProgress {
     this.difficulty = SurvivalDifficulty.classic,
     this.autoSaveEnabled = true,
     Map<String, int>? factionStandings,
+    Map<String, List<String>>? towerRepairWorkers,
   }) : this.cardUpgrades = cardUpgrades ?? {},
        this.factionStandings = factionStandings ?? {
          'Freemasons': 0,
@@ -129,8 +131,13 @@ class SurvivalProgress {
          'Fenian Brotherhood': 0,
          'Chevaliers de la foi': 0,
          'Ancient Order of Foresters': 0,
-         'Glarus': 0,
-         'Army': 0,
+         'Glarus': 10,
+         'Army': 40,
+       },
+       this.towerRepairWorkers = towerRepairWorkers ?? {
+         'tower_1': [],
+         'tower_2': [],
+         'tower_3': [],
        };
 
   Map<String, dynamic> toJson() => {
@@ -154,6 +161,7 @@ class SurvivalProgress {
         'difficulty': difficulty.name,
         'autoSaveEnabled': autoSaveEnabled,
         'factionStandings': factionStandings,
+        'towerRepairWorkers': towerRepairWorkers,
       };
 
   factory SurvivalProgress.fromJson(Map<String, dynamic> json) => SurvivalProgress(
@@ -180,7 +188,14 @@ class SurvivalProgress {
         trainingUnitIds: List<String>.from(json['trainingUnitIds'] as List? ?? []),
         cardUpgrades: Map<String, int>.from(json['cardUpgrades'] as Map? ?? {}),
         villageHealth: json['villageHealth'] as int? ?? 100,
-        difficulty: SurvivalDifficulty.values.byName(json['difficulty'] as String? ?? 'classic'),
+        difficulty: () {
+          final diffStr = json['difficulty'] as String? ?? 'classic';
+          if (diffStr == 'childPlay') return SurvivalDifficulty.elementary;
+          return SurvivalDifficulty.values.firstWhere(
+            (e) => e.name == diffStr,
+            orElse: () => SurvivalDifficulty.classic,
+          );
+        }(),
         autoSaveEnabled: json['autoSaveEnabled'] as bool? ?? true,
         factionStandings: Map<String, int>.from(json['factionStandings'] as Map? ?? {
           'Freemasons': 0,
@@ -192,9 +207,12 @@ class SurvivalProgress {
           'Fenian Brotherhood': 0,
           'Chevaliers de la foi': 0,
           'Ancient Order of Foresters': 0,
-          'Glarus': 0,
-          'Army': 0,
+          'Glarus': 10,
+          'Army': 40,
         }),
+        towerRepairWorkers: (json['towerRepairWorkers'] as Map? ?? {}).map(
+          (k, v) => MapEntry(k as String, List<String>.from(v as List? ?? [])),
+        ),
       );
 
 
@@ -202,12 +220,12 @@ class SurvivalProgress {
   // Progressive Level milestones
   static int getRequiredXpForLevel(int nextLevel) {
     switch (nextLevel) {
-      case 2: return 6;
-      case 3: return 20;
-      case 4: return 60;
-      case 5: return 150;
-      case 6: return 350;
-      case 7: return 1000;
+      case 2: return 10;
+      case 3: return 40;
+      case 4: return 120;
+      case 5: return 300;
+      case 6: return 800;
+      case 7: return 2500;
       default: return 9999999;
     }
   }
@@ -224,5 +242,56 @@ class SurvivalProgress {
       }
     }
     return lvl;
+  }
+
+  int getTowerLevel(String towerId) {
+    final globalHp = cardUpgrades['tower_hp'] ?? 0;
+    final globalAtk = cardUpgrades['tower_atk'] ?? 0;
+    final globalRange = cardUpgrades['tower_range'] ?? 0;
+    final globalSpeed = cardUpgrades['tower_speed'] ?? 0;
+
+    final indHp = cardUpgrades['${towerId}_hp'] ?? 0;
+    final indAtk = cardUpgrades['${towerId}_atk'] ?? 0;
+    final indRange = cardUpgrades['${towerId}_range'] ?? 0;
+    final indSpeed = cardUpgrades['${towerId}_speed'] ?? 0;
+
+    final total = globalHp + globalAtk + globalRange + globalSpeed +
+                  indHp + indAtk + indRange + indSpeed;
+
+    if (total >= 38) return 7;
+    if (total >= 33) return 6;
+    if (total >= 26) return 5;
+    if (total >= 18) return 4;
+    if (total >= 10) return 3;
+    if (total >= 4) return 2;
+    return 1;
+  }
+
+  int getTowerRepairSlotsCap(String towerId) {
+    final lvl = getTowerLevel(towerId);
+    if (lvl >= 7) return 5;
+    if (lvl == 6) return 4;
+    if (lvl >= 4) return 3;
+    if (lvl >= 2) return 2;
+    return 1;
+  }
+}
+
+extension SurvivalBuildingTypeExtension on SurvivalBuildingType {
+  String get displayName {
+    switch (this) {
+      case SurvivalBuildingType.farm:
+        return 'Farm';
+      case SurvivalBuildingType.lumberMill:
+        return 'Lumber Mill';
+      case SurvivalBuildingType.mine:
+        return 'Mine';
+      case SurvivalBuildingType.arsenal:
+        return 'Arsenal';
+      case SurvivalBuildingType.garage:
+        return 'Garage';
+      case SurvivalBuildingType.munitionsFactory:
+        return 'Munitions Factory';
+    }
   }
 }

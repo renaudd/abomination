@@ -29,6 +29,7 @@ class SurvivalService extends ChangeNotifier {
 
   SurvivalProgress? get progress => _progress;
   List<String> get logs => _logs;
+  int get activeSlot => _activeSlot;
 
   SurvivalService(this._activeSlot, [this._progress]) {
     if (_progress == null) {
@@ -47,6 +48,15 @@ class SurvivalService extends ChangeNotifier {
   void _save({bool isManual = false}) {
     if (_progress == null) return;
     if (!isManual && !_progress!.autoSaveEnabled) return;
+
+    final t1Destroyed = (_progress!.towerDamaged['tower_1'] ?? 0.0) >= 1.0;
+    final t2Destroyed = (_progress!.towerDamaged['tower_2'] ?? 0.0) >= 1.0;
+    final t3Destroyed = (_progress!.towerDamaged['tower_3'] ?? 0.0) >= 1.0;
+    final allTowersDestroyed = t1Destroyed && t2Destroyed && t3Destroyed;
+    if (_progress!.difficulty == SurvivalDifficulty.arcade && allTowersDestroyed) {
+      return; // Do not save defeated Arcade game
+    }
+
     ArenaSaveService.loadProgress(_activeSlot).then((current) {
       final updated = ArenaProgress(
         slot: _activeSlot,
@@ -190,6 +200,8 @@ class SurvivalService extends ChangeNotifier {
 
   bool buyTrainingPoints(String cardId, int xpAmount, int cashCost) {
     if (_progress == null || _progress!.cash < cashCost) return false;
+    final tempNpc = CombatUnitService.createUnit(cardId);
+    if (isUndead(tempNpc)) return false;
     _progress!.cash -= cashCost;
     final currentXp = _progress!.unitExp[cardId] ?? 0.0;
     final nextXp = currentXp + xpAmount;
@@ -307,6 +319,14 @@ class SurvivalService extends ChangeNotifier {
       return false;
     }
 
+    // Check if unit is committed to tower repair
+    for (var list in _progress!.towerRepairWorkers.values) {
+      if (list.contains(unitCardId)) {
+        addLog('Cannot reassign ${npc.name} because they are committed to watchtower repair.');
+        return false;
+      }
+    }
+
     // Find the building
     final b = _progress!.buildings.firstWhere((x) => x.id == buildingId);
     if (b.assignedUnitIds.length >= b.getWorkerCap()) {
@@ -323,7 +343,7 @@ class SurvivalService extends ChangeNotifier {
     return true;
   }
 
-  void unassignUnitEverywhere(String unitCardId) {
+  void unassignUnitEverywhere(String unitCardId, {bool force = false}) {
     if (_progress == null) return;
     // Remove from buildings
     for (var b in _progress!.buildings) {
@@ -331,6 +351,55 @@ class SurvivalService extends ChangeNotifier {
     }
     // Remove from training
     _progress!.trainingUnitIds.remove(unitCardId);
+    // Remove from tower repairs ONLY if force is true
+    if (force) {
+      for (var list in _progress!.towerRepairWorkers.values) {
+        list.remove(unitCardId);
+      }
+    }
+  }
+
+  bool assignTowerRepair(String towerId, String unitCardId) {
+    if (_progress == null) return false;
+
+    final npc = CombatUnitService.createUnit(unitCardId);
+    if (isWildAnimal(npc)) {
+      addLog('${npc.name} is a wild beast and cannot do construction work.');
+      return false;
+    }
+    if (isChimera(npc)) {
+      addLog('Chimera cannot be assigned to work or training.');
+      return false;
+    }
+
+    // Check if new worker is already repairing another tower
+    for (var entry in _progress!.towerRepairWorkers.entries) {
+      if (entry.value.contains(unitCardId)) {
+        if (entry.key == towerId) {
+          return false; // Already here
+        } else {
+          addLog('${npc.name} is already repairing another tower.');
+          return false;
+        }
+      }
+    }
+
+    final list = _progress!.towerRepairWorkers[towerId] ?? [];
+    final cap = _progress!.getTowerRepairSlotsCap(towerId);
+
+    if (list.length >= cap) {
+      // Swapping! Remove the first worker in the list
+      final removedId = list.removeAt(0);
+      final removedNpc = CombatUnitService.createUnit(removedId);
+      addLog('Swapped out ${removedNpc.name} from ${towerId.toUpperCase()} repair.');
+    }
+
+    unassignUnitEverywhere(unitCardId, force: true);
+    list.add(unitCardId);
+    _progress!.towerRepairWorkers[towerId] = list;
+    addLog('Assigned ${npc.name} to repair ${towerId.replaceAll("_", " ").toUpperCase()}.');
+    _save();
+    return true;
   }
 
   bool assignTraining(String unitCardId) {
@@ -345,6 +414,15 @@ class SurvivalService extends ChangeNotifier {
       addLog('Chimera cannot be assigned to work or training.');
       return false;
     }
+
+    // Check if unit is committed to tower repair
+    for (var list in _progress!.towerRepairWorkers.values) {
+      if (list.contains(unitCardId)) {
+        addLog('Cannot reassign ${npc.name} because they are committed to watchtower repair.');
+        return false;
+      }
+    }
+
     if (_progress!.trainingUnitIds.length >= 8) {
       addLog('The Training Yard is at full capacity (limit of 8 trainees).');
       return false;
@@ -455,23 +533,54 @@ class SurvivalService extends ChangeNotifier {
   // Resource production calculation
   int getFarmOutput(int level, int workers) {
     // Farm yields 15 food per worker per level
+    if (level >= 4) {
+      double efficiency = 0.0;
+      for (int i = 0; i < workers; i++) {
+        if (i == 0) efficiency += 1.0;
+        else if (i == 1) efficiency += 0.8;
+        else efficiency += 0.6;
+      }
+      return (efficiency * 15 * level).round();
+    }
     return workers * 15 * level;
   }
 
   int getLumberMillOutput(int level, int workers) {
     if (level == 7) return 300; // Fully automated passive output
+    if (level >= 4) {
+      double efficiency = 0.0;
+      for (int i = 0; i < workers; i++) {
+        if (i == 0) efficiency += 1.0;
+        else if (i == 1) efficiency += 0.8;
+        else efficiency += 0.6;
+      }
+      final basePerWorker = level == 6 ? 50 : (25 + 5 * level);
+      return (efficiency * basePerWorker).round();
+    }
     if (level == 6) return workers * 50;
     return workers * (25 + 5 * level);
   }
 
   int getMineOutput(int level, int workers) {
-    return workers * (5 + 2 * level);
+    final caps = const [1, 2, 2, 3, 3, 1, 2];
+    final cap = caps[(level - 1).clamp(0, 6)];
+    double output = workers * (5 + 2 * level).toDouble();
+    if (workers < cap) {
+      output *= 0.7; // 30% under-staffing penalty
+    }
+    return output.round();
   }
 
   int getAdvancedOutput(int level, int workers) {
     // Level 1: 50, Level 2: 80, Level 3: 120 CHF
     final wages = const [50, 80, 120];
-    return workers * wages[(level - 1).clamp(0, 2)];
+    final wage = wages[(level - 1).clamp(0, 2)];
+    final cap = level.clamp(1, 3);
+    double output = workers * wage.toDouble();
+    if (workers < cap) {
+      output *= 0.7; // 30% under-staffing penalty
+    }
+    return output.round();
   }
 
   // TOWER REPAIRS
@@ -482,25 +591,100 @@ class SurvivalService extends ChangeNotifier {
       if (_progress!.wood < woodCost) return false;
       _progress!.wood -= woodCost;
       _progress!.towerDamaged[towerId] = 0.0;
+      _progress!.towerRepairWorkers[towerId]?.clear();
       addLog('Repaired $towerId with raw Wood.');
     } else if (method == 'cash') {
       if (_progress!.cash < cashCost) return false;
       _progress!.cash -= cashCost;
       _progress!.towerDamaged[towerId] = 0.0;
+      _progress!.towerRepairWorkers[towerId]?.clear();
       addLog('Repaired $towerId via Cash contract.');
     } else if (method == 'labor') {
-      // Auto-locked labor assignments. We just clear the tower state as the units spend their turn
-      _progress!.towerDamaged[towerId] = 0.0;
-      addLog('Reconstructed $towerId using manual Labor.');
+      autoAssignTowerRepairs();
     }
     
     _save();
     return true;
   }
 
+  void autoAssignTowerRepairs() {
+    if (_progress == null) return;
+    
+    final damagedTowers = _progress!.towerDamaged.entries
+        .where((entry) => entry.value > 0.0)
+        .map((entry) => entry.key)
+        .toList();
+        
+    if (damagedTowers.isEmpty) return;
+
+    final pool = <String>[];
+    for (final type in _progress!.playerDeckIds) {
+      final npc = CombatUnitService.createUnit(type);
+      if (isWildAnimal(npc) || isChimera(npc)) continue;
+      
+      bool isRepairing = false;
+      for (final list in _progress!.towerRepairWorkers.values) {
+        if (list.contains(type)) isRepairing = true;
+      }
+      if (!isRepairing) {
+        pool.add(type);
+      }
+    }
+
+    final idleUnits = <String>[];
+    final trainingUnits = <String>[];
+    final buildingUnits = <String>[];
+
+    for (final type in pool) {
+      if (_progress!.trainingUnitIds.contains(type)) {
+        trainingUnits.add(type);
+      } else {
+        bool inBuilding = false;
+        for (final b in _progress!.buildings) {
+          if (b.assignedUnitIds.contains(type)) {
+            inBuilding = true;
+            break;
+          }
+        }
+        if (inBuilding) {
+          buildingUnits.add(type);
+        } else {
+          idleUnits.add(type);
+        }
+      }
+    }
+
+    final sortedPool = [...idleUnits, ...trainingUnits, ...buildingUnits];
+
+    for (final towerId in damagedTowers) {
+      final list = _progress!.towerRepairWorkers[towerId] ?? [];
+      final cap = _progress!.getTowerRepairSlotsCap(towerId);
+      while (list.length < cap && sortedPool.isNotEmpty) {
+        final unitCardId = sortedPool.removeAt(0);
+        unassignUnitEverywhere(unitCardId, force: true);
+        list.add(unitCardId);
+        final npc = CombatUnitService.createUnit(unitCardId);
+        addLog('Assigned ${npc.name} to repair ${towerId.toUpperCase()} by default.');
+      }
+      _progress!.towerRepairWorkers[towerId] = list;
+    }
+  }
+
   // END TURN: Transition loop
   void endTurn() {
     if (_progress == null) return;
+
+    // Auto-assign and resolve tower repairs
+    autoAssignTowerRepairs();
+    for (final towerId in _progress!.towerRepairWorkers.keys.toList()) {
+      final list = _progress!.towerRepairWorkers[towerId] ?? [];
+      final cap = _progress!.getTowerRepairSlotsCap(towerId);
+      if (list.length >= cap) {
+        _progress!.towerDamaged[towerId] = 0.0;
+        list.clear();
+        addLog('Watchtower ${towerId.toUpperCase()} was successfully repaired by manual labor.');
+      }
+    }
 
     addLog('--- TURN ${_progress!.currentTurn} RESOLUTION ---');
 
@@ -587,21 +771,22 @@ class SurvivalService extends ChangeNotifier {
       } else {
         final out = getAdvancedOutput(b.level, workers);
         _progress!.cash += out;
-        if (out > 0) addLog('${b.type.name.replaceAll("_", " ").toUpperCase()} produced +$out CHF (workers: $workers).');
+        if (out > 0) addLog('${b.type.displayName.toUpperCase()} produced +$out CHF (workers: $workers).');
       }
     }
 
     // 3. Apply Training XP
     for (var t in _progress!.trainingUnitIds) {
       final currentXp = _progress!.unitExp[t] ?? 0.0;
-      final nextXp = currentXp + 8.0;
-      _progress!.unitExp[t] = nextXp;
       final oldLvl = SurvivalProgress.getLevelFromXp(currentXp);
+      final gainedXp = 1.0 + oldLvl;
+      final nextXp = currentXp + gainedXp;
+      _progress!.unitExp[t] = nextXp;
       final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
       if (newLvl > oldLvl) {
         addLog('LEVEL UP! Trained ${t.toUpperCase()} has promoted to Level $newLvl!');
       } else {
-        addLog('Trained ${t.toUpperCase()} gained +8 XP (Current: ${nextXp.toInt()} XP).');
+        addLog('Trained ${t.toUpperCase()} gained +${gainedXp.toInt()} XP (Current: ${nextXp.toInt()} XP).');
       }
     }
 
@@ -687,10 +872,15 @@ class SurvivalService extends ChangeNotifier {
         finalXp = 0.0; // Undead get no experience
       }
       
-      final nextXp = max(0.0, current + finalXp);
+      final oldLvl = SurvivalProgress.getLevelFromXp(current);
+      final maxAllowedLvl = oldLvl + 1;
+      final maxAllowedXp = maxAllowedLvl < 7
+          ? SurvivalProgress.getRequiredXpForLevel(maxAllowedLvl + 1) - 0.01
+          : double.infinity;
+
+      final nextXp = min(maxAllowedXp, max(0.0, current + finalXp));
       _progress!.unitExp[entry.key] = nextXp;
       
-      final oldLvl = SurvivalProgress.getLevelFromXp(current);
       final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
       
       if (finalXp > 0) {
@@ -704,6 +894,9 @@ class SurvivalService extends ChangeNotifier {
       }
     }
 
-    _save();
+    final isArcadeDefeat = _progress!.difficulty == SurvivalDifficulty.arcade && !playerWon && !isTie;
+    if (!isArcadeDefeat) {
+      _save();
+    }
   }
 }

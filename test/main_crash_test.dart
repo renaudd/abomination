@@ -98,7 +98,7 @@ void main() {
           customAiDeck: const [],
           cardUpgrades: const {},
           survivalTurn: 1,
-          onSurvivalVictory: (towers, enemyDeck, f, c, ir, w, hp, ctx) {},
+          onSurvivalVictory: (towers, enemyDeck, f, c, ir, w, hp, exp, ctx) {},
         ),
       ),
     );

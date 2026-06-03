@@ -145,8 +145,13 @@ void main() {
     });
 
     test('Ground Melee (Giles) cannot target Flying Rat', () {
-      final giles = CombatUnitFactory.createFlaubert();
-      final rat = CombatUnitFactory.createRatsUnit(); // Now isFlying: true
+      // Force distance to 1.0 (melee) so Giles is not a ranged unit in this test
+      final giles = CombatUnitFactory.createFlaubert().copyWith(
+        combatStats: CombatUnitFactory.createFlaubert().combatStats!.copyWith(distance: 1.0),
+      );
+      final rat = CombatUnitFactory.createRatsUnit().copyWith(
+        combatStats: CombatUnitFactory.createRatsUnit().combatStats!.copyWith(isFlying: true),
+      );
 
       manager.spawnUnit(giles, CombatSide.player, x: 50.0, y: 42.5);
       manager.spawnUnit(rat, CombatSide.enemy, x: 55.0, y: 42.5);
@@ -162,7 +167,9 @@ void main() {
 
     test('Sniper (Ranged) CAN target Flying Rat', () {
       final sniper = CombatUnitFactory.createSniper();
-      final rat = CombatUnitFactory.createRatsUnit();
+      final rat = CombatUnitFactory.createRatsUnit().copyWith(
+        combatStats: CombatUnitFactory.createRatsUnit().combatStats!.copyWith(isFlying: true),
+      );
 
       manager.spawnUnit(sniper, CombatSide.player, x: 10.0, y: 42.5);
       manager.spawnUnit(rat, CombatSide.enemy, x: 55.0, y: 42.5);
@@ -176,8 +183,12 @@ void main() {
     });
 
     test('Bat (Flyer) CAN target Flying Rat', () {
-      final bat = CombatUnitFactory.createBatsUnit();
-      final rat = CombatUnitFactory.createRatsUnit();
+      final bat = CombatUnitFactory.createBatsUnit().copyWith(
+        combatStats: CombatUnitFactory.createBatsUnit().combatStats!.copyWith(isFlying: true),
+      );
+      final rat = CombatUnitFactory.createRatsUnit().copyWith(
+        combatStats: CombatUnitFactory.createRatsUnit().combatStats!.copyWith(isFlying: true),
+      );
 
       manager.spawnUnit(bat, CombatSide.player, x: 50.0, y: 42.5);
       manager.spawnUnit(rat, CombatSide.enemy, x: 55.0, y: 42.5);
@@ -185,14 +196,21 @@ void main() {
       manager.update(0.1);
 
       final batCombatant = manager.combatants.firstWhere(
-        (c) => c.npc.id.contains('bats_unit'),
+        (c) => c.npc.name.contains('Bats'),
       );
       expect(batCombatant.targetId, isNotNull);
     });
 
     test('Cards stay out of deck/hand while unit is alive on field', () {
-      final unitA = CombatUnitFactory.createGoon().copyWith(id: 'unit_a');
-      final unitB = CombatUnitFactory.createGoon().copyWith(id: 'unit_b');
+      final baseGoon = CombatUnitFactory.createGoon();
+      final unitA = baseGoon.copyWith(
+        id: 'unit_a',
+        combatStats: baseGoon.combatStats!.copyWith(unitCount: 1),
+      );
+      final unitB = baseGoon.copyWith(
+        id: 'unit_b',
+        combatStats: baseGoon.combatStats!.copyWith(unitCount: 1),
+      );
 
       manager.prepareDeck([unitA, unitB]);
       // hand size is maxHandSize (5) by default, here 2
@@ -221,6 +239,110 @@ void main() {
       manager.drawCard();
       expect(manager.hand.length, 2);
       expect(manager.hand.any((u) => u.id == 'unit_a'), isTrue);
+    });
+
+    test('Squad cards stay out of deck/hand until all members of the squad are dead (Leader dies first)', () {
+      final rats = CombatUnitFactory.createRatsUnit().copyWith(id: 'rats_unit');
+      manager.prepareDeck([rats]);
+      expect(manager.hand.length, 1);
+
+      // Spawn squad
+      manager.spawnUnit(rats, CombatSide.player, x: 50, y: 40);
+      expect(manager.hand.length, 0);
+
+      // Verify 4 combatants spawned
+      final squadCombatants = manager.combatants.where((c) => c.npc.id.contains('rats_unit') || c.npc.name.contains('Rats Unit')).toList();
+      expect(squadCombatants.length, 4);
+
+      final leader = squadCombatants.firstWhere((c) => c.isSquadLeader);
+      final followers = squadCombatants.where((c) => !c.isSquadLeader).toList();
+      expect(followers.length, 3);
+
+      final String squadId = leader.squadId!;
+      for (final f in followers) {
+        expect(f.squadId, squadId);
+      }
+
+      // Kill the leader first
+      leader.npc = leader.npc.copyWith(
+        combatStats: leader.npc.combatStats!.copyWith(health: 0),
+      );
+      leader.isDead = true;
+      manager.update(0.1);
+
+      // Verify leader is removed, but card is NOT recycled to deck/hand
+      expect(manager.combatants.any((c) => c.isSquadLeader && c.squadId == squadId), isFalse);
+      expect(manager.deck.length, 0);
+      manager.drawCard();
+      expect(manager.hand.length, 0);
+
+      // Kill first two followers
+      for (int i = 0; i < 2; i++) {
+        followers[i].npc = followers[i].npc.copyWith(
+          combatStats: followers[i].npc.combatStats!.copyWith(health: 0),
+        );
+        followers[i].isDead = true;
+      }
+      manager.update(0.1);
+
+      // Still 1 follower alive, deck is empty
+      expect(manager.deck.length, 0);
+      manager.drawCard();
+      expect(manager.hand.length, 0);
+
+      // Kill the last follower
+      followers[2].npc = followers[2].npc.copyWith(
+        combatStats: followers[2].npc.combatStats!.copyWith(health: 0),
+      );
+      followers[2].isDead = true;
+      manager.update(0.1);
+
+      // Last follower dead, squad should be automatically recycled and drawn back to hand by continuous draw
+      expect(manager.deck.length, 0);
+      expect(manager.hand.length, 1);
+      expect(manager.hand.first.id, 'rats_unit');
+    });
+
+    test('Squad cards stay out of deck/hand until all members of the squad are dead (Followers die first)', () {
+      final rats = CombatUnitFactory.createRatsUnit().copyWith(id: 'rats_unit');
+      manager.prepareDeck([rats]);
+      expect(manager.hand.length, 1);
+
+      // Spawn squad
+      manager.spawnUnit(rats, CombatSide.player, x: 50, y: 40);
+      expect(manager.hand.length, 0);
+
+      final squadCombatants = manager.combatants.where((c) => c.npc.id.contains('rats_unit') || c.npc.name.contains('Rats Unit')).toList();
+      expect(squadCombatants.length, 4);
+
+      final leader = squadCombatants.firstWhere((c) => c.isSquadLeader);
+      final followers = squadCombatants.where((c) => !c.isSquadLeader).toList();
+
+      // Kill all followers first
+      for (final f in followers) {
+        f.npc = f.npc.copyWith(
+          combatStats: f.npc.combatStats!.copyWith(health: 0),
+        );
+        f.isDead = true;
+      }
+      manager.update(0.1);
+
+      // Leader is still alive, so card is NOT recycled
+      expect(manager.deck.length, 0);
+      manager.drawCard();
+      expect(manager.hand.length, 0);
+
+      // Kill leader
+      leader.npc = leader.npc.copyWith(
+        combatStats: leader.npc.combatStats!.copyWith(health: 0),
+      );
+      leader.isDead = true;
+      manager.update(0.1);
+
+      // Leader dead, squad should be automatically recycled and drawn back to hand immediately
+      expect(manager.deck.length, 0);
+      expect(manager.hand.length, 1);
+      expect(manager.hand.first.id, 'rats_unit');
     });
   });
 }

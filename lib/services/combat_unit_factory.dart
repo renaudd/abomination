@@ -365,6 +365,15 @@ class CombatUnitFactory {
         trait: CombatTrait.constantHeal,
         radius: 1.0,
       ),
+      abilities: [
+        const Ability(
+          id: 'undead_rot',
+          name: 'Plague Rot Cloud',
+          type: AbilityType.special,
+          description: 'Releases a cloud of rotting plague, dealing 40 damage and slowing nearby enemies.',
+          chargeTime: 10.0,
+        ),
+      ],
     );
   }
 
@@ -426,6 +435,15 @@ class CombatUnitFactory {
         meleeAttackSpeed: 0.9,
         radius: 1.8,
       ),
+      abilities: [
+        const Ability(
+          id: 'magical_howl',
+          name: 'Terrifying Howl',
+          type: AbilityType.special,
+          description: 'Emits a bloodcurdling howl, stunning nearby enemies for 2.5 seconds.',
+          chargeTime: 12.0,
+        ),
+      ],
     );
   }
 
@@ -459,6 +477,15 @@ class CombatUnitFactory {
         meleeAttackSpeed: 1.2,
         radius: 2.2,
       ),
+      abilities: [
+        const Ability(
+          id: 'dragon_breath',
+          name: 'Dragon Breath',
+          type: AbilityType.special,
+          description: 'Breathes a cone of fire, dealing 80 damage to enemies in a line.',
+          chargeTime: 15.0,
+        ),
+      ],
     );
   }
 
@@ -490,6 +517,16 @@ class CombatUnitFactory {
         trait: CombatTrait.magicImmune,
         radius: 2.0,
       ),
+      abilities: [
+        const Ability(
+          id: 'execute_low_health',
+          name: 'Strangle',
+          type: AbilityType.special,
+          description: 'Approach and kill a nearby enemy with less than 50% health.',
+          chargeTime: 12.0,
+          effectData: {'threshold': 0.5, 'type': 'interrupt_kill'},
+        ),
+      ],
     );
   }
 
@@ -1117,17 +1154,83 @@ class CombatUnitFactory {
   static NPC createGoon() => createThugs().copyWith(name: 'Goon');
   static NPC createMilitia() => createHalberdiers().copyWith(name: 'Militia');
   static NPC createBanditCaptain() => createThugs().copyWith(name: 'Bandit Captain');
-  static NPC createFleshHound() => createWildWolves().copyWith(name: 'Flesh Hound');
+  static NPC createFleshHound() => createWildWolves().copyWith(
+    name: 'Flesh Hound',
+    abilities: [
+      const Ability(
+        id: 'magical_howl',
+        name: 'Terrifying Howl',
+        type: AbilityType.special,
+        description: 'Emits a bloodcurdling howl, stunning nearby enemies for 2.5 seconds.',
+        chargeTime: 12.0,
+      ),
+    ],
+  );
   static NPC createRatsUnit() => createUndeadRats().copyWith(name: 'Rats Unit');
-  static NPC createBatsUnit() => createWildFoxes().copyWith(name: 'Bats Unit');
-  static NPC createWingedRat() => createWildFoxes().copyWith(name: 'Winged Rat');
+  static NPC createBatsUnit() => createWildFoxes().copyWith(
+    name: 'Bats Unit',
+    abilities: [
+      const Ability(
+        id: 'undead_rot',
+        name: 'Plague Rot Cloud',
+        type: AbilityType.special,
+        description: 'Releases a cloud of rotting plague, dealing 40 damage and slowing nearby enemies.',
+        chargeTime: 10.0,
+      ),
+    ],
+  );
+  static NPC createWingedRat() => createWildFoxes().copyWith(
+    name: 'Winged Rat',
+    abilities: [
+      const Ability(
+        id: 'undead_rot',
+        name: 'Plague Rot Cloud',
+        type: AbilityType.special,
+        description: 'Releases a cloud of rotting plague, dealing 40 damage and slowing nearby enemies.',
+        chargeTime: 10.0,
+      ),
+    ],
+  );
   static NPC createBully() => createThugs().copyWith(name: 'Bully');
   static NPC createStitchedHorror() => createFleshGolem().copyWith(name: 'Stitched Horror');
   static NPC createGalvanizedCorpse() => createFleshGolem().copyWith(name: 'Galvanized Corpse');
   static NPC createChemicalSlinger() => createMarksmen().copyWith(name: 'Chemical Slinger');
-  static NPC createShadowCreeper() => createThugs().copyWith(name: 'Shadow Creeper');
-  static NPC createGravedigger() => createThugs().copyWith(name: 'Gravedigger');
-  static NPC createPlagueMonk() => createThugs().copyWith(name: 'Plague Monk');
+  static NPC createShadowCreeper() => createThugs().copyWith(
+    name: 'Shadow Creeper',
+    abilities: [
+      const Ability(
+        id: 'undead_rot',
+        name: 'Plague Rot Cloud',
+        type: AbilityType.special,
+        description: 'Releases a cloud of rotting plague, dealing 40 damage and slowing nearby enemies.',
+        chargeTime: 10.0,
+      ),
+    ],
+  );
+  static NPC createGravedigger() => createThugs().copyWith(
+    name: 'Gravedigger',
+    abilities: [
+      const Ability(
+        id: 'undead_rot',
+        name: 'Plague Rot Cloud',
+        type: AbilityType.special,
+        description: 'Releases a cloud of rotting plague, dealing 40 damage and slowing nearby enemies.',
+        chargeTime: 10.0,
+      ),
+    ],
+  );
+  static NPC createPlagueMonk() => createThugs().copyWith(
+    name: 'Plague Monk',
+    abilities: [
+      const Ability(
+        id: 'undead_rot',
+        name: 'Plague Rot Cloud',
+        type: AbilityType.special,
+        description: 'Releases a cloud of rotting plague, dealing 40 damage and slowing nearby enemies.',
+        chargeTime: 10.0,
+      ),
+    ],
+  );
   static NPC createInquisitor() => createMarksmen().copyWith(name: 'Inquisitor');
   static NPC createIronMaiden() => createFleshGolem().copyWith(name: 'Iron Maiden');
   static NPC createAlchemicalGolem() => createFleshGolem().copyWith(name: 'Alchemical Golem');

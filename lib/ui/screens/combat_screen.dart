@@ -28,7 +28,12 @@ import '../../models/combat_stats.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import '../../services/save_service.dart';
+import '../../models/survival_state.dart';
+import 'arena_menu_screen.dart';
+import '../../services/arena_save_service.dart';
 import '../widgets/options_dialog.dart';
+import '../../services/combat_unit_service.dart';
+import 'survival_estate_map_screen.dart';
 
 class CombatScreen extends StatefulWidget {
   final List<NPC>? customPlayerDeck;
@@ -47,11 +52,13 @@ class CombatScreen extends StatefulWidget {
     int spoilsIron,
     int spoilsWood,
     Map<String, double> playerTowerHealth,
+    Map<String, double> combatExp,
     BuildContext context,
   )? onSurvivalVictory;
-  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth, BuildContext context)? onSurvivalDefeat;
-  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth, BuildContext context)? onSurvivalDraw;
+  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth, Map<String, double> combatExp, BuildContext context)? onSurvivalDefeat;
+  final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth, Map<String, double> combatExp, BuildContext context)? onSurvivalDraw;
   final int? survivalTurn;
+  final SurvivalDifficulty? survivalDifficulty;
 
   const CombatScreen({
     super.key,
@@ -67,6 +74,7 @@ class CombatScreen extends StatefulWidget {
     this.onSurvivalDefeat,
     this.onSurvivalDraw,
     this.survivalTurn,
+    this.survivalDifficulty,
   });
 
   @override
@@ -88,6 +96,24 @@ class _CombatScreenState extends State<CombatScreen>
   int _spoilsCash = 0;
   int _spoilsIron = 0;
   int _spoilsWood = 0;
+
+  List<int> _availableSaveSlots = [];
+
+  Future<void> _checkSaveSlots() async {
+    if (widget.survivalTurn != null) {
+      final List<int> slots = [];
+      for (int i = 1; i <= 3; i++) {
+        if (await ArenaSaveService.hasSave(i)) {
+          slots.add(i);
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _availableSaveSlots = slots;
+        });
+      }
+    }
+  }
 
   // Real-Time Drag & Placement Preview State
   NPC? _previewNpc;
@@ -159,7 +185,7 @@ class _CombatScreenState extends State<CombatScreen>
     final Map<String, double> healths = {};
     for (int i = 1; i <= 3; i++) {
       final towerId = 'tower_$i';
-      final npcId = 'player_tower_${i == 2 ? 2 : (i == 3 ? 1 : 0)}';
+      final npcId = 'player_tower_${i == 2 ? 2 : (i == 3 ? 0 : 1)}';
       final c = _combatManager.combatants.firstWhereOrNull((c) => c.npc.id == npcId);
       if (c == null || c.isDead) {
         healths[towerId] = 0.0;
@@ -260,7 +286,10 @@ class _CombatScreenState extends State<CombatScreen>
     _combatManager = CombatManager()
       ..map = state.selectedCombatMap
       ..combatControlMode = state.combatControlMode
-      ..upgrades = widget.cardUpgrades ?? {};
+      ..upgrades = widget.cardUpgrades ?? {}
+      ..isSurvivalMode = widget.survivalTurn != null;
+
+    _checkSaveSlots();
 
     _keyboardFocusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -891,6 +920,28 @@ class _CombatScreenState extends State<CombatScreen>
    );
   }
 
+  String _getCardDisplayName(String cardType) {
+    switch (cardType) {
+      case 'goon': return 'Goon';
+      case 'militia': return 'Militia';
+      case 'bats': return 'Bats';
+      case 'flesh_hound': return 'Flesh Hound';
+      case 'gravedigger': return 'Gravedigger';
+      case 'plague_monk': return 'Plague Monk';
+      case 'undead_rats': return 'Undead Rats';
+      case 'winged_rat': return 'Winged Rat';
+      case 'werewolf': return 'Werewolf';
+      case 'flesh_golem': return 'Flesh Golem';
+      case 'shadow_creeper': return 'Shadow Creeper';
+      case 'chimera': return 'Chimera';
+      default:
+        return cardType.replaceAll('_', ' ').split(' ').map((w) {
+          if (w.isEmpty) return '';
+          return w[0].toUpperCase() + w.substring(1);
+        }).join(' ');
+    }
+  }
+
   Widget _buildVictoryOverlay(BuildContext context) {
     if (widget.onSurvivalVictory != null) {
       _calculateSurvivalSpoils();
@@ -970,6 +1021,68 @@ class _CombatScreenState extends State<CombatScreen>
                 ],
               ),
             ),
+            if (widget.onSurvivalVictory != null) ...[
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+                  color: Colors.white.withValues(alpha: 0.03),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'CARD EXPERIENCE REPORT',
+                      style: GoogleFonts.oldStandardTt(
+                        color: const Color(0xFFD4AF37),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_combatManager.combatExp.isEmpty)
+                      Text(
+                        'No cards deployed.',
+                        style: GoogleFonts.oldStandardTt(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      )
+                    else
+                      ..._combatManager.combatExp.entries.map((entry) {
+                        final cardName = _getCardDisplayName(entry.key);
+                        final double xp = entry.value;
+                        final xpString = xp >= 0 ? '+${xp.toInt()} XP' : '${xp.toInt()} XP';
+                        final color = xp >= 0 ? Colors.green.shade400 : Colors.red.shade400;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$cardName: ',
+                                style: GoogleFonts.oldStandardTt(
+                                  color: Colors.white70,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              Text(
+                                xpString,
+                                style: GoogleFonts.oswald(
+                                  color: color,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 48),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -994,6 +1107,7 @@ class _CombatScreenState extends State<CombatScreen>
                     _spoilsIron,
                     _spoilsWood,
                     playerTowerHealth,
+                    _combatManager.combatExp,
                     context,
                   );
                 } else if (widget.onVictory != null) {
@@ -1038,83 +1152,223 @@ class _CombatScreenState extends State<CombatScreen>
   }
 
   Widget _buildDefeatOverlay(BuildContext context) {
+    final isSurvival = widget.onSurvivalDefeat != null;
+
     return Container(
       color: const Color(0xFF4A0E0E).withValues(alpha: 0.95), // Dried blood red
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'DEFEAT',
-              style: GoogleFonts.oldStandardTt(
-                color: Colors.white,
-                fontSize: 84,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 10,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'DEFEAT',
+                style: GoogleFonts.oldStandardTt(
+                  color: Colors.white,
+                  fontSize: 84,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 10,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'THE EXPERIMENT HAS ENDED IN FAILURE.',
-              style: GoogleFonts.oldStandardTt(
-                color: Colors.white70,
-                fontSize: 14,
+              const SizedBox(height: 8),
+              Text(
+                'THE EXPERIMENT HAS ENDED IN FAILURE.',
+                style: GoogleFonts.oldStandardTt(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
               ),
-            ),
-            const SizedBox(height: 64),
-            if (widget.onSurvivalDefeat != null) ...[
-              _DefeatButton(
-                label: 'CONTINUE',
-                onPressed: () {
-                  final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
-                  final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
-                  final playerTowerHealth = _getPlayerTowerHealthMap();
-                  widget.onSurvivalDefeat!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth, context);
-                },
-                primary: true,
-              ),
-            ] else if (widget.onDefeat != null) ...[
-              _DefeatButton(
-                label: 'CONTINUE',
-                onPressed: () {
-                  Navigator.pop(context);
-                  widget.onDefeat!();
-                },
-                primary: true,
-              ),
-            ] else ...[
-              _DefeatButton(
-                label: 'TRY BATTLE AGAIN',
-                onPressed: () {
-                  // Reset combat manager and restart
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CombatScreen()),
-                  );
-                },
-                primary: true,
-              ),
-              const SizedBox(height: 16),
-              _DefeatButton(
-                label: 'LOAD LAST SAVE',
-                onPressed: () {
-                  // Load save logic would go here
-                  final state = Provider.of<GameState>(context, listen: false);
-                  state.clearEncounterState();
-                  Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 16),
-              _DefeatButton(
-                label: 'ACCEPT FATE (QUIT)',
-                onPressed: () {
-                  final state = Provider.of<GameState>(context, listen: false);
-                  state.clearEncounterState();
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-              ),
+              const SizedBox(height: 24),
+              if (isSurvival && widget.survivalTurn != null) ...[
+                Text(
+                  'YOU SURVIVED ${widget.survivalTurn} TURNS',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFD4AF37),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (isSurvival) ...[
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white10),
+                    color: Colors.white.withValues(alpha: 0.03),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'CARD EXPERIENCE REPORT (PENALIZED)',
+                        style: GoogleFonts.oldStandardTt(
+                          color: const Color(0xFFD4AF37),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_combatManager.combatExp.isEmpty)
+                        Text(
+                          'No cards deployed.',
+                          style: GoogleFonts.oldStandardTt(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
+                        )
+                      else
+                        ..._combatManager.combatExp.entries.map((entry) {
+                          final cardName = _getCardDisplayName(entry.key);
+                          final npc = CombatUnitService.createUnit(entry.key);
+                          final bool undead = SurvivalService.isUndead(npc);
+                          final double xp = undead ? 0.0 : (entry.value * 0.5);
+                          final xpString = xp >= 0 ? '+${xp.toInt()} XP' : '${xp.toInt()} XP';
+                          final color = xp >= 0 ? Colors.green.shade400 : Colors.red.shade400;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$cardName: ',
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: Colors.white70,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                Text(
+                                  xpString,
+                                  style: GoogleFonts.oswald(
+                                    color: color,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 32),
+              if (isSurvival) ...[
+                if (widget.survivalDifficulty == SurvivalDifficulty.elementary ||
+                    widget.survivalDifficulty == SurvivalDifficulty.arcade) ...[
+                  _DefeatButton(
+                    label: widget.survivalDifficulty == SurvivalDifficulty.arcade
+                        ? 'CONTINUE TO GAME OVER'
+                        : 'CONTINUE',
+                    onPressed: () {
+                      final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+                      final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
+                      final playerTowerHealth = {
+                        'tower_1': 0.0,
+                        'tower_2': 0.0,
+                        'tower_3': 0.0,
+                      };
+                      widget.onSurvivalDefeat!(
+                        destroyedTowersCount,
+                        widget.customAiDeck ?? [],
+                        playerTowerHealth,
+                        _combatManager.combatExp,
+                        context,
+                      );
+                    },
+                    primary: true,
+                  ),
+                ] else ...[
+                  if (_availableSaveSlots.isNotEmpty) ...[
+                    ..._availableSaveSlots.map((slot) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: _DefeatButton(
+                        label: 'LOAD SAVE SLOT $slot',
+                        onPressed: () async {
+                          final progress = await ArenaSaveService.loadProgress(slot);
+                          if (progress != null && progress.survival != null) {
+                            if (context.mounted) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChangeNotifierProvider<SurvivalService>(
+                                    create: (context) => SurvivalService(slot, progress.survival),
+                                    child: const SurvivalEstateMapScreen(),
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    )),
+                    _DefeatButton(
+                      label: 'RETURN TO ARENA MENU',
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ArenaMenuScreen()),
+                        );
+                      },
+                      primary: true,
+                    ),
+                  ] else ...[
+                    _DefeatButton(
+                      label: 'CONTINUE',
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ArenaMenuScreen()),
+                        );
+                      },
+                      primary: true,
+                    ),
+                  ],
+                ],
+              ] else if (widget.onDefeat != null) ...[
+                _DefeatButton(
+                  label: 'CONTINUE',
+                  onPressed: () {
+                    Navigator.pop(context);
+                    widget.onDefeat!();
+                  },
+                  primary: true,
+                ),
+              ] else ...[
+                _DefeatButton(
+                  label: 'TRY BATTLE AGAIN',
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const CombatScreen()),
+                    );
+                  },
+                  primary: true,
+                ),
+                const SizedBox(height: 16),
+                _DefeatButton(
+                  label: 'LOAD LAST SAVE',
+                  onPressed: () {
+                    final state = Provider.of<GameState>(context, listen: false);
+                    state.clearEncounterState();
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 16),
+                _DefeatButton(
+                  label: 'ACCEPT FATE (QUIT)',
+                  onPressed: () {
+                    final state = Provider.of<GameState>(context, listen: false);
+                    state.clearEncounterState();
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1152,7 +1406,13 @@ class _CombatScreenState extends State<CombatScreen>
                   final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
                   final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
                   final playerTowerHealth = _getPlayerTowerHealthMap();
-                  widget.onSurvivalDraw!(destroyedTowersCount, widget.customAiDeck ?? [], playerTowerHealth, context);
+                  widget.onSurvivalDraw!(
+                    destroyedTowersCount,
+                    widget.customAiDeck ?? [],
+                    playerTowerHealth,
+                    _combatManager.combatExp,
+                    context,
+                  );
                 },
                 primary: true,
               ),
@@ -2514,12 +2774,26 @@ class _UnitCardState extends State<_UnitCard> {
                             ...widget.npc.abilities
                                 .take(2)
                                 .map(
-                                  (a) => Text(
-                                    '• ${a.name}',
-                                    style: GoogleFonts.oldStandardTt(
-                                      fontSize: 8,
-                                      color: Colors.white70,
-                                    ),
+                                  (a) => Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '• ${a.name.toUpperCase()}',
+                                        style: GoogleFonts.oldStandardTt(
+                                          fontSize: 7.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      Text(
+                                        '  ${a.detailedDescription}',
+                                        style: GoogleFonts.oldStandardTt(
+                                          fontSize: 6.5,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                    ],
                                   ),
                                 ),
                           ],
@@ -3484,10 +3758,12 @@ class _TowerRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double size = 36.0;
+    final bool isWatchtower = combatant.towerType == 'watchtower';
+    final double width = isWatchtower ? 54.0 : 36.0;
+    final double height = isWatchtower ? 96.0 : 36.0 * 1.2;
     return SizedBox(
-      width: size,
-      height: size * 1.2,
+      width: width,
+      height: height,
       child: CustomPaint(
         painter: _TowerShapePainter(
           towerType: combatant.towerType ?? 'wagon',
@@ -3749,6 +4025,137 @@ class _TowerShapePainter extends CustomPainter {
         Rect.fromCenter(center: Offset(size.width * 0.5, size.height * 0.75), width: size.width * 0.3, height: size.height * 0.2),
         Paint()..color = Colors.black87,
       );
+    } else if (towerType == 'watchtower') {
+      // Sketched Stone Watchtower (resembling singletower.png)
+      final stoneColor = isDead ? const Color(0xFF706D67) : const Color(0xFFC0B39F);
+      final stonePaint = Paint()..color = stoneColor..style = PaintingStyle.fill;
+      
+      // Shadow Paint
+      final shadowPaint = Paint()..color = const Color(0xFF1E1F1C).withValues(alpha: 0.3)..style = PaintingStyle.fill;
+      canvas.drawOval(
+        Rect.fromLTWH(size.width * 0.05, size.height * 0.92, size.width * 0.9, size.height * 0.06),
+        shadowPaint,
+      );
+
+      // Ruined buttress removed to shave off the hump on the back side
+
+      // 2. Tower Base (height * 0.82 to height * 0.95)
+      final basePath = Path()
+        ..moveTo(size.width * 0.22, size.height * 0.82)
+        ..lineTo(size.width * 0.15, size.height * 0.95)
+        ..lineTo(size.width * 0.78, size.height * 0.95)
+        ..lineTo(size.width * 0.71, size.height * 0.82)
+        ..close();
+      canvas.drawPath(basePath, stonePaint);
+      canvas.drawPath(basePath, borderPaint..strokeWidth = 2.5);
+
+      // 3. Tower Body (height * 0.22 to height * 0.82)
+      final bodyPath = Path()
+        ..moveTo(size.width * 0.27, size.height * 0.22)
+        ..lineTo(size.width * 0.22, size.height * 0.82)
+        ..lineTo(size.width * 0.71, size.height * 0.82)
+        ..lineTo(size.width * 0.66, size.height * 0.22)
+        ..close();
+      canvas.drawPath(bodyPath, stonePaint);
+      canvas.drawPath(bodyPath, borderPaint..strokeWidth = 2.5);
+
+      // Horizontal and vertical stone block lines on body & base
+      if (!isDead) {
+        final stoneLinePaint = Paint()..color = const Color(0xFF2E241F).withValues(alpha: 0.6)..style = PaintingStyle.stroke..strokeWidth = 1.0;
+        final double startY = size.height * 0.22;
+        final double endY = size.height * 0.95;
+        final int rows = 11;
+        final double dy = (endY - startY) / rows;
+        for (int i = 1; i < rows; i++) {
+          final double cy = startY + i * dy;
+          double lx, rx;
+          if (cy < size.height * 0.82) {
+            final double t = (cy - startY) / (size.height * 0.82 - startY);
+            lx = size.width * 0.27 + t * (size.width * 0.22 - size.width * 0.27);
+            rx = size.width * 0.66 + t * (size.width * 0.71 - size.width * 0.66);
+          } else {
+            final double t = (cy - size.height * 0.82) / (size.height * 0.95 - size.height * 0.82);
+            lx = size.width * 0.22 + t * (size.width * 0.15 - size.width * 0.22);
+            rx = size.width * 0.71 + t * (size.width * 0.78 - size.width * 0.71);
+          }
+          canvas.drawLine(Offset(lx, cy), Offset(rx, cy), stoneLinePaint);
+
+          // Random vertical joints
+          final int joints = 3;
+          final double dx = (rx - lx) / joints;
+          for (int j = 1; j < joints; j++) {
+            if ((i + j) % 2 == 0) {
+              final double cx = lx + j * dx + (i % 2 == 0 ? 8.0 : -4.0);
+              canvas.drawLine(Offset(cx, cy), Offset(cx, cy + dy), stoneLinePaint);
+            }
+          }
+        }
+      }
+
+      // 4. Narrow window loop (height * 0.38 to height * 0.48)
+      final windowRect = Rect.fromLTRB(
+        size.width * 0.45,
+        size.height * 0.38,
+        size.width * 0.51,
+        size.height * 0.48,
+      );
+      canvas.drawRect(windowRect, Paint()..color = const Color(0xFF1E1F1C));
+      canvas.drawRect(windowRect, borderPaint..strokeWidth = 1.8);
+
+      // 5. Flared Corbel Neck (height * 0.22 to height * 0.15)
+      final corbelPath = Path()
+        ..moveTo(size.width * 0.27, size.height * 0.22)
+        ..lineTo(size.width * 0.16, size.height * 0.15)
+        ..lineTo(size.width * 0.77, size.height * 0.15)
+        ..lineTo(size.width * 0.66, size.height * 0.22)
+        ..close();
+      canvas.drawPath(corbelPath, stonePaint);
+      canvas.drawPath(corbelPath, borderPaint..strokeWidth = 2.5);
+
+      // Diagonal brackets/corbels
+      if (!isDead) {
+        final bracketPaint = Paint()..color = const Color(0xFF2E241F)..style = PaintingStyle.stroke..strokeWidth = 1.5;
+        for (double f = 0.27; f <= 0.66; f += 0.08) {
+          final lx1 = size.width * f;
+          final double t = (lx1 - size.width * 0.27) / (size.width * 0.66 - size.width * 0.27);
+          final lx2 = size.width * 0.16 + t * (size.width * 0.77 - size.width * 0.16);
+          canvas.drawLine(Offset(lx1, size.height * 0.22), Offset(lx2, size.height * 0.15), bracketPaint);
+        }
+      }
+
+      // 6. Top Parapet & Crenellations (height * 0.15 to height * 0.04)
+      final parapetColor = isDead ? const Color(0xFF63615C) : const Color(0xFFB3A795);
+      final parapetPaint = Paint()..color = parapetColor..style = PaintingStyle.fill;
+
+      // Draw flat inner deck surface
+      final deckRect = Rect.fromLTRB(size.width * 0.2, size.height * 0.15, size.width * 0.73, size.height * 0.15);
+      canvas.drawRect(deckRect, borderPaint);
+
+      // Draw Main Parapet shape
+      final parapetPath = Path()
+        ..moveTo(size.width * 0.16, size.height * 0.15)
+        ..lineTo(size.width * 0.14, size.height * 0.04) // Left top outer
+        ..lineTo(size.width * 0.28, size.height * 0.04) // Left merlon inner
+        ..lineTo(size.width * 0.28, size.height * 0.09) // Left merlon drop
+        ..lineTo(size.width * 0.38, size.height * 0.09) // Center gap bottom
+        ..lineTo(size.width * 0.38, size.height * 0.04) // Center merlon left
+        ..lineTo(size.width * 0.55, size.height * 0.04) // Center merlon right
+        ..lineTo(size.width * 0.55, size.height * 0.09) // Center gap 2 bottom
+        ..lineTo(size.width * 0.65, size.height * 0.09) // Center gap 2 right
+        ..lineTo(size.width * 0.65, size.height * 0.04) // Right merlon left
+        ..lineTo(size.width * 0.79, size.height * 0.04) // Right top outer
+        ..lineTo(size.width * 0.77, size.height * 0.15) // Right bottom
+        ..close();
+      canvas.drawPath(parapetPath, parapetPaint);
+      canvas.drawPath(parapetPath, borderPaint..strokeWidth = 2.5);
+
+      // Crenellation hatch texture
+      if (!isDead) {
+        final hatch = Paint()..color = const Color(0xFF1E1F1C).withValues(alpha: 0.3)..style = PaintingStyle.stroke..strokeWidth = 1.0;
+        canvas.drawLine(Offset(size.width * 0.2, size.height * 0.06), Offset(size.width * 0.2, size.height * 0.13), hatch);
+        canvas.drawLine(Offset(size.width * 0.46, size.height * 0.06), Offset(size.width * 0.46, size.height * 0.13), hatch);
+        canvas.drawLine(Offset(size.width * 0.72, size.height * 0.06), Offset(size.width * 0.72, size.height * 0.13), hatch);
+      }
     } else if (towerType.contains('tower_house')) {
       // Tall rectangular Tower House with crenellations
       final towerRect = Rect.fromLTWH(size.width * 0.15, size.height * 0.1, size.width * 0.7, size.height * 0.8);

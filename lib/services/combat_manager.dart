@@ -133,6 +133,11 @@ class Combatant {
     }
     return mult;
   }
+
+  bool get isNonPhysicalSupport {
+    return npc.combatStats?.unitType == UnitType.support &&
+        (npc.combatStats?.maxHealth ?? 0) == 0;
+  }
 }
 
 class Projectile {
@@ -178,7 +183,7 @@ class Projectile {
     
     if (isSlowRocket) {
       // Dodgeable slow rocket projectile: checks physical collision with active enemy targets!
-      final enemyTargets = manager.combatants.where((c) => c.side != side && !c.isDead).toList();
+      final enemyTargets = manager.combatants.where((c) => c.side != side && !c.isDead && !c.isNonPhysicalSupport).toList();
       for (final t in enemyTargets) {
         final tx = t.x - x;
         final ty = t.y - y;
@@ -234,6 +239,13 @@ class CombatManager extends ChangeNotifier {
   final List<NPC> _aiDeck = [];
   final List<NPC> _aiHand = [];
   Map<String, int> upgrades = {};
+  bool isSurvivalMode = false;
+  final Map<String, double> combatExp = {};
+  final Map<String, NPC> _pendingRecycleSquads = {};
+  final Map<String, int> _cardLevels = {};
+  final Map<String, int> summonCounts = {};
+  final Map<String, int> killCounts = {};
+  final Map<String, double> killXpTotals = {};
 
   double _fieldScroll = 0.0;
   double _yFieldScroll = 0.0;
@@ -297,6 +309,7 @@ class CombatManager extends ChangeNotifier {
   List<Projectile> get projectiles => List.unmodifiable(_projectiles);
   List<CombatLogEntry> get logs => List.unmodifiable(_logs);
   List<NPC> get hand => List.unmodifiable(_hand);
+  List<NPC> get deck => List.unmodifiable(_deck);
   double get actionPoints => _actionPoints;
   double get fieldScroll => _fieldScroll;
   double get yFieldScroll => _yFieldScroll;
@@ -392,7 +405,9 @@ class CombatManager extends ChangeNotifier {
       side: side,
       x: x,
       y: y,
-      laneIndex: lane == 2 ? 0 : lane, // Map center tower to north/lane 0 or south/lane 1
+      laneIndex: _map.laneCenters.length == 3 
+          ? (lane == 0 ? 0 : (lane == 1 ? 2 : 1)) 
+          : (lane == 2 ? 0 : lane),
       isTower: true,
       towerType: towerType,
     );
@@ -414,34 +429,50 @@ class CombatManager extends ChangeNotifier {
     String playerTowerName = 'Covered Wagon';
     String enemyTowerName = 'Covered Wagon';
 
-    if (encounterTitle.contains("Highwaymen") || encounterTitle.contains("Bandits")) {
-      playerTowerType = 'wagon';
-      enemyTowerType = 'wagon_musket';
-      enemyTowerName = 'Armored Wagon';
-      enemyHealth = 800.0;
-      enemyAttack = 20.0;
-    } else if (encounterTitle.contains("Beasts") || encounterTitle.contains("Animals") || encounterTitle.contains("Feral")) {
-      playerTowerType = 'wagon';
-      enemyTowerType = 'animal_den';
-      enemyTowerName = 'Feral Den';
-      enemyHealth = 500.0;
-      enemyAttack = 10.0;
-      enemyRange = 20.0;
-    } else if (encounterTitle.contains("Bologna") || encounterTitle.contains("City")) {
-      playerTowerType = 'tower_house';
-      enemyTowerType = 'tower_house';
-      playerTowerName = 'Tower House';
-      enemyTowerName = 'Tower House';
-      enemyHealth = 1000.0;
-      enemyAttack = 25.0;
-    } else if (encounterTitle.contains("Fortress") || encounterTitle.contains("Castle")) {
-      playerTowerType = 'fortification';
-      enemyTowerType = 'castle_keep';
-      playerTowerName = 'Field Fortification';
-      enemyTowerName = 'Castle Tower';
-      enemyHealth = 1500.0;
-      enemyAttack = 40.0;
-      enemyRange = 20.0;
+    if (isSurvivalMode) {
+      playerTowerType = 'watchtower';
+      playerTowerName = 'Watchtower';
+      if (encounterTitle.contains("Beasts") || encounterTitle.contains("Animals") || encounterTitle.contains("Feral")) {
+        enemyTowerType = 'animal_den';
+        enemyTowerName = 'Feral Den';
+        enemyHealth = 500.0;
+        enemyAttack = 10.0;
+      } else {
+        enemyTowerType = 'wagon';
+        enemyTowerName = 'Supply Wagon';
+        enemyHealth = 600.0;
+        enemyAttack = 15.0;
+      }
+    } else {
+      if (encounterTitle.contains("Highwaymen") || encounterTitle.contains("Bandits")) {
+        playerTowerType = 'wagon';
+        enemyTowerType = 'wagon_musket';
+        enemyTowerName = 'Armored Wagon';
+        enemyHealth = 800.0;
+        enemyAttack = 20.0;
+      } else if (encounterTitle.contains("Beasts") || encounterTitle.contains("Animals") || encounterTitle.contains("Feral")) {
+        playerTowerType = 'wagon';
+        enemyTowerType = 'animal_den';
+        enemyTowerName = 'Feral Den';
+        enemyHealth = 500.0;
+        enemyAttack = 10.0;
+        enemyRange = 20.0;
+      } else if (encounterTitle.contains("Bologna") || encounterTitle.contains("City")) {
+        playerTowerType = 'tower_house';
+        enemyTowerType = 'tower_house';
+        playerTowerName = 'Tower House';
+        enemyTowerName = 'Tower House';
+        enemyHealth = 1000.0;
+        enemyAttack = 25.0;
+      } else if (encounterTitle.contains("Fortress") || encounterTitle.contains("Castle")) {
+        playerTowerType = 'fortification';
+        enemyTowerType = 'castle_keep';
+        playerTowerName = 'Field Fortification';
+        enemyTowerName = 'Castle Tower';
+        enemyHealth = 1500.0;
+        enemyAttack = 40.0;
+        enemyRange = 20.0;
+      }
     }
 
     // Spawn 3 player towers
@@ -451,7 +482,7 @@ class CombatManager extends ChangeNotifier {
     final int speedLvl = upgrades['tower_speed'] ?? 0;
 
     for (int lane = 0; lane < 3; lane++) {
-      final String towerId = lane == 0 ? 'tower_1' : (lane == 1 ? 'tower_3' : 'tower_2');
+      final String towerId = lane == 0 ? 'tower_3' : (lane == 1 ? 'tower_1' : 'tower_2');
       final int indHpLvl = upgrades['${towerId}_hp'] ?? 0;
       final int indAtkLvl = upgrades['${towerId}_atk'] ?? 0;
       final int indRangeLvl = upgrades['${towerId}_range'] ?? 0;
@@ -512,6 +543,12 @@ class CombatManager extends ChangeNotifier {
     _deck.addAll(units);
     _deck.shuffle();
     _hand.clear();
+    _pendingRecycleSquads.clear();
+    _cardLevels.clear();
+    summonCounts.clear();
+    killCounts.clear();
+    killXpTotals.clear();
+    combatExp.clear();
     for (int i = 0; i < maxHandSize && _deck.isNotEmpty; i++) {
       _hand.add(_deck.removeAt(0));
     }
@@ -742,6 +779,15 @@ class CombatManager extends ChangeNotifier {
 
     _combatants.add(leader);
 
+    if (side == CombatSide.player && isSurvivalMode) {
+      final cardType = npc.metadata['cardType'];
+      if (cardType != null) {
+        final lvl = npc.metadata['level'] as int? ?? 1;
+        _cardLevels[cardType] = lvl;
+        summonCounts[cardType] = (summonCounts[cardType] ?? 0) + 1;
+      }
+    }
+
     // Spawn Followers if unit count > 1
     if (stats.unitCount > 1) {
       final followersToSpawn = stats.unitCount - 1;
@@ -764,6 +810,7 @@ class CombatManager extends ChangeNotifier {
           diet: npc.diet,
           appearance: npc.appearance,
           combatStats: stats.copyWith(unitCount: 1), // Followers themselves represent single entities
+          metadata: npc.metadata, // Copy metadata including cardType!
         );
 
         final follower = Combatant(
@@ -947,17 +994,33 @@ class CombatManager extends ChangeNotifier {
             _applyAbilityEffect(c, ability);
           }
         }
-        // Return player units to deck (Only recycle the main Squad Leader card to prevent flooding deck with degraded single-troop followers)
-        if (c.side == CombatSide.player && !c.npc.isPlayer && c.isSquadLeader) {
-          // Reset unit state before recycling
-          final resetNpc = c.npc.copyWith(
-            combatStats: c.npc.combatStats?.copyWith(
-              health: c.npc.combatStats?.maxHealth,
-            ),
-            specialCharge: 0.0,
-            status: NPCStatus.idle,
-          );
-          _deck.add(resetNpc);
+        // Return player units to deck (Only recycle the main Squad Leader card when the ENTIRE squad is dead)
+        if (c.side == CombatSide.player && !c.npc.isPlayer) {
+          final String? sqId = c.squadId;
+          if (sqId != null) {
+            final bool anyOthersAlive = _combatants.any((other) => other != c && other.squadId == sqId && !other.isDead);
+            if (c.isSquadLeader) {
+              final resetNpc = c.npc.copyWith(
+                combatStats: c.npc.combatStats?.copyWith(
+                  health: c.npc.combatStats?.maxHealth,
+                ),
+                specialCharge: 0.0,
+                status: NPCStatus.idle,
+              );
+              if (anyOthersAlive) {
+                _pendingRecycleSquads[sqId] = resetNpc;
+              } else {
+                _deck.add(resetNpc);
+              }
+            } else {
+              if (!anyOthersAlive) {
+                final leaderNpc = _pendingRecycleSquads.remove(sqId);
+                if (leaderNpc != null) {
+                  _deck.add(leaderNpc);
+                }
+              }
+            }
+          }
         } else if (c.side == CombatSide.enemy) {
           _killedEnemies.add(c.npc);
           
@@ -1163,6 +1226,9 @@ class CombatManager extends ChangeNotifier {
         _isDraw = true;
       }
     }
+    if (!_isCombatActive) {
+      _finalizeCombatExp();
+    }
 
     notifyListeners();
   }
@@ -1307,7 +1373,7 @@ class CombatManager extends ChangeNotifier {
             t.flashTimer = 0.25;
             t.recentDamage += damageThisTick;
             if (newHealth <= 0) {
-              t.isDead = true;
+              _onCombatantDeath(t, c);
             }
           }
         }
@@ -1330,7 +1396,7 @@ class CombatManager extends ChangeNotifier {
             t.recentDamage += damageThisTick;
             t.gasSlowTimer = 0.5; // Keep slow refreshed
             if (newHealth <= 0) {
-              t.isDead = true;
+              _onCombatantDeath(t, c);
             }
           }
         }
@@ -1362,7 +1428,7 @@ class CombatManager extends ChangeNotifier {
             t.recentDamage += damageThisTick;
             t.gasSlowTimer = 0.5; // Slow down
             if (newHealth <= 0) {
-              t.isDead = true;
+              _onCombatantDeath(t, c);
             }
           }
         }
@@ -1475,11 +1541,14 @@ class CombatManager extends ChangeNotifier {
           target.npc = target.npc.copyWith(
             combatStats: tStats.copyWith(health: 0.0),
           );
-          target.isDead = true;
+          _onCombatantDeath(target, c);
           c.specialActionId = null;
           c.specialTargetId = null;
-          _addLog('${c.npc.name} executed ${target.npc.name}!', side: c.side);
-          _addFloatingMessage(target, 'EXECUTED', Colors.redAccent);
+          final abilityName = c.npc.abilities.firstWhereOrNull((a) => a.id == 'execute_low_health')?.name ?? 'Execute';
+          final actionMsg = abilityName == 'Strangle' ? 'strangled' : 'executed';
+          final floatMsg = abilityName == 'Strangle' ? 'STRANGLED' : 'EXECUTED';
+          _addLog('${c.npc.name} $actionMsg ${target.npc.name}!', side: c.side);
+          _addFloatingMessage(target, floatMsg, Colors.redAccent);
           return;
         }
       }
@@ -1505,7 +1574,7 @@ class CombatManager extends ChangeNotifier {
     final int mySector = (c.x / sectorWidth).floor().clamp(0, 4);
     
     List<Combatant> targets = _combatants.where((other) {
-      if (other.side == c.side || other.isDead) return false;
+      if (other.side == c.side || other.isDead || other.isNonPhysicalSupport) return false;
       final int otherSector = (other.x / sectorWidth).floor().clamp(0, 4);
       return (otherSector - mySector).abs() <= 1; // same or adjacent sector
     }).toList();
@@ -1513,7 +1582,7 @@ class CombatManager extends ChangeNotifier {
     // Fallback to all targets if adjacent sectors are empty to preserve baseline reactivity
     if (targets.isEmpty) {
       targets = _combatants
-          .where((other) => other.side != c.side && !other.isDead)
+          .where((other) => other.side != c.side && !other.isDead && !other.isNonPhysicalSupport)
           .toList();
     }
 
@@ -1550,34 +1619,41 @@ class CombatManager extends ChangeNotifier {
 
     // Channel engagement prioritization
     List<Combatant> prioritizedTargets = [];
-    for (final t in targets) {
-      final double dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
-      final double dx = (t.x - c.x).abs();
-      final bool sameLane = t.laneIndex == c.laneIndex;
+    final enemyTowers = _combatants.where((other) => other.isTower && other.side != c.side && !other.isDead).toList();
+    final lastTower = (isSurvivalMode && enemyTowers.length == 1) ? enemyTowers.first : null;
 
-      if (sameLane) {
-        prioritizedTargets.add(t);
-      } else {
-        final int laneDiff = (t.laneIndex - c.laneIndex).abs();
-        if (_map.laneCenters.length == 3) {
-          // 3-lane map rules: neighboring lane crossover if very close (dist <= 45.0), passing (dx <= 25.0), and clear line-of-sight
-          if (laneDiff == 1) {
-            if (dist <= 45.0 && dx <= 25.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
+    if (lastTower != null) {
+      prioritizedTargets.add(lastTower);
+    } else {
+      for (final t in targets) {
+        final double dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+        final double dx = (t.x - c.x).abs();
+        final bool sameLane = t.laneIndex == c.laneIndex;
+
+        if (sameLane) {
+          prioritizedTargets.add(t);
+        } else {
+          final int laneDiff = (t.laneIndex - c.laneIndex).abs();
+          if (_map.laneCenters.length == 3) {
+            // 3-lane map rules: neighboring lane crossover if very close (dist <= 45.0), passing (dx <= 25.0), and clear line-of-sight
+            if (laneDiff == 1) {
+              if (dist <= 45.0 && dx <= 25.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
+                prioritizedTargets.add(t);
+              }
+            }
+            // Far lane (laneDiff == 2) is blocked from direct targeting
+          } else if (_map.laneCenters.length == 2) {
+            // 2-lane map rules: neighboring lane crossover if close (dist <= 40.0) and clear LOS,
+            // or a leader standing near vertical center (within 20ft) and close horizontally (dx <= 35.0)
+            final double centerY = _map.height / 2;
+            final bool isLeader = t.npc.isPlayer || t.isAiLeader;
+            final bool leaderNearCenter = isLeader && (t.y - centerY).abs() <= 20.0;
+
+            if (leaderNearCenter && dx <= 35.0) {
+              prioritizedTargets.add(t);
+            } else if (dist <= 40.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
               prioritizedTargets.add(t);
             }
-          }
-          // Far lane (laneDiff == 2) is blocked from direct targeting
-        } else if (_map.laneCenters.length == 2) {
-          // 2-lane map rules: neighboring lane crossover if close (dist <= 40.0) and clear LOS,
-          // or a leader standing near vertical center (within 20ft) and close horizontally (dx <= 35.0)
-          final double centerY = _map.height / 2;
-          final bool isLeader = t.npc.isPlayer || t.isAiLeader;
-          final bool leaderNearCenter = isLeader && (t.y - centerY).abs() <= 20.0;
-
-          if (leaderNearCenter && dx <= 35.0) {
-            prioritizedTargets.add(t);
-          } else if (dist <= 40.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
-            prioritizedTargets.add(t);
           }
         }
       }
@@ -1985,8 +2061,8 @@ class CombatManager extends ChangeNotifier {
         c.attackCooldown = stats.speed * 1.2;
       }
 
-      // Auto-fire special ability if charged (AI ONLY)
-      if (c.npc.specialCharge >= 1.0 && c.side == CombatSide.enemy) {
+      // Auto-fire special ability if charged (AI ONLY or in Survival Mode for ALL units!)
+      if (c.npc.specialCharge >= 1.0 && (c.side == CombatSide.enemy || isSurvivalMode)) {
         executeSpecial(c.npc.id);
       }
     }
@@ -2027,6 +2103,7 @@ class CombatManager extends ChangeNotifier {
   }
 
   void _performAttack(Combatant attacker, Combatant target) {
+    if (target.isDead || target.isNonPhysicalSupport) return;
     final stats = attacker.npc.combatStats!;
     final targetStats = target.npc.combatStats!;
 
@@ -2122,7 +2199,7 @@ class CombatManager extends ChangeNotifier {
     );
 
     if (newHealth <= 0) {
-      target.isDead = true;
+      _onCombatantDeath(target, attacker);
       _addLog('${target.npc.name} has been defeated!', side: target.side);
     }
 
@@ -2232,7 +2309,7 @@ class CombatManager extends ChangeNotifier {
               ),
             );
             if (target.npc.combatStats!.health <= 0) {
-              target.isDead = true;
+              _onCombatantDeath(target, c);
               _addLog(
                 '${target.npc.name} was crushed by the push!',
                 side: target.side,
@@ -2318,6 +2395,90 @@ class CombatManager extends ChangeNotifier {
             }
           }
         }
+        break;
+
+      case 'undead_rot':
+        final damage = 40.0;
+        final duration = 5.0;
+        final radius = 25.0;
+        final targets = _combatants
+            .where((other) => other.side != c.side && !other.isDead)
+            .toList();
+        for (final t in targets) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= radius) {
+            final stats = t.npc.combatStats!;
+            t.npc = t.npc.copyWith(
+              combatStats: stats.copyWith(
+                health: max(0, stats.health - damage),
+              ),
+            );
+            t.gasSlowTimer = duration; // slow them
+            _addFloatingMessage(t, 'ROT CLOUD', Colors.green);
+            if (t.npc.combatStats!.health <= 0) {
+              _onCombatantDeath(t, c);
+            }
+          }
+        }
+        _addLog('${c.npc.name} released a Plague Rot Cloud!', side: c.side);
+        break;
+
+      case 'magical_howl':
+        final duration = 2.5;
+        final radius = 20.0;
+        final targets = _combatants
+            .where((other) => other.side != c.side && !other.isDead)
+            .toList();
+        for (final t in targets) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= radius) {
+            _applyFreeze(t, duration); // Stun
+            _addFloatingMessage(t, 'TERRIFIED', Colors.purpleAccent);
+          }
+        }
+        _addLog('${c.npc.name} emitted a Terrifying Howl!', side: c.side);
+        break;
+
+      case 'dragon_breath':
+        final damage = 80.0;
+        final range = 30.0;
+        final targets = _combatants
+            .where((other) => other.side != c.side && !other.isDead)
+            .toList();
+        if (targets.isNotEmpty) {
+          targets.sort(
+            (a, b) => (a.x - c.x).abs().compareTo((b.x - c.x).abs()),
+          );
+          final target = targets.first;
+          final dx = target.x - c.x;
+          final dy = target.y - c.y;
+          final len = sqrt(dx * dx + dy * dy);
+          if (len > 0.0) {
+            final ndx = dx / len;
+            final ndy = dy / len;
+            for (final t in targets) {
+              final tx = t.x - c.x;
+              final ty = t.y - c.y;
+              final projection = tx * ndx + ty * ndy;
+              if (projection >= 0.0 && projection <= range) {
+                final perpDist = (tx * -ndy + ty * ndx).abs();
+                if (perpDist <= 12.0) {
+                  final stats = t.npc.combatStats!;
+                  t.npc = t.npc.copyWith(
+                    combatStats: stats.copyWith(
+                      health: max(0, stats.health - damage),
+                    ),
+                  );
+                  _addFloatingMessage(t, 'BURNED', Colors.orangeAccent);
+                  if (t.npc.combatStats!.health <= 0) {
+                    _onCombatantDeath(t, c);
+                  }
+                }
+              }
+            }
+          }
+        }
+        _addLog('${c.npc.name} breathed a cone of fire!', side: c.side);
         break;
 
       case 'ap_steal':
@@ -2406,6 +2567,30 @@ class CombatManager extends ChangeNotifier {
         // These are always valid if there are ANY enemies
         return _combatants.any(
           (other) => other.side != c.side && !other.isDead,
+        );
+      case 'undead_rot':
+        return _combatants.any(
+          (other) =>
+              other.side != c.side &&
+              !other.isDead &&
+              (sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) -
+                      c.npc.combatStats!.radius -
+                      other.npc.combatStats!.radius) <=
+                  25.0,
+        );
+      case 'magical_howl':
+        return _combatants.any(
+          (other) =>
+              other.side != c.side &&
+              !other.isDead &&
+              (sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) -
+                      c.npc.combatStats!.radius -
+                      other.npc.combatStats!.radius) <=
+                  20.0,
+        );
+      case 'dragon_breath':
+        return _combatants.any(
+          (other) => other.side != c.side && !other.isDead && (other.x - c.x).abs() <= 30.0,
         );
       default:
         return true;
@@ -2505,7 +2690,7 @@ class CombatManager extends ChangeNotifier {
   }
 
   void applyDirectDamage(Combatant target, double damage, String attackerId) {
-    if (target.isDead) return;
+    if (target.isDead || target.isNonPhysicalSupport) return;
     final attacker = _combatants.firstWhereOrNull((c) => c.npc.id == attackerId);
     final targetStats = target.npc.combatStats!;
     final actualDamage = max(1.0, damage - targetStats.defense);
@@ -2520,7 +2705,7 @@ class CombatManager extends ChangeNotifier {
     target.recentDamage += actualDamage;
 
     if (target.npc.combatStats!.health <= 0.0) {
-      target.isDead = true;
+      _onCombatantDeath(target, attacker);
       _addLog('${target.npc.name} has been vanquished!', side: target.side);
     } else {
       _addFloatingMessage(target, '-${actualDamage.toInt()}', Colors.redAccent);
@@ -2536,7 +2721,7 @@ class CombatManager extends ChangeNotifier {
 
 
   void _applyDamage(Combatant attacker, Combatant target, double damage) {
-    if (target.isDead) return;
+    if (target.isDead || target.isNonPhysicalSupport) return;
     final tStats = target.npc.combatStats!;
     final actualDamage = max(1.0, damage - tStats.defense);
 
@@ -2549,7 +2734,7 @@ class CombatManager extends ChangeNotifier {
 
     _addFloatingMessage(target, '-${actualDamage.toInt()}', Colors.red);
     if (newHealth <= 0) {
-      target.isDead = true;
+      _onCombatantDeath(target, attacker);
     }
   }
 
@@ -2645,5 +2830,45 @@ class CombatManager extends ChangeNotifier {
         break;
     }
     notifyListeners();
+  }
+  void _onCombatantDeath(Combatant target, Combatant? killer) {
+    target.isDead = true;
+    if (isSurvivalMode) {
+      if (killer != null && killer.side == CombatSide.player) {
+        final cardType = killer.npc.metadata['cardType'];
+        if (cardType != null) {
+          final enemyLevel = target.npc.metadata['level'] as int? ?? 1;
+          final killXp = enemyLevel == 1 ? 0.5 : (enemyLevel * 2.0);
+          killCounts[cardType] = (killCounts[cardType] ?? 0) + 1;
+          killXpTotals[cardType] = (killXpTotals[cardType] ?? 0.0) + killXp;
+        }
+      }
+    }
+  }
+
+  void _finalizeCombatExp() {
+    if (!isSurvivalMode) return;
+    combatExp.clear();
+    for (final cardType in summonCounts.keys) {
+      final summons = summonCounts[cardType] ?? 0;
+      if (summons == 0) continue;
+      final level = _cardLevels[cardType] ?? 1;
+      final baseSummonXp = 2.0 * level;
+      final totalSummonXp = baseSummonXp * summons;
+      final kills = killCounts[cardType] ?? 0;
+      final killsXp = killXpTotals[cardType] ?? 0.0;
+
+      double finalXpChange = 0.0;
+      if (_isVictory) {
+        finalXpChange = totalSummonXp + killsXp;
+      } else {
+        if (kills > 0) {
+          finalXpChange = (totalSummonXp + killsXp) * 0.5;
+        } else {
+          finalXpChange = -baseSummonXp;
+        }
+      }
+      combatExp[cardType] = finalXpChange;
+    }
   }
 }

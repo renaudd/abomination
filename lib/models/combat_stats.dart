@@ -241,6 +241,40 @@ class Ability {
     this.effectData = const {},
   });
 
+  String get detailedDescription {
+    final List<String> details = [];
+    if (chargeTime != null) {
+      details.add('Cooldown: ${chargeTime!.toStringAsFixed(1)}s');
+    }
+    final castTime = effectData['castingTime'] ?? effectData['castTime'];
+    if (castTime != null) {
+      details.add('Cast: ${castTime}s');
+    } else if (type == AbilityType.special) {
+      details.add('Cast: Instant');
+    }
+
+    final aoe = effectData['aoe'] ?? effectData['radius'] ?? effectData['range'] ?? effectData['area'];
+    if (aoe != null) {
+      details.add('AoE: ${aoe}ft');
+    }
+
+    if (effectData.isNotEmpty) {
+      effectData.forEach((key, value) {
+        if (key != 'castingTime' && key != 'castTime' && key != 'aoe' && key != 'radius' && key != 'range' && key != 'area') {
+          if (key != 'type' && key != 'buffType') {
+            final String capKey = key[0].toUpperCase() + key.substring(1);
+            details.add('$capKey: $value');
+          }
+        }
+      });
+    }
+
+    if (details.isEmpty) {
+      return description;
+    }
+    return '$description (${details.join(" | ")})';
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,

@@ -23,6 +23,7 @@ import '../../models/combat_stats.dart';
 import '../../services/survival_service.dart';
 import '../../services/combat_unit_service.dart';
 import '../../services/combat_unit_factory.dart';
+import '../../services/arena_save_service.dart';
 import '../widgets/character_blob_renderer.dart';
 import 'combat_screen.dart';
 import 'game_over_screen.dart';
@@ -524,6 +525,7 @@ class SurvivalEstateMapScreen extends StatefulWidget {
 class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   bool _isDrafting = true;
   final List<String> _selectedCart = [];
+  bool _isTransitioningToCombat = false;
   
   String _activeTab =
       'ESTATE'; // 'ESTATE', 'DECK', 'LEADER', 'TOWERS', 'MARKET', 'MANOR_RECORDS'
@@ -561,17 +563,34 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     List<GeneralWeaponSpec> availableWeps,
   ) {
     final service = Provider.of<SurvivalService>(context, listen: false);
+    final progress = service.progress!;
     final currentWepIdx =
-        service.progress!.cardUpgrades['${cardId}_equipped_weapon_idx'] ?? 0;
+        progress.cardUpgrades['${cardId}_equipped_weapon_idx'] ?? 0;
     final currentWepName = currentWepIdx == 0
         ? _getStartingWeapon(cardId).name
         : _generalWeaponMarket[currentWepIdx - 1].name;
     final currWep = _getEquippedWeaponStats(cardId, currentWepName);
     final currentScore = _scoreWeapon(cardId, currWep);
 
-    final compatibleWeps = availableWeps
-        .where((w) => _getWeaponCompatibilityError(cardId, w.name) == null)
-        .toList();
+    final arsenalBuilding = progress.buildings.firstWhere(
+      (b) => b.type == SurvivalBuildingType.arsenal,
+      orElse: () => SurvivalBuilding(
+        id: '',
+        type: SurvivalBuildingType.arsenal,
+        level: 0,
+        assignedUnitIds: [],
+      ),
+    );
+    final arsenalLvl = arsenalBuilding.level;
+    final squadSize = _getSquadSize(cardId);
+
+    final compatibleWeps = availableWeps.where((w) {
+      if (_getWeaponCompatibilityError(cardId, w.name) != null) return false;
+      if (progress.cash < w.cost * squadSize) return false;
+      final reqLvl = _weaponRequiresArsenal(w.name) ? w.tier : 0;
+      if (arsenalLvl < reqLvl) return false;
+      return true;
+    }).toList();
 
     if (compatibleWeps.isEmpty) return null;
 
@@ -603,6 +622,24 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   bool _showDraftCardDetails = false;
   String? _selectedWepCardId;
   String? _selectedInspectorCardId;
+
+  set selectedInspectorCardId(String? val) {
+    setState(() {
+      _selectedInspectorCardId = val;
+    });
+  }
+
+  set selectedWepCardId(String? val) {
+    setState(() {
+      _selectedWepCardId = val;
+    });
+  }
+
+  set activeTab(String val) {
+    setState(() {
+      _activeTab = val;
+    });
+  }
 
   final List<Map<String, dynamic>> _draftPool = [
     {'type': 'peasant', 'cost': 150, 'name': 'Peasant'},
@@ -643,13 +680,18 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final t3Destroyed = (progress.towerDamaged['tower_3'] ?? 0.0) >= 1.0;
     final allTowersDestroyed = t1Destroyed && t2Destroyed && t3Destroyed;
 
-    if (allTowersDestroyed && progress.difficulty != SurvivalDifficulty.childPlay) {
+    if (allTowersDestroyed && progress.difficulty != SurvivalDifficulty.elementary) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (progress.difficulty == SurvivalDifficulty.arcade) {
+          ArenaSaveService.deleteSave(service.activeSlot);
+        }
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const GameOverScreen(
+            builder: (context) => GameOverScreen(
               reason: 'All watchtowers have fallen. The estate is overrun.',
+              difficulty: progress.difficulty,
+              turnsSurvived: progress.currentTurn,
             ),
           ),
         );
@@ -671,7 +713,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     }
 
     final nextEncounterTurn = progress.cardUpgrades['next_encounter_turn']!;
-    if (turn >= nextEncounterTurn && !_isDrafting) {
+    if (turn >= nextEncounterTurn && !_isDrafting && !_isTransitioningToCombat) {
       final index = progress.cardUpgrades['next_encounter_index'] ?? 0;
       final encountersList = [
         'gnomes_artillery',
@@ -1008,7 +1050,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               progress,
               service,
               'plot_a',
-              'AROSA PLOT (ADVANCED)',
+              'AROSA PLOT (INDUSTRY)',
               205,
               290,
               340,
@@ -1019,7 +1061,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               progress,
               service,
               'plot_b',
-              'BERN PLOT (ADVANCED)',
+              'BERN PLOT (INDUSTRY)',
               785,
               290,
               340,
@@ -1041,7 +1083,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               progress,
               service,
               'plot_d',
-              'DAVOS PLOT (BASIC)',
+              'DAVOS PLOT (RESOURCE)',
               1660,
               540,
               340,
@@ -1052,7 +1094,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               progress,
               service,
               'plot_e',
-              'ENGELBERG PLOT (BASIC)',
+              'ENGELBERG PLOT (RESOURCE)',
               2360,
               595,
               340,
@@ -1063,7 +1105,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               progress,
               service,
               'plot_f',
-              'FRIBOURG PLOT (BASIC)',
+              'FRIBOURG PLOT (RESOURCE)',
               1980,
               847,
               340,
@@ -1074,7 +1116,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               progress,
               service,
               'plot_g',
-              'GRINDELWALD PLOT (BASIC)',
+              'GRINDELWALD PLOT (RESOURCE)',
               1520,
               1065,
               380,
@@ -1255,7 +1297,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     double height,
   ) {
     final isDestroyed = (progress.towerDamaged[towerId] ?? 0.0) >= 1.0;
-    final lvl = progress.towerLevels['health'] ?? 1;
+    final lvl = progress.getTowerLevel(towerId);
+    final workers = progress.towerRepairWorkers[towerId] ?? [];
 
     return Positioned(
       left: left,
@@ -1303,6 +1346,66 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       ],
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(progress.getTowerRepairSlotsCap(towerId), (idx) {
+                      final hasWorker = idx < workers.length;
+                      final workerId = hasWorker ? workers[idx] : null;
+                      final cap = progress.getTowerRepairSlotsCap(towerId);
+
+                      return DragTarget<String>(
+                        onWillAcceptWithDetails: (details) => workers.length < cap,
+                        onAcceptWithDetails: (details) {
+                          service.assignTowerRepair(towerId, details.data);
+                          setState(() {});
+                        },
+                        builder: (context, candidateData, rejectedData) {
+                          final isOver = candidateData.isNotEmpty;
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: hasWorker
+                                  ? const Color(0xFF4E342E)
+                                  : Colors.black45,
+                              border: Border.all(
+                                color: isOver
+                                    ? const Color(0xFFD4AF37)
+                                    : const Color(0xFFD4AF37).withValues(alpha: 0.6),
+                                width: isOver ? 3.0 : 2.5,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: hasWorker
+                                ? Draggable<String>(
+                                    data: workerId!,
+                                    dragAnchorStrategy: pointerDragAnchorStrategy,
+                                    feedback: Material(
+                                      color: Colors.transparent,
+                                      child: CharacterBlobRenderer(
+                                        npc: CombatUnitService.createUnit(workerId),
+                                        size: 48,
+                                        isCombat: true,
+                                      ),
+                                    ),
+                                    onDragCompleted: () {
+                                      setState(() {});
+                                    },
+                                    child: CharacterBlobRenderer(
+                                      npc: CombatUnitService.createUnit(workerId),
+                                      size: 44,
+                                      isCombat: true,
+                                    ),
+                                  )
+                                : const SizedBox(),
+                          );
+                        },
+                      );
+                    }),
                   ),
                 ] else ...[
                   const Icon(Icons.security, color: Colors.white24, size: 32),
@@ -1697,10 +1800,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    b.type.name
-                        .replaceAll("lumberMill", "Mill")
-                        .replaceAll("arsenal", "Arsenal")
-                        .toUpperCase(),
+                    b.type.displayName.toUpperCase(),
                     style: GoogleFonts.playfairDisplay(
                       color: const Color(0xFFE5D5B0),
                       fontSize: 22,
@@ -1815,8 +1915,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     for (var b in progress.buildings) {
                       if (b.assignedUnitIds.contains(type)) isAssigned = true;
                     }
-                    if (progress.trainingUnitIds.contains(type))
+                    if (progress.trainingUnitIds.contains(type)) {
                       isAssigned = true;
+                    }
+                    for (var list in progress.towerRepairWorkers.values) {
+                      if (list.contains(type)) {
+                        isAssigned = true;
+                      }
+                    }
 
                     final exp = progress.unitExp[type] ?? 0.0;
                     final lvl = SurvivalProgress.getLevelFromXp(exp);
@@ -1980,6 +2086,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 }
 
                 // Trigger turn resolution
+                _isTransitioningToCombat = true;
                 service.endTurn();
 
                 // Check for level-ups
@@ -2145,6 +2252,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     final lvl = SurvivalProgress.getLevelFromXp(exp);
                     final mult = 1.0 + (lvl - 1) * 0.1;
                     return npc.copyWith(
+                      metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
                       combatStats: npc.combatStats?.copyWith(
                         health: npc.combatStats!.health * mult,
                         maxHealth: npc.combatStats!.maxHealth * mult,
@@ -2172,12 +2280,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         customAiDeck: aiUnits,
                         cardUpgrades: progress.cardUpgrades,
                         survivalTurn: progress.currentTurn,
-                        onSurvivalVictory: (destroyedTowersCount, enemyDeck, spoilsFood, spoilsCash, spoilsIron, spoilsWood, playerTowerHealth, activeContext) {
+                        survivalDifficulty: progress.difficulty,
+                        onSurvivalVictory: (destroyedTowersCount, enemyDeck, spoilsFood, spoilsCash, spoilsIron, spoilsWood, playerTowerHealth, combatExp, activeContext) {
                           service.processCombatOutcome(
                             true,
                             false,
                             playerTowerHealth,
-                            {},
+                            combatExp,
                             opponentDeck: enemyDeck,
                             destroyedEnemyTowers: destroyedTowersCount,
                             customSpoilsFood: spoilsFood,
@@ -2196,12 +2305,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             ),
                           );
                         },
-                        onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, activeContext) {
+                        onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, combatExp, activeContext) {
                           service.processCombatOutcome(
                             false,
                             false,
                             playerTowerHealth,
-                            {},
+                            combatExp,
                             opponentDeck: enemyDeck,
                             destroyedEnemyTowers: destroyedTowersCount,
                             customSpoilsFood: 0,
@@ -2210,22 +2319,36 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             customSpoilsWood: 0,
                           );
                           state.clearEncounterState();
-                          Navigator.pushReplacement(
-                            activeContext,
-                            MaterialPageRoute(
-                              builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-                                value: service,
-                                child: const SurvivalEstateMapScreen(),
+                          if (progress.difficulty == SurvivalDifficulty.arcade) {
+                            ArenaSaveService.deleteSave(service.activeSlot);
+                            Navigator.pushReplacement(
+                              activeContext,
+                              MaterialPageRoute(
+                                builder: (context) => GameOverScreen(
+                                  reason: 'Your forces were defeated in combat.',
+                                  difficulty: progress.difficulty,
+                                  turnsSurvived: progress.currentTurn,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          } else {
+                            Navigator.pushReplacement(
+                              activeContext,
+                              MaterialPageRoute(
+                                builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                                  value: service,
+                                  child: const SurvivalEstateMapScreen(),
+                                ),
+                              ),
+                            );
+                          }
                         },
-                        onSurvivalDraw: (destroyedTowersCount, enemyDeck, playerTowerHealth, activeContext) {
+                        onSurvivalDraw: (destroyedTowersCount, enemyDeck, playerTowerHealth, combatExp, activeContext) {
                           service.processCombatOutcome(
                             false,
                             true,
                             playerTowerHealth,
-                            {},
+                            combatExp,
                             opponentDeck: enemyDeck,
                             destroyedEnemyTowers: destroyedTowersCount,
                             customSpoilsFood: 0,
@@ -2754,7 +2877,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     context: context,
                                     service: service,
                                     towerId: towerId,
-                                    label: 'MANUAL LABOR (2 Workers)',
+                                    label: 'MANUAL LABOR (${currentProgress.getTowerRepairSlotsCap(towerId)} Workers)',
                                     method: 'labor',
                                     woodCost: 0,
                                     cashCost: 0,
@@ -3188,7 +3311,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         return SimpleDialog(
           backgroundColor: const Color(0xFF2E1A0A),
           title: Text(
-            isAdvanced ? 'CONSTRUCT ADVANCED FACILITY' : 'CONSTRUCT BASIC FACILITY',
+            isAdvanced ? 'CONSTRUCT INDUSTRY FACILITY' : 'CONSTRUCT RESOURCE FACILITY',
             style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
           ),
           children: isAdvanced
@@ -3606,24 +3729,6 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             );
                           }).toList(),
                         ),
-                      ] else ...[
-                        _buildMenuOptionBtn('MANUAL SAVE STATE', () {
-                          service.manualSave();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('State saved successfully!')),
-                          );
-                          Navigator.pop(context);
-                        }),
-                        const SizedBox(height: 8),
-                        _buildMenuOptionBtn('LOAD SAVE STATE', () {
-                          service.reloadProgress();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Survival progress reloaded successfully!'),
-                            ),
-                          );
-                          Navigator.pop(context);
-                        }),
                       ],
                       const SizedBox(height: 12),
                       const Divider(color: Color(0xFF352B24)),
@@ -4075,6 +4180,39 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       ),
     );
 
+    // Tower repairs
+    for (final towerId in progress.towerRepairWorkers.keys) {
+      final list = progress.towerRepairWorkers[towerId] ?? [];
+      if (list.isNotEmpty) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${towerId.replaceAll("_", " ").toUpperCase()} REPAIR',
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  list.map((id) => CombatUnitService.createUnit(id).name).join(', '),
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFD4AF37),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
     final deck = progress.playerDeckIds;
     final List<String> idle = [];
     for (final id in deck) {
@@ -4083,6 +4221,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         if (b.assignedUnitIds.contains(id)) isAssigned = true;
       }
       if (progress.trainingUnitIds.contains(id)) isAssigned = true;
+      for (final list in progress.towerRepairWorkers.values) {
+        if (list.contains(id)) isAssigned = true;
+      }
       if (!isAssigned) idle.add(id);
     }
 
@@ -6078,14 +6219,20 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final currWep = _getEquippedWeaponStats(cardId, currentWepName);
     final currentScore = _scoreWeapon(cardId, currWep);
 
+    final squadSize = _getSquadSize(cardId);
+
     final rawWeps = _getAvailableMarketWeapons(
       progress.currentTurn,
       progress.villageHealth,
     );
-    // Compatible weapons for sale
-    final compatibleWeps = rawWeps
-        .where((w) => _getWeaponCompatibilityError(cardId, w.name) == null)
-        .toList();
+    // Compatible, affordable, and unlocked weapons for sale
+    final compatibleWeps = rawWeps.where((w) {
+      if (_getWeaponCompatibilityError(cardId, w.name) != null) return false;
+      if (progress.cash < w.cost * squadSize) return false;
+      final reqLvl = _weaponRequiresArsenal(w.name) ? w.tier : 0;
+      if (arsenalLvl < reqLvl) return false;
+      return true;
+    }).toList();
 
     // Auto-propose the best upgrade (if any compatible is better)
     GeneralWeaponSpec? recommendedWep;
@@ -6104,7 +6251,6 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final evaluatedStats = evaluatedWep != null
         ? _getEquippedWeaponStats(cardId, evaluatedWep.name)
         : null;
-    final squadSize = _getSquadSize(cardId);
     final totalCost = evaluatedWep != null ? evaluatedWep.cost * squadSize : 0;
 
     final reqLvl = evaluatedWep != null
@@ -6161,11 +6307,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    wep.name.toUpperCase() + (isRec ? ' (RECOMMENDED)' : ''),
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 12,
-                      fontWeight: isRec ? FontWeight.bold : FontWeight.normal,
+                  Expanded(
+                    child: Text(
+                      wep.name.toUpperCase() + (isRec ? ' (RECOMMENDED)' : ''),
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 12,
+                        fontWeight: isRec ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -6196,7 +6345,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   child: Text(
                     evaluatedWep != null
                         ? '${evaluatedWep == recommendedWep ? "★ RECOMMENDED: " : ""}${evaluatedWep.name.toUpperCase()}'
-                        : 'NO COMPATIBLE WEAPONS FOR SALE',
+                        : 'NO COMPATIBLE OR AFFORDABLE WEAPONS FOR SALE',
                     style: GoogleFonts.playfairDisplay(
                       color: const Color(0xFFE5D5B0),
                       fontSize: 12,
@@ -6517,6 +6666,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final pct = range == 0 ? 1.0 : ((exp - prevReq) / range).clamp(0.0, 1.0);
 
     final bool isMeleeOnly = stats.rangedDamage == 0.0;
+    final bool isUndeadUnit = SurvivalService.isUndead(npc);
     final bool isRightCapable =
         !(cardId.contains('rat') ||
             cardId == 'werewolf' ||
@@ -6725,7 +6875,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Deploy unit to training ground to earn +8 XP per turn passively, or spend cash budget directly below to purchase tactical drills.',
+                              'Deploy unit to training ground to earn +${1 + lvl} XP per turn passively, or spend cash budget directly below to purchase tactical drills.',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.oldStandardTt(
                                 color: Colors.white38,
@@ -6733,59 +6883,69 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: (progress.cash >= 50 && !_isDrafting)
-                                    ? const Color(0xFF2E1A0A)
-                                    : Colors.transparent,
-                                side: BorderSide(
-                                  color: (progress.cash >= 50 && !_isDrafting)
-                                      ? const Color(0xFFC4B89B)
-                                      : Colors.white10,
-                                ),
-                                shape: const RoundedRectangleBorder(),
-                              ),
-                              onPressed: (progress.cash >= 50 && !_isDrafting)
-                                  ? () {
-                                      final oldExp =
-                                          progress.unitExp[cardId] ?? 0.0;
-                                      final oldLvl =
-                                          SurvivalProgress.getLevelFromXp(
-                                            oldExp,
-                                          );
-                                      if (service.buyTrainingPoints(
-                                        cardId,
-                                        10,
-                                        50,
-                                      )) {
-                                        final newExp =
-                                            progress.unitExp[cardId] ?? 0.0;
-                                        final newLvl =
-                                            SurvivalProgress.getLevelFromXp(
-                                              newExp,
-                                            );
-                                        if (newLvl > oldLvl) {
-                                          _showLevelUpDialog(
-                                            context,
+                            Builder(
+                              builder: (context) {
+                                final drillXp = 3 * lvl;
+                                final drillCost = 15 * lvl;
+                                final canAffordDrills = (progress.cash >= drillCost && !_isDrafting && !isUndeadUnit);
+
+                                return ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: canAffordDrills
+                                        ? const Color(0xFF2E1A0A)
+                                        : Colors.transparent,
+                                    side: BorderSide(
+                                      color: canAffordDrills
+                                          ? const Color(0xFFC4B89B)
+                                          : Colors.white10,
+                                    ),
+                                    shape: const RoundedRectangleBorder(),
+                                  ),
+                                  onPressed: canAffordDrills
+                                      ? () {
+                                          final oldExp =
+                                              progress.unitExp[cardId] ?? 0.0;
+                                          final oldLvl =
+                                              SurvivalProgress.getLevelFromXp(
+                                                oldExp,
+                                              );
+                                          if (service.buyTrainingPoints(
                                             cardId,
-                                            oldLvl,
-                                            newLvl,
-                                          );
+                                            drillXp,
+                                            drillCost,
+                                          )) {
+                                            final newExp =
+                                                progress.unitExp[cardId] ?? 0.0;
+                                            final newLvl =
+                                                SurvivalProgress.getLevelFromXp(
+                                                  newExp,
+                                                );
+                                            if (newLvl > oldLvl) {
+                                              _showLevelUpDialog(
+                                                context,
+                                                cardId,
+                                                oldLvl,
+                                                newLvl,
+                                              );
+                                            }
+                                            setState(() {});
+                                          }
                                         }
-                                        setState(() {});
-                                      }
-                                    }
-                                  : null,
-                              child: Text(
-                                _isDrafting ? 'LOCKED DURING DRAFT' : 'BUY DRILLS: +10 XP (50 CHF)',
-                                style: GoogleFonts.playfairDisplay(
-                                  color: (progress.cash >= 50 && !_isDrafting)
-                                      ? const Color(0xFFE5D5B0)
-                                      : Colors.white24,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                                      : null,
+                                  child: Text(
+                                    _isDrafting 
+                                        ? 'LOCKED DURING DRAFT' 
+                                        : (isUndeadUnit ? 'UNDEAD CANNOT DRILL' : 'BUY DRILLS: +$drillXp XP ($drillCost CHF)'),
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: canAffordDrills
+                                          ? const Color(0xFFE5D5B0)
+                                          : Colors.white24,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                                   ],
                         ),
@@ -6887,6 +7047,42 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 'Targeting Strategy priority',
                                 stats.targetingRule.name.toUpperCase(),
                               ),
+                            ],
+                            if (npc.abilities.isNotEmpty) ...[
+                              const Divider(color: Colors.white10, height: 16),
+                              Text(
+                                'SPECIAL ABILITIES',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFD4AF37),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              ...npc.abilities.map((a) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      a.name.toUpperCase(),
+                                      style: GoogleFonts.playfairDisplay(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      a.detailedDescription,
+                                      style: GoogleFonts.oldStandardTt(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )),
                             ],
                           ],
                         ),
@@ -7050,7 +7246,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'onPress': () {
             if (progress.buildings.isNotEmpty) {
               final b = progress.buildings.removeAt(0);
-              service.addLog('Destroyed facility: ${b.type.name.toUpperCase()}');
+              service.addLog('Destroyed facility: ${b.type.displayName.toUpperCase()}');
             }
             final targetTypes = ['marksmen', 'cannoneer', 'artillery_barrage'];
             for (var t in targetTypes) {
@@ -8413,8 +8609,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             ),
                           ),
                           onPressed: () {
-                            cb();
-                            if (!titleStr.contains('D)')) {
+                            if (titleStr.contains('D)')) {
+                              Navigator.pop(context);
+                              cb();
+                            } else {
+                              cb();
                               service.manualSave();
                               Navigator.pop(context);
                             }
@@ -8472,6 +8671,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       final lvl = SurvivalProgress.getLevelFromXp(exp);
       final mult = 1.0 + (lvl - 1) * 0.1;
       return npc.copyWith(
+        metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
         combatStats: npc.combatStats?.copyWith(
           health: npc.combatStats!.health * mult,
           maxHealth: npc.combatStats!.maxHealth * mult,
@@ -8493,12 +8693,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           customAiDeck: aiUnits,
           cardUpgrades: progress.cardUpgrades,
           survivalTurn: progress.currentTurn,
-          onSurvivalVictory: (destroyedTowersCount, enemyDeck, finalSpoilsFood, finalSpoilsCash, finalSpoilsIron, finalSpoilsWood, playerTowerHealth, activeContext) {
+          survivalDifficulty: progress.difficulty,
+          onSurvivalVictory: (destroyedTowersCount, enemyDeck, finalSpoilsFood, finalSpoilsCash, finalSpoilsIron, finalSpoilsWood, playerTowerHealth, combatExp, activeContext) {
             service.processCombatOutcome(
               true,
               false,
               playerTowerHealth,
-              {},
+              combatExp,
               opponentDeck: enemyDeck,
               destroyedEnemyTowers: destroyedTowersCount,
               customSpoilsFood: spoilsFood,
@@ -8517,12 +8718,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               ),
             );
           },
-          onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, activeContext) {
+          onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, combatExp, activeContext) {
             service.processCombatOutcome(
               false,
               false,
               playerTowerHealth,
-              {},
+              combatExp,
               opponentDeck: enemyDeck,
               destroyedEnemyTowers: destroyedTowersCount,
               customSpoilsFood: 0,
@@ -8531,15 +8732,29 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               customSpoilsWood: 0,
             );
             state.clearEncounterState();
-            Navigator.pushReplacement(
-              activeContext,
-              MaterialPageRoute(
-                builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-                  value: service,
-                  child: const SurvivalEstateMapScreen(),
+            if (progress.difficulty == SurvivalDifficulty.arcade) {
+              ArenaSaveService.deleteSave(service.activeSlot);
+              Navigator.pushReplacement(
+                activeContext,
+                MaterialPageRoute(
+                  builder: (context) => GameOverScreen(
+                    reason: 'Your forces were defeated in combat.',
+                    difficulty: progress.difficulty,
+                    turnsSurvived: progress.currentTurn,
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              Navigator.pushReplacement(
+                activeContext,
+                MaterialPageRoute(
+                  builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                    value: service,
+                    child: const SurvivalEstateMapScreen(),
+                  ),
+                ),
+              );
+            }
           },
         ),
       ),
