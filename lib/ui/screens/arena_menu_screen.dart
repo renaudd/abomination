@@ -485,18 +485,116 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
   void _showSurvivalSetup() {
     _showLeaderSelection(
       onLeaderSelected: (leaderId) async {
-        final service = SurvivalService(_activeSlot);
-        service.initializeNewSurvivalGame(leaderId);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-              value: service,
-              child: const SurvivalEstateMapScreen(),
+        _showDifficultySelection(
+          onDifficultySelected: (difficulty) async {
+            final service = SurvivalService(_activeSlot);
+            service.initializeNewSurvivalGame(leaderId, difficulty);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                  value: service,
+                  child: const SurvivalEstateMapScreen(),
+                ),
+              ),
+            ).then((_) => _loadActiveSlot());
+          },
+        );
+      },
+    );
+  }
+
+  void _showDifficultySelection({
+    required Function(SurvivalDifficulty difficulty) onDifficultySelected,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1D1712),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.4), width: 1.5),
+          ),
+          title: Text(
+            'SELECT DIFFICULTY',
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDifficultySelectCard(
+                  title: 'CHILD\'S PLAY',
+                  desc: 'Losing all three watchtowers does not end the survival game. Ideal for exploring and practicing basic tactics.',
+                  difficulty: SurvivalDifficulty.childPlay,
+                  onSelect: onDifficultySelected,
+                ),
+                const SizedBox(height: 12),
+                _buildDifficultySelectCard(
+                  title: 'ELEMENTARY',
+                  desc: 'Enables saving to multiple slots manually and toggling turn-by-turn auto-save off.',
+                  difficulty: SurvivalDifficulty.elementary,
+                  onSelect: onDifficultySelected,
+                ),
+                const SizedBox(height: 12),
+                _buildDifficultySelectCard(
+                  title: 'CLASSIC',
+                  desc: 'Auto-saves every single turn onto the active save slot. No manual saving, and watchtower destruction triggers game over.',
+                  difficulty: SurvivalDifficulty.classic,
+                  onSelect: onDifficultySelected,
+                ),
+              ],
             ),
           ),
-        ).then((_) => _loadActiveSlot());
+        );
       },
+    );
+  }
+
+  Widget _buildDifficultySelectCard({
+    required String title,
+    required String desc,
+    required SurvivalDifficulty difficulty,
+    required Function(SurvivalDifficulty) onSelect,
+  }) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context); // Close dialog
+        onSelect(difficulty);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.25), width: 1.0),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.playfairDisplay(
+                color: const Color(0xFFE5D5B0),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              desc,
+              style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 10.5, height: 1.4),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

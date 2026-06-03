@@ -44,8 +44,9 @@ class SurvivalService extends ChangeNotifier {
     }
   }
 
-  void _save() {
+  void _save({bool isManual = false}) {
     if (_progress == null) return;
+    if (!isManual && !_progress!.autoSaveEnabled) return;
     ArenaSaveService.loadProgress(_activeSlot).then((current) {
       final updated = ArenaProgress(
         slot: _activeSlot,
@@ -60,8 +61,42 @@ class SurvivalService extends ChangeNotifier {
   }
 
   void manualSave() {
-    _save();
+    _save(isManual: true);
     addLog('Manual Save completed.');
+  }
+
+  void manualSaveToSlot(int slot) {
+    if (_progress == null) return;
+    ArenaSaveService.loadProgress(slot).then((current) {
+      final updated = ArenaProgress(
+        slot: slot,
+        saveTime: DateTime.now(),
+        campaign: current?.campaign,
+        tournament: current?.tournament,
+        survival: _progress,
+      );
+      ArenaSaveService.saveProgress(updated);
+    });
+    addLog('Manual Save to Slot #$slot completed.');
+    notifyListeners();
+  }
+
+  Future<void> manualLoadFromSlot(int slot) async {
+    final saved = await ArenaSaveService.loadProgress(slot);
+    if (saved != null && saved.survival != null) {
+      _progress = saved.survival;
+      addLog('Loaded game state from Slot #$slot.');
+      notifyListeners();
+    } else {
+      addLog('Failed to load: Slot #$slot has no survival save data.');
+    }
+  }
+
+  void toggleAutoSave() {
+    if (_progress == null) return;
+    _progress!.autoSaveEnabled = !_progress!.autoSaveEnabled;
+    addLog('Auto-Save is now ${_progress!.autoSaveEnabled ? "ENABLED" : "DISABLED"}.');
+    _save(isManual: true);
   }
 
   Future<void> reloadProgress() async {
@@ -78,8 +113,10 @@ class SurvivalService extends ChangeNotifier {
   }
 
   // Initialize a new Survival Mode game slot
-  void initializeNewSurvivalGame(String leaderId) {
+  void initializeNewSurvivalGame(String leaderId, SurvivalDifficulty difficulty) {
     _logs.clear();
+    final rand = Random();
+    final firstEncounterTurn = rand.nextBool() ? 4 : 5;
     _progress = SurvivalProgress(
       currentTurn: 1,
       cash: 1000,
@@ -108,6 +145,12 @@ class SurvivalService extends ChangeNotifier {
       starvationInfractions: {},
       bondageDebuffCount: {},
       trainingUnitIds: [],
+      cardUpgrades: {
+        'next_encounter_turn': firstEncounterTurn,
+        'next_encounter_index': 0,
+      },
+      difficulty: difficulty,
+      autoSaveEnabled: true,
     );
     addLog('Survival Mode begun! Starting draft embarked.');
     _save();

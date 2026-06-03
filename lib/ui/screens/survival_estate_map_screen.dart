@@ -25,6 +25,7 @@ import '../../services/combat_unit_service.dart';
 import '../../services/combat_unit_factory.dart';
 import '../widgets/character_blob_renderer.dart';
 import 'combat_screen.dart';
+import 'game_over_screen.dart';
 
 class WeaponUpgradeSpec {
   final String name;
@@ -598,6 +599,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }
 
   bool _showCardDetails = false;
+  bool _showDraftCardDetails = false;
   String? _selectedWepCardId;
   String? _selectedInspectorCardId;
 
@@ -614,6 +616,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     {'type': 'werewolf', 'cost': 350, 'name': 'Werewolf'},
     {'type': 'chimera', 'cost': 500, 'name': 'Chimera (Behemoth)'},
     {'type': 'flesh_golem', 'cost': 320, 'name': 'Flesh Golem'},
+    {'type': 'cavalry', 'cost': 280, 'name': 'Cavalry'},
+    {'type': 'cannoneer', 'cost': 320, 'name': 'Cannoneer'},
+    {'type': 'sniper', 'cost': 300, 'name': 'Sniper'},
+    {'type': 'pikemen', 'cost': 230, 'name': 'Pikemen'},
+    {'type': 'marksmen', 'cost': 240, 'name': 'Marksmen'},
+    {'type': 'motorcycle_gang', 'cost': 290, 'name': 'Motorcycle Gang'},
   ];
 
   @override
@@ -629,17 +637,70 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       );
     }
 
+    final t1Destroyed = (progress.towerDamaged['tower_1'] ?? 0.0) >= 1.0;
+    final t2Destroyed = (progress.towerDamaged['tower_2'] ?? 0.0) >= 1.0;
+    final t3Destroyed = (progress.towerDamaged['tower_3'] ?? 0.0) >= 1.0;
+    final allTowersDestroyed = t1Destroyed && t2Destroyed && t3Destroyed;
+
+    if (allTowersDestroyed && progress.difficulty != SurvivalDifficulty.childPlay) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const GameOverScreen(
+              reason: 'All watchtowers have fallen. The estate is overrun.',
+            ),
+          ),
+        );
+      });
+    }
+
     // Turn off embark shop overlay if player already finished drafting (deck contains cards and we aren't showing drafting)
     if (_isDrafting && progress.playerDeckIds.isNotEmpty && _selectedCart.isEmpty) {
       _isDrafting = false;
     }
 
-    // Auto-trigger Turn 4 narrative dialogue if not resolved
-    final turn4Resolved = progress.cardUpgrades['turn4_event_resolved'] == 1;
-    if (progress.currentTurn == 4 && !turn4Resolved && !_isDrafting) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showEventSelectionDialogue(context, progress, service);
-      });
+    // Auto-trigger turn narrative dialogues based on dynamic scheduled turns
+    final turn = progress.currentTurn;
+    if (progress.cardUpgrades['next_encounter_turn'] == null) {
+      final rand = Random();
+      progress.cardUpgrades['next_encounter_turn'] = rand.nextBool() ? 4 : 5;
+      progress.cardUpgrades['next_encounter_index'] = 0;
+      service.manualSave();
+    }
+
+    final nextEncounterTurn = progress.cardUpgrades['next_encounter_turn']!;
+    if (turn >= nextEncounterTurn && !_isDrafting) {
+      final index = progress.cardUpgrades['next_encounter_index'] ?? 0;
+      final encountersList = [
+        'gnomes_artillery',
+        'freemasons_tribute',
+        'alchemist_transmutation',
+        'templar_levy',
+        'carbonari_strike',
+        'golden_dawn_seance',
+        'fenian_gunrunning',
+        'french_cavalry',
+        'adrenochrome_syndicate',
+        'bank_audit',
+        'mystic_herbs',
+        'irish_mutiny',
+        'monarchist_ball',
+        'masonic_toll',
+        'alchemical_explosion',
+        'secret_treaty',
+        'carbonari_press',
+        'golden_dawn_relic',
+        'forester_woodcutters',
+        'swiss_banker_loan',
+        'grenadier_sabotage',
+      ];
+      final String encounterId = encountersList[index % encountersList.length];
+      if (progress.cardUpgrades['encounter_${encounterId}_resolved'] != 1) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showNarrativeEncounter(context, encounterId, progress, service, state);
+        });
+      }
     }
 
     Widget centerArea;
@@ -2195,132 +2256,244 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withValues(alpha: 0.85),
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        color: Colors.black.withValues(alpha: 0.9),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
           children: [
-            Text(
-              'RECRUIT YOUR SURVIVAL SQUAD',
-              style: GoogleFonts.playfairDisplay(
-                color: const Color(0xFFE5D5B0),
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                letterSpacing: 3,
-              ),
-            ),
-            Text(
-              'Spend your 1000 CHF budget wisely. Select units to add to your cart and deselect them to refund CHF.',
-              style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 10.5, fontStyle: FontStyle.italic),
+            // Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'RECRUIT YOUR SURVIVAL SQUAD',
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    Text(
+                      'Spend your 1000 CHF budget wisely. Clicking a card opens its details. Toggles below let you flip all cards.',
+                      style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 10.5, fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'BUDGET: $budgetRemaining / 1000 CHF',
+                        style: GoogleFonts.oswald(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'SQUAD: ${_selectedCart.length}/12',
+                        style: GoogleFonts.oswald(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Card flip toggle icon button
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          _showDraftCardDetails ? Icons.portrait : Icons.menu_book,
+                          color: const Color(0xFFD4AF37),
+                          size: 22,
+                        ),
+                        tooltip: _showDraftCardDetails ? 'Show Portraits' : 'Show Tactical Specs',
+                        onPressed: () => setState(() => _showDraftCardDetails = !_showDraftCardDetails),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              color: Colors.amber.withValues(alpha: 0.1),
-              child: Text(
-                'BUDGET REMAINING: $budgetRemaining CHF | SQUAD SIZE: ${_selectedCart.length}/12',
-                style: GoogleFonts.oswald(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const Divider(color: Color(0xFF3A2F25)),
+            const SizedBox(height: 12),
+
+            // Scrollable Grid of 6 cards per row
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 2.0,
+                  crossAxisCount: 6,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.65, // ordinary playing card height/width ratio + action bar
                 ),
                 itemCount: _draftPool.length,
                 itemBuilder: (context, index) {
                   final item = _draftPool[index];
                   final type = item['type'] as String;
                   final cost = item['cost'] as int;
-                  
+
                   final unit = CombatUnitService.createUnit(type);
+                  final stats = unit.combatStats!;
                   final isSelected = _selectedCart.contains(type);
 
-                  return Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF211B15),
-                      border: Border.all(color: isSelected ? Colors.green : const Color(0xFFC4B89B), width: isSelected ? 2 : 1),
-                    ),
-                    child: Row(
-                      children: [
-                        CharacterBlobRenderer(npc: unit, size: 28, isCombat: true),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                unit.name.toUpperCase(),
-                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                '$cost CHF',
-                                style: GoogleFonts.oswald(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: isSelected
-                              ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
-                              : const Icon(Icons.add_circle, color: Color(0xFFC4B89B), size: 20),
-                          onPressed: () {
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
                             setState(() {
-                              if (isSelected) {
-                                _selectedCart.remove(type);
-                              } else {
-                                if (totalCost + cost <= 1000 && _selectedCart.length < 12) {
-                                  _selectedCart.add(type);
-                                } else if (_selectedCart.length >= 12) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Squad limit is 12 units!')),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Insufficient CHF budget!')),
-                                  );
-                                }
-                              }
+                              _selectedInspectorCardId = type;
                             });
                           },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF211B15),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.greenAccent
+                                    : const Color(0xFFC4B89B).withValues(alpha: 0.4),
+                                width: isSelected ? 2.5 : 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.greenAccent.withValues(alpha: 0.4),
+                                        blurRadius: 6,
+                                        spreadRadius: 1,
+                                      )
+                                    ]
+                                  : [],
+                            ),
+                            child: _showDraftCardDetails
+                                ? _buildTacticalCardFace(type, unit, stats, 1, 0.0)
+                                : _buildPortraitCardFace(type, unit, 1, 0.0),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Recruit footer below card
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '$cost CHF',
+                              style: GoogleFonts.oswald(
+                                color: Colors.amber,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(
+                              height: 20,
+                              child: TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                                  backgroundColor: isSelected ? Colors.red.shade900 : Colors.green.shade900,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedCart.remove(type);
+                                    } else {
+                                      if (totalCost + cost <= 1000 && _selectedCart.length < 12) {
+                                        _selectedCart.add(type);
+                                      } else if (_selectedCart.length >= 12) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Squad limit is 12 units!')),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Insufficient CHF budget!')),
+                                        );
+                                      }
+                                    }
+                                  });
+                                },
+                                child: Text(
+                                  isSelected ? 'REMOVE' : 'ADD',
+                                  style: GoogleFonts.playfairDisplay(
+                                    color: Colors.white,
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                if (_selectedCart.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Draft at least 1 squad unit to embark!')),
-                  );
-                  return;
-                }
-                service.commitDraftSquad(_selectedCart, totalCost);
-                setState(() {
-                  _isDrafting = false;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC4B89B),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: const RoundedRectangleBorder(),
-              ),
-              child: Text(
-                "EMBARK SURVIVAL OPERATION",
-                style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 2),
-              ),
+
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFF3A2F25)),
+            const SizedBox(height: 8),
+
+            // Cart tally & proceed button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'CART TALLY: $totalCost / 1000 CHF spent (${_selectedCart.length} units)',
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_selectedCart.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Draft at least 1 squad unit to embark!')),
+                      );
+                      return;
+                    }
+                    service.commitDraftSquad(_selectedCart, totalCost);
+                    setState(() {
+                      _isDrafting = false;
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC4B89B),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    shape: const RoundedRectangleBorder(),
+                  ),
+                  child: Text(
+                    "PROCEED TO EMBARK",
+                    style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.5),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -3299,77 +3472,152 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     SurvivalService service,
     GameState state,
   ) {
+    final isElementary = progress.difficulty == SurvivalDifficulty.elementary;
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1D1712),
-          shape: RoundedRectangleBorder(
-            side: BorderSide(
-              color: const Color(0xFFC4B89B).withValues(alpha: 0.4),
-              width: 1.5,
-            ),
-          ),
-          title: Text(
-            'COMMAND MENU',
-            style: GoogleFonts.playfairDisplay(
-              color: const Color(0xFFE5D5B0),
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          content: SizedBox(
-            width: 320,
-            height: 160,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildMenuOptionBtn('OPTIONS & CONTROLS', () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      backgroundColor: const Color(0xFF2E1A0A),
-                      title: const Text('GAME CONTROLS'),
-                      content: const Text(
-                        'Assign squad workers to Farms, Lumber Mills, and Mines to produce critical food, wood and iron.\n\n'
-                        'Assign squads to Training Yard to increase their combat tiers. Ensure you have enough food to feed basic/elite units each turn, otherwise they starve and desert!',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1D1712),
+              shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  color: const Color(0xFFC4B89B).withValues(alpha: 0.4),
+                  width: 1.5,
+                ),
+              ),
+              title: Text(
+                'COMMAND MENU',
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              content: SizedBox(
+                width: 340,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildMenuOptionBtn('OPTIONS & CONTROLS', () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: const Color(0xFF2E1A0A),
+                            title: const Text('GAME CONTROLS'),
+                            content: const Text(
+                              'Assign squad workers to Farms, Lumber Mills, and Mines to produce critical food, wood and iron.\n\n'
+                              'Assign squads to Training Yard to increase their combat tiers. Ensure you have enough food to feed basic/elite units each turn, otherwise they starve and desert!',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                      if (isElementary) ...[
+                        // Auto-Save Toggle
+                        _buildMenuOptionBtn(
+                          'AUTO-SAVE: ${progress.autoSaveEnabled ? "ON" : "OFF"}',
+                          () {
+                            service.toggleAutoSave();
+                            setModalState(() {});
+                          },
                         ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'MANUAL SAVE SLOTS',
+                          style: GoogleFonts.playfairDisplay(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [1, 2, 3].map((slot) {
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                child: _buildMenuOptionBtn('SAVE $slot', () {
+                                  service.manualSaveToSlot(slot);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('State saved to Slot #$slot!')),
+                                  );
+                                  Navigator.pop(context);
+                                }),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'MANUAL LOAD SLOTS',
+                          style: GoogleFonts.playfairDisplay(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [1, 2, 3].map((slot) {
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                child: _buildMenuOptionBtn('LOAD $slot', () async {
+                                  await service.manualLoadFromSlot(slot);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Loaded state from Slot #$slot!')),
+                                  );
+                                  Navigator.pop(context);
+                                }),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ] else ...[
+                        _buildMenuOptionBtn('MANUAL SAVE STATE', () {
+                          service.manualSave();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('State saved successfully!')),
+                          );
+                          Navigator.pop(context);
+                        }),
+                        const SizedBox(height: 8),
+                        _buildMenuOptionBtn('LOAD SAVE STATE', () {
+                          service.reloadProgress();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Survival progress reloaded successfully!'),
+                            ),
+                          );
+                          Navigator.pop(context);
+                        }),
                       ],
-                    ),
-                  );
-                }),
-                const SizedBox(height: 8),
-                _buildMenuOptionBtn('MANUAL SAVE STATE', () {
-                  service.manualSave();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('State saved successfully!')),
-                  );
-                  Navigator.pop(context);
-                }),
-                const SizedBox(height: 8),
-                _buildMenuOptionBtn('LOAD SAVE STATE', () {
-                  service.reloadProgress();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Survival progress reloaded successfully!'),
-                    ),
-                  );
-                  Navigator.pop(context);
-                }),
-                const SizedBox(height: 8),
-                _buildMenuOptionBtn('QUIT TO ARENA HUB', () {
-                  Navigator.pop(context); // Close Menu
-                  Navigator.pop(context); // Quit Survival
-                }, isDanger: true),
-              ],
-            ),
-          ),
+                      const SizedBox(height: 12),
+                      const Divider(color: Color(0xFF352B24)),
+                      const SizedBox(height: 8),
+                      _buildMenuOptionBtn('QUIT TO ARENA HUB', () {
+                        Navigator.pop(context); // Close Menu
+                        Navigator.pop(context); // Quit Survival
+                      }, isDanger: true),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -3548,63 +3796,136 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                       Expanded(
                         flex: 3,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF15100B),
-                            border: Border.all(
-                              color: const Color(
-                                0xFFC4B89B,
-                              ).withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'ACTIVE COVENANTS & TREATIES',
-                                style: GoogleFonts.playfairDisplay(
-                                  color: const Color(0xFFD4AF37),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF15100B),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFFC4B89B,
+                                    ).withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'ACTIVE COVENANTS & TREATIES',
+                                      style: GoogleFonts.playfairDisplay(
+                                        color: const Color(0xFFD4AF37),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Divider(color: Colors.white10),
+                                    const SizedBox(height: 6),
+                                    Expanded(
+                                      child: progress.currentTurn < 4
+                                          ? Center(
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                ),
+                                                child: Text(
+                                                  'The registry of treaties remains vacant. No formal covenants or external agreements have been ratified.',
+                                                  textAlign: TextAlign.center,
+                                                  style: GoogleFonts.playfairDisplay(
+                                                    color: const Color(
+                                                      0xFFE5D5B0,
+                                                    ).withValues(alpha: 0.4),
+                                                    fontSize: 10,
+                                                    fontStyle: FontStyle.italic,
+                                                    height: 1.3,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          : ListView(
+                                              children: [
+                                                _buildCovenantItem(
+                                                  'RAT ERADICATION COVENANT',
+                                                  'Exterminate undead vermin threat in eastern cellar. Status: Active.',
+                                                ),
+                                              ],
+                                            ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              const Divider(color: Colors.white10),
-                              const SizedBox(height: 6),
-                              Expanded(
-                                child: progress.currentTurn < 4
-                                    ? Center(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                          ),
-                                          child: Text(
-                                            'The registry of treaties remains vacant. No formal covenants or external agreements have been ratified. The ledger awaits the fateful decisions of Turn 4.',
-                                            textAlign: TextAlign.center,
-                                            style: GoogleFonts.playfairDisplay(
-                                              color: const Color(
-                                                0xFFE5D5B0,
-                                              ).withValues(alpha: 0.4),
-                                              fontSize: 11,
-                                              fontStyle: FontStyle.italic,
-                                              height: 1.4,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    : ListView(
-                                        children: [
-                                          _buildCovenantItem(
-                                            'RAT ERADICATION COVENANT',
-                                            'Exterminate undead vermin threat in eastern cellar. Reward: 500 CHF, +50 Food. Status: Active.',
-                                          ),
-                                        ],
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF15100B),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFFC4B89B,
+                                    ).withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'SECRET SOCIETY STANDINGS',
+                                      style: GoogleFonts.playfairDisplay(
+                                        color: const Color(0xFFD4AF37),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
                                       ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Divider(color: Colors.white10),
+                                    const SizedBox(height: 6),
+                                    Expanded(
+                                      child: ListView(
+                                        children: progress.factionStandings.entries.map((entry) {
+                                          final factionName = entry.key;
+                                          final rating = entry.value;
+                                          Color ratingColor = Colors.white70;
+                                          if (rating > 0) ratingColor = Colors.greenAccent;
+                                          if (rating < 0) ratingColor = Colors.redAccent;
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 3.0,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  factionName,
+                                                  style: GoogleFonts.playfairDisplay(
+                                                    color: const Color(
+                                                      0xFFE5D5B0,
+                                                    ),
+                                                    fontSize: 10.5,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  rating >= 0 ? '+$rating' : '$rating',
+                                                  style: GoogleFonts.oswald(
+                                                    color: ratingColor,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -6212,17 +6533,67 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     letterSpacing: 1.5,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.close,
-                    color: Color(0xFFD4AF37),
-                    size: 24,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _selectedInspectorCardId = null;
-                    });
-                  },
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isDrafting)
+                      Builder(builder: (context) {
+                        final isSelected = _selectedCart.contains(cardId);
+                        final cost = _draftPool.firstWhere((x) => x['type'] == cardId, orElse: () => {'cost': 0})['cost'] as int;
+                        return Container(
+                          margin: const EdgeInsets.only(right: 16),
+                          height: 32,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isSelected ? Colors.red.shade900 : Colors.green.shade900,
+                              foregroundColor: Colors.white,
+                              shape: const RoundedRectangleBorder(),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selectedCart.remove(cardId);
+                                } else {
+                                  int currentTotal = 0;
+                                  for (var type in _selectedCart) {
+                                    final match = _draftPool.firstWhere((x) => x['type'] == type);
+                                    currentTotal += match['cost'] as int;
+                                  }
+                                  if (currentTotal + cost <= 1000 && _selectedCart.length < 12) {
+                                    _selectedCart.add(cardId);
+                                  } else if (_selectedCart.length >= 12) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Squad limit is 12 units!')),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Insufficient CHF budget!')),
+                                    );
+                                  }
+                                }
+                              });
+                            },
+                            child: Text(
+                              isSelected ? 'REMOVE FROM CART (-$cost CHF)' : 'ADD TO CART (+$cost CHF)',
+                              style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.0),
+                            ),
+                          ),
+                        );
+                      }),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Color(0xFFD4AF37),
+                        size: 24,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _selectedInspectorCardId = null;
+                        });
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -6342,19 +6713,19 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            ElevatedButton(
+                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: progress.cash >= 50
+                                backgroundColor: (progress.cash >= 50 && !_isDrafting)
                                     ? const Color(0xFF2E1A0A)
                                     : Colors.transparent,
                                 side: BorderSide(
-                                  color: progress.cash >= 50
+                                  color: (progress.cash >= 50 && !_isDrafting)
                                       ? const Color(0xFFC4B89B)
                                       : Colors.white10,
                                 ),
                                 shape: const RoundedRectangleBorder(),
                               ),
-                              onPressed: progress.cash >= 50
+                              onPressed: (progress.cash >= 50 && !_isDrafting)
                                   ? () {
                                       final oldExp =
                                           progress.unitExp[cardId] ?? 0.0;
@@ -6386,9 +6757,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     }
                                   : null,
                               child: Text(
-                                'BUY DRILLS: +10 XP (50 CHF)',
+                                _isDrafting ? 'LOCKED DURING DRAFT' : 'BUY DRILLS: +10 XP (50 CHF)',
                                 style: GoogleFonts.playfairDisplay(
-                                  color: progress.cash >= 50
+                                  color: (progress.cash >= 50 && !_isDrafting)
                                       ? const Color(0xFFE5D5B0)
                                       : Colors.white24,
                                   fontSize: 13,
@@ -6396,7 +6767,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 ),
                               ),
                             ),
-                          ],
+                                  ],
                         ),
                       ),
                     ),
@@ -6538,7 +6909,24 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            if (!isRightCapable) ...[
+                            if (_isDrafting) ...[
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 24.0,
+                                  ),
+                                  child: Text(
+                                    'Armory modifications are locked during recruitment.',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.oldStandardTt(
+                                      color: Colors.white24,
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ] else if (!isRightCapable) ...[
                               Center(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -6604,13 +6992,1332 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
   }
 
-  void _showEventSelectionDialogue(
+
+
+  void _showNarrativeEncounter(
     BuildContext context,
+    String encounterId,
     SurvivalProgress progress,
     SurvivalService service,
+    GameState state,
   ) {
-    progress.cardUpgrades['turn4_event_resolved'] = 1;
+    progress.cardUpgrades['encounter_${encounterId}_resolved'] = 1;
+    
+    final rand = Random();
+    final nextInterval = rand.nextBool() ? 3 : 4;
+    progress.cardUpgrades['next_encounter_turn'] = progress.currentTurn + nextInterval;
+    
+    final currentIndex = progress.cardUpgrades['next_encounter_index'] ?? 0;
+    progress.cardUpgrades['next_encounter_index'] = currentIndex + 1;
+
     service.manualSave();
+
+    String title = "";
+    String faction = "";
+    String story = "";
+    final List<Map<String, dynamic>> options = [];
+
+    switch (encounterId) {
+      case 'gnomes_artillery':
+        title = "THE GNOMES OF ZURICH ARTILLERY";
+        faction = "Gnomes of Zurich";
+        story = "The Gnomes of Zurich have brought heavy artillery to pummel Glarus in fulfillment of a deceased client's trust. "
+            "Glarus village is in their direct line of fire. How do you respond?";
+        
+        options.add({
+          'title': 'A) "That\'s Glarus, right there."',
+          'subtitle': 'Effect: Destroy any one facility, advance a level for marksmen/cannoneer/artillery. (+10 Gnomes, +10 Glarus)',
+          'onPress': () {
+            if (progress.buildings.isNotEmpty) {
+              final b = progress.buildings.removeAt(0);
+              service.addLog('Destroyed facility: ${b.type.name.toUpperCase()}');
+            }
+            final targetTypes = ['marksmen', 'cannoneer', 'artillery_barrage'];
+            for (var t in targetTypes) {
+              if (progress.playerDeckIds.contains(t)) {
+                final curXp = progress.unitExp[t] ?? 0.0;
+                final curLvl = SurvivalProgress.getLevelFromXp(curXp);
+                progress.unitExp[t] = SurvivalProgress.getRequiredXpForLevel(curLvl + 1).toDouble();
+                service.addLog('Promoted $t by 1 level.');
+              }
+            }
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+            service.addLog('Satisfied client\'s trust at a minor loss.');
+          }
+        });
+        options.add({
+          'title': 'B) "If that\'s your idea of a good time, you would love it here."',
+          'subtitle': 'Effect: Destroy Glarus village, receive advanced artillery barrage card. (-15 Gnomes, -20 Glarus)',
+          'onPress': () {
+            progress.villageHealth = 0;
+            int totalLevels = 0;
+            for (var t in progress.playerDeckIds) {
+              totalLevels += SurvivalProgress.getLevelFromXp(progress.unitExp[t] ?? 0.0);
+            }
+            final calcLvl = (1 + (totalLevels ~/ 6)).clamp(1, 6);
+            progress.playerDeckIds.add('artillery_barrage');
+            progress.unitExp['artillery_barrage'] = SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            service.addLog('Village destroyed. Reclaimed advanced artillery card (Lvl $calcLvl).');
+          }
+        });
+        options.add({
+          'title': 'C) "That sounds like a great idea."',
+          'subtitle': 'Effect: Destroy village, receive tear gas grenade card & +500 CHF. (+15 Gnomes, -20 Glarus)',
+          'onPress': () {
+            progress.villageHealth = 0;
+            progress.cash += 500;
+            int totalLevels = 0;
+            for (var t in progress.playerDeckIds) {
+              totalLevels += SurvivalProgress.getLevelFromXp(progress.unitExp[t] ?? 0.0);
+            }
+            final calcLvl = (1 + (totalLevels ~/ 6)).clamp(1, 6);
+            progress.playerDeckIds.add('tear_gas_grenade');
+            progress.unitExp['tear_gas_grenade'] = SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            service.addLog('Faced Glarus ruins. Looted +500 CHF & tear gas card.');
+          }
+        });
+        options.add({
+          'title': 'D) "Over my dead body!"',
+          'subtitle': 'Effect: Triggers immediate combat with Gnomes Artillery guard. (-15 Gnomes, +15 Glarus)',
+          'onPress': () {
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCannoneer(),
+                CombatUnitFactory.createCannoneer(),
+                CombatUnitFactory.createWoodenTank(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 25,
+              spoilsCash: 350,
+              spoilsIron: 15,
+              spoilsWood: 40,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'freemasons_tribute':
+        title = "THE GRAND ARCHITECT\'S LODGE";
+        faction = "Freemasons";
+        story = "The Freemasons request permission to build a lodge on your estate plots. The Carbonari strongly protest, demanding it remain a public assembly area.";
+        options.add({
+          'title': 'A) "Build the Lodge."',
+          'subtitle': 'Cost: 150 Wood, 50 Iron. Reward: +300 CHF, +100 Wood. (+15 Freemasons, -15 Carbonari)',
+          'onPress': () {
+            progress.wood = max(0, progress.wood - 150 + 100);
+            progress.iron = max(0, progress.iron - 50);
+            progress.cash += 300;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 15;
+            service.addLog('Lodges authorized. Mason trade channels opened.');
+          }
+        });
+        options.add({
+          'title': 'B) "Support the Carbonari assembly."',
+          'subtitle': 'Reward: +20 Food. (-15 Freemasons, +15 Carbonari)',
+          'onPress': () {
+            progress.food += 20;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 15;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 15;
+            service.addLog('Supported community assemblies.');
+          }
+        });
+        options.add({
+          'title': 'C) "Bribe both factions."',
+          'subtitle': 'Cost: 200 CHF. (+5 Freemasons, +5 Carbonari)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 200);
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 5;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 5;
+            service.addLog('Greased palms to avoid conflict.');
+          }
+        });
+        options.add({
+          'title': 'D) "Clear them from my land!"',
+          'subtitle': 'Effect: Combat with Freemasons & Carbonari rioters. (-10 Masons, -10 Carbonari)',
+          'onPress': () {
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 10;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 10;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createMilitia(),
+              ],
+              eventTitle: title,
+              spoilsFood: 15,
+              spoilsCash: 200,
+              spoilsIron: 5,
+              spoilsWood: 20,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'alchemist_transmutation':
+        title = "THE TRANSMUTATION FORMULA";
+        faction = "Rosicrucians";
+        story = "A Rosicrucian alchemist offers to convert raw wood into solid iron, but the Golden Dawn claims this is a forbidden heresy.";
+        options.add({
+          'title': 'A) "Perform transmutation."',
+          'subtitle': 'Cost: 60 Wood. Reward: +30 Iron. (+15 Rosicrucians, -15 Golden Dawn)',
+          'onPress': () {
+            progress.wood = max(0, progress.wood - 60);
+            progress.iron += 30;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            service.addLog('Wood converted to Iron.');
+          }
+        });
+        options.add({
+          'title': 'B) "Exile the alchemist."',
+          'subtitle': 'Reward: +100 CHF bounty. (-15 Rosicrucians, +15 Golden Dawn)',
+          'onPress': () {
+            progress.cash += 100;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 15;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            service.addLog('Alchemist exiled.');
+          }
+        });
+        options.add({
+          'title': 'C) "Host collaborative study."',
+          'subtitle': 'Cost: 100 CHF. Reward: Receive Vampiric Totem card. (+10 Rosicrucians, +5 Golden Dawn)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 100);
+            progress.playerDeckIds.add('vampiric_totem');
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 5;
+            service.addLog('Obtained Vampiric Totem.');
+          }
+        });
+        options.add({
+          'title': 'D) "Seize their secret laboratory!"',
+          'subtitle': 'Effect: Combat with Rosicrucian alchemical guards. (-15 Rosicrucians, -15 Golden Dawn)',
+          'onPress': () {
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 15;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createFleshGolem(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 150,
+              spoilsIron: 35,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'templar_levy':
+        title = "THE CRUSADER LEVY";
+        faction = "Knights Templar";
+        story = "The Knights Templar demand a crusade levy. The Rosicrucians suggest smuggling resources to hide them.";
+        options.add({
+          'title': 'A) "Pay the Crusade Levy."',
+          'subtitle': 'Cost: 200 CHF, 20 Iron. (+15 Knights Templar, -5 Rosicrucians)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 200);
+            progress.iron = max(0, progress.iron - 20);
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
+            service.addLog('Paid crusader tribute.');
+          }
+        });
+        options.add({
+          'title': 'B) "Smuggle resources."',
+          'subtitle': 'Cost: 20 Wood. Reward: +50 Food. (-15 Knights Templar, +15 Rosicrucians)',
+          'onPress': () {
+            progress.wood = max(0, progress.wood - 20);
+            progress.food += 50;
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            service.addLog('Smuggled provisions.');
+          }
+        });
+        options.add({
+          'title': 'C) "Offer shelter."',
+          'subtitle': 'Effect: Soldiers assigned to guard duty. (+5 Templar, -10 Rosicrucians)',
+          'onPress': () {
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 5;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
+            service.addLog('Sheltered Knights Templar.');
+          }
+        });
+        options.add({
+          'title': 'D) "We pay no taxes!"',
+          'subtitle': 'Effect: Combat with Templar crusaders. (-25 Knights Templar, +10 Iron, +100 CHF)',
+          'onPress': () {
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 25;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createPikemen(),
+              ],
+              eventTitle: title,
+              spoilsFood: 15,
+              spoilsCash: 250,
+              spoilsIron: 15,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'carbonari_strike':
+        title = "THE COALITION LABOUR STRIKE";
+        faction = "Carbonari";
+        story = "Carbonari radicals are instigating strike action among your workers. They demand double rations and pay.";
+        options.add({
+          'title': 'A) "Accede to rations and wage demands."',
+          'subtitle': 'Cost: 40 Food, 100 CHF. (+15 Carbonari, +15 Army)',
+          'onPress': () {
+            progress.food = max(0, progress.food - 40);
+            progress.cash = max(0, progress.cash - 100);
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 15;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            service.addLog('Wages increased.');
+          }
+        });
+        options.add({
+          'title': 'B) "Compromise with bonus wages."',
+          'subtitle': 'Cost: 150 CHF. (+10 Carbonari, +5 Army)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 150);
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 10;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 5;
+            service.addLog('Wages compromised.');
+          }
+        });
+        options.add({
+          'title': 'C) "Enforce martial law."',
+          'subtitle': 'Effect: Lock production. (+10 Army, -20 Carbonari)',
+          'onPress': () {
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 20;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            service.addLog('Enforced martial law.');
+          }
+        });
+        options.add({
+          'title': 'D) "Arrest the Carbonari leaders!"',
+          'subtitle': 'Effect: Combat with striking workers. (-25 Carbonari, -15 Army)',
+          'onPress': () {
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 25;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 15;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createMilitia(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 120,
+              spoilsIron: 5,
+              spoilsWood: 15,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'golden_dawn_seance':
+        title = "THE ELEUSINIAN SÉANCE";
+        faction = "Golden Dawn";
+        story = "The Golden Dawn wants to perform a séance in the estate cemetery. The Knights Templar demand you ban it.";
+        options.add({
+          'title': 'A) "Approve the Séance."',
+          'subtitle': 'Reward: Receive Werewolf card. (+15 Golden Dawn, -15 Knights Templar)',
+          'onPress': () {
+            progress.playerDeckIds.add('werewolf');
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 15;
+            service.addLog('Werewolf card acquired.');
+          }
+        });
+        options.add({
+          'title': 'B) "Ban the Séance."',
+          'subtitle': 'Reward: +50 CHF donation. (-15 Golden Dawn, +15 Knights Templar)',
+          'onPress': () {
+            progress.cash += 50;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 15;
+            service.addLog('Séance prohibited.');
+          }
+        });
+        options.add({
+          'title': 'C) "Charge admission fee."',
+          'subtitle': 'Reward: +200 CHF. (+5 Golden Dawn, -10 Knights Templar)',
+          'onPress': () {
+            progress.cash += 200;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 5;
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 10;
+            service.addLog('Charged admission.');
+          }
+        });
+        options.add({
+          'title': 'D) "Purge the cemetery!"',
+          'subtitle': 'Effect: Combat with Golden Dawn spirits. (-25 Golden Dawn, +20 Knights Templar)',
+          'onPress': () {
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 25;
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 20;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createWerewolf(),
+              ],
+              eventTitle: title,
+              spoilsFood: 5,
+              spoilsCash: 180,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'fenian_gunrunning':
+        title = "THE FENIAN GUN-RUNNING CONTRACT";
+        faction = "Fenian Brotherhood";
+        story = "The Fenian Brotherhood offers high-grade weapon packages. The Gnomes of Zurich demand an immediate tax audit.";
+        options.add({
+          'title': 'A) "Buy the weapon packages."',
+          'subtitle': 'Cost: 200 CHF. Reward: Receive Cannoneer card. (+15 Fenian, -10 Gnomes)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 200);
+            progress.playerDeckIds.add('cannoneer');
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 15;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
+            service.addLog('Cannoneer card acquired.');
+          }
+        });
+        options.add({
+          'title': 'B) "Report gun runners to Gnomes."',
+          'subtitle': 'Reward: +100 CHF bounty. (-15 Fenian, +15 Gnomes)',
+          'onPress': () {
+            progress.cash += 100;
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 15;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            service.addLog('Reported gun runners.');
+          }
+        });
+        options.add({
+          'title': 'C) "Facilitate backroom deal."',
+          'subtitle': 'Cost: 100 CHF. Reward: Receive Tear Gas Grenade card. (+10 Fenian, +10 Gnomes)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 100);
+            progress.playerDeckIds.add('tear_gas_grenade');
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 10;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+            service.addLog('Obtained Tear Gas Grenade.');
+          }
+        });
+        options.add({
+          'title': 'D) "Seize the weapon caches!"',
+          'subtitle': 'Effect: Combat with Fenian gun runners. (-25 Fenian, +20 Iron)',
+          'onPress': () {
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 25;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCommandos(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 100,
+              spoilsIron: 30,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'french_cavalry':
+        title = "THE MONARCHIST MANEUVERS";
+        faction = "Chevaliers de la foi";
+        story = "Monarchist Chevaliers are destroying Glarus wheat crops with cavalry exercises. The Carbonari demand they leave.";
+        options.add({
+          'title': 'A) "Join their aristocratic drills."',
+          'subtitle': 'Reward: Receive Cavalry card. (+15 Chevaliers, -15 Glarus, -10 Carbonari)',
+          'onPress': () {
+            progress.playerDeckIds.add('cavalry');
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 15;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 10;
+            service.addLog('Joined Knight Cavalry.');
+          }
+        });
+        options.add({
+          'title': 'B) "Order them off the crops."',
+          'subtitle': 'Standings change: +15 Glarus, +10 Carbonari, -15 Chevaliers.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 10;
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 15;
+            service.addLog('Ordered Chevaliers away.');
+          }
+        });
+        options.add({
+          'title': 'C) "Sell them premium horse feed."',
+          'subtitle': 'Cost: 30 Food. Reward: +200 CHF. (+10 Chevaliers, -5 Glarus)',
+          'onPress': () {
+            progress.food = max(0, progress.food - 30);
+            progress.cash += 200;
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 10;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 5;
+            service.addLog('Sold feed to Chevaliers.');
+          }
+        });
+        options.add({
+          'title': 'D) "Challenge them to mock combat."',
+          'subtitle': 'Effect: Combat with Chevaliers knights. (-20 Chevaliers, +15 Army)',
+          'onPress': () {
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 20;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createCavalry(),
+              ],
+              eventTitle: title,
+              spoilsFood: 20,
+              spoilsCash: 220,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'adrenochrome_syndicate':
+        title = "THE DEEP FOREST COVENANT";
+        faction = "Ancient Order of Foresters";
+        story = "The Foresters request a quiet lodge on your borders. Local rumors suggest they are running an illegal adrenochrome market.";
+        options.add({
+          'title': 'A) "Lease the land for their operations."',
+          'subtitle': 'Reward: +400 CHF. (+20 Foresters, -25 Glarus)',
+          'onPress': () {
+            progress.cash += 400;
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 20;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 25;
+            service.addLog('Leased lodge plots.');
+          }
+        });
+        options.add({
+          'title': 'B) "Reject their lease requests."',
+          'subtitle': 'Reward: +20 Food. (+15 Glarus, -15 Foresters)',
+          'onPress': () {
+            progress.food += 20;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 15;
+            service.addLog('Lease requests rejected.');
+          }
+        });
+        options.add({
+          'title': 'C) "Quietly investigate the site."',
+          'subtitle': 'Reward: Receive Vampiric Totem card. (-10 Foresters)',
+          'onPress': () {
+            progress.playerDeckIds.add('vampiric_totem');
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 10;
+            service.addLog('Obtained Vampiric Totem.');
+          }
+        });
+        options.add({
+          'title': 'D) "Raid the secret Forester lab!"',
+          'subtitle': 'Effect: Combat with Forester druids & beasts. (-25 Foresters, +20 Glarus, +50 Food)',
+          'onPress': () {
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 25;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+            progress.food += 50;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createFleshGolem(),
+                CombatUnitFactory.createBrownRats(),
+              ],
+              eventTitle: title,
+              spoilsFood: 40,
+              spoilsCash: 100,
+              spoilsIron: 5,
+              spoilsWood: 15,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'bank_audit':
+        title = "THE DEBT AUDIT FORECLOSURE";
+        faction = "Gnomes of Zurich";
+        story = "The Gnomes of Zurich seek to inspect Frankenstein Manor\'s accounts, backed by Freemasons wishing to foreclose on your estate.";
+        options.add({
+          'title': 'A) "Bribe the auditors."',
+          'subtitle': 'Cost: 300 CHF. (+15 Gnomes, -10 Freemasons)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 300);
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 10;
+            service.addLog('Greased banking gears.');
+          }
+        });
+        options.add({
+          'title': 'B) "Lock the estate gates."',
+          'subtitle': 'Cost: 20 Food. (-15 Gnomes, -15 Freemasons)',
+          'onPress': () {
+            progress.food = max(0, progress.food - 20);
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 15;
+            service.addLog('Locked auditors outside.');
+          }
+        });
+        options.add({
+          'title': 'C) "Route funds via Templar vaults."',
+          'subtitle': 'Cost: 150 CHF. (+10 Knights Templar, -10 Gnomes)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 150);
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 10;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
+            service.addLog('Funds rerouted.');
+          }
+        });
+        options.add({
+          'title': 'D) "Repel the bailiffs!"',
+          'subtitle': 'Effect: Combat with bank enforcers. (-25 Gnomes, -25 Freemasons)',
+          'onPress': () {
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 25;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 25;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 400,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'mystic_herbs':
+        title = "THE DRUIDIC FOREST HERBS";
+        faction = "Ancient Order of Foresters";
+        story = "Druids offer ancient forest herbs to treat your mutated forces, but Rosicrucian mystical scholars claim they are deadly poisons.";
+        options.add({
+          'title': 'A) "Accept and feed herbs to constructs."',
+          'subtitle': 'Effect: Cure all construct bondage debuffs. (+15 Foresters, -10 Rosicrucians)',
+          'onPress': () {
+            progress.bondageDebuffCount.clear();
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
+            service.addLog('Construct bondage debuffs cleared.');
+          }
+        });
+        options.add({
+          'title': 'B) "Decline the herbs politely."',
+          'subtitle': 'Reward: +50 Food. (+15 Rosicrucians, -10 Foresters)',
+          'onPress': () {
+            progress.food += 50;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 10;
+            service.addLog('Herbs declined.');
+          }
+        });
+        options.add({
+          'title': 'C) "Test herbs in laboratory."',
+          'subtitle': 'Cost: 50 CHF. Reward: +10 Iron. (+10 Rosicrucians, +5 Foresters)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 50);
+            progress.iron += 10;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 5;
+            service.addLog('Herbs tested.');
+          }
+        });
+        options.add({
+          'title': 'D) "Burn the poisoned weeds!"',
+          'subtitle': 'Effect: Combat with rabid forest beasts. (-20 Foresters, +10 Rosicrucians)',
+          'onPress': () {
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 20;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createWildWolves(),
+              ],
+              eventTitle: title,
+              spoilsFood: 30,
+              spoilsCash: 80,
+              spoilsIron: 5,
+              spoilsWood: 25,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'irish_mutiny':
+        title = "THE BARRACKS AGITATION";
+        faction = "Fenian Brotherhood";
+        story = "Fenian agitators inside your barracks are encouraging soldiers to demand Irish Independence and whiskey rations.";
+        options.add({
+          'title': 'A) "Distribute whiskey and host feast."',
+          'subtitle': 'Cost: 100 CHF, 20 Food. (+15 Army, +15 Fenian)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 100);
+            progress.food = max(0, progress.food - 20);
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 15;
+            service.addLog('Whiskey distributed.');
+          }
+        });
+        options.add({
+          'title': 'B) "Discipline the Fenian agitators."',
+          'subtitle': 'Reward: +50 CHF bounty. (-10 Army, -15 Fenian)',
+          'onPress': () {
+            progress.cash += 50;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 10;
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 15;
+            service.addLog('Agitators locked up.');
+          }
+        });
+        options.add({
+          'title': 'C) "Deploy soldiers to frontlines."',
+          'subtitle': 'Effect: Next combat gains +20% XP. (+10 Army, -10 Fenian)',
+          'onPress': () {
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 10;
+            progress.cardUpgrades['next_combat_xp_bonus'] = 1;
+            service.addLog('Frontline orders issued.');
+          }
+        });
+        options.add({
+          'title': 'D) "Repress mutiny with armed guard!"',
+          'subtitle': 'Effect: Combat with rebel soldiers. (-20 Army, -25 Fenian)',
+          'onPress': () {
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 20;
+            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 25;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 120,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'monarchist_ball':
+        title = "THE FRENCH ROYALIST BALL";
+        faction = "Chevaliers de la foi";
+        story = "Monarchists Chevaliers demand that the village of Glarus host a massive ball in your honor, tax-funding it directly from villagers.";
+        options.add({
+          'title': 'A) "Support the grand royalist ball."',
+          'subtitle': 'Cost: 250 CHF. (+20 Chevaliers, -20 Glarus, +10 Army)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 250);
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 20;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            service.addLog('Aristocratic feast hosted.');
+          }
+        });
+        options.add({
+          'title': 'B) "Reject the royalist ball requests."',
+          'subtitle': 'Standings change: +15 Glarus, -15 Chevaliers.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 15;
+            service.addLog('Royalist request denied.');
+          }
+        });
+        options.add({
+          'title': 'C) "Compromise with modest peasant feast."',
+          'subtitle': 'Cost: 50 CHF, 30 Food. (+10 Glarus, +5 Chevaliers)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 50);
+            progress.food = max(0, progress.food - 30);
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 5;
+            service.addLog('Peasant feast hosted.');
+          }
+        });
+        options.add({
+          'title': 'D) "Crash the royalist assembly!"',
+          'subtitle': 'Effect: Combat with Royal Guard. (-25 Chevaliers, +15 Carbonari)',
+          'onPress': () {
+            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 25;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 15;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createCavalry(),
+              ],
+              eventTitle: title,
+              spoilsFood: 15,
+              spoilsCash: 250,
+              spoilsIron: 5,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'masonic_toll':
+        title = "THE MASONIC BRIDGE TOLL";
+        faction = "Freemasons";
+        story = "Freemasons set up a commercial toll bridge blocking access to Glarus market routes. Villagers are starving.";
+        options.add({
+          'title': 'A) "Support and enforce the bridge toll."',
+          'subtitle': 'Reward: +150 CHF. (+15 Freemasons, -20 Glarus)',
+          'onPress': () {
+            progress.cash += 150;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            service.addLog('Toll collection authorized.');
+          }
+        });
+        options.add({
+          'title': 'B) "Pay tolls for Glarus merchants."',
+          'subtitle': 'Cost: 150 CHF. (+15 Glarus, +5 Freemasons)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 150);
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 5;
+            service.addLog('Merchant tolls sponsored.');
+          }
+        });
+        options.add({
+          'title': 'C) "Construct forest detour paths."',
+          'subtitle': 'Cost: 100 Wood. (+10 Glarus, -10 Freemasons)',
+          'onPress': () {
+            progress.wood = max(0, progress.wood - 100);
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 10;
+            service.addLog('Detour paths constructed.');
+          }
+        });
+        options.add({
+          'title': 'D) "Destroy the toll booth!"',
+          'subtitle': 'Effect: Combat with toll enforcers. (-25 Freemasons, +20 Glarus)',
+          'onPress': () {
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 25;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 15,
+              spoilsCash: 120,
+              spoilsIron: 10,
+              spoilsWood: 15,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'alchemical_explosion':
+        title = "THE CRYPT WATER CONTAMINATION";
+        faction = "Rosicrucians";
+        story = "A critical Rosicrucian lab failure has contaminated the water wells of Glarus village. Sickness is spreading.";
+        options.add({
+          'title': 'A) "Supply food and water filters."',
+          'subtitle': 'Cost: 40 Food, 10 Iron. (+15 Glarus, +5 Rosicrucians)',
+          'onPress': () {
+            progress.food = max(0, progress.food - 40);
+            progress.iron = max(0, progress.iron - 10);
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 5;
+            service.addLog('Clean water supplied.');
+          }
+        });
+        options.add({
+          'title': 'B) "Conceal contamination logs."',
+          'subtitle': 'Reward: +100 CHF. (+15 Rosicrucians, -20 Glarus)',
+          'onPress': () {
+            progress.cash += 100;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            service.addLog('Incident cover-up complete.');
+          }
+        });
+        options.add({
+          'title': 'C) "Flee the area temporarily."',
+          'subtitle': 'Standings change: -15 Glarus, -10 Rosicrucians.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
+            service.addLog('Fled the area.');
+          }
+        });
+        options.add({
+          'title': 'D) "Arrest the lead alchemist!"',
+          'subtitle': 'Effect: Combat with escaped lab monstrosities. (+15 Glarus, -25 Rosicrucians)',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 25;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createFleshGolem(),
+                CombatUnitFactory.createFleshGolem(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 200,
+              spoilsIron: 20,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'secret_treaty':
+        title = "THE DEEP STATE ALLIANCE";
+        faction = "Knights Templar";
+        story = "The Knights Templar propose a joint defensive treaty, demanding total secrecy to keep Freemasons in the dark.";
+        options.add({
+          'title': 'A) "Ratify the secret alliance."',
+          'subtitle': 'Reward: +15 Iron. (+20 Knights Templar, -15 Freemasons)',
+          'onPress': () {
+            progress.iron += 15;
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 20;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 15;
+            service.addLog('Alliance signed.');
+          }
+        });
+        options.add({
+          'title': 'B) "Report treaty details to Freemasons."',
+          'subtitle': 'Reward: +200 CHF. (+20 Freemasons, -20 Knights Templar)',
+          'onPress': () {
+            progress.cash += 200;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 20;
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 20;
+            service.addLog('Alliance betrayed.');
+          }
+        });
+        options.add({
+          'title': 'C) "Decline both options politely."',
+          'subtitle': 'Standings change: -5 Templar, -5 Freemasons.',
+          'onPress': () {
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 5;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 5;
+            service.addLog('Remained neutral.');
+          }
+        });
+        options.add({
+          'title': 'D) "Arrest both diplomatic envoys!"',
+          'subtitle': 'Effect: Combat with guard details. (-20 Templar, -20 Freemasons)',
+          'onPress': () {
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 20;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 20;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 250,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'carbonari_press':
+        title = "THE REVOLUTIONARY PAMPHLETS";
+        faction = "Carbonari";
+        story = "The Carbonari seek estate wood to run their print press. The Golden Dawn warns these sheets cause spiritual madness.";
+        options.add({
+          'title': 'A) "Supply wood for print operations."',
+          'subtitle': 'Cost: 80 Wood. Reward: +50 CHF. (+20 Carbonari, -10 Golden Dawn)',
+          'onPress': () {
+            progress.wood = max(0, progress.wood - 80);
+            progress.cash += 50;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 20;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 10;
+            service.addLog('Pamphlet wood supplied.');
+          }
+        });
+        options.add({
+          'title': 'B) "Seize the printing press."',
+          'subtitle': 'Reward: +15 Iron. (+15 Golden Dawn, -20 Carbonari)',
+          'onPress': () {
+            progress.iron += 15;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 20;
+            service.addLog('Printing press seized.');
+          }
+        });
+        options.add({
+          'title': 'C) "Tax printing operations."',
+          'subtitle': 'Reward: +100 CHF. (+5 Carbonari, -5 Golden Dawn)',
+          'onPress': () {
+            progress.cash += 100;
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 5;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 5;
+            service.addLog('Taxes collected.');
+          }
+        });
+        options.add({
+          'title': 'D) "Raid the printing house!"',
+          'subtitle': 'Effect: Combat with Carbonari printing guards. (-25 Carbonari, +10 Golden Dawn)',
+          'onPress': () {
+            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 25;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 10;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 5,
+              spoilsCash: 150,
+              spoilsIron: 10,
+              spoilsWood: 30,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'golden_dawn_relic':
+        title = "THE ELEUSINIAN CRYPT RELIC";
+        faction = "Golden Dawn";
+        story = "The Golden Dawn uncovers a sacred relic on estate grounds and requests storage space in your vault rooms.";
+        options.add({
+          'title': 'A) "Accept and study the relic."',
+          'subtitle': 'Reward: Receive Vampiric Totem card. (+15 Golden Dawn, +10 Rosicrucians)',
+          'onPress': () {
+            progress.playerDeckIds.add('vampiric_totem');
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            service.addLog('Stored Eleusinian Relic.');
+          }
+        });
+        options.add({
+          'title': 'B) "Sell relic to foreign dealers."',
+          'subtitle': 'Reward: +350 CHF. (-15 Golden Dawn, -5 Rosicrucians)',
+          'onPress': () {
+            progress.cash += 350;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
+            service.addLog('Sold relic.');
+          }
+        });
+        options.add({
+          'title': 'C) "Donate relic to local cathedral."',
+          'subtitle': 'Standings change: +15 Knights Templar, -10 Golden Dawn, -5 Rosicrucians.',
+          'onPress': () {
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 15;
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 10;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
+            service.addLog('Donated relic.');
+          }
+        });
+        options.add({
+          'title': 'D) "The relic is cursed: smash it!"',
+          'subtitle': 'Effect: Combat with spectral spirits. (-20 Golden Dawn, +5 Rosicrucians)',
+          'onPress': () {
+            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 20;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 5;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createWerewolf(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 250,
+              spoilsIron: 5,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'forester_woodcutters':
+        title = "THE DRUIDIC TIMBER PROTEST";
+        faction = "Ancient Order of Foresters";
+        story = "The Foresters druidic council demands you cease all logging operations. The Army demands more timber for watchtower defense.";
+        options.add({
+          'title': 'A) "Cease all timber harvesting."',
+          'subtitle': 'Effect: Halve wood production next turn. (+20 Foresters, -15 Army)',
+          'onPress': () {
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 20;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 15;
+            progress.cardUpgrades['wood_halved_next_turn'] = 1;
+            service.addLog('Timber harvesting ceased.');
+          }
+        });
+        options.add({
+          'title': 'B) "Double logging quotas."',
+          'subtitle': 'Reward: +150 Wood. (+15 Army, -25 Foresters)',
+          'onPress': () {
+            progress.wood += 150;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 25;
+            service.addLog('Timber logging doubled.');
+          }
+        });
+        options.add({
+          'title': 'C) "Harvest timber selectively."',
+          'subtitle': 'Cost: 50 CHF. Reward: +40 Wood. (+10 Foresters, +5 Army)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 50);
+            progress.wood += 40;
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 10;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 5;
+            service.addLog('Selective logging implemented.');
+          }
+        });
+        options.add({
+          'title': 'D) "Clear the wood druids!"',
+          'subtitle': 'Effect: Combat with forest druids. (-25 Foresters, +15 Army)',
+          'onPress': () {
+            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 25;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createWerewolf(),
+                CombatUnitFactory.createBrownRats(),
+              ],
+              eventTitle: title,
+              spoilsFood: 20,
+              spoilsCash: 120,
+              spoilsIron: 5,
+              spoilsWood: 150,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'swiss_banker_loan':
+        title = "THE DEEP POCKETS CREDIT";
+        faction = "Gnomes of Zurich";
+        story = "The Swiss bankers offer an emergency line of credit. The Army wants to use it for imported brandy, but interest is steep.";
+        options.add({
+          'title': 'A) "Accept high-interest credit."',
+          'subtitle': 'Reward: +500 CHF, Army turn delay. (+15 Gnomes, +10 Army)',
+          'onPress': () {
+            progress.cash += 500;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            progress.cardUpgrades['bank_debt_due_turn'] = progress.currentTurn + 3;
+            service.addLog('Accepted emergency credit.');
+          }
+        });
+        options.add({
+          'title': 'B) "Decline credit offer."',
+          'subtitle': 'Reward: +10 Food. (-5 Gnomes)',
+          'onPress': () {
+            progress.food += 10;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 5;
+            service.addLog('Credit offer declined.');
+          }
+        });
+        options.add({
+          'title': 'C) "Borrow from soldier pension funds."',
+          'subtitle': 'Reward: +200 CHF. (-20 Army)',
+          'onPress': () {
+            progress.cash += 200;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 20;
+            service.addLog('Borrowed from pensions.');
+          }
+        });
+        options.add({
+          'title': 'D) "Rob the banker\'s carriage!"',
+          'subtitle': 'Effect: Combat with Gnome bank guards. (-25 Gnomes, +20 Army, +400 CHF)',
+          'onPress': () {
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 25;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 20;
+            progress.cash += 400;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 15,
+              spoilsCash: 400,
+              spoilsIron: 5,
+              spoilsWood: 10,
+            );
+            return;
+          }
+        });
+        break;
+
+      case 'grenadier_sabotage':
+        title = "THE GRENADIER WINDMILL ACCIDENT";
+        faction = "Player\'s Army";
+        story = "Drunk Army grenadiers have accidentally blown up the central windmill of Glarus. The villagers demand restitution.";
+        options.add({
+          'title': 'A) "Pay full damages to Glarus."',
+          'subtitle': 'Cost: 200 CHF, 30 Wood. (+20 Glarus, -10 Army)',
+          'onPress': () {
+            progress.cash = max(0, progress.cash - 200);
+            progress.wood = max(0, progress.wood - 30);
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 10;
+            service.addLog('Paid windmill restitution.');
+          }
+        });
+        options.add({
+          'title': 'B) "Court-martial the grenadiers."',
+          'subtitle': 'Standings change: +15 Glarus, -20 Army.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 20;
+            service.addLog('Agitators disciplined.');
+          }
+        });
+        options.add({
+          'title': 'C) "Blame the wind cycles."',
+          'subtitle': 'Standings change: +15 Army, -20 Glarus.',
+          'onPress': () {
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            service.addLog('Blamed wind cycles.');
+          }
+        });
+        options.add({
+          'title': 'D) "Repel the complaining villagers!"',
+          'subtitle': 'Effect: Combat with angry villagers. (-25 Glarus, +10 Army)',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 25;
+            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 50,
+              spoilsIron: 5,
+              spoilsWood: 15,
+            );
+            return;
+          }
+        });
+        break;
+
+      default:
+        return;
+    }
 
     showDialog(
       context: context,
@@ -6622,129 +8329,200 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             side: BorderSide(color: const Color(0xFFD4AF37), width: 2.0),
             borderRadius: BorderRadius.circular(8),
           ),
-          title: Center(
-            child: Text(
-              'THE VERMIN PESTILENCE',
-              style: GoogleFonts.playfairDisplay(
-                color: const Color(0xFFD4AF37),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
+          title: Column(
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFD4AF37),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
+              const SizedBox(height: 4),
+              Text(
+                'Faction Involved: $faction'.toUpperCase(),
+                style: GoogleFonts.oldStandardTt(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
           ),
           content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'A frantic messenger from the lower vaults bursts into Frankenstein Manor. '
-                  'The eastern catacombs are swarming with virulent undead rats spreading green pestilence! '
-                  'Alphonse, we must act immediately to protect our food reserves and the estate populace.',
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFE5D5B0),
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                const Divider(color: Colors.white10),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2A1E16),
-                    side: const BorderSide(
-                      color: Color(0xFFC4B89B),
-                      width: 1.0,
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    story,
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 12,
+                      height: 1.4,
                     ),
-                    shape: const RoundedRectangleBorder(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  onPressed: () {
-                    progress.villageHealth = 100;
-                    service.addLog(
-                      'Rat Eradication Treaty signed. Glarus Village is protected.',
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 12),
+                  ...options.map((opt) {
+                    final String titleStr = opt['title'] as String;
+                    final String subtitleStr = opt['subtitle'] as String;
+                    final VoidCallback cb = opt['onPress'] as VoidCallback;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2A1E16),
+                            side: const BorderSide(
+                              color: Color(0xFFC4B89B),
+                              width: 1.0,
+                            ),
+                            shape: const RoundedRectangleBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                          onPressed: () {
+                            cb();
+                            if (!titleStr.contains('D)')) {
+                              service.manualSave();
+                              Navigator.pop(context);
+                            }
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                titleStr,
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFE5D5B0),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                subtitleStr,
+                                style: GoogleFonts.oldStandardTt(
+                                  color: Colors.white54,
+                                  fontSize: 8.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     );
-                    service.manualSave();
-                    Navigator.pop(context);
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'OPTION A: SIGN RAT ERADICATION COVENANT',
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Reward: +500 CHF, +50 Food. Glarus Village remains healthy.',
-                        style: GoogleFonts.oldStandardTt(
-                          color: Colors.white54,
-                          fontSize: 8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF331111),
-                    side: const BorderSide(color: Colors.redAccent, width: 1.0),
-                    shape: const RoundedRectangleBorder(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
-                  onPressed: () {
-                    progress.food = (progress.food >= 20)
-                        ? progress.food - 20
-                        : 0;
-                    progress.iron += 10;
-                    progress.villageHealth = 0; // Destroyed!
-                    service.addLog(
-                      'Quarantined Eastern Vaults. Glarus Village was abandoned & wiped out!',
-                    );
-                    service.manualSave();
-                    Navigator.pop(context);
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'OPTION B: SEAL VAULTS & ENFORCE QUARANTINE',
-                        style: GoogleFonts.playfairDisplay(
-                          color: Colors.redAccent,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Penalty: -20 Food, +10 Iron. Glarus Village is abandoned and destroyed (Fallow).',
-                        style: GoogleFonts.oldStandardTt(
-                          color: Colors.white54,
-                          fontSize: 8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  }).toList(),
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+
+  void _startEventCombat({
+    required SurvivalProgress progress,
+    required SurvivalService service,
+    required GameState state,
+    required List<NPC> aiUnits,
+    required String eventTitle,
+    required int spoilsFood,
+    required int spoilsCash,
+    required int spoilsIron,
+    required int spoilsWood,
+  }) {
+    final playerUnits = progress.playerDeckIds.map((t) {
+      final npc = CombatUnitService.createUnit(t);
+      final exp = progress.unitExp[t] ?? 0.0;
+      final lvl = SurvivalProgress.getLevelFromXp(exp);
+      final mult = 1.0 + (lvl - 1) * 0.1;
+      return npc.copyWith(
+        combatStats: npc.combatStats?.copyWith(
+          health: npc.combatStats!.health * mult,
+          maxHealth: npc.combatStats!.maxHealth * mult,
+          attack: npc.combatStats!.attack * mult,
+          meleeDamage: npc.combatStats!.meleeDamage * mult,
+          rangedDamage: npc.combatStats!.rangedDamage * mult,
+        ),
+      );
+    }).toList();
+
+    state.startCombatSimulation(playerUnits, aiUnits);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CombatScreen(
+          customPlayerHero: CombatUnitFactory.createAlphonse(),
+          customPlayerDeck: playerUnits,
+          customAiDeck: aiUnits,
+          cardUpgrades: progress.cardUpgrades,
+          survivalTurn: progress.currentTurn,
+          onSurvivalVictory: (destroyedTowersCount, enemyDeck, finalSpoilsFood, finalSpoilsCash, finalSpoilsIron, finalSpoilsWood, playerTowerHealth, activeContext) {
+            service.processCombatOutcome(
+              true,
+              false,
+              playerTowerHealth,
+              {},
+              opponentDeck: enemyDeck,
+              destroyedEnemyTowers: destroyedTowersCount,
+              customSpoilsFood: spoilsFood,
+              customSpoilsCash: spoilsCash,
+              customSpoilsIron: spoilsIron,
+              customSpoilsWood: spoilsWood,
+            );
+            state.clearEncounterState();
+            Navigator.pushReplacement(
+              activeContext,
+              MaterialPageRoute(
+                builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                  value: service,
+                  child: const SurvivalEstateMapScreen(),
+                ),
+              ),
+            );
+          },
+          onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, activeContext) {
+            service.processCombatOutcome(
+              false,
+              false,
+              playerTowerHealth,
+              {},
+              opponentDeck: enemyDeck,
+              destroyedEnemyTowers: destroyedTowersCount,
+              customSpoilsFood: 0,
+              customSpoilsCash: 0,
+              customSpoilsIron: 0,
+              customSpoilsWood: 0,
+            );
+            state.clearEncounterState();
+            Navigator.pushReplacement(
+              activeContext,
+              MaterialPageRoute(
+                builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
+                  value: service,
+                  child: const SurvivalEstateMapScreen(),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 

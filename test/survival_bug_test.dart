@@ -18,7 +18,7 @@ void main() {
 
     final gameState = GameState();
     final service = SurvivalService(1);
-    service.initializeNewSurvivalGame('alphonse');
+    service.initializeNewSurvivalGame('alphonse', SurvivalDifficulty.classic);
 
     // Add cards to deck to make sure _isDrafting gets set to false!
     service.progress!.playerDeckIds.add('peasant');

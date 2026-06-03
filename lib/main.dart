@@ -78,11 +78,10 @@ class _AbominationAppState extends State<AbominationApp> {
 
   @override
   Widget build(BuildContext context) {
-    final state = Provider.of<GameState>(context, listen: false);
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'Abomination',
-      builder: (context, child) {
+      builder: (ctx, child) {
         return KeyboardListener(
           focusNode: _globalFocusNode,
           autofocus: true,
@@ -97,6 +96,7 @@ class _AbominationAppState extends State<AbominationApp> {
                 if (hasTextFocus) return;
               }
 
+              final state = context.read<GameState>();
               // Skip speed adjustments and global navigations if a dialogue or decision-based encounter is active!
               final bool isEncounterActive = state.pendingCombatEncounter || state.pendingEncounterData != null;
               if (isEncounterActive) {

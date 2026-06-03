@@ -69,6 +69,12 @@ class SurvivalBuilding {
   }
 }
 
+enum SurvivalDifficulty {
+  childPlay,
+  elementary,
+  classic,
+}
+
 class SurvivalProgress {
   int currentTurn;
   int cash;
@@ -87,6 +93,9 @@ class SurvivalProgress {
   List<String> trainingUnitIds; // Unit cardTypes currently assigned to training
   Map<String, int> cardUpgrades; // e.g. {'peasant_hp': 1, 'leader_hp': 0}
   int villageHealth;
+  SurvivalDifficulty difficulty;
+  bool autoSaveEnabled;
+  Map<String, int> factionStandings; // e.g. {'Freemasons': 0, 'Rosicrucians': 0, 'Glarus': 0, 'Army': 0...}
 
   SurvivalProgress({
     this.currentTurn = 1,
@@ -106,7 +115,23 @@ class SurvivalProgress {
     this.trainingUnitIds = const [],
     Map<String, int>? cardUpgrades,
     this.villageHealth = 100,
-  }) : this.cardUpgrades = cardUpgrades ?? {};
+    this.difficulty = SurvivalDifficulty.classic,
+    this.autoSaveEnabled = true,
+    Map<String, int>? factionStandings,
+  }) : this.cardUpgrades = cardUpgrades ?? {},
+       this.factionStandings = factionStandings ?? {
+         'Freemasons': 0,
+         'Rosicrucians': 0,
+         'Knights Templar': 0,
+         'Gnomes of Zurich': 0,
+         'Carbonari': 0,
+         'Golden Dawn': 0,
+         'Fenian Brotherhood': 0,
+         'Chevaliers de la foi': 0,
+         'Ancient Order of Foresters': 0,
+         'Glarus': 0,
+         'Army': 0,
+       };
 
   Map<String, dynamic> toJson() => {
         'currentTurn': currentTurn,
@@ -126,6 +151,9 @@ class SurvivalProgress {
         'trainingUnitIds': trainingUnitIds,
         'cardUpgrades': cardUpgrades,
         'villageHealth': villageHealth,
+        'difficulty': difficulty.name,
+        'autoSaveEnabled': autoSaveEnabled,
+        'factionStandings': factionStandings,
       };
 
   factory SurvivalProgress.fromJson(Map<String, dynamic> json) => SurvivalProgress(
@@ -152,7 +180,24 @@ class SurvivalProgress {
         trainingUnitIds: List<String>.from(json['trainingUnitIds'] as List? ?? []),
         cardUpgrades: Map<String, int>.from(json['cardUpgrades'] as Map? ?? {}),
         villageHealth: json['villageHealth'] as int? ?? 100,
+        difficulty: SurvivalDifficulty.values.byName(json['difficulty'] as String? ?? 'classic'),
+        autoSaveEnabled: json['autoSaveEnabled'] as bool? ?? true,
+        factionStandings: Map<String, int>.from(json['factionStandings'] as Map? ?? {
+          'Freemasons': 0,
+          'Rosicrucians': 0,
+          'Knights Templar': 0,
+          'Gnomes of Zurich': 0,
+          'Carbonari': 0,
+          'Golden Dawn': 0,
+          'Fenian Brotherhood': 0,
+          'Chevaliers de la foi': 0,
+          'Ancient Order of Foresters': 0,
+          'Glarus': 0,
+          'Army': 0,
+        }),
       );
+
+
 
   // Progressive Level milestones
   static int getRequiredXpForLevel(int nextLevel) {
