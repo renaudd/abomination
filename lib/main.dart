@@ -96,7 +96,13 @@ class _AbominationAppState extends State<AbominationApp> {
                 if (hasTextFocus) return;
               }
 
-              final state = context.read<GameState>();
+              final GameState state;
+              try {
+                state = context.read<GameState>();
+              } catch (_) {
+                return;
+              }
+
               // Skip speed adjustments and global navigations if a dialogue or decision-based encounter is active!
               final bool isEncounterActive = state.pendingCombatEncounter || state.pendingEncounterData != null;
               if (isEncounterActive) {
