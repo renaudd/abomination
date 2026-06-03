@@ -530,6 +530,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   final Map<String, GeneralWeaponSpec?> _evaluatedWeaponForCard = {};
 
   late TransformationController _transformationController;
+  bool _initialScaleSet = false;
 
   @override
   void initState() {
@@ -903,23 +904,40 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     if ((progress.towerDamaged['tower_3'] ?? 0.0) >= 1.0) towerLetters += 'R';
     final hasTowerDamage = towerLetters.isNotEmpty;
 
-    return InteractiveViewer(
-      transformationController: _transformationController,
-      constrained: false,
-      minScale: 0.2,
-      maxScale: 3.0,
-      child: SizedBox(
-        width: 2782,
-        height: 1536,
-        child: Stack(
-          children: [
-            // 1. Base Map Image
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/survival/Estate.png',
-                fit: BoxFit.cover,
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double minScaleX = constraints.maxWidth / 2782;
+        final double minScaleY = constraints.maxHeight / 1536;
+        final double computedMinScale = max(minScaleX, minScaleY).clamp(0.1, 3.0);
+
+        if (!_initialScaleSet) {
+          _initialScaleSet = true;
+          final double initialScale = (1.05 * computedMinScale).clamp(0.1, 3.0);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _transformationController.value = Matrix4.identity()..scale(initialScale);
+            }
+          });
+        }
+
+        return InteractiveViewer(
+          transformationController: _transformationController,
+          constrained: false,
+          minScale: computedMinScale,
+          maxScale: 3.0,
+          boundaryMargin: EdgeInsets.zero,
+          child: SizedBox(
+            width: 2782,
+            height: 1536,
+            child: Stack(
+              children: [
+                // 1. Base Map Image
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/survival/Estate.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
 
             // 2. Tower Damage Overlay
             if (hasTowerDamage)
@@ -1066,6 +1084,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 

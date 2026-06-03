@@ -96,9 +96,11 @@ class _AbominationAppState extends State<AbominationApp> {
                 if (hasTextFocus) return;
               }
 
+              final activeContext = navigatorKey.currentContext;
+              if (activeContext == null) return;
               final GameState state;
               try {
-                state = context.read<GameState>();
+                state = activeContext.read<GameState>();
               } catch (_) {
                 return;
               }
