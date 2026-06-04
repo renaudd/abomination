@@ -31,6 +31,21 @@ class SurvivalService extends ChangeNotifier {
   List<String> get logs => _logs;
   int get activeSlot => _activeSlot;
 
+  bool _isDisposed = false;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+
   SurvivalService(this._activeSlot, [this._progress]) {
     if (_progress == null) {
       _loadProgress();
@@ -240,13 +255,21 @@ class SurvivalService extends ChangeNotifier {
     return true;
   }
 
+  String _getTowerFriendlyName(String towerId) {
+    if (towerId == 'tower_1') return 'West Watchtower';
+    if (towerId == 'tower_2') return 'Middle Watchtower';
+    if (towerId == 'tower_3') return 'East Watchtower';
+    return towerId;
+  }
+
   bool upgradeIndividualTower(String towerId, String stat, int cost) {
     if (_progress == null || _progress!.cash < cost) return false;
     _progress!.cash -= cost;
     final key = '${towerId}_$stat';
     final currentLvl = _progress!.cardUpgrades[key] ?? 0;
     _progress!.cardUpgrades[key] = currentLvl + 1;
-    addLog('Upgraded $towerId $stat to Lvl ${currentLvl + 1} for $cost CHF.');
+    final fName = _getTowerFriendlyName(towerId);
+    addLog('Upgraded $fName $stat to Lvl ${currentLvl + 1} for $cost CHF.');
     _save();
     return true;
   }
@@ -299,6 +322,10 @@ class SurvivalService extends ChangeNotifier {
     return npc.specimenType == 'Construct' || npc.name.toLowerCase().contains('golem');
   }
 
+  static bool isHumanoid(NPC npc) {
+    return !isUndead(npc) && !isWildAnimal(npc) && !isChimera(npc) && !isConstruct(npc);
+  }
+
   static int getFoodCost(NPC npc) {
     if (isUndead(npc) || isWildAnimal(npc) || isConstruct(npc)) return 0;
     return npc.combatStats?.unitCount ?? 1;
@@ -310,12 +337,8 @@ class SurvivalService extends ChangeNotifier {
     
     // Validate if unit is eligible to work
     final npc = CombatUnitService.createUnit(unitCardId);
-    if (isWildAnimal(npc)) {
-      addLog('${npc.name} is a wild beast and cannot do industrial work.');
-      return false;
-    }
-    if (isChimera(npc)) {
-      addLog('Chimera cannot be assigned to work or training.');
+    if (!isHumanoid(npc)) {
+      addLog('${npc.name} is not humanoid and cannot do industrial work.');
       return false;
     }
 
@@ -363,12 +386,8 @@ class SurvivalService extends ChangeNotifier {
     if (_progress == null) return false;
 
     final npc = CombatUnitService.createUnit(unitCardId);
-    if (isWildAnimal(npc)) {
-      addLog('${npc.name} is a wild beast and cannot do construction work.');
-      return false;
-    }
-    if (isChimera(npc)) {
-      addLog('Chimera cannot be assigned to work or training.');
+    if (!isHumanoid(npc)) {
+      addLog('${npc.name} is not humanoid and cannot do repair work.');
       return false;
     }
 
@@ -391,13 +410,15 @@ class SurvivalService extends ChangeNotifier {
       // Swapping! Remove the first worker in the list
       final removedId = list.removeAt(0);
       final removedNpc = CombatUnitService.createUnit(removedId);
-      addLog('Swapped out ${removedNpc.name} from ${towerId.toUpperCase()} repair.');
+      final fName = _getTowerFriendlyName(towerId);
+      addLog('Swapped out ${removedNpc.name} from $fName repair.');
     }
 
     unassignUnitEverywhere(unitCardId, force: true);
     list.add(unitCardId);
     _progress!.towerRepairWorkers[towerId] = list;
-    addLog('Assigned ${npc.name} to repair ${towerId.replaceAll("_", " ").toUpperCase()}.');
+    final fName = _getTowerFriendlyName(towerId);
+    addLog('Assigned ${npc.name} to repair $fName.');
     _save();
     return true;
   }
@@ -536,9 +557,13 @@ class SurvivalService extends ChangeNotifier {
     if (level >= 4) {
       double efficiency = 0.0;
       for (int i = 0; i < workers; i++) {
-        if (i == 0) efficiency += 1.0;
-        else if (i == 1) efficiency += 0.8;
-        else efficiency += 0.6;
+        if (i == 0) {
+          efficiency += 1.0;
+        } else if (i == 1) {
+          efficiency += 0.8;
+        } else {
+          efficiency += 0.6;
+        }
       }
       return (efficiency * 15 * level).round();
     }
@@ -550,9 +575,13 @@ class SurvivalService extends ChangeNotifier {
     if (level >= 4) {
       double efficiency = 0.0;
       for (int i = 0; i < workers; i++) {
-        if (i == 0) efficiency += 1.0;
-        else if (i == 1) efficiency += 0.8;
-        else efficiency += 0.6;
+        if (i == 0) {
+          efficiency += 1.0;
+        } else if (i == 1) {
+          efficiency += 0.8;
+        } else {
+          efficiency += 0.6;
+        }
       }
       final basePerWorker = level == 6 ? 50 : (25 + 5 * level);
       return (efficiency * basePerWorker).round();
@@ -587,18 +616,19 @@ class SurvivalService extends ChangeNotifier {
   bool repairTower(String towerId, String method, int woodCost, int cashCost) {
     if (_progress == null) return false;
     
+    final fName = _getTowerFriendlyName(towerId);
     if (method == 'wood') {
       if (_progress!.wood < woodCost) return false;
       _progress!.wood -= woodCost;
       _progress!.towerDamaged[towerId] = 0.0;
       _progress!.towerRepairWorkers[towerId]?.clear();
-      addLog('Repaired $towerId with raw Wood.');
+      addLog('Repaired $fName with raw Wood.');
     } else if (method == 'cash') {
       if (_progress!.cash < cashCost) return false;
       _progress!.cash -= cashCost;
       _progress!.towerDamaged[towerId] = 0.0;
       _progress!.towerRepairWorkers[towerId]?.clear();
-      addLog('Repaired $towerId via Cash contract.');
+      addLog('Repaired $fName via Cash contract.');
     } else if (method == 'labor') {
       autoAssignTowerRepairs();
     }
@@ -620,7 +650,7 @@ class SurvivalService extends ChangeNotifier {
     final pool = <String>[];
     for (final type in _progress!.playerDeckIds) {
       final npc = CombatUnitService.createUnit(type);
-      if (isWildAnimal(npc) || isChimera(npc)) continue;
+      if (!isHumanoid(npc)) continue;
       
       bool isRepairing = false;
       for (final list in _progress!.towerRepairWorkers.values) {
@@ -659,12 +689,13 @@ class SurvivalService extends ChangeNotifier {
     for (final towerId in damagedTowers) {
       final list = _progress!.towerRepairWorkers[towerId] ?? [];
       final cap = _progress!.getTowerRepairSlotsCap(towerId);
+      final fName = _getTowerFriendlyName(towerId);
       while (list.length < cap && sortedPool.isNotEmpty) {
         final unitCardId = sortedPool.removeAt(0);
         unassignUnitEverywhere(unitCardId, force: true);
         list.add(unitCardId);
         final npc = CombatUnitService.createUnit(unitCardId);
-        addLog('Assigned ${npc.name} to repair ${towerId.toUpperCase()} by default.');
+        addLog('Assigned ${npc.name} to repair $fName by default.');
       }
       _progress!.towerRepairWorkers[towerId] = list;
     }
@@ -682,7 +713,8 @@ class SurvivalService extends ChangeNotifier {
       if (list.length >= cap) {
         _progress!.towerDamaged[towerId] = 0.0;
         list.clear();
-        addLog('Watchtower ${towerId.toUpperCase()} was successfully repaired by manual labor.');
+        final fName = _getTowerFriendlyName(towerId);
+        addLog('$fName was successfully repaired by manual labor.');
       }
     }
 
@@ -858,7 +890,8 @@ class SurvivalService extends ChangeNotifier {
     for (var entry in towerFinalHealth.entries) {
       if (entry.value <= 0.0) {
         _progress!.towerDamaged[entry.key] = 1.0; // Destroyed!
-        addLog('DISASTER: ${entry.key.toUpperCase()} was destroyed in the siege!');
+        final fName = _getTowerFriendlyName(entry.key);
+        addLog('DISASTER: $fName was destroyed in the siege!');
       }
     }
 

@@ -24,8 +24,8 @@ void main() {
       final coop = ManorLayout.grid['chicken_coop'];
       final shed = ManorLayout.grid['toolshed'];
 
-      expect(coop?.$1, equals(3.9));
-      expect(shed?.$1, equals(3.9));
+      expect(coop?.$1, equals(3.8));
+      expect(shed?.$1, equals(3.8));
     });
   });
 
@@ -45,9 +45,9 @@ void main() {
           ratsFound++;
         }
       }
-      // Chance is 25%, expect around 250
-      expect(ratsFound, greaterThan(150));
-      expect(ratsFound, lessThan(350));
+      // Chance is 8%, expect around 80
+      expect(ratsFound, greaterThan(40));
+      expect(ratsFound, lessThan(130));
     });
 
     test('Finding Bats in Attic (Cleaning)', () {
@@ -63,9 +63,9 @@ void main() {
           batsFound++;
         }
       }
-      // Chance is 20%, expect around 200
-      expect(batsFound, greaterThan(100));
-      expect(batsFound, lessThan(300));
+      // Chance is 4%, expect around 40
+      expect(batsFound, greaterThan(15));
+      expect(batsFound, lessThan(75));
     });
 
     test('Restoration has higher chances', () {

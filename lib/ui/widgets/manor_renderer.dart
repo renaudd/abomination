@@ -111,11 +111,16 @@ class ManorRenderer extends StatelessWidget {
                       onAcceptWithDetails: (details) {
                         final npc = details.data;
                         final state = context.read<GameState>();
-                        state.enqueueNpcTask(
-                          npc.id,
-                          room.defaultAction,
-                          room.id,
-                        );
+                        final dragDropResult = state.resolveDragAndDropAction(npc, room);
+                        if (dragDropResult != null) {
+                          state.enqueueNpcTask(
+                            npc.id,
+                            dragDropResult.action,
+                            dragDropResult.targetRoomId,
+                            recipeId: dragDropResult.recipeId,
+                            targetName: dragDropResult.targetName,
+                          );
+                        }
                       },
                       builder: (context, candidateData, rejectedData) {
                         final roomCrises = crises

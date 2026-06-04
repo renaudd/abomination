@@ -199,11 +199,8 @@ class CharacterBlobRenderer extends StatelessWidget {
                       npc.name.toLowerCase().contains('villager')))
                 _buildPoleWeaponOverlay(size),
 
-              // Ranged Infantry Muskets
-              if (isCombat &&
-                  npc.combatStats != null &&
-                  npc.combatStats!.rangedDamage > 0 &&
-                  !npc.isPlayer)
+              // Ranged Infantry Muskets / Firearm users
+              if (isCombat && _isUsingFirearm(npc))
                 _buildMusketOverlay(size),
             ],
 
@@ -2394,6 +2391,13 @@ class CharacterBlobRenderer extends StatelessWidget {
         ),
       );
     }
+  }
+
+  bool _isUsingFirearm(NPC npc) {
+    if (npc.combatStats == null) return false;
+    if (npc.combatStats!.rangedDamage > 0) return true;
+    if (npc.isPlayer && (npc.name.toLowerCase().contains('frankenstein') || npc.id == 'alphonse')) return true;
+    return false;
   }
 
   Widget _buildMusketOverlay(double size) {

@@ -519,14 +519,15 @@ class SurvivalEstateMapScreen extends StatefulWidget {
   const SurvivalEstateMapScreen({super.key});
 
   @override
-  State<SurvivalEstateMapScreen> createState() => _SurvivalEstateMapScreenState();
+  State<SurvivalEstateMapScreen> createState() =>
+      _SurvivalEstateMapScreenState();
 }
 
 class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   bool _isDrafting = true;
   final List<String> _selectedCart = [];
   bool _isTransitioningToCombat = false;
-  
+
   String _activeTab =
       'ESTATE'; // 'ESTATE', 'DECK', 'LEADER', 'TOWERS', 'MARKET', 'MANOR_RECORDS'
   final Map<String, GeneralWeaponSpec?> _evaluatedWeaponForCard = {};
@@ -671,7 +672,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     if (progress == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF15100B),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFC4B89B))),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFC4B89B)),
+        ),
       );
     }
 
@@ -680,7 +683,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final t3Destroyed = (progress.towerDamaged['tower_3'] ?? 0.0) >= 1.0;
     final allTowersDestroyed = t1Destroyed && t2Destroyed && t3Destroyed;
 
-    if (allTowersDestroyed && progress.difficulty != SurvivalDifficulty.elementary) {
+    if (allTowersDestroyed &&
+        progress.difficulty != SurvivalDifficulty.elementary) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (progress.difficulty == SurvivalDifficulty.arcade) {
           ArenaSaveService.deleteSave(service.activeSlot);
@@ -699,7 +703,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     }
 
     // Turn off embark shop overlay if player already finished drafting (deck contains cards and we aren't showing drafting)
-    if (_isDrafting && progress.playerDeckIds.isNotEmpty && _selectedCart.isEmpty) {
+    if (_isDrafting &&
+        progress.playerDeckIds.isNotEmpty &&
+        _selectedCart.isEmpty) {
       _isDrafting = false;
     }
 
@@ -713,7 +719,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     }
 
     final nextEncounterTurn = progress.cardUpgrades['next_encounter_turn']!;
-    if (turn >= nextEncounterTurn && !_isDrafting && !_isTransitioningToCombat) {
+    if (turn >= nextEncounterTurn &&
+        !_isDrafting &&
+        !_isTransitioningToCombat) {
       final index = progress.cardUpgrades['next_encounter_index'] ?? 0;
       final encountersList = [
         'gnomes_artillery',
@@ -741,7 +749,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       final String encounterId = encountersList[index % encountersList.length];
       if (progress.cardUpgrades['encounter_${encounterId}_resolved'] != 1) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showNarrativeEncounter(context, encounterId, progress, service, state);
+          _showNarrativeEncounter(
+            context,
+            encounterId,
+            progress,
+            service,
+            state,
+          );
         });
       }
     }
@@ -818,7 +832,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }
 
   // HUD HEADER
-  Widget _buildHUD(SurvivalProgress progress, SurvivalService service, GameState state) {
+  Widget _buildHUD(
+    SurvivalProgress progress,
+    SurvivalService service,
+    GameState state,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -843,7 +861,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               ),
             ],
           ),
-          
+
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -867,19 +885,38 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 'MARKET',
                 () => setState(() => _activeTab = 'MARKET'),
               ),
-              _buildNavButton('MENU', () => _showMenuOverlay(progress, service, state)),
+              _buildNavButton(
+                'MENU',
+                () => _showMenuOverlay(progress, service, state),
+              ),
             ],
           ),
 
           Row(
             children: [
-              _buildResourceChip(Icons.monetization_on, '${progress.cash} CHF', Colors.amber.shade700),
+              _buildResourceChip(
+                Icons.monetization_on,
+                '${progress.cash} CHF',
+                Colors.amber.shade700,
+              ),
               const SizedBox(width: 8),
-              _buildResourceChip(Icons.restaurant, '${progress.food} FOOD', Colors.green.shade700),
+              _buildResourceChip(
+                Icons.restaurant,
+                '${progress.food} FOOD',
+                Colors.green.shade700,
+              ),
               const SizedBox(width: 8),
-              _buildResourceChip(Icons.forest, '${progress.wood} WOOD', Colors.brown.shade700),
+              _buildResourceChip(
+                Icons.forest,
+                '${progress.wood} WOOD',
+                Colors.brown.shade700,
+              ),
               const SizedBox(width: 8),
-              _buildResourceChip(Icons.construction, '${progress.iron} IRON', Colors.blueGrey.shade600),
+              _buildResourceChip(
+                Icons.construction,
+                '${progress.iron} IRON',
+                Colors.blueGrey.shade600,
+              ),
             ],
           ),
         ],
@@ -895,7 +932,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: const Color(0xFF211B15),
-          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.4)),
+          border: Border.all(
+            color: const Color(0xFFC4B89B).withValues(alpha: 0.4),
+          ),
           borderRadius: BorderRadius.circular(2),
         ),
         child: Text(
@@ -940,24 +979,30 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
   // ORGANIC ESTATE BOARD
   Widget _buildEstateBoard(SurvivalProgress progress, SurvivalService service) {
-    String towerLetters = '';
-    if ((progress.towerDamaged['tower_1'] ?? 0.0) >= 1.0) towerLetters += 'L';
-    if ((progress.towerDamaged['tower_2'] ?? 0.0) >= 1.0) towerLetters += 'M';
-    if ((progress.towerDamaged['tower_3'] ?? 0.0) >= 1.0) towerLetters += 'R';
+    final List<String> letters = [];
+    if ((progress.towerDamaged['tower_1'] ?? 0.0) >= 1.0) letters.add('W');
+    if ((progress.towerDamaged['tower_2'] ?? 0.0) >= 1.0) letters.add('M');
+    if ((progress.towerDamaged['tower_3'] ?? 0.0) >= 1.0) letters.add('E');
+    letters.sort();
+    final towerLetters = letters.join('');
     final hasTowerDamage = towerLetters.isNotEmpty;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final double minScaleX = constraints.maxWidth / 2782;
         final double minScaleY = constraints.maxHeight / 1536;
-        final double computedMinScale = max(minScaleX, minScaleY).clamp(0.1, 3.0);
+        final double computedMinScale = max(
+          minScaleX,
+          minScaleY,
+        ).clamp(0.1, 3.0);
 
         if (!_initialScaleSet) {
           _initialScaleSet = true;
           final double initialScale = (1.05 * computedMinScale).clamp(0.1, 3.0);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              _transformationController.value = Matrix4.identity()..scale(initialScale);
+              _transformationController.value = Matrix4.identity()
+                ..scale(initialScale);
             }
           });
         }
@@ -981,151 +1026,151 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   ),
                 ),
 
-            // 2. Tower Damage Overlay
-            if (hasTowerDamage)
-              Positioned.fill(
-                child: Image.asset(
-                  'assets/images/survival/${towerLetters}damage.png',
-                  fit: BoxFit.cover,
+                // 2. Tower Damage Overlay
+                if (hasTowerDamage)
+                  Positioned.fill(
+                    child: Image.asset(
+                      'assets/images/survival/${towerLetters}damage.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+
+                // 3. Village Fallow Overlay
+                if (progress.villageHealth <= 0)
+                  Positioned.fill(
+                    child: Image.asset(
+                      'assets/images/survival/VillagetoFallow.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+
+                // 4. Plot Upgrades Overlays
+                ..._buildPlotOverlays(progress),
+
+                // 5. Transparent Interactive Buttons
+
+                // Manor House Button
+                _buildManorHouseButton(440, 610, 420, 320),
+
+                // Towers Buttons
+                _buildTowerButton(
+                  progress,
+                  service,
+                  'tower_1',
+                  'WEST TOWER',
+                  150,
+                  900,
+                  160,
+                  280,
                 ),
-              ),
-
-            // 3. Village Fallow Overlay
-            if (progress.villageHealth <= 0)
-              Positioned.fill(
-                child: Image.asset(
-                  'assets/images/survival/VillagetoFallow.png',
-                  fit: BoxFit.cover,
+                _buildTowerButton(
+                  progress,
+                  service,
+                  'tower_2',
+                  'MIDDLE TOWER',
+                  420,
+                  940,
+                  160,
+                  280,
                 ),
-              ),
- 
-            // 4. Plot Upgrades Overlays
-            ..._buildPlotOverlays(progress),
+                _buildTowerButton(
+                  progress,
+                  service,
+                  'tower_3',
+                  'EAST TOWER',
+                  640,
+                  900,
+                  160,
+                  280,
+                ),
 
-            // 5. Transparent Interactive Buttons
+                // Village Button
+                _buildVillageButton(progress, 1630, 780, 360, 250),
 
-            // Manor House Button
-            _buildManorHouseButton(440, 610, 420, 320),
+                // Training Yard
+                _buildTrainingYardButton(progress, service, 1240, 50, 700, 280),
 
-            // Towers Buttons
-            _buildTowerButton(
-              progress,
-              service,
-              'tower_1',
-              'LEFT TOWER',
-              150,
-              900,
-              160,
-              280,
+                // Plots (A, B, C, D, E, F, G)
+                _buildPlotButton(
+                  progress,
+                  service,
+                  'plot_a',
+                  'AROSA PLOT (INDUSTRY)',
+                  205,
+                  290,
+                  340,
+                  240,
+                  cost: 0,
+                ),
+                _buildPlotButton(
+                  progress,
+                  service,
+                  'plot_b',
+                  'BERN PLOT (INDUSTRY)',
+                  785,
+                  290,
+                  340,
+                  240,
+                  cost: 5000,
+                ),
+                _buildPlotButton(
+                  progress,
+                  service,
+                  'plot_c',
+                  'CHUR FARM PLOT',
+                  1180,
+                  720,
+                  380,
+                  280,
+                  cost: 0,
+                ),
+                _buildPlotButton(
+                  progress,
+                  service,
+                  'plot_d',
+                  'DAVOS PLOT (RESOURCE)',
+                  1660,
+                  540,
+                  340,
+                  240,
+                  cost: 0,
+                ),
+                _buildPlotButton(
+                  progress,
+                  service,
+                  'plot_e',
+                  'ENGELBERG PLOT (RESOURCE)',
+                  2360,
+                  595,
+                  340,
+                  240,
+                  cost: 2000,
+                ),
+                _buildPlotButton(
+                  progress,
+                  service,
+                  'plot_f',
+                  'FRIBOURG PLOT (RESOURCE)',
+                  1980,
+                  847,
+                  340,
+                  240,
+                  cost: 0,
+                ),
+                _buildPlotButton(
+                  progress,
+                  service,
+                  'plot_g',
+                  'GRINDELWALD PLOT (RESOURCE)',
+                  1520,
+                  1065,
+                  380,
+                  260,
+                  cost: 5000,
+                ),
+              ],
             ),
-            _buildTowerButton(
-              progress,
-              service,
-              'tower_2',
-              'MIDDLE TOWER',
-              420,
-              940,
-              160,
-              280,
-            ),
-            _buildTowerButton(
-              progress,
-              service,
-              'tower_3',
-              'RIGHT TOWER',
-              640,
-              900,
-              160,
-              280,
-            ),
-
-            // Village Button
-            _buildVillageButton(progress, 1630, 780, 360, 250),
-
-            // Training Yard
-            _buildTrainingYardButton(progress, service, 1240, 50, 700, 280),
-
-            // Plots (A, B, C, D, E, F, G)
-            _buildPlotButton(
-              progress,
-              service,
-              'plot_a',
-              'AROSA PLOT (INDUSTRY)',
-              205,
-              290,
-              340,
-              240,
-              cost: 0,
-            ),
-            _buildPlotButton(
-              progress,
-              service,
-              'plot_b',
-              'BERN PLOT (INDUSTRY)',
-              785,
-              290,
-              340,
-              240,
-              cost: 5000,
-            ),
-            _buildPlotButton(
-              progress,
-              service,
-              'plot_c',
-              'CHUR FARM PLOT',
-              1180,
-              720,
-              380,
-              280,
-              cost: 0,
-            ),
-            _buildPlotButton(
-              progress,
-              service,
-              'plot_d',
-              'DAVOS PLOT (RESOURCE)',
-              1660,
-              540,
-              340,
-              240,
-              cost: 0,
-            ),
-            _buildPlotButton(
-              progress,
-              service,
-              'plot_e',
-              'ENGELBERG PLOT (RESOURCE)',
-              2360,
-              595,
-              340,
-              240,
-              cost: 2000,
-            ),
-            _buildPlotButton(
-              progress,
-              service,
-              'plot_f',
-              'FRIBOURG PLOT (RESOURCE)',
-              1980,
-              847,
-              340,
-              240,
-              cost: 0,
-            ),
-            _buildPlotButton(
-              progress,
-              service,
-              'plot_g',
-              'GRINDELWALD PLOT (RESOURCE)',
-              1520,
-              1065,
-              380,
-              260,
-              cost: 5000,
-            ),
-          ],
-        ),
-      ),
+          ),
         );
       },
     );
@@ -1350,62 +1395,76 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(progress.getTowerRepairSlotsCap(towerId), (idx) {
-                      final hasWorker = idx < workers.length;
-                      final workerId = hasWorker ? workers[idx] : null;
-                      final cap = progress.getTowerRepairSlotsCap(towerId);
+                    children: List.generate(
+                      progress.getTowerRepairSlotsCap(towerId),
+                      (idx) {
+                        final hasWorker = idx < workers.length;
+                        final workerId = hasWorker ? workers[idx] : null;
+                        final cap = progress.getTowerRepairSlotsCap(towerId);
 
-                      return DragTarget<String>(
-                        onWillAcceptWithDetails: (details) => workers.length < cap,
-                        onAcceptWithDetails: (details) {
-                          service.assignTowerRepair(towerId, details.data);
-                          setState(() {});
-                        },
-                        builder: (context, candidateData, rejectedData) {
-                          final isOver = candidateData.isNotEmpty;
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: hasWorker
-                                  ? const Color(0xFF4E342E)
-                                  : Colors.black45,
-                              border: Border.all(
-                                color: isOver
-                                    ? const Color(0xFFD4AF37)
-                                    : const Color(0xFFD4AF37).withValues(alpha: 0.6),
-                                width: isOver ? 3.0 : 2.5,
+                        return DragTarget<String>(
+                          onWillAcceptWithDetails: (details) {
+                            final npc = CombatUnitService.createUnit(details.data);
+                            return workers.length < cap && SurvivalService.isHumanoid(npc);
+                          },
+                          onAcceptWithDetails: (details) {
+                            service.assignTowerRepair(towerId, details.data);
+                            setState(() {});
+                          },
+                          builder: (context, candidateData, rejectedData) {
+                            final isOver = candidateData.isNotEmpty;
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: hasWorker
+                                    ? const Color(0xFF4E342E)
+                                    : Colors.black45,
+                                border: Border.all(
+                                  color: isOver
+                                      ? const Color(0xFFD4AF37)
+                                      : const Color(
+                                          0xFFD4AF37,
+                                        ).withValues(alpha: 0.6),
+                                  width: isOver ? 3.0 : 2.5,
+                                ),
                               ),
-                            ),
-                            alignment: Alignment.center,
-                            child: hasWorker
-                                ? Draggable<String>(
-                                    data: workerId!,
-                                    dragAnchorStrategy: pointerDragAnchorStrategy,
-                                    feedback: Material(
-                                      color: Colors.transparent,
+                              alignment: Alignment.center,
+                              child: hasWorker
+                                  ? Draggable<String>(
+                                      data: workerId!,
+                                      dragAnchorStrategy:
+                                          (draggable, context, position) =>
+                                              const Offset(24, 24),
+                                      feedback: Material(
+                                        color: Colors.transparent,
+                                        child: CharacterBlobRenderer(
+                                          npc: CombatUnitService.createUnit(
+                                            workerId,
+                                          ),
+                                          size: 48,
+                                          isCombat: true,
+                                        ),
+                                      ),
+                                      onDragCompleted: () {
+                                        setState(() {});
+                                      },
                                       child: CharacterBlobRenderer(
-                                        npc: CombatUnitService.createUnit(workerId),
-                                        size: 48,
+                                        npc: CombatUnitService.createUnit(
+                                          workerId,
+                                        ),
+                                        size: 44,
                                         isCombat: true,
                                       ),
-                                    ),
-                                    onDragCompleted: () {
-                                      setState(() {});
-                                    },
-                                    child: CharacterBlobRenderer(
-                                      npc: CombatUnitService.createUnit(workerId),
-                                      size: 44,
-                                      isCombat: true,
-                                    ),
-                                  )
-                                : const SizedBox(),
-                          );
-                        },
-                      );
-                    }),
+                                    )
+                                  : const SizedBox(),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ] else ...[
                   const Icon(Icons.security, color: Colors.white24, size: 32),
@@ -1510,7 +1569,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           color: Colors.white70,
                         ),
                       ),
-                    )
+                    ),
                   ],
                 );
               },
@@ -1627,11 +1686,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       child: hasTrainee
                           ? Draggable<String>(
                               data: progress.trainingUnitIds[idx],
-                              dragAnchorStrategy: pointerDragAnchorStrategy,
+                              dragAnchorStrategy:
+                                  (draggable, context, position) =>
+                                      const Offset(24, 24),
                               feedback: Material(
                                 color: Colors.transparent,
                                 child: CharacterBlobRenderer(
-                                  npc: CombatUnitService.createUnit(progress.trainingUnitIds[idx]),
+                                  npc: CombatUnitService.createUnit(
+                                    progress.trainingUnitIds[idx],
+                                  ),
                                   size: 48,
                                   isCombat: true,
                                 ),
@@ -1640,7 +1703,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 setState(() {});
                               },
                               child: CharacterBlobRenderer(
-                                npc: CombatUnitService.createUnit(progress.trainingUnitIds[idx]),
+                                npc: CombatUnitService.createUnit(
+                                  progress.trainingUnitIds[idx],
+                                ),
                                 size: 44,
                                 isCombat: true,
                               ),
@@ -1776,7 +1841,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       width: width,
       height: height,
       child: DragTarget<String>(
-        onWillAcceptWithDetails: (details) => b.assignedUnitIds.length < caps,
+        onWillAcceptWithDetails: (details) {
+          final npc = CombatUnitService.createUnit(details.data);
+          return b.assignedUnitIds.length < caps && SurvivalService.isHumanoid(npc);
+        },
         onAcceptWithDetails: (details) {
           service.assignWorker(plotKey, details.data);
         },
@@ -1853,7 +1921,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         child: hasWorker
                             ? Draggable<String>(
                                 data: b.assignedUnitIds[idx],
-                                dragAnchorStrategy: pointerDragAnchorStrategy,
+                                dragAnchorStrategy:
+                                    (draggable, context, position) =>
+                                        const Offset(24, 24),
                                 feedback: Material(
                                   color: Colors.transparent,
                                   child: CharacterBlobRenderer(
@@ -1889,7 +1959,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }
 
   // DRAWERS & FOOTERS
-  Widget _buildSideDeckDrawer(SurvivalProgress progress, SurvivalService service) {
+  Widget _buildSideDeckDrawer(
+    SurvivalProgress progress,
+    SurvivalService service,
+  ) {
     return DragTarget<String>(
       onWillAcceptWithDetails: (details) => true,
       onAcceptWithDetails: (details) {
@@ -1929,7 +2002,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                     return Draggable<String>(
                       data: type,
-                      dragAnchorStrategy: pointerDragAnchorStrategy,
+                      dragAnchorStrategy: (draggable, context, position) =>
+                          const Offset(18, 18),
                       feedback: Material(
                         color: Colors.transparent,
                         child: Opacity(
@@ -2037,7 +2111,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
   }
 
-  Widget _buildFooter(SurvivalProgress progress, SurvivalService service, GameState state) {
+  Widget _buildFooter(
+    SurvivalProgress progress,
+    SurvivalService service,
+    GameState state,
+  ) {
     return Container(
       height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2064,7 +2142,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     padding: const EdgeInsets.only(bottom: 2),
                     child: Text(
                       service.logs[idx],
-                      style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 8.5),
+                      style: GoogleFonts.oldStandardTt(
+                        color: Colors.white54,
+                        fontSize: 8.5,
+                      ),
                     ),
                   );
                 },
@@ -2078,6 +2159,89 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             height: 44,
             child: ElevatedButton(
               onPressed: () {
+                // Check if there are damaged towers
+                final damagedTowers = progress.towerDamaged.entries
+                    .where((e) => e.value >= 1.0)
+                    .map((e) => e.key)
+                    .toList();
+
+                bool needsEnforcement = false;
+                if (damagedTowers.isNotEmpty) {
+                  // Check if any damaged tower has unfilled slots (unpaid/unassigned repairs)
+                  bool hasUnpaidTower = false;
+                  for (final towerId in damagedTowers) {
+                    final workers = progress.towerRepairWorkers[towerId] ?? [];
+                    final cap = progress.getTowerRepairSlotsCap(towerId);
+                    if (workers.length < cap) {
+                      hasUnpaidTower = true;
+                      break;
+                    }
+                  }
+
+                  if (hasUnpaidTower) {
+                    // Check if player has any humanoid units that are not assigned to tower repair
+                    final List<String> humanoids = [];
+                    for (final type in progress.playerDeckIds) {
+                      final npc = CombatUnitService.createUnit(type);
+                      if (SurvivalService.isHumanoid(npc)) {
+                        humanoids.add(type);
+                      }
+                    }
+
+                    final Set<String> assigned = {};
+                    for (final list in progress.towerRepairWorkers.values) {
+                      assigned.addAll(list);
+                    }
+
+                    final unassignedHumanoids = humanoids.where((h) => !assigned.contains(h)).toList();
+                    if (unassignedHumanoids.isNotEmpty) {
+                      needsEnforcement = true;
+                    }
+                  }
+                }
+
+                if (needsEnforcement) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: const Color(0xFF1A130E),
+                      title: Text(
+                        'REPAIRS REQUIRED',
+                        style: GoogleFonts.oswald(
+                          color: const Color(0xFFD4AF37),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      content: Text(
+                        'You must assign all available humanoid units to watchtower repairs, or pay for repairs using wood or cash, before proceeding to combat.',
+                        style: GoogleFonts.playfairDisplay(color: Colors.white),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              service.autoAssignTowerRepairs();
+                            });
+                          },
+                          child: Text(
+                            'AUTO-ASSIGN WORKERS',
+                            style: GoogleFonts.oswald(color: const Color(0xFFD4AF37)),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'CANCEL',
+                            style: GoogleFonts.oswald(color: Colors.white54),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+
                 // Capture levels before turn resolution
                 final Map<String, int> levelsBefore = {};
                 for (var t in progress.playerDeckIds) {
@@ -2109,148 +2273,163 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     await showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (context) => Dialog(
-                        backgroundColor: Colors.transparent,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            const Positioned.fill(child: FireworksOverlay()),
-                            Container(
-                              width: 320,
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1A130E),
-                                border: Border.all(
-                                  color: const Color(0xFFD4AF37),
-                                  width: 2,
+                      builder: (context) {
+                        final screenHeight = MediaQuery.of(context).size.height;
+                        return Dialog(
+                          backgroundColor: Colors.transparent,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              const Positioned.fill(child: FireworksOverlay()),
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: 320,
+                                  maxHeight: screenHeight * 0.9,
                                 ),
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black87,
-                                    blurRadius: 10,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'LEVEL UP!',
-                                    style: GoogleFonts.oswald(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1A130E),
+                                    border: Border.all(
                                       color: const Color(0xFFD4AF37),
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 2.0,
+                                      width: 2,
                                     ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  CharacterBlobRenderer(
-                                    npc: CombatUnitService.createUnit(
-                                      levelUp['cardId'],
-                                    ),
-                                    size: 80,
-                                    isCombat: true,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    CombatUnitService.createUnit(
-                                      levelUp['cardId'],
-                                    ).name.toUpperCase(),
-                                    style: GoogleFonts.playfairDisplay(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Level ${levelUp['oldLvl']} ➔ Level ${levelUp['newLvl']}',
-                                    style: GoogleFonts.oswald(
-                                      color: const Color(0xFFE5D5B0),
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const Divider(color: Colors.white10),
-                                  const SizedBox(height: 10),
-                                  _buildLevelUpStatRow(
-                                    'MAX HEALTH (HP)',
-                                    (CombatUnitService.createUnit(
-                                              levelUp['cardId'],
-                                            ).combatStats!.maxHealth *
-                                            (1.0 +
-                                                (levelUp['oldLvl'] - 1) * 0.1))
-                                        .toInt()
-                                        .toString(),
-                                    (CombatUnitService.createUnit(
-                                              levelUp['cardId'],
-                                            ).combatStats!.maxHealth *
-                                            (1.0 +
-                                                (levelUp['newLvl'] - 1) * 0.1))
-                                        .toInt()
-                                        .toString(),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _buildLevelUpStatRow(
-                                    'ATTACK POWER',
-                                    (CombatUnitService.createUnit(
-                                              levelUp['cardId'],
-                                            ).combatStats!.attack *
-                                            (1.0 +
-                                                (levelUp['oldLvl'] - 1) * 0.1))
-                                        .toInt()
-                                        .toString(),
-                                    (CombatUnitService.createUnit(
-                                              levelUp['cardId'],
-                                            ).combatStats!.attack *
-                                            (1.0 +
-                                                (levelUp['newLvl'] - 1) * 0.1))
-                                        .toInt()
-                                        .toString(),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 36,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFFC4B89B,
-                                        ),
-                                        foregroundColor: Colors.black,
-                                        shape: const RoundedRectangleBorder(),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black87,
+                                        blurRadius: 10,
+                                        spreadRadius: 2,
                                       ),
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text(
-                                        'CONTINUE',
-                                        style: GoogleFonts.playfairDisplay(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          letterSpacing: 1.0,
+                                    ],
+                                  ),
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'LEVEL UP!',
+                                          style: GoogleFonts.oswald(
+                                            color: const Color(0xFFD4AF37),
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 2.0,
+                                          ),
                                         ),
-                                      ),
+                                        const SizedBox(height: 8),
+                                        CharacterBlobRenderer(
+                                          npc: CombatUnitService.createUnit(
+                                            levelUp['cardId'],
+                                          ),
+                                          size: 60,
+                                          isCombat: true,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          CombatUnitService.createUnit(
+                                            levelUp['cardId'],
+                                          ).name.toUpperCase(),
+                                          style: GoogleFonts.playfairDisplay(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Level ${levelUp['oldLvl']} ➔ Level ${levelUp['newLvl']}',
+                                          style: GoogleFonts.oswald(
+                                            color: const Color(0xFFE5D5B0),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        const Divider(color: Colors.white10),
+                                        const SizedBox(height: 6),
+                                        _buildLevelUpStatRow(
+                                          'MAX HEALTH (HP)',
+                                          (CombatUnitService.createUnit(
+                                                    levelUp['cardId'],
+                                                  ).combatStats!.maxHealth *
+                                                  (1.0 +
+                                                      (levelUp['oldLvl'] - 1) * 0.1))
+                                              .toInt()
+                                              .toString(),
+                                          (CombatUnitService.createUnit(
+                                                    levelUp['cardId'],
+                                                  ).combatStats!.maxHealth *
+                                                  (1.0 +
+                                                      (levelUp['newLvl'] - 1) * 0.1))
+                                              .toInt()
+                                              .toString(),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        _buildLevelUpStatRow(
+                                          'ATTACK POWER',
+                                          (CombatUnitService.createUnit(
+                                                    levelUp['cardId'],
+                                                  ).combatStats!.attack *
+                                                  (1.0 +
+                                                      (levelUp['oldLvl'] - 1) * 0.1))
+                                              .toInt()
+                                              .toString(),
+                                          (CombatUnitService.createUnit(
+                                                    levelUp['cardId'],
+                                                  ).combatStats!.attack *
+                                                  (1.0 +
+                                                      (levelUp['newLvl'] - 1) * 0.1))
+                                              .toInt()
+                                              .toString(),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          height: 36,
+                                          child: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(
+                                                0xFFC4B89B,
+                                              ),
+                                              foregroundColor: Colors.black,
+                                              shape: const RoundedRectangleBorder(),
+                                            ),
+                                            onPressed: () => Navigator.pop(context),
+                                            child: Text(
+                                              'CONTINUE',
+                                              style: GoogleFonts.playfairDisplay(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                                letterSpacing: 1.0,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   }
                 }
 
                 processLevelUps().then((_) {
                   // Route straight to Combat stage! Leveled-up stats are dynamically mapped here!
-                  final playerUnits = progress.playerDeckIds
-                      .map((t) {
+                  final playerUnits = progress.playerDeckIds.map((t) {
                     final npc = CombatUnitService.createUnit(t);
                     final exp = progress.unitExp[t] ?? 0.0;
                     final lvl = SurvivalProgress.getLevelFromXp(exp);
                     final mult = 1.0 + (lvl - 1) * 0.1;
+                    double distance = npc.combatStats!.distance;
+                    double rangedRange = npc.combatStats!.rangedRange;
+                    if (t == 'cannoneer' && lvl >= 6) {
+                      distance = 23.0;
+                      rangedRange = 23.0;
+                    }
                     return npc.copyWith(
                       metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
                       combatStats: npc.combatStats?.copyWith(
@@ -2259,6 +2438,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         attack: npc.combatStats!.attack * mult,
                         meleeDamage: npc.combatStats!.meleeDamage * mult,
                         rangedDamage: npc.combatStats!.rangedDamage * mult,
+                        distance: distance,
+                        rangedRange: rangedRange,
                       ),
                     );
                   }).toList();
@@ -2271,7 +2452,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                   state.startCombatSimulation(playerUnits, aiUnits);
 
-                  Navigator.pushReplacement(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => CombatScreen(
@@ -2281,92 +2462,95 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         cardUpgrades: progress.cardUpgrades,
                         survivalTurn: progress.currentTurn,
                         survivalDifficulty: progress.difficulty,
-                        onSurvivalVictory: (destroyedTowersCount, enemyDeck, spoilsFood, spoilsCash, spoilsIron, spoilsWood, playerTowerHealth, combatExp, activeContext) {
-                          service.processCombatOutcome(
-                            true,
-                            false,
-                            playerTowerHealth,
-                            combatExp,
-                            opponentDeck: enemyDeck,
-                            destroyedEnemyTowers: destroyedTowersCount,
-                            customSpoilsFood: spoilsFood,
-                            customSpoilsCash: spoilsCash,
-                            customSpoilsIron: spoilsIron,
-                            customSpoilsWood: spoilsWood,
-                          );
-                          state.clearEncounterState();
-                          Navigator.pushReplacement(
-                            activeContext,
-                            MaterialPageRoute(
-                              builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-                                value: service,
-                                child: const SurvivalEstateMapScreen(),
-                              ),
-                            ),
-                          );
-                        },
-                        onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, combatExp, activeContext) {
-                          service.processCombatOutcome(
-                            false,
-                            false,
-                            playerTowerHealth,
-                            combatExp,
-                            opponentDeck: enemyDeck,
-                            destroyedEnemyTowers: destroyedTowersCount,
-                            customSpoilsFood: 0,
-                            customSpoilsCash: 0,
-                            customSpoilsIron: 0,
-                            customSpoilsWood: 0,
-                          );
-                          state.clearEncounterState();
-                          if (progress.difficulty == SurvivalDifficulty.arcade) {
-                            ArenaSaveService.deleteSave(service.activeSlot);
-                            Navigator.pushReplacement(
+                        onSurvivalVictory:
+                            (
+                              destroyedTowersCount,
+                              enemyDeck,
+                              spoilsFood,
+                              spoilsCash,
+                              spoilsIron,
+                              spoilsWood,
+                              playerTowerHealth,
+                              combatExp,
                               activeContext,
-                              MaterialPageRoute(
-                                builder: (context) => GameOverScreen(
-                                  reason: 'Your forces were defeated in combat.',
-                                  difficulty: progress.difficulty,
-                                  turnsSurvived: progress.currentTurn,
-                                ),
-                              ),
-                            );
-                          } else {
-                            Navigator.pushReplacement(
+                            ) {
+                              service.processCombatOutcome(
+                                true,
+                                false,
+                                playerTowerHealth,
+                                combatExp,
+                                opponentDeck: enemyDeck,
+                                destroyedEnemyTowers: destroyedTowersCount,
+                                customSpoilsFood: spoilsFood,
+                                customSpoilsCash: spoilsCash,
+                                customSpoilsIron: spoilsIron,
+                                customSpoilsWood: spoilsWood,
+                              );
+                              state.clearEncounterState();
+                              Navigator.pop(activeContext);
+                            },
+                        onSurvivalDefeat:
+                            (
+                              destroyedTowersCount,
+                              enemyDeck,
+                              playerTowerHealth,
+                              combatExp,
                               activeContext,
-                              MaterialPageRoute(
-                                builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-                                  value: service,
-                                  child: const SurvivalEstateMapScreen(),
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        onSurvivalDraw: (destroyedTowersCount, enemyDeck, playerTowerHealth, combatExp, activeContext) {
-                          service.processCombatOutcome(
-                            false,
-                            true,
-                            playerTowerHealth,
-                            combatExp,
-                            opponentDeck: enemyDeck,
-                            destroyedEnemyTowers: destroyedTowersCount,
-                            customSpoilsFood: 0,
-                            customSpoilsCash: 0,
-                            customSpoilsIron: 0,
-                            customSpoilsWood: 0,
-                          );
-                          state.clearEncounterState();
-                          Navigator.pushReplacement(
-                            activeContext,
-                            MaterialPageRoute(
-                              builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-                                value: service,
-                                child: const SurvivalEstateMapScreen(),
-                              ),
-                            ),
-                          );
-                        },
+                            ) {
+                              service.processCombatOutcome(
+                                false,
+                                false,
+                                playerTowerHealth,
+                                combatExp,
+                                opponentDeck: enemyDeck,
+                                destroyedEnemyTowers: destroyedTowersCount,
+                                customSpoilsFood: 0,
+                                customSpoilsCash: 0,
+                                customSpoilsIron: 0,
+                                customSpoilsWood: 0,
+                              );
+                              state.clearEncounterState();
+                              if (progress.difficulty ==
+                                  SurvivalDifficulty.arcade) {
+                                ArenaSaveService.deleteSave(service.activeSlot);
+                                Navigator.pushReplacement(
+                                  activeContext,
+                                  MaterialPageRoute(
+                                    builder: (context) => GameOverScreen(
+                                      reason:
+                                          'Your forces were defeated in combat.',
+                                      difficulty: progress.difficulty,
+                                      turnsSurvived: progress.currentTurn,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                Navigator.pop(activeContext);
+                              }
+                            },
+                        onSurvivalDraw:
+                            (
+                              destroyedTowersCount,
+                              enemyDeck,
+                              playerTowerHealth,
+                              combatExp,
+                              activeContext,
+                            ) {
+                              service.processCombatOutcome(
+                                false,
+                                true,
+                                playerTowerHealth,
+                                combatExp,
+                                opponentDeck: enemyDeck,
+                                destroyedEnemyTowers: destroyedTowersCount,
+                                customSpoilsFood: 0,
+                                customSpoilsCash: 0,
+                                customSpoilsIron: 0,
+                                customSpoilsWood: 0,
+                              );
+                              state.clearEncounterState();
+                              Navigator.pop(activeContext);
+                            },
                       ),
                     ),
                   );
@@ -2379,7 +2563,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               ),
               child: Text(
                 "END TURN & FIGHT",
-                style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 10.5, letterSpacing: 1.5),
+                style: GoogleFonts.playfairDisplay(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10.5,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
           ),
@@ -2389,7 +2577,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }
 
   // EMBARK SHOP DRAFT OVERLAY
-  Widget _buildDraftOverlay(SurvivalProgress progress, SurvivalService service) {
+  Widget _buildDraftOverlay(
+    SurvivalProgress progress,
+    SurvivalService service,
+  ) {
     int totalCost = 0;
     for (var type in _selectedCart) {
       final match = _draftPool.firstWhere((x) => x['type'] == type);
@@ -2397,10 +2588,26 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     }
     final budgetRemaining = 1000 - totalCost;
 
+    final size = MediaQuery.of(context).size;
+    // Calculate cellWidth based on screen width to fit 6 columns with 12px spacing and horizontal margins
+    // We reserve 64px for horizontal padding (32px on each side)
+    final double horizontalPadding = 64.0;
+    // Cap the cellWidth to 115.0 so that cards don't become too massive on wide screens
+    final double maxCellWidth = 115.0;
+    final double cellWidth = min(maxCellWidth, (size.width - horizontalPadding - 60.0) / 6);
+    // Ordinary playing card aspect ratio is 0.7
+    final double cardAspectRatio = 0.7;
+    final double cardHeight = cellWidth / cardAspectRatio;
+    // cellHeight accounts for cardHeight + spacer (6px) + recruit footer (24px)
+    final double cellHeight = cardHeight + 30.0;
+    // 6 columns with 12px spacing between them
+    final double draftGridWidth = cellWidth * 6 + 5 * 12.0;
+    final double aspectRatio = cellWidth / cellHeight;
+
     return Positioned.fill(
       child: Container(
         color: Colors.black.withValues(alpha: 0.9),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         child: Column(
           children: [
             // Header Row
@@ -2420,36 +2627,58 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       ),
                     ),
                     Text(
-                      'Spend your 1000 CHF budget wisely. Clicking a card opens its details. Toggles below let you flip all cards.',
-                      style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 10.5, fontStyle: FontStyle.italic),
+                      'Spend your 1000 CHF budget wisely. Clicking a card opens its details.',
+                      style: GoogleFonts.oldStandardTt(
+                        color: const Color(0xFFE5D5B0),
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ],
                 ),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.amber.withValues(alpha: 0.1),
-                        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.4),
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         'BUDGET: $budgetRemaining / 1000 CHF',
-                        style: GoogleFonts.oswald(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                        style: GoogleFonts.oswald(
+                          color: Colors.amber,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.withValues(alpha: 0.1),
-                        border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.4),
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         'SQUAD: ${_selectedCart.length}/12',
-                        style: GoogleFonts.oswald(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                        style: GoogleFonts.oswald(
+                          color: Colors.greenAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -2460,145 +2689,193 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         icon: Icon(
-                          _showDraftCardDetails ? Icons.portrait : Icons.menu_book,
+                          _showDraftCardDetails
+                              ? Icons.portrait
+                              : Icons.menu_book,
                           color: const Color(0xFFD4AF37),
                           size: 22,
                         ),
-                        tooltip: _showDraftCardDetails ? 'Show Portraits' : 'Show Tactical Specs',
-                        onPressed: () => setState(() => _showDraftCardDetails = !_showDraftCardDetails),
+                        tooltip: _showDraftCardDetails
+                            ? 'Show Portraits'
+                            : 'Show Tactical Specs',
+                        onPressed: () => setState(
+                          () => _showDraftCardDetails = !_showDraftCardDetails,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             const Divider(color: Color(0xFF3A2F25)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
-            // Scrollable Grid of 6 cards per row
             Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 6,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.65, // ordinary playing card height/width ratio + action bar
-                ),
-                itemCount: _draftPool.length,
-                itemBuilder: (context, index) {
-                  final item = _draftPool[index];
-                  final type = item['type'] as String;
-                  final cost = item['cost'] as int;
+              child: Center(
+                child: SizedBox(
+                  width: draftGridWidth,
+                  child: GridView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 6,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: aspectRatio,
+                    ),
+                    itemCount: _draftPool.length,
+                    itemBuilder: (context, index) {
+                      final item = _draftPool[index];
+                      final type = item['type'] as String;
+                      final cost = item['cost'] as int;
 
-                  final unit = CombatUnitService.createUnit(type);
-                  final stats = unit.combatStats!;
-                  final isSelected = _selectedCart.contains(type);
+                      final unit = CombatUnitService.createUnit(type);
+                      final stats = unit.combatStats!;
+                      final isSelected = _selectedCart.contains(type);
 
-                  return Column(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedInspectorCardId = type;
-                            });
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF211B15),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.greenAccent
-                                    : const Color(0xFFC4B89B).withValues(alpha: 0.4),
-                                width: isSelected ? 2.5 : 1.5,
-                              ),
-                              borderRadius: BorderRadius.circular(6),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.greenAccent.withValues(alpha: 0.4),
-                                        blurRadius: 6,
-                                        spreadRadius: 1,
-                                      )
-                                    ]
-                                  : [],
-                            ),
-                            child: _showDraftCardDetails
-                                ? _buildTacticalCardFace(type, unit, stats, 1, 0.0)
-                                : _buildPortraitCardFace(type, unit, 1, 0.0),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // Recruit footer below card
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.white10),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '$cost CHF',
-                              style: GoogleFonts.oswald(
-                                color: Colors.amber,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(
-                              height: 20,
-                              child: TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                                  backgroundColor: isSelected ? Colors.red.shade900 : Colors.green.shade900,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedInspectorCardId = type;
+                                });
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF211B15),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Colors.greenAccent
+                                        : const Color(
+                                            0xFFC4B89B,
+                                          ).withValues(alpha: 0.4),
+                                    width: isSelected ? 2.5 : 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.greenAccent
+                                                .withValues(alpha: 0.4),
+                                            blurRadius: 6,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : [],
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    if (isSelected) {
-                                      _selectedCart.remove(type);
-                                    } else {
-                                      if (totalCost + cost <= 1000 && _selectedCart.length < 12) {
-                                        _selectedCart.add(type);
-                                      } else if (_selectedCart.length >= 12) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Squad limit is 12 units!')),
-                                        );
-                                      } else {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Insufficient CHF budget!')),
-                                        );
-                                      }
-                                    }
-                                  });
-                                },
-                                child: Text(
-                                  isSelected ? 'REMOVE' : 'ADD',
-                                  style: GoogleFonts.playfairDisplay(
-                                    color: Colors.white,
-                                    fontSize: 8.5,
+                                child: _showDraftCardDetails
+                                    ? _buildTacticalCardFace(
+                                        type,
+                                        unit,
+                                        stats,
+                                        1,
+                                        0.0,
+                                      )
+                                    : _buildPortraitCardFace(
+                                        type,
+                                        unit,
+                                        1,
+                                        0.0,
+                                      ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          // Recruit footer below card
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black26,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.white10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '$cost CHF',
+                                  style: GoogleFonts.oswald(
+                                    color: Colors.amber,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
+                                SizedBox(
+                                  height: 20,
+                                  child: TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                      ),
+                                      backgroundColor: isSelected
+                                          ? Colors.red.shade900
+                                          : Colors.green.shade900,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        if (isSelected) {
+                                          _selectedCart.remove(type);
+                                        } else {
+                                          if (totalCost + cost <= 1000 &&
+                                              _selectedCart.length < 12) {
+                                            _selectedCart.add(type);
+                                          } else if (_selectedCart.length >=
+                                              12) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Squad limit is 12 units!',
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Insufficient CHF budget!',
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      });
+                                    },
+                                    child: Text(
+                                      isSelected ? 'REMOVE' : 'ADD',
+                                      style: GoogleFonts.playfairDisplay(
+                                        color: Colors.white,
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
 
-            const SizedBox(height: 12),
-            const Divider(color: Color(0xFF3A2F25)),
             const SizedBox(height: 8),
+            const Divider(color: Color(0xFF3A2F25)),
+            const SizedBox(height: 6),
 
             // Cart tally & proceed button
             Row(
@@ -2616,7 +2893,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   onPressed: () {
                     if (_selectedCart.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Draft at least 1 squad unit to embark!')),
+                        const SnackBar(
+                          content: Text(
+                            'Draft at least 1 squad unit to embark!',
+                          ),
+                        ),
                       );
                       return;
                     }
@@ -2628,12 +2909,19 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFC4B89B),
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 10,
+                    ),
                     shape: const RoundedRectangleBorder(),
                   ),
                   child: Text(
                     "PROCEED TO EMBARK",
-                    style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.5),
+                    style: GoogleFonts.playfairDisplay(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      letterSpacing: 1.5,
+                    ),
                   ),
                 ),
               ],
@@ -2645,35 +2933,65 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }
 
   // POP-UPS & CONTEXT MENUS
-  void _showRepairDialog(BuildContext context, SurvivalService service, String towerId) {
+  void _showRepairDialog(
+    BuildContext context,
+    SurvivalService service,
+    String towerId,
+  ) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF2E1A0A),
-          title: Text('RECONSTRUCT TOWER', style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0))),
+          contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          title: Text(
+            'RECONSTRUCT TOWER',
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0),
+              fontSize: 15,
+            ),
+          ),
           content: Text(
             'Tower was destroyed in battle. Choose repair strategy:',
-            style: GoogleFonts.oldStandardTt(color: Colors.white70),
+            style: GoogleFonts.oldStandardTt(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () {
-                if (service.repairTower(towerId, 'wood', 50, 0)) Navigator.pop(context);
+                if (service.repairTower(towerId, 'wood', 50, 0)) {
+                  Navigator.pop(context);
+                }
               },
-              child: Text('WOOD (50 Wood)', style: GoogleFonts.oswald(color: Colors.brown)),
+              child: Text(
+                'WOOD (50 Wood)',
+                style: GoogleFonts.oswald(color: Colors.brown),
+              ),
             ),
             TextButton(
               onPressed: () {
-                if (service.repairTower(towerId, 'cash', 0, 180)) Navigator.pop(context);
+                if (service.repairTower(towerId, 'cash', 0, 180)) {
+                  Navigator.pop(context);
+                }
               },
-              child: Text('CONTRACT (180 CHF)', style: GoogleFonts.oswald(color: Colors.amber)),
+              child: Text(
+                'CONTRACT (180 CHF)',
+                style: GoogleFonts.oswald(color: Colors.amber),
+              ),
             ),
             TextButton(
               onPressed: () {
-                if (service.repairTower(towerId, 'labor', 0, 0)) Navigator.pop(context);
+                if (service.repairTower(towerId, 'labor', 0, 0)) {
+                  Navigator.pop(context);
+                }
               },
-              child: Text('MANUAL LABOR (2 workers)', style: GoogleFonts.oswald(color: Colors.blue)),
+              child: Text(
+                'MANUAL LABOR (2 workers)',
+                style: GoogleFonts.oswald(color: Colors.blue),
+              ),
             ),
           ],
         );
@@ -2693,38 +3011,50 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final currentProgress = service.progress!;
-            
+
             // Global Covenant Upgrade levels
             final globalHpLvl = currentProgress.cardUpgrades['tower_hp'] ?? 0;
             final globalAtkLvl = currentProgress.cardUpgrades['tower_atk'] ?? 0;
-            final globalRangeLvl = currentProgress.cardUpgrades['tower_range'] ?? 0;
-            final globalSpeedLvl = currentProgress.cardUpgrades['tower_speed'] ?? 0;
+            final globalRangeLvl =
+                currentProgress.cardUpgrades['tower_range'] ?? 0;
+            final globalSpeedLvl =
+                currentProgress.cardUpgrades['tower_speed'] ?? 0;
 
             // Individual Spire Upgrade levels
             final indHpLvl = currentProgress.cardUpgrades['${towerId}_hp'] ?? 0;
-            final indAtkLvl = currentProgress.cardUpgrades['${towerId}_atk'] ?? 0;
-            final indRangeLvl = currentProgress.cardUpgrades['${towerId}_range'] ?? 0;
-            final indSpeedLvl = currentProgress.cardUpgrades['${towerId}_speed'] ?? 0;
+            final indAtkLvl =
+                currentProgress.cardUpgrades['${towerId}_atk'] ?? 0;
+            final indRangeLvl =
+                currentProgress.cardUpgrades['${towerId}_range'] ?? 0;
+            final indSpeedLvl =
+                currentProgress.cardUpgrades['${towerId}_speed'] ?? 0;
 
             // Combined Stats
             final currentHealth = 200 + (globalHpLvl * 50) + (indHpLvl * 25);
             final currentDamage = 30 + (globalAtkLvl * 10) + (indAtkLvl * 5);
-            final currentRange = 20.0 + (globalRangeLvl * 2.5) + (indRangeLvl * 1.5);
-            final currentRateOfFire = (2.0 - (globalSpeedLvl * 0.2) - (indSpeedLvl * 0.1)).clamp(0.4, 2.0);
+            final currentRange =
+                20.0 + (globalRangeLvl * 2.5) + (indRangeLvl * 1.5);
+            final currentRateOfFire =
+                (2.0 - (globalSpeedLvl * 0.2) - (indSpeedLvl * 0.1)).clamp(
+                  0.4,
+                  2.0,
+                );
 
             final isDestroyed =
                 (currentProgress.towerDamaged[towerId] ?? 0.0) >= 1.0;
             final friendlyName = towerId == 'tower_1'
-                ? 'LEFT WATCHTOWER'
+                ? 'WEST WATCHTOWER'
                 : towerId == 'tower_2'
                 ? 'MIDDLE WATCHTOWER'
-                : 'RIGHT WATCHTOWER';
+                : 'EAST WATCHTOWER';
 
             const woodRepairCost = 50;
             const cashRepairCost = 180;
 
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1712),
+              contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               shape: RoundedRectangleBorder(
                 side: BorderSide(
                   color: isDestroyed
@@ -2743,7 +3073,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           ? Colors.redAccent
                           : const Color(0xFFD4AF37),
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 15,
                     ),
                   ),
                   Container(
@@ -2764,7 +3094,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       isDestroyed ? 'DESTROYED' : 'OPERATIONAL',
                       style: GoogleFonts.oswald(
                         color: isDestroyed ? Colors.redAccent : Colors.green,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -2782,11 +3112,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         'Watchtowers protect the estate during defense rounds. Upgrade this individual tower spire cheaply below, or perform global upgrades via the Covenant tab in the estate menu.',
                         style: GoogleFonts.oldStandardTt(
                           color: Colors.white70,
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                           height: 1.4,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2833,9 +3163,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   Colors.greenAccent,
                                 ),
                                 if (isDestroyed) ...[
-                                  const SizedBox(height: 16),
-                                  const Divider(color: Colors.white10),
                                   const SizedBox(height: 8),
+                                  const Divider(color: Colors.white10),
+                                  const SizedBox(height: 4),
                                   Text(
                                     'RECONSTRUCT TOWER',
                                     style: GoogleFonts.playfairDisplay(
@@ -2877,7 +3207,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     context: context,
                                     service: service,
                                     towerId: towerId,
-                                    label: 'MANUAL LABOR (${currentProgress.getTowerRepairSlotsCap(towerId)} Workers)',
+                                    label:
+                                        'MANUAL LABOR (${currentProgress.getTowerRepairSlotsCap(towerId)} Workers)',
                                     method: 'labor',
                                     woodCost: 0,
                                     cashCost: 0,
@@ -3049,7 +3380,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 ),
                 onPressed: enabled
                     ? () {
-                        if (service.upgradeIndividualTower(towerId, stat, cost)) {
+                        if (service.upgradeIndividualTower(
+                          towerId,
+                          stat,
+                          cost,
+                        )) {
                           onSuccess();
                         }
                       }
@@ -3274,7 +3609,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     return plotKey == 'plot_a' || plotKey == 'plot_b';
   }
 
-  void _showBuildMenu(BuildContext context, SurvivalService service, String plotKey) {
+  void _showBuildMenu(
+    BuildContext context,
+    SurvivalService service,
+    String plotKey,
+  ) {
     if (plotKey == 'plot_c') {
       showDialog(
         context: context,
@@ -3311,7 +3650,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         return SimpleDialog(
           backgroundColor: const Color(0xFF2E1A0A),
           title: Text(
-            isAdvanced ? 'CONSTRUCT INDUSTRY FACILITY' : 'CONSTRUCT RESOURCE FACILITY',
+            isAdvanced
+                ? 'CONSTRUCT INDUSTRY FACILITY'
+                : 'CONSTRUCT RESOURCE FACILITY',
             style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
           ),
           children: isAdvanced
@@ -3325,20 +3666,68 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     30,
                     300,
                   ),
-                  _buildBuildOption(dialogContext, service, plotKey, SurvivalBuildingType.garage, 120, 40, 400),
-                  _buildBuildOption(dialogContext, service, plotKey, SurvivalBuildingType.munitionsFactory, 150, 50, 500),
+                  _buildBuildOption(
+                    dialogContext,
+                    service,
+                    plotKey,
+                    SurvivalBuildingType.garage,
+                    120,
+                    40,
+                    400,
+                  ),
+                  _buildBuildOption(
+                    dialogContext,
+                    service,
+                    plotKey,
+                    SurvivalBuildingType.munitionsFactory,
+                    150,
+                    50,
+                    500,
+                  ),
                 ]
               : [
-                  _buildBuildOption(dialogContext, service, plotKey, SurvivalBuildingType.farm, 40, 0, 100),
-                  _buildBuildOption(dialogContext, service, plotKey, SurvivalBuildingType.lumberMill, 60, 5, 150),
-                  _buildBuildOption(dialogContext, service, plotKey, SurvivalBuildingType.mine, 80, 15, 200),
+                  _buildBuildOption(
+                    dialogContext,
+                    service,
+                    plotKey,
+                    SurvivalBuildingType.farm,
+                    40,
+                    0,
+                    100,
+                  ),
+                  _buildBuildOption(
+                    dialogContext,
+                    service,
+                    plotKey,
+                    SurvivalBuildingType.lumberMill,
+                    60,
+                    5,
+                    150,
+                  ),
+                  _buildBuildOption(
+                    dialogContext,
+                    service,
+                    plotKey,
+                    SurvivalBuildingType.mine,
+                    80,
+                    15,
+                    200,
+                  ),
                 ],
         );
       },
     );
   }
 
-  Widget _buildBuildOption(BuildContext dialogContext, SurvivalService service, String plotKey, SurvivalBuildingType type, int wood, int iron, int cash) {
+  Widget _buildBuildOption(
+    BuildContext dialogContext,
+    SurvivalService service,
+    String plotKey,
+    SurvivalBuildingType type,
+    int wood,
+    int iron,
+    int cash,
+  ) {
     return SimpleDialogOption(
       onPressed: () {
         if (service.buildFacility(plotKey, type, wood, iron, cash)) {
@@ -3348,8 +3737,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(type.name.replaceAll("_", " ").toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11)),
-          Text('$wood W | $iron I | $cash CHF', style: const TextStyle(color: Colors.amber, fontSize: 9)),
+          Text(
+            type.name.replaceAll("_", " ").toUpperCase(),
+            style: const TextStyle(color: Colors.white, fontSize: 11),
+          ),
+          Text(
+            '$wood W | $iron I | $cash CHF',
+            style: const TextStyle(color: Colors.amber, fontSize: 9),
+          ),
         ],
       ),
     );
@@ -3413,6 +3808,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1712),
+          contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           shape: RoundedRectangleBorder(
             side: BorderSide(
               color: const Color(0xFFC4B89B).withValues(alpha: 0.4),
@@ -3429,7 +3826,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             textAlign: TextAlign.center,
           ),
           content: SizedBox(
-            width: 320,
+            width: 290,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -3448,9 +3845,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     'Output at Next Level',
                     '${nextOutput!} $resName / turn',
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
                 const Divider(color: Colors.white10),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text(
                   isMax
                       ? 'Maximum facility level achieved.'
@@ -3580,16 +3977,29 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
   }
 
-  void _showPurchasePlotConfirmation(BuildContext context, SurvivalService service, String plotKey, int costGhc) {
+  void _showPurchasePlotConfirmation(
+    BuildContext context,
+    SurvivalService service,
+    String plotKey,
+    int costGhc,
+  ) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF2E1A0A),
-          title: Text('ACQUIRE ESTATE LAND', style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0))),
+          contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          title: Text(
+            'ACQUIRE ESTATE LAND',
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0),
+              fontSize: 15,
+            ),
+          ),
           content: Text(
             'Would you like to clear and unlock this plot slot for $costGhc CHF?',
-            style: const TextStyle(color: Colors.white70),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
           actions: [
             TextButton(
@@ -3689,11 +4099,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           children: [1, 2, 3].map((slot) {
                             return Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2.0,
+                                ),
                                 child: _buildMenuOptionBtn('SAVE $slot', () {
                                   service.manualSaveToSlot(slot);
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('State saved to Slot #$slot!')),
+                                    SnackBar(
+                                      content: Text(
+                                        'State saved to Slot #$slot!',
+                                      ),
+                                    ),
                                   );
                                   Navigator.pop(context);
                                 }),
@@ -3717,14 +4133,23 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           children: [1, 2, 3].map((slot) {
                             return Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                                child: _buildMenuOptionBtn('LOAD $slot', () async {
-                                  await service.manualLoadFromSlot(slot);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Loaded state from Slot #$slot!')),
-                                  );
-                                  Navigator.pop(context);
-                                }),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2.0,
+                                ),
+                                child: _buildMenuOptionBtn(
+                                  'LOAD $slot',
+                                  () async {
+                                    await service.manualLoadFromSlot(slot);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Loaded state from Slot #$slot!',
+                                        ),
+                                      ),
+                                    );
+                                    Navigator.pop(context);
+                                  },
+                                ),
                               ),
                             );
                           }).toList(),
@@ -3938,7 +4363,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'ACTIVE COVENANTS & TREATIES',
+                                      'COVENANTS & TREATIES',
                                       style: GoogleFonts.playfairDisplay(
                                         color: const Color(0xFFD4AF37),
                                         fontSize: 12,
@@ -3952,20 +4377,26 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                       child: progress.currentTurn < 4
                                           ? Center(
                                               child: Padding(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 16,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                    ),
                                                 child: Text(
                                                   'The registry of treaties remains vacant. No formal covenants or external agreements have been ratified.',
                                                   textAlign: TextAlign.center,
-                                                  style: GoogleFonts.playfairDisplay(
-                                                    color: const Color(
-                                                      0xFFE5D5B0,
-                                                    ).withValues(alpha: 0.4),
-                                                    fontSize: 10,
-                                                    fontStyle: FontStyle.italic,
-                                                    height: 1.3,
-                                                  ),
+                                                  style:
+                                                      GoogleFonts.playfairDisplay(
+                                                        color:
+                                                            const Color(
+                                                              0xFFE5D5B0,
+                                                            ).withValues(
+                                                              alpha: 0.4,
+                                                            ),
+                                                        fontSize: 10,
+                                                        fontStyle:
+                                                            FontStyle.italic,
+                                                        height: 1.3,
+                                                      ),
                                                 ),
                                               ),
                                             )
@@ -4010,40 +4441,57 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     const SizedBox(height: 6),
                                     Expanded(
                                       child: ListView(
-                                        children: progress.factionStandings.entries.map((entry) {
-                                          final factionName = entry.key;
-                                          final rating = entry.value;
-                                          Color ratingColor = Colors.white70;
-                                          if (rating > 0) ratingColor = Colors.greenAccent;
-                                          if (rating < 0) ratingColor = Colors.redAccent;
-                                          return Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 3.0,
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Text(
-                                                  factionName,
-                                                  style: GoogleFonts.playfairDisplay(
-                                                    color: const Color(
-                                                      0xFFE5D5B0,
+                                        children: progress
+                                            .factionStandings
+                                            .entries
+                                            .map((entry) {
+                                              final factionName = entry.key;
+                                              final rating = entry.value;
+                                              Color ratingColor =
+                                                  Colors.white70;
+                                              if (rating > 0) {
+                                                ratingColor =
+                                                    Colors.greenAccent;
+                                              }
+                                              if (rating < 0) {
+                                                ratingColor = Colors.redAccent;
+                                              }
+                                              return Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3.0,
                                                     ),
-                                                    fontSize: 10.5,
-                                                  ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      factionName,
+                                                      style:
+                                                          GoogleFonts.playfairDisplay(
+                                                            color: const Color(
+                                                              0xFFE5D5B0,
+                                                            ),
+                                                            fontSize: 10.5,
+                                                          ),
+                                                    ),
+                                                    Text(
+                                                      rating >= 0
+                                                          ? '+$rating'
+                                                          : '$rating',
+                                                      style: GoogleFonts.oswald(
+                                                        color: ratingColor,
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                Text(
-                                                  rating >= 0 ? '+$rating' : '$rating',
-                                                  style: GoogleFonts.oswald(
-                                                    color: ratingColor,
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        }).toList(),
+                                              );
+                                            })
+                                            .toList(),
                                       ),
                                     ),
                                   ],
@@ -4199,7 +4647,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   ),
                 ),
                 Text(
-                  list.map((id) => CombatUnitService.createUnit(id).name).join(', '),
+                  list
+                      .map((id) => CombatUnitService.createUnit(id).name)
+                      .join(', '),
                   style: GoogleFonts.oldStandardTt(
                     color: const Color(0xFFD4AF37),
                     fontSize: 10.5,
@@ -4281,8 +4731,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
     final size = MediaQuery.of(context).size;
 
-    // The grid of 12 cards should take up about 72% of the screen height (making cards slightly larger)
-    final double totalGridHeight = size.height * 0.72;
+    // The grid of 12 cards should take up about 78% of the screen height (making cards slightly larger)
+    final double totalGridHeight = size.height * 0.78;
     // The grid has 2 rows, so calculate cellHeight dynamically
     final double cellHeight = (totalGridHeight - 12.0) / 2.0;
     // Card height is cellHeight minus the 20px XP bar at the bottom
@@ -4539,12 +4989,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           left: 6,
           bottom: 6,
           child: Container(
-            width: 38,
-            height: 38,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: const Color(0xFF3E2723), // Mahogany Cost Backing
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFD4AF37), width: 2.0),
+              border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
               boxShadow: const [
                 BoxShadow(
                   color: Colors.black12,
@@ -4558,7 +5008,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               '${npc.combatStats?.cost ?? 1}',
               style: GoogleFonts.oswald(
                 color: const Color(0xFFE5D5B0),
-                fontSize: 22.0,
+                fontSize: 17.0,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -4608,17 +5058,38 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           ),
 
           // 2. Special symbols directly beneath the title of the card, as a subtitle line
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           SizedBox(
-            height: 18,
+            height: 14,
             child: Row(
               children: [
+                if (stats.rangedDamage > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 5.0),
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade600,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${stats.rangedRange.toInt()}',
+                        style: GoogleFonts.oldStandardTt(
+                          color: Colors.white,
+                          fontSize: 9.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 if (stats.isFlying == true)
                   const Padding(
                     padding: EdgeInsets.only(right: 5.0),
                     child: Icon(
                       Icons.flutter_dash,
-                      size: 16.0,
+                      size: 12.0,
                       color: Color(0xFF4E342E),
                     ),
                   ),
@@ -4627,7 +5098,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     padding: EdgeInsets.only(right: 5.0),
                     child: Icon(
                       Icons.block,
-                      size: 16.0,
+                      size: 12.0,
                       color: Color(0xFFC62828),
                     ),
                   ),
@@ -4636,8 +5107,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     padding: EdgeInsets.only(right: 5.0),
                     child: Icon(
                       Icons.local_fire_department,
-                      size: 16.0,
+                      size: 12.0,
                       color: Color(0xFFE64A19),
+                    ),
+                  ),
+                if (npc.abilities.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 5.0),
+                    child: Icon(
+                      Icons.flash_on,
+                      size: 12.0,
+                      color: Color(0xFFD4AF37),
                     ),
                   ),
               ],
@@ -4651,16 +5131,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Casting cost in the bottom left corner (JUST the number, considerably larger circular emblem)
+              // Casting cost in the bottom left corner (JUST the number, modestly smaller circular emblem)
               Container(
-                width: 38,
-                height: 38,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: const Color(0xFF3E2723), // Mahogany Cost Backing
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: const Color(0xFFD4AF37),
-                    width: 2.0,
+                    width: 1.5,
                   ),
                   boxShadow: const [
                     BoxShadow(
@@ -4675,7 +5155,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   '$cost',
                   style: GoogleFonts.oswald(
                     color: const Color(0xFFE5D5B0),
-                    fontSize: 22.0, // considerably larger cost number
+                    fontSize: 17.0, // modestly smaller cost number
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -4690,48 +5170,48 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      DaggerIcon(color: Colors.deepOrange.shade800, size: 18.0),
+                      DaggerIcon(color: Colors.deepOrange.shade800, size: 13.0),
                       const SizedBox(width: 4),
                       Text(
-                        '${stats.meleeDamage.toInt()}',
+                        '${stats.meleeAttackSpeed <= 0 ? 0 : (stats.meleeDamage / stats.meleeAttackSpeed).round()}',
                         style: GoogleFonts.oswald(
                           color: Colors.deepOrange.shade800,
-                          fontSize: 18.0, // considerably larger
+                          fontSize: 13.0, // smaller
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                   if (stats.rangedDamage > 0) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.gps_fixed,
-                          size: 17.0,
+                          size: 13.0,
                           color: Colors.deepOrange.shade800,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${stats.rangedDamage.toInt()}',
+                          '${stats.rangedAttackSpeed <= 0 ? 0 : (stats.rangedDamage / stats.rangedAttackSpeed).round()}',
                           style: GoogleFonts.oswald(
                             color: Colors.deepOrange.shade800,
-                            fontSize: 18.0, // considerably larger
+                            fontSize: 13.0, // smaller
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ],
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   // Health stat row
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.favorite,
-                        size: 17.0,
+                        size: 13.0,
                         color: Colors.green.shade900,
                       ),
                       const SizedBox(width: 4),
@@ -4739,20 +5219,20 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         '${stats.maxHealth.toInt()}',
                         style: GoogleFonts.oswald(
                           color: Colors.green.shade900,
-                          fontSize: 18.0, // considerably larger
+                          fontSize: 13.0, // smaller
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   // Squad unit count row
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
                         Icons.group,
-                        size: 17.0,
+                        size: 13.0,
                         color: Color(0xFF4E342E),
                       ),
                       const SizedBox(width: 4),
@@ -4760,7 +5240,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         'x$squadSize',
                         style: GoogleFonts.oldStandardTt(
                           color: const Color(0xFF4E342E),
-                          fontSize: 17.0, // considerably larger
+                          fontSize: 13.0, // smaller
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -4815,8 +5295,6 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
   }
 
-
-
   // --- FULL-SCREEN TAB 3: LEADER COMMANDER PROFILE ---
   Widget _buildFullLeaderView(
     SurvivalProgress progress,
@@ -4826,7 +5304,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final stats = leader.combatStats!;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: const Color(0xFF18120D),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4837,14 +5315,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 'COMMANDER PROFILE & PASSIVES',
                 style: GoogleFonts.playfairDisplay(
                   color: const Color(0xFFE5D5B0),
-                  fontSize: 20,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+                  letterSpacing: 1.0,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           Expanded(
             child: Row(
@@ -4862,17 +5340,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         children: [
                           Container(
-                            width: 110,
-                            height: 110,
+                            width: 90,
+                            height: 90,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: const Color(0xFFD4AF37),
-                                width: 2.5,
+                                width: 2.0,
                               ),
                               boxShadow: const [
                                 BoxShadow(
@@ -4886,17 +5364,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             child: ClipOval(
                               child: CharacterBlobRenderer(
                                 npc: leader,
-                                size: 90,
+                                size: 72,
                                 isCombat: true,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           Text(
                             leader.name.toUpperCase(),
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFE5D5B0),
-                              fontSize: 20,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -4904,18 +5382,18 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             leader.role.toUpperCase(),
                             style: GoogleFonts.oldStandardTt(
                               color: const Color(0xFFD4AF37),
-                              fontSize: 13,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           Text(
                             'Passive Bonuses: Military units gain +10% critical chance, and defensive towers receive +15% armor when under the direct command of Alphonse.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.oldStandardTt(
                               color: Colors.white70,
-                              fontSize: 13.5,
+                              fontSize: 11.5,
                               height: 1.4,
                             ),
                           ),
@@ -4939,7 +5417,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -4947,11 +5425,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             'TACTICAL LEADER PROFILE DETAILS',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFC4B89B),
-                              fontSize: 13,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 6),
 
                           _buildInspectorStatRow(
                             'Leader Class / Rank',
@@ -4974,7 +5452,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             '${stats.movement.toStringAsFixed(1)} m/s',
                           ),
 
-                          const Divider(color: Colors.white10, height: 16),
+                          const Divider(color: Colors.white10, height: 12),
 
                           _buildInspectorStatRow(
                             'Melee Strike Force',
@@ -5012,7 +5490,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -5020,7 +5498,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             'COMMANDER REINFORCEMENTS',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFD4AF37),
-                              fontSize: 14,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -5029,10 +5507,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             'Reinforce commander attributes. Attributes are dynamically applied during defensive combat matches.',
                             style: GoogleFonts.oldStandardTt(
                               color: Colors.white54,
-                              fontSize: 11,
+                              fontSize: 9.5,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
 
                           _buildLeaderStatUpgradeBtnFull(
                             progress,
@@ -5091,7 +5569,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final canAfford = progress.cash >= cost;
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.black12,
         border: Border.all(color: Colors.white10),
@@ -5101,7 +5579,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: const Color(0xFFD4AF37)),
+              Icon(icon, size: 15, color: const Color(0xFFD4AF37)),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -5111,7 +5589,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       label,
                       style: GoogleFonts.playfairDisplay(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -5119,7 +5597,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       'Level $currentLvl Reinforcement',
                       style: GoogleFonts.oldStandardTt(
                         color: Colors.white38,
-                        fontSize: 9,
+                        fontSize: 8,
                       ),
                     ),
                   ],
@@ -5127,10 +5605,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           SizedBox(
             width: double.infinity,
-            height: 28,
+            height: 24,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: canAfford
@@ -5153,7 +5631,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 'UPGRADE FOR $cost CHF',
                 style: GoogleFonts.playfairDisplay(
                   color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
-                  fontSize: 10,
+                  fontSize: 8.5,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -5184,7 +5662,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final currentHealth = 200 + (hpLvl * 50);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: const Color(0xFF18120D),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5194,12 +5672,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             'ESTATE DEFENSIVE COVENANT & WATCHTOWERS',
             style: GoogleFonts.playfairDisplay(
               color: const Color(0xFFE5D5B0),
-              fontSize: 20,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+              letterSpacing: 1.0,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           Expanded(
             child: Row(
@@ -5217,28 +5695,28 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         children: [
                           Text(
                             'DEFENSIVE TOWERS',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFC4B89B),
-                              fontSize: 14,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.0,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           // Circular Portrait Frame representing Watchtower Spires
                           Container(
-                            width: 110,
-                            height: 110,
+                            width: 90,
+                            height: 90,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: const Color(0xFFD4AF37),
-                                width: 2.5,
+                                width: 2.0,
                               ),
                               boxShadow: const [
                                 BoxShadow(
@@ -5258,30 +5736,30 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                       MainAxisAlignment.spaceEvenly,
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    _buildGothicSpire(45),
-                                    _buildGothicSpire(60),
-                                    _buildGothicSpire(45),
+                                    _buildGothicSpire(36),
+                                    _buildGothicSpire(48),
+                                    _buildGothicSpire(36),
                                   ],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 10),
                           Text(
                             'WATCHTOWER COVENANT',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFE5D5B0),
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
                             'Defensive watchtowers constructed along the Frankenstein Manor defensive walls. Towers automatically target hostile invaders in the active lanes and supply critical artillery fire support during combat stages.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.oldStandardTt(
                               color: Colors.white70,
-                              fontSize: 11.5,
+                              fontSize: 9.5,
                               height: 1.4,
                             ),
                           ),
@@ -5305,7 +5783,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -5313,12 +5791,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             'STATS & CORE SUBSYSTEMS',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFC4B89B),
-                              fontSize: 14,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.0,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           _buildInspectorStatRow(
                             'Damage Rating',
                             '$currentDamage DMG',
@@ -5445,12 +5923,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             'WATCHTOWER UPGRADE TREE',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFD4AF37),
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.0,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 6),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -5461,9 +5939,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   children: [
                                     DaggerIcon(
                                       color: const Color(0xFFD4AF37),
-                                      size: 18.0,
+                                      size: 14.0,
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 8),
                                     ...List.generate(5, (index) {
                                       final targetLvl = index + 2;
                                       final cost = 40 + (targetLvl - 2) * 20;
@@ -5474,7 +5952,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                                       return Padding(
                                         padding: const EdgeInsets.only(
-                                          bottom: 12.0,
+                                          bottom: 8.0,
                                         ),
                                         child: _buildTowerNodeBubble(
                                           stat: 'atk',
@@ -5500,7 +5978,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     // Spacing equivalent to Sword icon + first 2 bubbles
-                                    const SizedBox(height: 134.0),
+                                    const SizedBox(height: 104.0),
                                     Text(
                                       'Range',
                                       style: GoogleFonts.playfairDisplay(
@@ -5523,7 +6001,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                       service: service,
                                     ),
                                     // Spacing placing reload speed lower than all 5 left/right bubbles
-                                    const SizedBox(height: 120.0),
+                                    const SizedBox(height: 90.0),
                                     Text(
                                       'Rate of Fire',
                                       style: GoogleFonts.playfairDisplay(
@@ -5557,9 +6035,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     const Icon(
                                       Icons.favorite,
                                       color: Color(0xFFE57373),
-                                      size: 18.0,
+                                      size: 14.0,
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 8),
                                     ...List.generate(5, (index) {
                                       final targetLvl = index + 2;
                                       final cost = 40 + (targetLvl - 2) * 20;
@@ -5569,7 +6047,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                                       return Padding(
                                         padding: const EdgeInsets.only(
-                                          bottom: 12.0,
+                                          bottom: 8.0,
                                         ),
                                         child: _buildTowerNodeBubble(
                                           stat: 'hp',
@@ -5668,8 +6146,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isCompleted
@@ -5679,13 +6157,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     : const Color(0xFF15100C),
                 border: Border.all(
                   color: activeColor,
-                  width: isUnlocked ? 2.0 : 1.0,
+                  width: isUnlocked ? 1.5 : 1.0,
                 ),
                 boxShadow: [
                   if (isUnlocked && canAfford)
                     BoxShadow(
                       color: const Color(0xFFD4AF37).withValues(alpha: 0.2),
-                      blurRadius: 6,
+                      blurRadius: 4,
                       spreadRadius: 1,
                     ),
                 ],
@@ -5694,14 +6172,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 child: isCompleted
                     ? const Icon(
                         Icons.check_circle,
-                        size: 18,
+                        size: 15,
                         color: Color(0xFF4CAF50),
                       )
                     : isUnlocked
-                    ? Icon(icon, size: 16, color: const Color(0xFFD4AF37))
+                    ? Icon(icon, size: 13, color: const Color(0xFFD4AF37))
                     : const Icon(
                         Icons.lock_outline,
-                        size: 14,
+                        size: 12,
                         color: Colors.white24,
                       ),
               ),
@@ -5770,7 +6248,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       color: const Color(0xFF18120D),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5781,14 +6259,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 'FRANKENSTEIN BLACK MARKET & ARMORY',
                 style: GoogleFonts.playfairDisplay(
                   color: const Color(0xFFE5D5B0),
-                  fontSize: 26,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.0,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           Expanded(
             child: Row(
@@ -5805,11 +6283,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           'ACQUIRE RAW RESOURCES',
                           style: GoogleFonts.playfairDisplay(
                             color: const Color(0xFFC4B89B),
-                            fontSize: 18,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -5839,17 +6317,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 10),
 
                         Text(
                           'HIRE SQUAD MERCENARIES',
                           style: GoogleFonts.playfairDisplay(
                             color: const Color(0xFFC4B89B),
-                            fontSize: 18,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         Column(
                           children: List.generate(availableHires.length, (
                             index,
@@ -5863,8 +6341,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 progress.playerDeckIds.length < 12;
 
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(10),
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF15100B),
                                 border: Border.all(
@@ -5877,10 +6355,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 children: [
                                   CharacterBlobRenderer(
                                     npc: npc,
-                                    size: 38,
+                                    size: 30,
                                     isCombat: true,
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -5890,7 +6368,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                           npc.name.toUpperCase(),
                                           style: GoogleFonts.playfairDisplay(
                                             color: Colors.white,
-                                            fontSize: 16,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -5898,7 +6376,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                           '$cost CHF | Type: ${npc.specimenType.toUpperCase()}',
                                           style: GoogleFonts.oldStandardTt(
                                             color: Colors.white54,
-                                            fontSize: 13.5,
+                                            fontSize: 10.5,
                                           ),
                                         ),
                                       ],
@@ -5915,8 +6393,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                           ? const Color(0xFF2E1A0A)
                                           : Colors.transparent,
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 8,
+                                        horizontal: 10,
+                                        vertical: 6,
                                       ),
                                     ),
                                     onPressed: canAfford
@@ -5935,7 +6413,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                         color: canAfford
                                             ? const Color(0xFFE5D5B0)
                                             : Colors.white24,
-                                        fontSize: 12,
+                                        fontSize: 10.5,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -5950,43 +6428,46 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   ),
                 ),
 
-                const SizedBox(width: 20),
+                const SizedBox(width: 12),
 
                 // Right Panel: Scrollable Weapons Engineering requisition Section
                 Expanded(
                   flex: 5,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF15100B),
-                      border: Border.all(
-                        color: const Color(0xFFC4B89B).withValues(alpha: 0.25),
+                  child: Transform.translate(
+                    offset: const Offset(0, -10),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF15100B),
+                        border: Border.all(
+                          color: const Color(0xFFC4B89B).withValues(alpha: 0.25),
+                        ),
                       ),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ARMORY: SQUAD WEAPON REQUISITION',
-                            style: GoogleFonts.playfairDisplay(
-                              color: const Color(0xFFD4AF37),
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ARMORY: SQUAD WEAPON REQUISITION',
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFD4AF37),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Upgrade weapon kits for military forces. Beasts and chimeric specimens cannot equip weapons.',
-                            style: GoogleFonts.oldStandardTt(
-                              color: Colors.white38,
-                              fontSize: 13,
+                            const SizedBox(height: 4),
+                            Text(
+                              'Upgrade weapon kits for military forces. Beasts and chimeric specimens cannot equip weapons.',
+                              style: GoogleFonts.oldStandardTt(
+                                color: Colors.white38,
+                                fontSize: 10.5,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildWeaponsRequisitionSection(progress, service),
-                        ],
+                            const SizedBox(height: 8),
+      
+                            _buildWeaponsRequisitionSection(progress, service),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -6008,42 +6489,48 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     IconData icon,
   ) {
     final canAfford = progress.cash >= cost;
-    return SizedBox(
-      width: 145,
-      height: 45,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: canAfford ? const Color(0xFFC4B89B) : Colors.white10),
-          backgroundColor: canAfford ? Colors.black26 : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          shape: const RoundedRectangleBorder(),
-        ),
-        onPressed: canAfford
-            ? () {
-                if (service.buyResource(res, amount, cost)) {
-                  setState(() {});
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        height: 42,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+              color: canAfford ? const Color(0xFFC4B89B) : Colors.white10,
+            ),
+            backgroundColor: canAfford ? Colors.black26 : Colors.transparent,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            shape: const RoundedRectangleBorder(),
+          ),
+          onPressed: canAfford
+              ? () {
+                  if (service.buyResource(res, amount, cost)) {
+                    setState(() {});
+                  }
                 }
-              }
-            : null,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '+$amount $res\n$cost CHF',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.playfairDisplay(
+              : null,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 13,
                 color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
-                fontSize: 13.5,
-                fontWeight: FontWeight.bold,
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  '+$amount $res\n$cost CHF',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.playfairDisplay(
+                    color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -6269,7 +6756,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'EQUIPPED WEAPON: ${currWep.name.toUpperCase()}',
           style: GoogleFonts.playfairDisplay(
             color: const Color(0xFFD4AF37),
-            fontSize: 13.0,
+            fontSize: 11.5,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -6277,21 +6764,21 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'DMG: ${currWep.damage.toStringAsFixed(0)} | SPD: ${currWep.speed.toStringAsFixed(1)}s | RNG: ${currWep.range.toStringAsFixed(1)} ft',
           style: GoogleFonts.oldStandardTt(
             color: Colors.white54,
-            fontSize: 11.5,
+            fontSize: 10.0,
           ),
         ),
-        const SizedBox(height: 16),
-        const Divider(color: Colors.white10, height: 8),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        const Divider(color: Colors.white10, height: 4),
+        const SizedBox(height: 6),
         Text(
           'BLACK MARKET WEAPON REQUISITION LIST:',
           style: GoogleFonts.playfairDisplay(
             color: const Color(0xFFC4B89B),
-            fontSize: 12.0,
+            fontSize: 10.5,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
 
         // The popup / list button
         PopupMenuButton<GeneralWeaponSpec>(
@@ -6311,7 +6798,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     child: Text(
                       wep.name.toUpperCase() + (isRec ? ' (RECOMMENDED)' : ''),
                       style: GoogleFonts.playfairDisplay(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: isRec ? FontWeight.bold : FontWeight.normal,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -6322,7 +6809,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     '${wep.cost} CHF',
                     style: GoogleFonts.oswald(
                       color: const Color(0xFFD4AF37),
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -6331,7 +6818,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             );
           }).toList(),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               color: const Color(0xFF211B15),
               border: Border.all(
@@ -6348,22 +6835,26 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         : 'NO COMPATIBLE OR AFFORDABLE WEAPONS FOR SALE',
                     style: GoogleFonts.playfairDisplay(
                       color: const Color(0xFFE5D5B0),
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(Icons.arrow_drop_down, color: Color(0xFFC4B89B)),
+                const Icon(
+                  Icons.arrow_drop_down,
+                  color: Color(0xFFC4B89B),
+                  size: 18,
+                ),
               ],
             ),
           ),
         ),
 
         if (evaluatedWep != null && evaluatedStats != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(6),
             color: Colors.black26,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -6372,11 +6863,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   'UPGRADE STAT EVALUATION:',
                   style: GoogleFonts.playfairDisplay(
                     color: const Color(0xFFE5D5B0),
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 _buildComparisonRow(
                   'Base Damage',
                   currWep.damage.toStringAsFixed(0),
@@ -6399,7 +6890,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           // Advantage/Disadvantage text
           if (_getWeaponAdvantageOrDisadvantage(cardId, evaluatedWep.name) !=
               null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               _getWeaponAdvantageOrDisadvantage(cardId, evaluatedWep.name)!,
               style: GoogleFonts.oldStandardTt(
@@ -6410,16 +6901,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     )!.contains('ADVANTAGE')
                     ? Colors.greenAccent.shade700
                     : Colors.orangeAccent,
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
 
           if (isLockedByArsenal) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               color: Colors.red.withValues(alpha: 0.1),
               width: double.infinity,
               child: Text(
@@ -6427,17 +6918,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.playfairDisplay(
                   color: Colors.redAccent,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            height: 38,
+            height: 32,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: canAfford
@@ -6447,6 +6938,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   color: canAfford ? const Color(0xFFD4AF37) : Colors.white10,
                 ),
                 shape: const RoundedRectangleBorder(),
+                padding: EdgeInsets.zero,
               ),
               onPressed: canAfford
                   ? () {
@@ -6469,20 +6961,20 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 'REQUISITION UPGRADE FOR $totalCost CHF',
                 style: GoogleFonts.playfairDisplay(
                   color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
-                  fontSize: 11.5,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
         ] else ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Center(
             child: Text(
               'No weapon upgrade currently selected for evaluation.',
               style: GoogleFonts.oldStandardTt(
                 color: Colors.white24,
-                fontSize: 11.5,
+                fontSize: 10.5,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -6605,7 +7097,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }) {
     final isChanged = currentVal != nextVal;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 2.5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -6613,7 +7105,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             label,
             style: GoogleFonts.oldStandardTt(
               color: highlight ? const Color(0xFFC4B89B) : Colors.white38,
-              fontSize: 12.5,
+              fontSize: 11.0,
               fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -6623,7 +7115,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 currentVal,
                 style: GoogleFonts.oswald(
                   color: Colors.white54,
-                  fontSize: 13.0,
+                  fontSize: 11.5,
                 ),
               ),
               if (isChanged) ...[
@@ -6631,14 +7123,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 const Icon(
                   Icons.arrow_forward,
                   color: Color(0xFFD4AF37),
-                  size: 13,
+                  size: 11,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   nextVal,
                   style: GoogleFonts.oswald(
                     color: const Color(0xFFD4AF37),
-                    fontSize: 13.0,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -6657,9 +7149,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     String cardId,
   ) {
     final npc = CombatUnitService.createUnit(cardId);
-    final stats = npc.combatStats!;
     final exp = progress.unitExp[cardId] ?? 0.0;
     final lvl = SurvivalProgress.getLevelFromXp(exp);
+    var stats = npc.combatStats!;
+    if (cardId == 'cannoneer' && lvl >= 6) {
+      stats = stats.copyWith(
+        distance: 23.0,
+        rangedRange: 23.0,
+      );
+    }
     final nextReq = SurvivalProgress.getRequiredXpForLevel(lvl + 1);
     final prevReq = lvl == 1 ? 0 : SurvivalProgress.getRequiredXpForLevel(lvl);
     final range = nextReq - prevReq;
@@ -6688,7 +7186,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     return Positioned.fill(
       child: Container(
         color: const Color(0xFF18120D),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(10),
         child: Column(
           children: [
             Row(
@@ -6698,64 +7196,96 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   'SQUAD COVENANT DETAIL INSPECTOR',
                   style: GoogleFonts.playfairDisplay(
                     color: const Color(0xFFE5D5B0),
-                    fontSize: 18,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
+                    letterSpacing: 1.0,
                   ),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_isDrafting)
-                      Builder(builder: (context) {
-                        final isSelected = _selectedCart.contains(cardId);
-                        final cost = _draftPool.firstWhere((x) => x['type'] == cardId, orElse: () => {'cost': 0})['cost'] as int;
-                        return Container(
-                          margin: const EdgeInsets.only(right: 16),
-                          height: 32,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isSelected ? Colors.red.shade900 : Colors.green.shade900,
-                              foregroundColor: Colors.white,
-                              shape: const RoundedRectangleBorder(),
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                if (isSelected) {
-                                  _selectedCart.remove(cardId);
-                                } else {
-                                  int currentTotal = 0;
-                                  for (var type in _selectedCart) {
-                                    final match = _draftPool.firstWhere((x) => x['type'] == type);
-                                    currentTotal += match['cost'] as int;
-                                  }
-                                  if (currentTotal + cost <= 1000 && _selectedCart.length < 12) {
-                                    _selectedCart.add(cardId);
-                                  } else if (_selectedCart.length >= 12) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Squad limit is 12 units!')),
-                                    );
+                      Builder(
+                        builder: (context) {
+                          final isSelected = _selectedCart.contains(cardId);
+                          final cost =
+                              _draftPool.firstWhere(
+                                    (x) => x['type'] == cardId,
+                                    orElse: () => {'cost': 0},
+                                  )['cost']
+                                  as int;
+                          return Container(
+                            margin: const EdgeInsets.only(right: 12),
+                            height: 28,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isSelected
+                                    ? Colors.red.shade900
+                                    : Colors.green.shade900,
+                                foregroundColor: Colors.white,
+                                shape: const RoundedRectangleBorder(),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedCart.remove(cardId);
                                   } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Insufficient CHF budget!')),
-                                    );
+                                    int currentTotal = 0;
+                                    for (var type in _selectedCart) {
+                                      final match = _draftPool.firstWhere(
+                                        (x) => x['type'] == type,
+                                      );
+                                      currentTotal += match['cost'] as int;
+                                    }
+                                    if (currentTotal + cost <= 1000 &&
+                                        _selectedCart.length < 12) {
+                                      _selectedCart.add(cardId);
+                                    } else if (_selectedCart.length >= 12) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Squad limit is 12 units!',
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Insufficient CHF budget!',
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   }
-                                }
-                              });
-                            },
-                            child: Text(
-                              isSelected ? 'REMOVE FROM CART (-$cost CHF)' : 'ADD TO CART (+$cost CHF)',
-                              style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.0),
+                                });
+                              },
+                              child: Text(
+                                isSelected
+                                    ? 'REMOVE (-$cost CHF)'
+                                    : 'ADD (+$cost CHF)',
+                                style: GoogleFonts.playfairDisplay(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        },
+                      ),
                     IconButton(
                       icon: const Icon(
                         Icons.close,
                         color: Color(0xFFD4AF37),
-                        size: 24,
+                        size: 20,
                       ),
                       onPressed: () {
                         setState(() {
@@ -6767,7 +7297,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 ),
               ],
             ),
-            const Divider(color: Color(0xFF3A2F25), height: 12),
+            const Divider(color: Color(0xFF3A2F25), height: 8),
 
             Expanded(
               child: Row(
@@ -6784,17 +7314,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(10),
                         child: Column(
                           children: [
                             Container(
-                              width: 110,
-                              height: 110,
+                              width: 80,
+                              height: 80,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: const Color(0xFFD4AF37),
-                                  width: 2.5,
+                                  width: 2.0,
                                 ),
                                 boxShadow: const [
                                   BoxShadow(
@@ -6808,17 +7338,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               child: ClipOval(
                                 child: CharacterBlobRenderer(
                                   npc: npc,
-                                  size: 90,
+                                  size: 64,
                                   isCombat: true,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 8),
                             Text(
                               'MILITARY STANDING',
                               style: GoogleFonts.playfairDisplay(
                                 color: const Color(0xFFC4B89B),
-                                fontSize: 13,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -6826,14 +7356,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               'LEVEL $lvl',
                               style: GoogleFonts.oswald(
                                 color: const Color(0xFFD4AF37),
-                                fontSize: 22,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 1.0,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             SizedBox(
-                              height: 18,
+                              height: 14,
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
@@ -6841,7 +7371,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     borderRadius: BorderRadius.circular(3),
                                     child: LinearProgressIndicator(
                                       value: pct,
-                                      minHeight: 18,
+                                      minHeight: 14,
                                       backgroundColor: Colors.black54,
                                       color: const Color(0xFFD4AF37),
                                     ),
@@ -6850,7 +7380,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     '${exp.toInt()} / $nextReq XP',
                                     style: GoogleFonts.oswald(
                                       color: Colors.white,
-                                      fontSize: 12,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                       shadows: const [
                                         Shadow(
@@ -6864,12 +7394,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 10),
                             Text(
                               'MILITARY TRAINING LEVELING',
                               style: GoogleFonts.playfairDisplay(
                                 color: const Color(0xFFE5D5B0),
-                                fontSize: 14,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -6879,15 +7409,18 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               textAlign: TextAlign.center,
                               style: GoogleFonts.oldStandardTt(
                                 color: Colors.white38,
-                                fontSize: 12,
+                                fontSize: 9.5,
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 10),
                             Builder(
                               builder: (context) {
                                 final drillXp = 3 * lvl;
                                 final drillCost = 15 * lvl;
-                                final canAffordDrills = (progress.cash >= drillCost && !_isDrafting && !isUndeadUnit);
+                                final canAffordDrills =
+                                    (progress.cash >= drillCost &&
+                                    !_isDrafting &&
+                                    !isUndeadUnit);
 
                                 return ElevatedButton(
                                   style: ElevatedButton.styleFrom(
@@ -6900,6 +7433,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                           : Colors.white10,
                                     ),
                                     shape: const RoundedRectangleBorder(),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
                                   ),
                                   onPressed: canAffordDrills
                                       ? () {
@@ -6933,21 +7470,23 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                         }
                                       : null,
                                   child: Text(
-                                    _isDrafting 
-                                        ? 'LOCKED DURING DRAFT' 
-                                        : (isUndeadUnit ? 'UNDEAD CANNOT DRILL' : 'BUY DRILLS: +$drillXp XP ($drillCost CHF)'),
+                                    _isDrafting
+                                        ? 'LOCKED DURING DRAFT'
+                                        : (isUndeadUnit
+                                              ? 'UNDEAD CANNOT DRILL'
+                                              : 'BUY DRILLS: +$drillXp XP ($drillCost CHF)'),
                                     style: GoogleFonts.playfairDisplay(
                                       color: canAffordDrills
                                           ? const Color(0xFFE5D5B0)
                                           : Colors.white24,
-                                      fontSize: 13,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 );
                               },
                             ),
-                                  ],
+                          ],
                         ),
                       ),
                     ),
@@ -6966,7 +7505,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -6974,11 +7513,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               'REGIMENTAL ATTRIBUTES & PROFILE',
                               style: GoogleFonts.playfairDisplay(
                                 color: const Color(0xFFC4B89B),
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 6),
 
                             _buildInspectorStatRow(
                               'Squad Class / Name',
@@ -7005,7 +7544,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               '${stats.movement.toStringAsFixed(1)} m/s',
                             ),
 
-                            const Divider(color: Colors.white10, height: 16),
+                            const Divider(color: Colors.white10, height: 10),
 
                             _buildInspectorStatRow(
                               'Melee Attack Force',
@@ -7021,16 +7560,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             ),
 
                             if (!isMeleeOnly) ...[
-                              const Divider(color: Colors.white10, height: 16),
+                              const Divider(color: Colors.white10, height: 10),
                               Text(
                                 'AMMUNITION & RANGED SPECIALIZATION',
                                 style: GoogleFonts.playfairDisplay(
                                   color: const Color(0xFFD4AF37),
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               _buildInspectorStatRow(
                                 'Ranged Bullet Damage',
                                 '${stats.rangedDamage.toInt()} Damage',
@@ -7049,40 +7588,43 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               ),
                             ],
                             if (npc.abilities.isNotEmpty) ...[
-                              const Divider(color: Colors.white10, height: 16),
+                              const Divider(color: Colors.white10, height: 10),
                               Text(
                                 'SPECIAL ABILITIES',
                                 style: GoogleFonts.playfairDisplay(
                                   color: const Color(0xFFD4AF37),
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              ...npc.abilities.map((a) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      a.name.toUpperCase(),
-                                      style: GoogleFonts.playfairDisplay(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
+                              const SizedBox(height: 4),
+                              ...npc.abilities.map(
+                                (a) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 6.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        a.name.toUpperCase(),
+                                        style: GoogleFonts.playfairDisplay(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      a.detailedDescription,
-                                      style: GoogleFonts.oldStandardTt(
-                                        color: Colors.white70,
-                                        fontSize: 11,
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        a.detailedDescription,
+                                        style: GoogleFonts.oldStandardTt(
+                                          color: Colors.white70,
+                                          fontSize: 9.5,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              )),
+                              ),
                             ],
                           ],
                         ),
@@ -7103,7 +7645,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -7111,7 +7653,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               'ARMORY WEAPONS ENGINEERING',
                               style: GoogleFonts.playfairDisplay(
                                 color: const Color(0xFFC4B89B),
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -7120,23 +7662,23 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               'Buy manufactured weapon engineering configurations directly changing all attack properties.',
                               style: GoogleFonts.oldStandardTt(
                                 color: Colors.white38,
-                                fontSize: 12,
+                                fontSize: 9.5,
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 8),
 
                             if (_isDrafting) ...[
                               Center(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 24.0,
+                                    vertical: 16.0,
                                   ),
                                   child: Text(
                                     'Armory modifications are locked during recruitment.',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.oldStandardTt(
                                       color: Colors.white24,
-                                      fontSize: 12,
+                                      fontSize: 10.5,
                                       fontStyle: FontStyle.italic,
                                     ),
                                   ),
@@ -7146,14 +7688,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               Center(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 24.0,
+                                    vertical: 16.0,
                                   ),
                                   child: Text(
                                     'Beasts, undead vermin swarms, and chimeras cannot equip weaponry.',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.oldStandardTt(
                                       color: Colors.white24,
-                                      fontSize: 12,
+                                      fontSize: 10.5,
                                       fontStyle: FontStyle.italic,
                                     ),
                                   ),
@@ -7184,7 +7726,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
   Widget _buildInspectorStatRow(String label, String val) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5.0),
+      padding: const EdgeInsets.symmetric(vertical: 3.5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -7192,14 +7734,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             label,
             style: GoogleFonts.oldStandardTt(
               color: Colors.white38,
-              fontSize: 13.5,
+              fontSize: 11.5,
             ),
           ),
           Text(
             val,
             style: GoogleFonts.oswald(
               color: Colors.white70,
-              fontSize: 14.0,
+              fontSize: 12.0,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -7207,8 +7749,6 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       ),
     );
   }
-
-
 
   void _showNarrativeEncounter(
     BuildContext context,
@@ -7218,11 +7758,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     GameState state,
   ) {
     progress.cardUpgrades['encounter_${encounterId}_resolved'] = 1;
-    
+
     final rand = Random();
     final nextInterval = rand.nextBool() ? 3 : 4;
-    progress.cardUpgrades['next_encounter_turn'] = progress.currentTurn + nextInterval;
-    
+    progress.cardUpgrades['next_encounter_turn'] =
+        progress.currentTurn + nextInterval;
+
     final currentIndex = progress.cardUpgrades['next_encounter_index'] ?? 0;
     progress.cardUpgrades['next_encounter_index'] = currentIndex + 1;
 
@@ -7237,72 +7778,100 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       case 'gnomes_artillery':
         title = "THE GNOMES OF ZURICH ARTILLERY";
         faction = "Gnomes of Zurich";
-        story = "The Gnomes of Zurich have brought heavy artillery to pummel Glarus in fulfillment of a deceased client's trust. "
+        story =
+            "The Gnomes of Zurich have brought heavy artillery to pummel Glarus in fulfillment of a deceased client's trust. "
             "Glarus village is in their direct line of fire. How do you respond?";
-        
+
         options.add({
           'title': 'A) "That\'s Glarus, right there."',
-          'subtitle': 'Effect: Destroy any one facility, advance a level for marksmen/cannoneer/artillery. (+10 Gnomes, +10 Glarus)',
+          'subtitle':
+              'Effect: Destroy any one facility, advance a level for marksmen/cannoneer/artillery. (+10 Gnomes, +10 Glarus)',
           'onPress': () {
             if (progress.buildings.isNotEmpty) {
               final b = progress.buildings.removeAt(0);
-              service.addLog('Destroyed facility: ${b.type.displayName.toUpperCase()}');
+              service.addLog(
+                'Destroyed facility: ${b.type.displayName.toUpperCase()}',
+              );
             }
             final targetTypes = ['marksmen', 'cannoneer', 'artillery_barrage'];
             for (var t in targetTypes) {
               if (progress.playerDeckIds.contains(t)) {
                 final curXp = progress.unitExp[t] ?? 0.0;
                 final curLvl = SurvivalProgress.getLevelFromXp(curXp);
-                progress.unitExp[t] = SurvivalProgress.getRequiredXpForLevel(curLvl + 1).toDouble();
+                progress.unitExp[t] = SurvivalProgress.getRequiredXpForLevel(
+                  curLvl + 1,
+                ).toDouble();
                 service.addLog('Promoted $t by 1 level.');
               }
             }
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 10;
             service.addLog('Satisfied client\'s trust at a minor loss.');
-          }
+          },
         });
         options.add({
-          'title': 'B) "If that\'s your idea of a good time, you would love it here."',
-          'subtitle': 'Effect: Destroy Glarus village, receive advanced artillery barrage card. (-15 Gnomes, -20 Glarus)',
+          'title':
+              'B) "If that\'s your idea of a good time, you would love it here."',
+          'subtitle':
+              'Effect: Destroy Glarus village, receive advanced artillery barrage card. (-15 Gnomes, -20 Glarus)',
           'onPress': () {
             progress.villageHealth = 0;
             int totalLevels = 0;
             for (var t in progress.playerDeckIds) {
-              totalLevels += SurvivalProgress.getLevelFromXp(progress.unitExp[t] ?? 0.0);
+              totalLevels += SurvivalProgress.getLevelFromXp(
+                progress.unitExp[t] ?? 0.0,
+              );
             }
             final calcLvl = (1 + (totalLevels ~/ 6)).clamp(1, 6);
             progress.playerDeckIds.add('artillery_barrage');
-            progress.unitExp['artillery_barrage'] = SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
-            service.addLog('Village destroyed. Reclaimed advanced artillery card (Lvl $calcLvl).');
-          }
+            progress.unitExp['artillery_barrage'] =
+                SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 20;
+            service.addLog(
+              'Village destroyed. Reclaimed advanced artillery card (Lvl $calcLvl).',
+            );
+          },
         });
         options.add({
           'title': 'C) "That sounds like a great idea."',
-          'subtitle': 'Effect: Destroy village, receive tear gas grenade card & +500 CHF. (+15 Gnomes, -20 Glarus)',
+          'subtitle':
+              'Effect: Destroy village, receive tear gas grenade card & +500 CHF. (+15 Gnomes, -20 Glarus)',
           'onPress': () {
             progress.villageHealth = 0;
             progress.cash += 500;
             int totalLevels = 0;
             for (var t in progress.playerDeckIds) {
-              totalLevels += SurvivalProgress.getLevelFromXp(progress.unitExp[t] ?? 0.0);
+              totalLevels += SurvivalProgress.getLevelFromXp(
+                progress.unitExp[t] ?? 0.0,
+              );
             }
             final calcLvl = (1 + (totalLevels ~/ 6)).clamp(1, 6);
             progress.playerDeckIds.add('tear_gas_grenade');
-            progress.unitExp['tear_gas_grenade'] = SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
-            service.addLog('Faced Glarus ruins. Looted +500 CHF & tear gas card.');
-          }
+            progress.unitExp['tear_gas_grenade'] =
+                SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 20;
+            service.addLog(
+              'Faced Glarus ruins. Looted +500 CHF & tear gas card.',
+            );
+          },
         });
         options.add({
           'title': 'D) "Over my dead body!"',
-          'subtitle': 'Effect: Triggers immediate combat with Gnomes Artillery guard. (-15 Gnomes, +15 Glarus)',
+          'subtitle':
+              'Effect: Triggers immediate combat with Gnomes Artillery guard. (-15 Gnomes, +15 Glarus)',
           'onPress': () {
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7321,52 +7890,63 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 40,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'freemasons_tribute':
-        title = "THE GRAND ARCHITECT\'S LODGE";
+        title = "THE GRAND ARCHITECT'S LODGE";
         faction = "Freemasons";
-        story = "The Freemasons request permission to build a lodge on your estate plots. The Carbonari strongly protest, demanding it remain a public assembly area.";
+        story =
+            "The Freemasons request permission to build a lodge on your estate plots. The Carbonari strongly protest, demanding it remain a public assembly area.";
         options.add({
           'title': 'A) "Build the Lodge."',
-          'subtitle': 'Cost: 150 Wood, 50 Iron. Reward: +300 CHF, +100 Wood. (+15 Freemasons, -15 Carbonari)',
+          'subtitle':
+              'Cost: 150 Wood, 50 Iron. Reward: +300 CHF, +100 Wood. (+15 Freemasons, -15 Carbonari)',
           'onPress': () {
             progress.wood = max(0, progress.wood - 150 + 100);
             progress.iron = max(0, progress.iron - 50);
             progress.cash += 300;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 15;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 15;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 15;
             service.addLog('Lodges authorized. Mason trade channels opened.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Support the Carbonari assembly."',
           'subtitle': 'Reward: +20 Food. (-15 Freemasons, +15 Carbonari)',
           'onPress': () {
             progress.food += 20;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 15;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 15;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 15;
             service.addLog('Supported community assemblies.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Bribe both factions."',
           'subtitle': 'Cost: 200 CHF. (+5 Freemasons, +5 Carbonari)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 200);
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 5;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 5;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) + 5;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 5;
             service.addLog('Greased palms to avoid conflict.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Clear them from my land!"',
-          'subtitle': 'Effect: Combat with Freemasons & Carbonari rioters. (-10 Masons, -10 Carbonari)',
+          'subtitle':
+              'Effect: Combat with Freemasons & Carbonari rioters. (-10 Masons, -10 Carbonari)',
           'onPress': () {
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 10;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 10;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 10;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 10;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7384,52 +7964,65 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 20,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'alchemist_transmutation':
         title = "THE TRANSMUTATION FORMULA";
         faction = "Rosicrucians";
-        story = "A Rosicrucian alchemist offers to convert raw wood into solid iron, but the Golden Dawn claims this is a forbidden heresy.";
+        story =
+            "A Rosicrucian alchemist offers to convert raw wood into solid iron, but the Golden Dawn claims this is a forbidden heresy.";
         options.add({
           'title': 'A) "Perform transmutation."',
-          'subtitle': 'Cost: 60 Wood. Reward: +30 Iron. (+15 Rosicrucians, -15 Golden Dawn)',
+          'subtitle':
+              'Cost: 60 Wood. Reward: +30 Iron. (+15 Rosicrucians, -15 Golden Dawn)',
           'onPress': () {
             progress.wood = max(0, progress.wood - 60);
             progress.iron += 30;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
             service.addLog('Wood converted to Iron.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Exile the alchemist."',
-          'subtitle': 'Reward: +100 CHF bounty. (-15 Rosicrucians, +15 Golden Dawn)',
+          'subtitle':
+              'Reward: +100 CHF bounty. (-15 Rosicrucians, +15 Golden Dawn)',
           'onPress': () {
             progress.cash += 100;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 15;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 15;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
             service.addLog('Alchemist exiled.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Host collaborative study."',
-          'subtitle': 'Cost: 100 CHF. Reward: Receive Vampiric Totem card. (+10 Rosicrucians, +5 Golden Dawn)',
+          'subtitle':
+              'Cost: 100 CHF. Reward: Receive Vampiric Totem card. (+10 Rosicrucians, +5 Golden Dawn)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 100);
             progress.playerDeckIds.add('vampiric_totem');
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 5;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) + 5;
             service.addLog('Obtained Vampiric Totem.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Seize their secret laboratory!"',
-          'subtitle': 'Effect: Combat with Rosicrucian alchemical guards. (-15 Rosicrucians, -15 Golden Dawn)',
+          'subtitle':
+              'Effect: Combat with Rosicrucian alchemical guards. (-15 Rosicrucians, -15 Golden Dawn)',
           'onPress': () {
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 15;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 15;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7446,50 +8039,62 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'templar_levy':
         title = "THE CRUSADER LEVY";
         faction = "Knights Templar";
-        story = "The Knights Templar demand a crusade levy. The Rosicrucians suggest smuggling resources to hide them.";
+        story =
+            "The Knights Templar demand a crusade levy. The Rosicrucians suggest smuggling resources to hide them.";
         options.add({
           'title': 'A) "Pay the Crusade Levy."',
-          'subtitle': 'Cost: 200 CHF, 20 Iron. (+15 Knights Templar, -5 Rosicrucians)',
+          'subtitle':
+              'Cost: 200 CHF, 20 Iron. (+15 Knights Templar, -5 Rosicrucians)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 200);
             progress.iron = max(0, progress.iron - 20);
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
             service.addLog('Paid crusader tribute.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Smuggle resources."',
-          'subtitle': 'Cost: 20 Wood. Reward: +50 Food. (-15 Knights Templar, +15 Rosicrucians)',
+          'subtitle':
+              'Cost: 20 Wood. Reward: +50 Food. (-15 Knights Templar, +15 Rosicrucians)',
           'onPress': () {
             progress.wood = max(0, progress.wood - 20);
             progress.food += 50;
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
             service.addLog('Smuggled provisions.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Offer shelter."',
-          'subtitle': 'Effect: Soldiers assigned to guard duty. (+5 Templar, -10 Rosicrucians)',
+          'subtitle':
+              'Effect: Soldiers assigned to guard duty. (+5 Templar, -10 Rosicrucians)',
           'onPress': () {
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 5;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) + 5;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
             service.addLog('Sheltered Knights Templar.');
-          }
+          },
         });
         options.add({
           'title': 'D) "We pay no taxes!"',
-          'subtitle': 'Effect: Combat with Templar crusaders. (-25 Knights Templar, +10 Iron, +100 CHF)',
+          'subtitle':
+              'Effect: Combat with Templar crusaders. (-25 Knights Templar, +10 Iron, +100 CHF)',
           'onPress': () {
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 25;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) - 25;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7506,50 +8111,60 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'carbonari_strike':
         title = "THE COALITION LABOUR STRIKE";
         faction = "Carbonari";
-        story = "Carbonari radicals are instigating strike action among your workers. They demand double rations and pay.";
+        story =
+            "Carbonari radicals are instigating strike action among your workers. They demand double rations and pay.";
         options.add({
           'title': 'A) "Accede to rations and wage demands."',
           'subtitle': 'Cost: 40 Food, 100 CHF. (+15 Carbonari, +15 Army)',
           'onPress': () {
             progress.food = max(0, progress.food - 40);
             progress.cash = max(0, progress.cash - 100);
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 15;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 15;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 15;
             service.addLog('Wages increased.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Compromise with bonus wages."',
           'subtitle': 'Cost: 150 CHF. (+10 Carbonari, +5 Army)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 150);
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 10;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 5;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 10;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 5;
             service.addLog('Wages compromised.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Enforce martial law."',
           'subtitle': 'Effect: Lock production. (+10 Army, -20 Carbonari)',
           'onPress': () {
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 20;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 20;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 10;
             service.addLog('Enforced martial law.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Arrest the Carbonari leaders!"',
-          'subtitle': 'Effect: Combat with striking workers. (-25 Carbonari, -15 Army)',
+          'subtitle':
+              'Effect: Combat with striking workers. (-25 Carbonari, -15 Army)',
           'onPress': () {
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 25;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 25;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) - 15;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7566,58 +8181,68 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 15,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'golden_dawn_seance':
         title = "THE ELEUSINIAN SÉANCE";
         faction = "Golden Dawn";
-        story = "The Golden Dawn wants to perform a séance in the estate cemetery. The Knights Templar demand you ban it.";
+        story =
+            "The Golden Dawn wants to perform a séance in the estate cemetery. The Knights Templar demand you ban it.";
         options.add({
           'title': 'A) "Approve the Séance."',
-          'subtitle': 'Reward: Receive Werewolf card. (+15 Golden Dawn, -15 Knights Templar)',
+          'subtitle':
+              'Reward: Receive Werewolf card. (+15 Golden Dawn, -15 Knights Templar)',
           'onPress': () {
             progress.playerDeckIds.add('werewolf');
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 15;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) - 15;
             service.addLog('Werewolf card acquired.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Ban the Séance."',
-          'subtitle': 'Reward: +50 CHF donation. (-15 Golden Dawn, +15 Knights Templar)',
+          'subtitle':
+              'Reward: +50 CHF donation. (-15 Golden Dawn, +15 Knights Templar)',
           'onPress': () {
             progress.cash += 50;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 15;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) + 15;
             service.addLog('Séance prohibited.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Charge admission fee."',
           'subtitle': 'Reward: +200 CHF. (+5 Golden Dawn, -10 Knights Templar)',
           'onPress': () {
             progress.cash += 200;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 5;
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 10;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) + 5;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) - 10;
             service.addLog('Charged admission.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Purge the cemetery!"',
-          'subtitle': 'Effect: Combat with Golden Dawn spirits. (-25 Golden Dawn, +20 Knights Templar)',
+          'subtitle':
+              'Effect: Combat with Golden Dawn spirits. (-25 Golden Dawn, +20 Knights Templar)',
           'onPress': () {
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 25;
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 20;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 25;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) + 20;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
               service: service,
               state: state,
-              aiUnits: [
-                CombatUnitFactory.createWerewolf(),
-              ],
+              aiUnits: [CombatUnitFactory.createWerewolf()],
               eventTitle: title,
               spoilsFood: 5,
               spoilsCash: 180,
@@ -7625,59 +8250,68 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'fenian_gunrunning':
         title = "THE FENIAN GUN-RUNNING CONTRACT";
         faction = "Fenian Brotherhood";
-        story = "The Fenian Brotherhood offers high-grade weapon packages. The Gnomes of Zurich demand an immediate tax audit.";
+        story =
+            "The Fenian Brotherhood offers high-grade weapon packages. The Gnomes of Zurich demand an immediate tax audit.";
         options.add({
           'title': 'A) "Buy the weapon packages."',
-          'subtitle': 'Cost: 200 CHF. Reward: Receive Cannoneer card. (+15 Fenian, -10 Gnomes)',
+          'subtitle':
+              'Cost: 200 CHF. Reward: Receive Cannoneer card. (+15 Fenian, -10 Gnomes)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 200);
             progress.playerDeckIds.add('cannoneer');
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 15;
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 15;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
             service.addLog('Cannoneer card acquired.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Report gun runners to Gnomes."',
           'subtitle': 'Reward: +100 CHF bounty. (-15 Fenian, +15 Gnomes)',
           'onPress': () {
             progress.cash += 100;
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 15;
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 15;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
             service.addLog('Reported gun runners.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Facilitate backroom deal."',
-          'subtitle': 'Cost: 100 CHF. Reward: Receive Tear Gas Grenade card. (+10 Fenian, +10 Gnomes)',
+          'subtitle':
+              'Cost: 100 CHF. Reward: Receive Tear Gas Grenade card. (+10 Fenian, +10 Gnomes)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 100);
             progress.playerDeckIds.add('tear_gas_grenade');
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 10;
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 10;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
             service.addLog('Obtained Tear Gas Grenade.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Seize the weapon caches!"',
-          'subtitle': 'Effect: Combat with Fenian gun runners. (-25 Fenian, +20 Iron)',
+          'subtitle':
+              'Effect: Combat with Fenian gun runners. (-25 Fenian, +20 Iron)',
           'onPress': () {
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 25;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 25;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
               service: service,
               state: state,
-              aiUnits: [
-                CombatUnitFactory.createCommandos(),
-              ],
+              aiUnits: [CombatUnitFactory.createCommandos()],
               eventTitle: title,
               spoilsFood: 10,
               spoilsCash: 100,
@@ -7685,52 +8319,67 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'french_cavalry':
         title = "THE MONARCHIST MANEUVERS";
         faction = "Chevaliers de la foi";
-        story = "Monarchist Chevaliers are destroying Glarus wheat crops with cavalry exercises. The Carbonari demand they leave.";
+        story =
+            "Monarchist Chevaliers are destroying Glarus wheat crops with cavalry exercises. The Carbonari demand they leave.";
         options.add({
           'title': 'A) "Join their aristocratic drills."',
-          'subtitle': 'Reward: Receive Cavalry card. (+15 Chevaliers, -15 Glarus, -10 Carbonari)',
+          'subtitle':
+              'Reward: Receive Cavalry card. (+15 Chevaliers, -15 Glarus, -10 Carbonari)',
           'onPress': () {
             progress.playerDeckIds.add('cavalry');
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 15;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 15;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 10;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 10;
             service.addLog('Joined Knight Cavalry.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Order them off the crops."',
-          'subtitle': 'Standings change: +15 Glarus, +10 Carbonari, -15 Chevaliers.',
+          'subtitle':
+              'Standings change: +15 Glarus, +10 Carbonari, -15 Chevaliers.',
           'onPress': () {
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 10;
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 10;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 15;
             service.addLog('Ordered Chevaliers away.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Sell them premium horse feed."',
-          'subtitle': 'Cost: 30 Food. Reward: +200 CHF. (+10 Chevaliers, -5 Glarus)',
+          'subtitle':
+              'Cost: 30 Food. Reward: +200 CHF. (+10 Chevaliers, -5 Glarus)',
           'onPress': () {
             progress.food = max(0, progress.food - 30);
             progress.cash += 200;
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 10;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 5;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 10;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 5;
             service.addLog('Sold feed to Chevaliers.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Challenge them to mock combat."',
-          'subtitle': 'Effect: Combat with Chevaliers knights. (-20 Chevaliers, +15 Army)',
+          'subtitle':
+              'Effect: Combat with Chevaliers knights. (-20 Chevaliers, +15 Army)',
           'onPress': () {
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 20;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 20;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 15;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7747,49 +8396,62 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'adrenochrome_syndicate':
         title = "THE DEEP FOREST COVENANT";
         faction = "Ancient Order of Foresters";
-        story = "The Foresters request a quiet lodge on your borders. Local rumors suggest they are running an illegal adrenochrome market.";
+        story =
+            "The Foresters request a quiet lodge on your borders. Local rumors suggest they are running an illegal adrenochrome market.";
         options.add({
           'title': 'A) "Lease the land for their operations."',
           'subtitle': 'Reward: +400 CHF. (+20 Foresters, -25 Glarus)',
           'onPress': () {
             progress.cash += 400;
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 20;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 25;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) +
+                20;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 25;
             service.addLog('Leased lodge plots.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Reject their lease requests."',
           'subtitle': 'Reward: +20 Food. (+15 Glarus, -15 Foresters)',
           'onPress': () {
             progress.food += 20;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) -
+                15;
             service.addLog('Lease requests rejected.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Quietly investigate the site."',
           'subtitle': 'Reward: Receive Vampiric Totem card. (-10 Foresters)',
           'onPress': () {
             progress.playerDeckIds.add('vampiric_totem');
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 10;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) -
+                10;
             service.addLog('Obtained Vampiric Totem.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Raid the secret Forester lab!"',
-          'subtitle': 'Effect: Combat with Forester druids & beasts. (-25 Foresters, +20 Glarus, +50 Food)',
+          'subtitle':
+              'Effect: Combat with Forester druids & beasts. (-25 Foresters, +20 Glarus, +50 Food)',
           'onPress': () {
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 25;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) -
+                25;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 20;
             progress.food += 50;
             Navigator.pop(context);
             _startEventCombat(
@@ -7807,50 +8469,60 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 15,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'bank_audit':
         title = "THE DEBT AUDIT FORECLOSURE";
         faction = "Gnomes of Zurich";
-        story = "The Gnomes of Zurich seek to inspect Frankenstein Manor\'s accounts, backed by Freemasons wishing to foreclose on your estate.";
+        story =
+            "The Gnomes of Zurich seek to inspect Frankenstein Manor's accounts, backed by Freemasons wishing to foreclose on your estate.";
         options.add({
           'title': 'A) "Bribe the auditors."',
           'subtitle': 'Cost: 300 CHF. (+15 Gnomes, -10 Freemasons)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 300);
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 10;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 10;
             service.addLog('Greased banking gears.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Lock the estate gates."',
           'subtitle': 'Cost: 20 Food. (-15 Gnomes, -15 Freemasons)',
           'onPress': () {
             progress.food = max(0, progress.food - 20);
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 15;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 15;
             service.addLog('Locked auditors outside.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Route funds via Templar vaults."',
           'subtitle': 'Cost: 150 CHF. (+10 Knights Templar, -10 Gnomes)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 150);
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 10;
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) + 10;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
             service.addLog('Funds rerouted.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Repel the bailiffs!"',
-          'subtitle': 'Effect: Combat with bank enforcers. (-25 Gnomes, -25 Freemasons)',
+          'subtitle':
+              'Effect: Combat with bank enforcers. (-25 Gnomes, -25 Freemasons)',
           'onPress': () {
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 25;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 25;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 25;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 25;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7867,59 +8539,73 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'mystic_herbs':
         title = "THE DRUIDIC FOREST HERBS";
         faction = "Ancient Order of Foresters";
-        story = "Druids offer ancient forest herbs to treat your mutated forces, but Rosicrucian mystical scholars claim they are deadly poisons.";
+        story =
+            "Druids offer ancient forest herbs to treat your mutated forces, but Rosicrucian mystical scholars claim they are deadly poisons.";
         options.add({
           'title': 'A) "Accept and feed herbs to constructs."',
-          'subtitle': 'Effect: Cure all construct bondage debuffs. (+15 Foresters, -10 Rosicrucians)',
+          'subtitle':
+              'Effect: Cure all construct bondage debuffs. (+15 Foresters, -10 Rosicrucians)',
           'onPress': () {
             progress.bondageDebuffCount.clear();
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) +
+                15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
             service.addLog('Construct bondage debuffs cleared.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Decline the herbs politely."',
           'subtitle': 'Reward: +50 Food. (+15 Rosicrucians, -10 Foresters)',
           'onPress': () {
             progress.food += 50;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 10;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) -
+                10;
             service.addLog('Herbs declined.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Test herbs in laboratory."',
-          'subtitle': 'Cost: 50 CHF. Reward: +10 Iron. (+10 Rosicrucians, +5 Foresters)',
+          'subtitle':
+              'Cost: 50 CHF. Reward: +10 Iron. (+10 Rosicrucians, +5 Foresters)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 50);
             progress.iron += 10;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 5;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) +
+                5;
             service.addLog('Herbs tested.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Burn the poisoned weeds!"',
-          'subtitle': 'Effect: Combat with rabid forest beasts. (-20 Foresters, +10 Rosicrucians)',
+          'subtitle':
+              'Effect: Combat with rabid forest beasts. (-20 Foresters, +10 Rosicrucians)',
           'onPress': () {
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 20;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) -
+                20;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
               service: service,
               state: state,
-              aiUnits: [
-                CombatUnitFactory.createWildWolves(),
-              ],
+              aiUnits: [CombatUnitFactory.createWildWolves()],
               eventTitle: title,
               spoilsFood: 30,
               spoilsCash: 80,
@@ -7927,51 +8613,62 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 25,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'irish_mutiny':
         title = "THE BARRACKS AGITATION";
         faction = "Fenian Brotherhood";
-        story = "Fenian agitators inside your barracks are encouraging soldiers to demand Irish Independence and whiskey rations.";
+        story =
+            "Fenian agitators inside your barracks are encouraging soldiers to demand Irish Independence and whiskey rations.";
         options.add({
           'title': 'A) "Distribute whiskey and host feast."',
           'subtitle': 'Cost: 100 CHF, 20 Food. (+15 Army, +15 Fenian)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 100);
             progress.food = max(0, progress.food - 20);
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 15;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 15;
             service.addLog('Whiskey distributed.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Discipline the Fenian agitators."',
           'subtitle': 'Reward: +50 CHF bounty. (-10 Army, -15 Fenian)',
           'onPress': () {
             progress.cash += 50;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 10;
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 15;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) - 10;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 15;
             service.addLog('Agitators locked up.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Deploy soldiers to frontlines."',
-          'subtitle': 'Effect: Next combat gains +20% XP. (+10 Army, -10 Fenian)',
+          'subtitle':
+              'Effect: Next combat gains +20% XP. (+10 Army, -10 Fenian)',
           'onPress': () {
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 10;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 10;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 10;
             progress.cardUpgrades['next_combat_xp_bonus'] = 1;
             service.addLog('Frontline orders issued.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Repress mutiny with armed guard!"',
-          'subtitle': 'Effect: Combat with rebel soldiers. (-20 Army, -25 Fenian)',
+          'subtitle':
+              'Effect: Combat with rebel soldiers. (-20 Army, -25 Fenian)',
           'onPress': () {
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 20;
-            progress.factionStandings['Fenian Brotherhood'] = (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 25;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) - 20;
+            progress.factionStandings['Fenian Brotherhood'] =
+                (progress.factionStandings['Fenian Brotherhood'] ?? 0) - 25;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -7988,33 +8685,39 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'monarchist_ball':
         title = "THE FRENCH ROYALIST BALL";
         faction = "Chevaliers de la foi";
-        story = "Monarchists Chevaliers demand that the village of Glarus host a massive ball in your honor, tax-funding it directly from villagers.";
+        story =
+            "Monarchists Chevaliers demand that the village of Glarus host a massive ball in your honor, tax-funding it directly from villagers.";
         options.add({
           'title': 'A) "Support the grand royalist ball."',
           'subtitle': 'Cost: 250 CHF. (+20 Chevaliers, -20 Glarus, +10 Army)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 250);
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 20;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 20;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 20;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 10;
             service.addLog('Aristocratic feast hosted.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Reject the royalist ball requests."',
           'subtitle': 'Standings change: +15 Glarus, -15 Chevaliers.',
           'onPress': () {
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 15;
             service.addLog('Royalist request denied.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Compromise with modest peasant feast."',
@@ -8022,17 +8725,22 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'onPress': () {
             progress.cash = max(0, progress.cash - 50);
             progress.food = max(0, progress.food - 30);
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 5;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 10;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 5;
             service.addLog('Peasant feast hosted.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Crash the royalist assembly!"',
-          'subtitle': 'Effect: Combat with Royal Guard. (-25 Chevaliers, +15 Carbonari)',
+          'subtitle':
+              'Effect: Combat with Royal Guard. (-25 Chevaliers, +15 Carbonari)',
           'onPress': () {
-            progress.factionStandings['Chevaliers de la foi'] = (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 25;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 15;
+            progress.factionStandings['Chevaliers de la foi'] =
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) - 25;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 15;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -8049,50 +8757,60 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'masonic_toll':
         title = "THE MASONIC BRIDGE TOLL";
         faction = "Freemasons";
-        story = "Freemasons set up a commercial toll bridge blocking access to Glarus market routes. Villagers are starving.";
+        story =
+            "Freemasons set up a commercial toll bridge blocking access to Glarus market routes. Villagers are starving.";
         options.add({
           'title': 'A) "Support and enforce the bridge toll."',
           'subtitle': 'Reward: +150 CHF. (+15 Freemasons, -20 Glarus)',
           'onPress': () {
             progress.cash += 150;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 15;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 20;
             service.addLog('Toll collection authorized.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Pay tolls for Glarus merchants."',
           'subtitle': 'Cost: 150 CHF. (+15 Glarus, +5 Freemasons)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 150);
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 5;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) + 5;
             service.addLog('Merchant tolls sponsored.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Construct forest detour paths."',
           'subtitle': 'Cost: 100 Wood. (+10 Glarus, -10 Freemasons)',
           'onPress': () {
             progress.wood = max(0, progress.wood - 100);
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 10;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 10;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 10;
             service.addLog('Detour paths constructed.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Destroy the toll booth!"',
-          'subtitle': 'Effect: Combat with toll enforcers. (-25 Freemasons, +20 Glarus)',
+          'subtitle':
+              'Effect: Combat with toll enforcers. (-25 Freemasons, +20 Glarus)',
           'onPress': () {
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 25;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 25;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 20;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -8109,50 +8827,60 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 15,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'alchemical_explosion':
         title = "THE CRYPT WATER CONTAMINATION";
         faction = "Rosicrucians";
-        story = "A critical Rosicrucian lab failure has contaminated the water wells of Glarus village. Sickness is spreading.";
+        story =
+            "A critical Rosicrucian lab failure has contaminated the water wells of Glarus village. Sickness is spreading.";
         options.add({
           'title': 'A) "Supply food and water filters."',
           'subtitle': 'Cost: 40 Food, 10 Iron. (+15 Glarus, +5 Rosicrucians)',
           'onPress': () {
             progress.food = max(0, progress.food - 40);
             progress.iron = max(0, progress.iron - 10);
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 5;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 5;
             service.addLog('Clean water supplied.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Conceal contamination logs."',
           'subtitle': 'Reward: +100 CHF. (+15 Rosicrucians, -20 Glarus)',
           'onPress': () {
             progress.cash += 100;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 20;
             service.addLog('Incident cover-up complete.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Flee the area temporarily."',
           'subtitle': 'Standings change: -15 Glarus, -10 Rosicrucians.',
           'onPress': () {
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
             service.addLog('Fled the area.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Arrest the lead alchemist!"',
-          'subtitle': 'Effect: Combat with escaped lab monstrosities. (+15 Glarus, -25 Rosicrucians)',
+          'subtitle':
+              'Effect: Combat with escaped lab monstrosities. (+15 Glarus, -25 Rosicrucians)',
           'onPress': () {
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 25;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 25;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -8169,49 +8897,59 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'secret_treaty':
         title = "THE DEEP STATE ALLIANCE";
         faction = "Knights Templar";
-        story = "The Knights Templar propose a joint defensive treaty, demanding total secrecy to keep Freemasons in the dark.";
+        story =
+            "The Knights Templar propose a joint defensive treaty, demanding total secrecy to keep Freemasons in the dark.";
         options.add({
           'title': 'A) "Ratify the secret alliance."',
           'subtitle': 'Reward: +15 Iron. (+20 Knights Templar, -15 Freemasons)',
           'onPress': () {
             progress.iron += 15;
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 20;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 15;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) + 20;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 15;
             service.addLog('Alliance signed.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Report treaty details to Freemasons."',
           'subtitle': 'Reward: +200 CHF. (+20 Freemasons, -20 Knights Templar)',
           'onPress': () {
             progress.cash += 200;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 20;
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 20;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) + 20;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) - 20;
             service.addLog('Alliance betrayed.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Decline both options politely."',
           'subtitle': 'Standings change: -5 Templar, -5 Freemasons.',
           'onPress': () {
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 5;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 5;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) - 5;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 5;
             service.addLog('Remained neutral.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Arrest both diplomatic envoys!"',
-          'subtitle': 'Effect: Combat with guard details. (-20 Templar, -20 Freemasons)',
+          'subtitle':
+              'Effect: Combat with guard details. (-20 Templar, -20 Freemasons)',
           'onPress': () {
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) - 20;
-            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) - 20;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) - 20;
+            progress.factionStandings['Freemasons'] =
+                (progress.factionStandings['Freemasons'] ?? 0) - 20;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -8228,51 +8966,62 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'carbonari_press':
         title = "THE REVOLUTIONARY PAMPHLETS";
         faction = "Carbonari";
-        story = "The Carbonari seek estate wood to run their print press. The Golden Dawn warns these sheets cause spiritual madness.";
+        story =
+            "The Carbonari seek estate wood to run their print press. The Golden Dawn warns these sheets cause spiritual madness.";
         options.add({
           'title': 'A) "Supply wood for print operations."',
-          'subtitle': 'Cost: 80 Wood. Reward: +50 CHF. (+20 Carbonari, -10 Golden Dawn)',
+          'subtitle':
+              'Cost: 80 Wood. Reward: +50 CHF. (+20 Carbonari, -10 Golden Dawn)',
           'onPress': () {
             progress.wood = max(0, progress.wood - 80);
             progress.cash += 50;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 20;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 10;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 20;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 10;
             service.addLog('Pamphlet wood supplied.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Seize the printing press."',
           'subtitle': 'Reward: +15 Iron. (+15 Golden Dawn, -20 Carbonari)',
           'onPress': () {
             progress.iron += 15;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 20;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 20;
             service.addLog('Printing press seized.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Tax printing operations."',
           'subtitle': 'Reward: +100 CHF. (+5 Carbonari, -5 Golden Dawn)',
           'onPress': () {
             progress.cash += 100;
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) + 5;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 5;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) + 5;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 5;
             service.addLog('Taxes collected.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Raid the printing house!"',
-          'subtitle': 'Effect: Combat with Carbonari printing guards. (-25 Carbonari, +10 Golden Dawn)',
+          'subtitle':
+              'Effect: Combat with Carbonari printing guards. (-25 Carbonari, +10 Golden Dawn)',
           'onPress': () {
-            progress.factionStandings['Carbonari'] = (progress.factionStandings['Carbonari'] ?? 0) - 25;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 10;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 25;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) + 10;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -8289,58 +9038,69 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 30,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'golden_dawn_relic':
         title = "THE ELEUSINIAN CRYPT RELIC";
         faction = "Golden Dawn";
-        story = "The Golden Dawn uncovers a sacred relic on estate grounds and requests storage space in your vault rooms.";
+        story =
+            "The Golden Dawn uncovers a sacred relic on estate grounds and requests storage space in your vault rooms.";
         options.add({
           'title': 'A) "Accept and study the relic."',
-          'subtitle': 'Reward: Receive Vampiric Totem card. (+15 Golden Dawn, +10 Rosicrucians)',
+          'subtitle':
+              'Reward: Receive Vampiric Totem card. (+15 Golden Dawn, +10 Rosicrucians)',
           'onPress': () {
             progress.playerDeckIds.add('vampiric_totem');
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) + 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
             service.addLog('Stored Eleusinian Relic.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Sell relic to foreign dealers."',
           'subtitle': 'Reward: +350 CHF. (-15 Golden Dawn, -5 Rosicrucians)',
           'onPress': () {
             progress.cash += 350;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 15;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
             service.addLog('Sold relic.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Donate relic to local cathedral."',
-          'subtitle': 'Standings change: +15 Knights Templar, -10 Golden Dawn, -5 Rosicrucians.',
+          'subtitle':
+              'Standings change: +15 Knights Templar, -10 Golden Dawn, -5 Rosicrucians.',
           'onPress': () {
-            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 15;
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 10;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
+            progress.factionStandings['Knights Templar'] =
+                (progress.factionStandings['Knights Templar'] ?? 0) + 15;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 10;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
             service.addLog('Donated relic.');
-          }
+          },
         });
         options.add({
           'title': 'D) "The relic is cursed: smash it!"',
-          'subtitle': 'Effect: Combat with spectral spirits. (-20 Golden Dawn, +5 Rosicrucians)',
+          'subtitle':
+              'Effect: Combat with spectral spirits. (-20 Golden Dawn, +5 Rosicrucians)',
           'onPress': () {
-            progress.factionStandings['Golden Dawn'] = (progress.factionStandings['Golden Dawn'] ?? 0) - 20;
-            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 5;
+            progress.factionStandings['Golden Dawn'] =
+                (progress.factionStandings['Golden Dawn'] ?? 0) - 20;
+            progress.factionStandings['Rosicrucians'] =
+                (progress.factionStandings['Rosicrucians'] ?? 0) + 5;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
               service: service,
               state: state,
-              aiUnits: [
-                CombatUnitFactory.createWerewolf(),
-              ],
+              aiUnits: [CombatUnitFactory.createWerewolf()],
               eventTitle: title,
               spoilsFood: 10,
               spoilsCash: 250,
@@ -8348,51 +9108,67 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'forester_woodcutters':
         title = "THE DRUIDIC TIMBER PROTEST";
         faction = "Ancient Order of Foresters";
-        story = "The Foresters druidic council demands you cease all logging operations. The Army demands more timber for watchtower defense.";
+        story =
+            "The Foresters druidic council demands you cease all logging operations. The Army demands more timber for watchtower defense.";
         options.add({
           'title': 'A) "Cease all timber harvesting."',
-          'subtitle': 'Effect: Halve wood production next turn. (+20 Foresters, -15 Army)',
+          'subtitle':
+              'Effect: Halve wood production next turn. (+20 Foresters, -15 Army)',
           'onPress': () {
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 20;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 15;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) +
+                20;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) - 15;
             progress.cardUpgrades['wood_halved_next_turn'] = 1;
             service.addLog('Timber harvesting ceased.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Double logging quotas."',
           'subtitle': 'Reward: +150 Wood. (+15 Army, -25 Foresters)',
           'onPress': () {
             progress.wood += 150;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 25;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) -
+                25;
             service.addLog('Timber logging doubled.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Harvest timber selectively."',
-          'subtitle': 'Cost: 50 CHF. Reward: +40 Wood. (+10 Foresters, +5 Army)',
+          'subtitle':
+              'Cost: 50 CHF. Reward: +40 Wood. (+10 Foresters, +5 Army)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 50);
             progress.wood += 40;
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) + 10;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 5;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) +
+                10;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 5;
             service.addLog('Selective logging implemented.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Clear the wood druids!"',
-          'subtitle': 'Effect: Combat with forest druids. (-25 Foresters, +15 Army)',
+          'subtitle':
+              'Effect: Combat with forest druids. (-25 Foresters, +15 Army)',
           'onPress': () {
-            progress.factionStandings['Ancient Order of Foresters'] = (progress.factionStandings['Ancient Order of Foresters'] ?? 0) - 25;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) -
+                25;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 15;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
@@ -8409,49 +9185,59 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 150,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'swiss_banker_loan':
         title = "THE DEEP POCKETS CREDIT";
         faction = "Gnomes of Zurich";
-        story = "The Swiss bankers offer an emergency line of credit. The Army wants to use it for imported brandy, but interest is steep.";
+        story =
+            "The Swiss bankers offer an emergency line of credit. The Army wants to use it for imported brandy, but interest is steep.";
         options.add({
           'title': 'A) "Accept high-interest credit."',
-          'subtitle': 'Reward: +500 CHF, Army turn delay. (+15 Gnomes, +10 Army)',
+          'subtitle':
+              'Reward: +500 CHF, Army turn delay. (+15 Gnomes, +10 Army)',
           'onPress': () {
             progress.cash += 500;
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
-            progress.cardUpgrades['bank_debt_due_turn'] = progress.currentTurn + 3;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 10;
+            progress.cardUpgrades['bank_debt_due_turn'] =
+                progress.currentTurn + 3;
             service.addLog('Accepted emergency credit.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Decline credit offer."',
           'subtitle': 'Reward: +10 Food. (-5 Gnomes)',
           'onPress': () {
             progress.food += 10;
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 5;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 5;
             service.addLog('Credit offer declined.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Borrow from soldier pension funds."',
           'subtitle': 'Reward: +200 CHF. (-20 Army)',
           'onPress': () {
             progress.cash += 200;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 20;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) - 20;
             service.addLog('Borrowed from pensions.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Rob the banker\'s carriage!"',
-          'subtitle': 'Effect: Combat with Gnome bank guards. (-25 Gnomes, +20 Army, +400 CHF)',
+          'subtitle':
+              'Effect: Combat with Gnome bank guards. (-25 Gnomes, +20 Army, +400 CHF)',
           'onPress': () {
-            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 25;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 20;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 25;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 20;
             progress.cash += 400;
             Navigator.pop(context);
             _startEventCombat(
@@ -8469,57 +9255,65 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 10,
             );
             return;
-          }
+          },
         });
         break;
 
       case 'grenadier_sabotage':
         title = "THE GRENADIER WINDMILL ACCIDENT";
-        faction = "Player\'s Army";
-        story = "Drunk Army grenadiers have accidentally blown up the central windmill of Glarus. The villagers demand restitution.";
+        faction = "Player's Army";
+        story =
+            "Drunk Army grenadiers have accidentally blown up the central windmill of Glarus. The villagers demand restitution.";
         options.add({
           'title': 'A) "Pay full damages to Glarus."',
           'subtitle': 'Cost: 200 CHF, 30 Wood. (+20 Glarus, -10 Army)',
           'onPress': () {
             progress.cash = max(0, progress.cash - 200);
             progress.wood = max(0, progress.wood - 30);
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 10;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 20;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) - 10;
             service.addLog('Paid windmill restitution.');
-          }
+          },
         });
         options.add({
           'title': 'B) "Court-martial the grenadiers."',
           'subtitle': 'Standings change: +15 Glarus, -20 Army.',
           'onPress': () {
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) - 20;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) - 20;
             service.addLog('Agitators disciplined.');
-          }
+          },
         });
         options.add({
           'title': 'C) "Blame the wind cycles."',
           'subtitle': 'Standings change: +15 Army, -20 Glarus.',
           'onPress': () {
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 15;
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 20;
             service.addLog('Blamed wind cycles.');
-          }
+          },
         });
         options.add({
           'title': 'D) "Repel the complaining villagers!"',
-          'subtitle': 'Effect: Combat with angry villagers. (-25 Glarus, +10 Army)',
+          'subtitle':
+              'Effect: Combat with angry villagers. (-25 Glarus, +10 Army)',
           'onPress': () {
-            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 25;
-            progress.factionStandings['Army'] = (progress.factionStandings['Army'] ?? 0) + 10;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 25;
+            progress.factionStandings['Army'] =
+                (progress.factionStandings['Army'] ?? 0) + 10;
             Navigator.pop(context);
             _startEventCombat(
               progress: progress,
               service: service,
               state: state,
-              aiUnits: [
-                CombatUnitFactory.createGoon(),
-              ],
+              aiUnits: [CombatUnitFactory.createGoon()],
               eventTitle: title,
               spoilsFood: 10,
               spoilsCash: 50,
@@ -8527,7 +9321,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsWood: 15,
             );
             return;
-          }
+          },
         });
         break;
 
@@ -8644,7 +9438,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -8670,6 +9464,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       final exp = progress.unitExp[t] ?? 0.0;
       final lvl = SurvivalProgress.getLevelFromXp(exp);
       final mult = 1.0 + (lvl - 1) * 0.1;
+      double distance = npc.combatStats!.distance;
+      double rangedRange = npc.combatStats!.rangedRange;
+      if (t == 'cannoneer' && lvl >= 6) {
+        distance = 23.0;
+        rangedRange = 23.0;
+      }
       return npc.copyWith(
         metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
         combatStats: npc.combatStats?.copyWith(
@@ -8678,13 +9478,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           attack: npc.combatStats!.attack * mult,
           meleeDamage: npc.combatStats!.meleeDamage * mult,
           rangedDamage: npc.combatStats!.rangedDamage * mult,
+          distance: distance,
+          rangedRange: rangedRange,
         ),
       );
     }).toList();
 
     state.startCombatSimulation(playerUnits, aiUnits);
 
-    Navigator.pushReplacement(
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CombatScreen(
@@ -8694,68 +9496,93 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           cardUpgrades: progress.cardUpgrades,
           survivalTurn: progress.currentTurn,
           survivalDifficulty: progress.difficulty,
-          onSurvivalVictory: (destroyedTowersCount, enemyDeck, finalSpoilsFood, finalSpoilsCash, finalSpoilsIron, finalSpoilsWood, playerTowerHealth, combatExp, activeContext) {
-            service.processCombatOutcome(
-              true,
-              false,
-              playerTowerHealth,
-              combatExp,
-              opponentDeck: enemyDeck,
-              destroyedEnemyTowers: destroyedTowersCount,
-              customSpoilsFood: spoilsFood,
-              customSpoilsCash: spoilsCash,
-              customSpoilsIron: spoilsIron,
-              customSpoilsWood: spoilsWood,
-            );
-            state.clearEncounterState();
-            Navigator.pushReplacement(
-              activeContext,
-              MaterialPageRoute(
-                builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-                  value: service,
-                  child: const SurvivalEstateMapScreen(),
-                ),
-              ),
-            );
-          },
-          onSurvivalDefeat: (destroyedTowersCount, enemyDeck, playerTowerHealth, combatExp, activeContext) {
-            service.processCombatOutcome(
-              false,
-              false,
-              playerTowerHealth,
-              combatExp,
-              opponentDeck: enemyDeck,
-              destroyedEnemyTowers: destroyedTowersCount,
-              customSpoilsFood: 0,
-              customSpoilsCash: 0,
-              customSpoilsIron: 0,
-              customSpoilsWood: 0,
-            );
-            state.clearEncounterState();
-            if (progress.difficulty == SurvivalDifficulty.arcade) {
-              ArenaSaveService.deleteSave(service.activeSlot);
-              Navigator.pushReplacement(
+          onSurvivalVictory:
+              (
+                destroyedTowersCount,
+                enemyDeck,
+                finalSpoilsFood,
+                finalSpoilsCash,
+                finalSpoilsIron,
+                finalSpoilsWood,
+                playerTowerHealth,
+                combatExp,
                 activeContext,
-                MaterialPageRoute(
-                  builder: (context) => GameOverScreen(
-                    reason: 'Your forces were defeated in combat.',
-                    difficulty: progress.difficulty,
-                    turnsSurvived: progress.currentTurn,
-                  ),
-                ),
-              );
-            } else {
-              Navigator.pushReplacement(
+              ) {
+                service.processCombatOutcome(
+                  true,
+                  false,
+                  playerTowerHealth,
+                  combatExp,
+                  opponentDeck: enemyDeck,
+                  destroyedEnemyTowers: destroyedTowersCount,
+                  customSpoilsFood: spoilsFood,
+                  customSpoilsCash: spoilsCash,
+                  customSpoilsIron: spoilsIron,
+                  customSpoilsWood: spoilsWood,
+                );
+                state.clearEncounterState();
+                Navigator.pop(activeContext);
+              },
+          onSurvivalDefeat:
+              (
+                destroyedTowersCount,
+                enemyDeck,
+                playerTowerHealth,
+                combatExp,
                 activeContext,
-                MaterialPageRoute(
-                  builder: (context) => ChangeNotifierProvider<SurvivalService>.value(
-                    value: service,
-                    child: const SurvivalEstateMapScreen(),
-                  ),
-                ),
-              );
-            }
-          },
+              ) {
+                service.processCombatOutcome(
+                  false,
+                  false,
+                  playerTowerHealth,
+                  combatExp,
+                  opponentDeck: enemyDeck,
+                  destroyedEnemyTowers: destroyedTowersCount,
+                  customSpoilsFood: 0,
+                  customSpoilsCash: 0,
+                  customSpoilsIron: 0,
+                  customSpoilsWood: 0,
+                );
+                state.clearEncounterState();
+                if (progress.difficulty == SurvivalDifficulty.arcade) {
+                  ArenaSaveService.deleteSave(service.activeSlot);
+                  Navigator.pushReplacement(
+                    activeContext,
+                    MaterialPageRoute(
+                      builder: (context) => GameOverScreen(
+                        reason: 'Your forces were defeated in combat.',
+                        difficulty: progress.difficulty,
+                        turnsSurvived: progress.currentTurn,
+                      ),
+                    ),
+                  );
+                } else {
+                  Navigator.pop(activeContext);
+                }
+              },
+          onSurvivalDraw:
+              (
+                destroyedTowersCount,
+                enemyDeck,
+                playerTowerHealth,
+                combatExp,
+                activeContext,
+              ) {
+                service.processCombatOutcome(
+                  false,
+                  true,
+                  playerTowerHealth,
+                  combatExp,
+                  opponentDeck: enemyDeck,
+                  destroyedEnemyTowers: destroyedTowersCount,
+                  customSpoilsFood: 0,
+                  customSpoilsCash: 0,
+                  customSpoilsIron: 0,
+                  customSpoilsWood: 0,
+                );
+                state.clearEncounterState();
+                Navigator.pop(activeContext);
+              },
         ),
       ),
     );
@@ -8925,12 +9752,28 @@ class MapDividerPainter extends CustomPainter {
       ..strokeWidth = 1.0;
 
     // Horizontal dividing tracks
-    canvas.drawLine(Offset(0, size.height * 0.33), Offset(size.width, size.height * 0.33), paint);
-    canvas.drawLine(Offset(0, size.height * 0.66), Offset(size.width, size.height * 0.66), paint);
+    canvas.drawLine(
+      Offset(0, size.height * 0.33),
+      Offset(size.width, size.height * 0.33),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(0, size.height * 0.66),
+      Offset(size.width, size.height * 0.66),
+      paint,
+    );
 
     // Vertical dividing tracks
-    canvas.drawLine(Offset(size.width * 0.33, 0), Offset(size.width * 0.33, size.height), paint);
-    canvas.drawLine(Offset(size.width * 0.66, 0), Offset(size.width * 0.66, size.height), paint);
+    canvas.drawLine(
+      Offset(size.width * 0.33, 0),
+      Offset(size.width * 0.33, size.height),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.66, 0),
+      Offset(size.width * 0.66, size.height),
+      paint,
+    );
   }
 
   @override

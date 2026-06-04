@@ -124,4 +124,39 @@ void main() {
     expect(find.byType(CombatScreen), findsOneWidget);
     gameEngine.dispose();
   });
+
+  testWidgets('Test entering combat from Normal game (const CombatScreen()) does not crash', (WidgetTester tester) async {
+    final gameState = GameState();
+    final gameEngine = GameEngine(gameState);
+    addTearDown(() => gameEngine.dispose());
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<GameState>.value(value: gameState),
+          Provider<GameEngine>.value(value: gameEngine),
+        ],
+        child: const AbominationApp(),
+      ),
+    );
+
+    // Complete loading screen
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+
+    // Push const CombatScreen() simulating normal game mode transition
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => const CombatScreen(),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Verify no crash occurred and CombatScreen is still active
+    expect(find.byType(CombatScreen), findsOneWidget);
+    gameEngine.dispose();
+  });
 }

@@ -71,8 +71,8 @@ void main() {
       
       // Drain AP so we don't hit maxAP (10.0) during the test tick
       // Spawn Rats (costs 3 AP) twice:
-      manager.spawnUnit(CombatUnitFactory.createRatsUnit(), CombatSide.player);
-      manager.spawnUnit(CombatUnitFactory.createRatsUnit(), CombatSide.player);
+      manager.spawnUnit(CombatUnitFactory.createRatsUnit(), CombatSide.player, y: 30.0);
+      manager.spawnUnit(CombatUnitFactory.createRatsUnit(), CombatSide.player, y: 30.0);
       
       final apStartOverdrive = manager.actionPoints; // 4.0
       expect(apStartOverdrive, 4.0);
@@ -92,6 +92,43 @@ void main() {
       expect(manager.isCombatActive, isFalse);
       expect(manager.isVictory, isFalse);
       expect(manager.isDefeat, isFalse);
+    });
+
+    test('isValidPlacementForTroop checks top/bottom lanes correctly off-center', () {
+      // Starting zone limit is 0.2 * 300 = 60.0. Let's test with worldX = 75.0 (outside starting zone)
+      // 1. Relocate the spawned Alphonse (from setUp) to top lane at x: 90.0, y: 30.0
+      final playerUnit = manager.combatants.firstWhere((c) => c.npc.isPlayer);
+      playerUnit.x = 90.0;
+      playerUnit.y = 30.0;
+
+      // - Top lane summoning behind Alphonse at x: 75.0, y: 30.0 (exact center) is valid
+      expect(manager.isValidPlacementForTroop(75.0, 30.0), isTrue);
+      // - Top lane summoning off-center near edge at x: 75.0, y: 10.0 is valid
+      expect(manager.isValidPlacementForTroop(75.0, 10.0), isTrue);
+      // - Top lane summoning ahead of Alphonse at x: 110.0, y: 30.0 is invalid
+      expect(manager.isValidPlacementForTroop(110.0, 30.0), isFalse);
+
+      // - Bottom lane summoning at x: 75.0, y: 110.0 (exact center) is invalid (no unit in bottom half)
+      expect(manager.isValidPlacementForTroop(75.0, 110.0), isFalse);
+      // - Bottom lane summoning off-center at x: 75.0, y: 135.0 is invalid
+      expect(manager.isValidPlacementForTroop(75.0, 135.0), isFalse);
+
+      // 2. Now spawn a player unit in the starting zone (x: 10.0, y: 110.0) and move it to x: 100.0, y: 110.0
+      final peasant = CombatUnitFactory.createMilitia();
+      manager.spawnUnit(peasant, CombatSide.player, x: 10.0, y: 110.0);
+      final peasantUnit = manager.combatants.firstWhere((c) => c.npc.id == peasant.id);
+      peasantUnit.x = 100.0;
+      peasantUnit.y = 110.0;
+
+      // Move player character to bottom lane to allow summoning into the bottom channel
+      playerUnit.y = 110.0;
+
+      // - Bottom lane summoning behind unit at x: 75.0, y: 110.0 (exact center) is now valid
+      expect(manager.isValidPlacementForTroop(75.0, 110.0), isTrue);
+      // - Bottom lane summoning off-center near bottom edge at x: 75.0, y: 135.0 is now valid
+      expect(manager.isValidPlacementForTroop(75.0, 135.0), isTrue);
+      // - Bottom lane summoning ahead of unit at x: 120.0, y: 110.0 is invalid
+      expect(manager.isValidPlacementForTroop(120.0, 110.0), isFalse);
     });
   });
 }

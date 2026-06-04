@@ -34,9 +34,11 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
   };
   final List<String> _escortIds = [];
   bool _isInitialized = false;
+  final Map<String, TextEditingController> _controllers = {};
 
   void _initializeDefaults(List<NPC> npcs) {
     if (_isInitialized) return;
+    if (npcs.isEmpty) return;
     _isInitialized = true;
 
     // Default traveler: Alphonse (player)
@@ -60,6 +62,14 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
   }
 
   @override
+  void dispose() {
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<GameState>(
       builder: (context, state, child) {
@@ -73,7 +83,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
           backgroundColor: const Color(0xFF1E1A15),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           child: Container(
-            width: 450,
+            width: 580,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B), width: 1),
@@ -130,18 +140,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
 
                   // Resource Selector
                   _sectionHeader("PACK SUPPLIES"),
-                  ...(() {
-                    // Dynamically pre-populate all owned items in the selected pack
-                    for (var key in state.resources.keys) {
-                      if (key != 'meals') {
-                        _selectedResources.putIfAbsent(key, () => 0);
-                      }
-                    }
-                    
-                    return _selectedResources.keys
-                        .where((key) => (state.resources[key] ?? 0) > 0 || key == 'funds')
-                        .map((res) => _buildResourceSlider(state, res));
-                  })(),
+                  _buildResourceLedger(state),
 
                   const SizedBox(height: 24),
 
@@ -333,48 +332,269 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
     );
   }
 
-  Widget _buildResourceSlider(GameState state, String res) {
-    final maxAvailable = state.resources[res] ?? 0;
+  String _getItemMeasure(String type) {
+    switch (type.toLowerCase()) {
+      case 'funds':
+        return 'Francs';
+      case 'meals':
+        return 'Portions';
+      case 'eggs':
+        return 'Eggs';
+      case 'wood':
+        return 'Logs';
+      case 'meat':
+        return 'Cuts';
+      case 'cabbage':
+        return 'Heads';
+      case 'timber':
+        return 'Beams';
+      case 'fertilizer':
+        return 'Sacks';
+      default:
+        return 'Units';
+    }
+  }
+
+  double _getItemWeight(String type) {
+    switch (type.toLowerCase()) {
+      case 'funds':
+        return 0.01;
+      case 'meals':
+        return 0.50;
+      case 'eggs':
+        return 0.05;
+      case 'wood':
+        return 2.0;
+      case 'meat':
+        return 1.0;
+      case 'cabbage':
+        return 0.50;
+      case 'timber':
+        return 5.0;
+      case 'fertilizer':
+        return 3.0;
+      default:
+        return 0.10;
+    }
+  }
+
+  Widget _headerCell(String label, {required int flex, Alignment alignment = Alignment.centerLeft}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        alignment: alignment,
+        child: Text(
+          label,
+          style: GoogleFonts.playfairDisplay(
+            color: const Color(0xFFC4B89B).withOpacity(0.5),
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dataCell(String label, {required int flex, bool isBold = false, Alignment alignment = Alignment.centerLeft}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        alignment: alignment,
+        child: Text(
+          label,
+          style: isBold
+              ? GoogleFonts.oswald(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 12,
+                )
+              : GoogleFonts.oldStandardTt(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 12,
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _ledgerButton(String label, VoidCallback? onPressed) {
+    return SizedBox(
+      width: 32,
+      height: 26,
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          backgroundColor: const Color(0xFF2C251E),
+          foregroundColor: const Color(0xFFE5D5B0),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: const Color(0xFFC4B89B).withOpacity(0.3)),
+          ),
+          disabledForegroundColor: const Color(0xFFC4B89B).withOpacity(0.15),
+          disabledBackgroundColor: Colors.transparent,
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.oldStandardTt(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResourceLedger(GameState state) {
+    // Dynamically pre-populate all owned items in the selected pack
+    for (var key in state.resources.keys) {
+      if (key != 'meals') {
+        _selectedResources.putIfAbsent(key, () => 0);
+        _controllers.putIfAbsent(key, () => TextEditingController(text: (_selectedResources[key] ?? 0).toString()));
+      }
+    }
+    _controllers.putIfAbsent('funds', () => TextEditingController(text: (_selectedResources['funds'] ?? 0).toString()));
+
+    final resourceKeys = _selectedResources.keys
+        .where((key) => (state.resources[key] ?? 0) > 0 || key == 'funds')
+        .toList();
+
+    if (resourceKeys.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        child: Text(
+          "NO SUPPLIES AVAILABLE",
+          style: GoogleFonts.oldStandardTt(
+            color: const Color(0xFFC4B89B).withOpacity(0.5),
+            fontSize: 12,
+          ),
+        ),
+      );
+    }
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              res.toUpperCase(),
-              style: GoogleFonts.oldStandardTt(
-                color: Colors.white70,
-                fontSize: 11,
-              ),
-            ),
-            Text(
-              "${_selectedResources[res]?.round()} / ${maxAvailable.round()}",
-              style: GoogleFonts.oldStandardTt(
-                color: const Color(0xFFC4B89B),
-                fontSize: 11,
-              ),
-            ),
+            _headerCell("ITEM", flex: 3),
+            _headerCell("MEASURE", flex: 2),
+            _headerCell("WGT/UNIT", flex: 2),
+            _headerCell("AVAIL", flex: 2, alignment: Alignment.center),
+            _headerCell("TO BRING", flex: 6, alignment: Alignment.center),
           ],
         ),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: const Color(0xFFC4B89B),
-            inactiveTrackColor: Colors.white10,
-            thumbColor: const Color(0xFFC4B89B),
-            overlayColor: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-            trackHeight: 2,
-          ),
-          child: Slider(
-            value: _selectedResources[res]!.toDouble(),
-            min: 0,
-            max: maxAvailable.toDouble() > 0 ? maxAvailable.toDouble() : 1,
-            onChanged: maxAvailable > 0
-                ? (val) {
-                    setState(() => _selectedResources[res] = val.round());
-                  }
-                : null,
-          ),
-        ),
+        const SizedBox(height: 4),
+        Divider(color: const Color(0xFFC4B89B).withOpacity(0.2), height: 1),
+        const SizedBox(height: 8),
+
+        // List
+        ...resourceKeys.map((res) {
+          final maxAvailable = state.resources[res] ?? 0;
+          final selected = _selectedResources[res]?.toInt() ?? 0;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              children: [
+                _dataCell(res.toUpperCase(), flex: 3, isBold: true),
+                _dataCell(_getItemMeasure(res), flex: 2),
+                _dataCell("${_getItemWeight(res).toStringAsFixed(2)}kg", flex: 2),
+                _dataCell(maxAvailable.round().toString(), flex: 2, alignment: Alignment.center),
+                Expanded(
+                  flex: 6,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Remove All
+                      _ledgerButton("<<", selected > 0 ? () {
+                        setState(() {
+                          _selectedResources[res] = 0;
+                          _controllers[res]?.text = "0";
+                        });
+                      } : null),
+                      const SizedBox(width: 4),
+                      // Remove 1
+                      _ledgerButton("<", selected > 0 ? () {
+                        setState(() {
+                          final newVal = selected - 1;
+                          _selectedResources[res] = newVal;
+                          _controllers[res]?.text = newVal.toString();
+                        });
+                      } : null),
+                      const SizedBox(width: 4),
+                      // Input field
+                      Container(
+                        width: 40,
+                        height: 26,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          border: Border.all(
+                            color: const Color(0xFFC4B89B).withOpacity(0.3),
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _controllers[res],
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.oswald(
+                            color: const Color(0xFFE5D5B0),
+                            fontSize: 12,
+                          ),
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.zero,
+                            isDense: true,
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (val) {
+                            if (val.isEmpty) {
+                              setState(() {
+                                _selectedResources[res] = 0;
+                              });
+                              return;
+                            }
+                            final parsed = int.tryParse(val);
+                            if (parsed != null) {
+                              final clamped = parsed.clamp(0, maxAvailable.toInt());
+                              if (clamped != parsed) {
+                                _controllers[res]?.text = clamped.toString();
+                                _controllers[res]?.selection = TextSelection.fromPosition(
+                                  TextPosition(offset: _controllers[res]!.text.length),
+                                );
+                              }
+                              setState(() {
+                                _selectedResources[res] = clamped;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Add 1
+                      _ledgerButton(">", selected < maxAvailable ? () {
+                        setState(() {
+                          final newVal = selected + 1;
+                          _selectedResources[res] = newVal;
+                          _controllers[res]?.text = newVal.toString();
+                        });
+                      } : null),
+                      const SizedBox(width: 4),
+                      // Add All
+                      _ledgerButton(">>", selected < maxAvailable ? () {
+                        setState(() {
+                          final newVal = maxAvailable.toInt();
+                          _selectedResources[res] = newVal;
+                          _controllers[res]?.text = newVal.toString();
+                        });
+                      } : null),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }

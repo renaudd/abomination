@@ -387,12 +387,15 @@ class StudyScreen extends StatelessWidget {
                             size: 14,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            recipe.name.toUpperCase(),
-                            style: GoogleFonts.playfairDisplay(
-                              color: const Color(0xFFE5D5B0),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              recipe.name.toUpperCase(),
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFE5D5B0),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

@@ -42,6 +42,8 @@ class EncounterDialog extends StatelessWidget {
           .join(', ');
     }
 
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return PopScope(
       canPop: false, // Must resolve the encounter
       child: KeyboardListener(
@@ -117,134 +119,142 @@ class EncounterDialog extends StatelessWidget {
         },
         child: Dialog(
           backgroundColor: Colors.transparent,
-        child: Container(
-          width: 450,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1612),
-            border: Border.all(color: const Color(0xFFC4B89B), width: 2),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.8),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                encounter.title.toUpperCase(),
-                style: GoogleFonts.oldStandardTt(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.redAccent,
-                  letterSpacing: 2,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                encounter.description,
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 16,
-                  color: const Color(0xFFE5D5B0),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (encounter.demands.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    border: Border.all(color: Colors.white24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 450,
+              maxHeight: screenHeight * 0.95,
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1612),
+                border: Border.all(color: const Color(0xFFC4B89B), width: 2),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.8),
+                    blurRadius: 20,
+                    spreadRadius: 5,
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'DEMANDS',
-                        style: GoogleFonts.oldStandardTt(
-                          color: Colors.white54,
-                          fontSize: 12,
-                          letterSpacing: 1,
-                        ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      encounter.title.toUpperCase(),
+                      style: GoogleFonts.oldStandardTt(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                        letterSpacing: 2,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        demandsText,
-                        style: GoogleFonts.oldStandardTt(
-                          color: canPay ? Colors.green : Colors.red,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      encounter.description,
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 14,
+                        color: const Color(0xFFE5D5B0),
+                        height: 1.4,
                       ),
-                      if (!canPay)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            'Insufficient resources in party inventory.',
-                            style: GoogleFonts.oldStandardTt(
-                              color: Colors.redAccent,
-                              fontSize: 12,
+                    ),
+                    const SizedBox(height: 16),
+                    if (encounter.demands.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'DEMANDS',
+                              style: GoogleFonts.oldStandardTt(
+                                color: Colors.white54,
+                                fontSize: 12,
+                                letterSpacing: 1,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              demandsText,
+                              style: GoogleFonts.oldStandardTt(
+                                color: canPay ? Colors.green : Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (!canPay)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  'Insufficient resources in party inventory.',
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: Colors.redAccent,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(height: 16),
                     ],
-                  ),
+                    
+                    // Actions
+                    if (encounter.demands.isNotEmpty) ...[
+                      _DialogButton(
+                        label: 'SATISFY DEMANDS',
+                        enabled: canPay,
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          state.resolveEncounterPayDemand(encounter.demands);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    _DialogButton(
+                      label: 'ATTEMPT TO FLEE',
+                      enabled: true,
+                      onPressed: () {
+                        final escaped = state.resolveEncounterFlee();
+                        if (!escaped) {
+                          state.startCombatEncounter();
+                          Navigator.of(context).pop();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const CombatScreen()),
+                          );
+                        } else {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _DialogButton(
+                      label: 'FIGHT',
+                      enabled: true,
+                      isPrimary: true,
+                      onPressed: () {
+                        state.startCombatEncounter();
+                        Navigator.of(context).pop();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const CombatScreen()),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-              ],
-              
-              // Actions
-              if (encounter.demands.isNotEmpty)
-                _DialogButton(
-                  label: 'SATISFY DEMANDS',
-                  enabled: canPay,
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    state.resolveEncounterPayDemand(encounter.demands);
-                  },
-                ),
-              const SizedBox(height: 12),
-              _DialogButton(
-                label: 'ATTEMPT TO FLEE',
-                enabled: true,
-                onPressed: () {
-                  final escaped = state.resolveEncounterFlee();
-                  if (!escaped) {
-                    state.startCombatEncounter();
-                    Navigator.of(context).pop();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const CombatScreen()),
-                    );
-                  } else {
-                    Navigator.of(context).pop();
-                  }
-                },
               ),
-              const SizedBox(height: 12),
-              _DialogButton(
-                label: 'FIGHT',
-                enabled: true,
-                isPrimary: true,
-                onPressed: () {
-                  state.startCombatEncounter();
-                  Navigator.of(context).pop();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CombatScreen()),
-                  );
-                },
-              ),
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -285,7 +295,7 @@ class _DialogButton extends StatelessWidget {
                   : const Color(0xFFC4B89B),
           width: 1,
         ),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       onPressed: enabled ? onPressed : null,

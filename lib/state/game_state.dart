@@ -15395,6 +15395,353 @@ class GameState extends ChangeNotifier {
       }
     }
   }
+
+  DragDropResult? resolveDragAndDropAction(NPC npc, Room room) {
+    if (!room.isRestored) {
+      if (room.name == 'Excavation Node') {
+        return DragDropResult(action: TaskType.excavate, targetRoomId: room.id);
+      }
+      return DragDropResult(action: TaskType.restoreRoom, targetRoomId: room.id);
+    }
+    if (room.isUnderConstruction) {
+      return DragDropResult(action: TaskType.construction, targetRoomId: room.id);
+    }
+
+    switch (room.type) {
+      case RoomType.toilet:
+        if (npc.digestion > 50.0) {
+          return DragDropResult(action: TaskType.useToilet, targetRoomId: room.id);
+        } else if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        } else {
+          return DragDropResult(action: TaskType.washHands, targetRoomId: room.id);
+        }
+
+      case RoomType.kitchen:
+        // 1. Cook next enqueued meal
+        if (_cookingQueue.isNotEmpty) {
+          return DragDropResult(action: TaskType.cook, targetRoomId: room.id);
+        }
+        // 2. Clean room if dirty
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        // 3. Clean dirty dishes in the manor (if any)
+        final hasDirtyDishes = (resources['dirty_dishes'] ?? 0) > 0 ||
+            _rooms.any((r) => r.isRestored && r.inventory.any((item) => item.type == 'dirty_dishes' || item.id == 'dirty_dish'));
+        if (hasDirtyDishes) {
+          return DragDropResult(action: TaskType.cleanDish, targetRoomId: room.id);
+        }
+        // 4. Prepare default meal
+        final allRecipes = KitchenService.getAvailableRecipes();
+        final nonGenericRecipes = allRecipes.where((r) => r.id != 'protein_mistery_stew' && r.id != 'fried_generic_meat').toList();
+        String? foundRecipeId;
+        for (var r in nonGenericRecipes) {
+          if (getPrepareableCopies(r) > 0) {
+            foundRecipeId = r.id;
+            break;
+          }
+        }
+        if (foundRecipeId != null) {
+          addToCookingQueue(foundRecipeId);
+          return DragDropResult(action: TaskType.cook, targetRoomId: room.id);
+        }
+        // Check if grilled generic protein (fried_generic_meat) can be made
+        final genericProtein = allRecipes.firstWhereOrNull((r) => r.id == 'fried_generic_meat');
+        if (genericProtein != null && getPrepareableCopies(genericProtein) > 0) {
+          addToCookingQueue('fried_generic_meat');
+          return DragDropResult(action: TaskType.cook, targetRoomId: room.id);
+        }
+        // Perform ingredient prep [collect eggs, harvest produce]
+        // Collect eggs
+        final coop = _rooms.firstWhereOrNull((r) => r.id == 'chicken_coop' && r.isRestored);
+        if (coop != null && coop.inventory.any((i) => i.type == 'eggs' || i.type == 'fertilized_egg')) {
+          return DragDropResult(action: TaskType.collectEggs, targetRoomId: coop.id);
+        }
+        // Harvest produce
+        final harvestableField = _rooms.firstWhereOrNull((r) =>
+            r.isRestored &&
+            (r.type == RoomType.field || r.type == RoomType.garden || r.type == RoomType.greenhouse) &&
+            _crops.any((c) => c.roomId == r.id && c.isHarvestable));
+        if (harvestableField != null) {
+          return DragDropResult(action: TaskType.harvestCrops, targetRoomId: harvestableField.id);
+        }
+        // Butcher a creature/resident rodent > valuable animal > resident
+        final rodents = butcheryTargets.where((t) {
+          final id = t['id'].toString().toLowerCase();
+          final name = t['name'].toString().toLowerCase();
+          return id.contains('rat') || id.contains('bat') || id.contains('rodent') ||
+                 name.contains('rat') || name.contains('bat') || name.contains('rodent');
+        }).toList();
+        if (rodents.isNotEmpty) {
+          final t = rodents.first;
+          addToCookingQueue('butcher_generic', targetId: t['id'], targetName: t['name']);
+          return DragDropResult(action: TaskType.cook, targetRoomId: room.id);
+        }
+        final valuableAnimals = butcheryTargets.where((t) {
+          final id = t['id'].toString().toLowerCase();
+          final name = t['name'].toString().toLowerCase();
+          final isChicken = _chickens.any((c) => c.id == t['id']) || name.contains('chicken');
+          final isOtherAnimal = id.contains('cow') || id.contains('pig') || id.contains('cattle') || id.contains('sheep') || id.contains('goat') ||
+                                name.contains('cow') || name.contains('pig') || name.contains('cattle') || name.contains('sheep') || name.contains('goat');
+          final isSpecimen = inventory.any((item) => item.id == t['id'] && item.category == ItemCategory.specimen);
+          return isChicken || isOtherAnimal || isSpecimen;
+        }).toList();
+        if (valuableAnimals.isNotEmpty) {
+          final t = valuableAnimals.first;
+          addToCookingQueue('butcher_generic', targetId: t['id'], targetName: t['name']);
+          return DragDropResult(action: TaskType.cook, targetRoomId: room.id);
+        }
+        final residents = butcheryTargets.where((t) {
+          final residentNpc = _npcs.firstWhereOrNull((n) => n.id == t['id']);
+          return residentNpc != null && residentNpc.isResident && !residentNpc.isPlayer;
+        }).toList();
+        if (residents.isNotEmpty) {
+          final t = residents.first;
+          addToCookingQueue('butcher_generic', targetId: t['id'], targetName: t['name']);
+          return DragDropResult(action: TaskType.cook, targetRoomId: room.id);
+        }
+        return null;
+
+      case RoomType.study:
+        if (_researchQueue.isNotEmpty) {
+          return DragDropResult(action: TaskType.research, targetRoomId: room.id);
+        }
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        if (npc.isResident && npc.status != NPCStatus.zombie && (npc.stats['intellect'] ?? 5) >= 3) {
+          return DragDropResult(action: TaskType.research, targetRoomId: room.id);
+        }
+        return null;
+
+      case RoomType.field:
+        final roomCrops = _crops.where((c) => c.roomId == room.id).toList();
+        if (roomCrops.any((c) => c.isHarvestable)) {
+          return DragDropResult(action: TaskType.harvestCrops, targetRoomId: room.id);
+        }
+        final isWateringEnqueued = _taskService.activeTasks.any(
+          (t) => t.type == TaskType.waterCrops && t.targetId == room.id,
+        ) || _npcs.any(
+          (n) => n.intentQueue.any(
+            (i) => i.action == TaskType.waterCrops && i.targetRoomId == room.id,
+          ),
+        );
+        if (roomCrops.isNotEmpty && roomCrops.first.moistureLevel < 0.70 && !isWateringEnqueued) {
+          return DragDropResult(action: TaskType.waterCrops, targetRoomId: room.id);
+        }
+        if (roomCrops.isNotEmpty) {
+          return DragDropResult(action: TaskType.careForCrops, targetRoomId: room.id);
+        }
+        if (room.tilledAmount < 1.0) {
+          return DragDropResult(action: TaskType.tillSoil, targetRoomId: room.id);
+        }
+        if (room.fertilizedAmount < 1.0) {
+          return DragDropResult(action: TaskType.fertilizeSoil, targetRoomId: room.id);
+        }
+        // plant crops
+        final minSeeds = room.tilledAmount >= 0.9 ? 10.0 : 5.0;
+        final availableSeedTypes = CropType.values.where((type) {
+          String seedId;
+          if (type == CropType.grain) {
+            seedId = 'grain';
+          } else if (type == CropType.mushroom) {
+            seedId = 'mushroom_spores';
+          } else {
+            seedId = 'seeds_${type.name}';
+          }
+          return (resources[seedId] ?? 0.0) >= minSeeds;
+        }).toList();
+        if (availableSeedTypes.isNotEmpty) {
+          final favoriteCrop = availableSeedTypes.firstWhereOrNull((type) {
+            final typeName = type.name.toLowerCase();
+            final snakeTypeName = typeName.replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)!.toLowerCase()}');
+            return npc.diet.favoriteFoods.any((food) {
+              final foodLower = food.toLowerCase();
+              return foodLower.contains(typeName) || foodLower.contains(snakeTypeName) ||
+                     (type == CropType.fabaBean && foodLower.contains('faba')) ||
+                     (type == CropType.greenBean && foodLower.contains('green_bean')) ||
+                     (type == CropType.grain && foodLower.contains('grain'));
+            });
+          });
+          if (favoriteCrop != null) {
+            return DragDropResult(action: TaskType.plantCrops, targetRoomId: room.id, recipeId: favoriteCrop.name);
+          }
+          final cultivatedTypes = _crops.map((c) => c.type).toSet();
+          final uncultivatedTypes = availableSeedTypes.where((type) => !cultivatedTypes.contains(type)).toList();
+          if (uncultivatedTypes.isNotEmpty) {
+            final selected = (List<CropType>.from(uncultivatedTypes)..shuffle(Random())).first;
+            return DragDropResult(action: TaskType.plantCrops, targetRoomId: room.id, recipeId: selected.name);
+          }
+          final selected = (List<CropType>.from(availableSeedTypes)..shuffle(Random())).first;
+          return DragDropResult(action: TaskType.plantCrops, targetRoomId: room.id, recipeId: selected.name);
+        }
+        return null;
+
+      case RoomType.garden:
+      case RoomType.greenhouse:
+        final roomCrops = _crops.where((c) => c.roomId == room.id).toList();
+        if (roomCrops.any((c) => c.isHarvestable)) {
+          return DragDropResult(action: TaskType.harvestCrops, targetRoomId: room.id);
+        }
+        final isWateringEnqueued = _taskService.activeTasks.any(
+          (t) => t.type == TaskType.waterCrops && t.targetId == room.id,
+        ) || _npcs.any(
+          (n) => n.intentQueue.any(
+            (i) => i.action == TaskType.waterCrops && i.targetRoomId == room.id,
+          ),
+        );
+        if (roomCrops.isNotEmpty && roomCrops.first.moistureLevel < 0.70 && !isWateringEnqueued) {
+          return DragDropResult(action: TaskType.waterCrops, targetRoomId: room.id);
+        }
+        if (roomCrops.isNotEmpty) {
+          return DragDropResult(action: TaskType.careForCrops, targetRoomId: room.id);
+        }
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        final hasRefineable = (resources['cannabis_buds'] ?? 0) >= 2 ||
+                              (resources['tobacco_leaves'] ?? 0) >= 2 ||
+                              (resources['hallucinogenic_mushrooms'] ?? 0) >= 2;
+        if (hasRefineable) {
+          return DragDropResult(action: TaskType.refinePlantFungus, targetRoomId: room.id);
+        }
+        return null;
+
+      case RoomType.chickenCoop:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        if (room.inventory.any((i) => i.type == 'eggs' || i.type == 'fertilized_egg')) {
+          return DragDropResult(action: TaskType.collectEggs, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.guardCoop, targetRoomId: room.id);
+
+      case RoomType.laboratory:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        if (npc.isResident && npc.status != NPCStatus.zombie && (npc.stats['intellect'] ?? 5) >= 3) {
+          return DragDropResult(action: TaskType.experiment, targetRoomId: room.id);
+        }
+        return null;
+
+      case RoomType.operatingRoom:
+      case RoomType.dentalClinic:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        if (room.type == RoomType.dentalClinic) {
+          return DragDropResult(action: TaskType.dentalWork, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.operation, targetRoomId: room.id);
+
+      case RoomType.library:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        if (npc.isResident && npc.status != NPCStatus.zombie && (npc.stats['intellect'] ?? 5) >= 3) {
+          return DragDropResult(action: TaskType.study, targetRoomId: room.id);
+        }
+        return null;
+
+      case RoomType.brewery:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.brew, targetRoomId: room.id);
+
+      case RoomType.distillery:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.distill, targetRoomId: room.id);
+
+      case RoomType.workshop:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        if ((resources['wood'] ?? 0) >= 10) {
+          return DragDropResult(action: TaskType.processTimber, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.manufacturing, targetRoomId: room.id);
+
+      case RoomType.granary:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.harvestGrain, targetRoomId: room.id);
+
+      case RoomType.bedroom:
+      case RoomType.butlerQuarters:
+      case RoomType.attic:
+      case RoomType.basement:
+      case RoomType.tenement:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.rest, targetRoomId: room.id);
+
+      case RoomType.diningRoom:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.eat, targetRoomId: room.id);
+
+      case RoomType.entryway:
+        final guestNpc = _npcs.firstWhereOrNull((n) => !n.isResident && n.currentRoomId == 'entryway' && n.metadata['isGreeted'] != true);
+        if (guestNpc != null) {
+          return DragDropResult(action: TaskType.greetGuest, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.defendManor, targetRoomId: room.id);
+
+      case RoomType.unused:
+        if ((resources['funds'] ?? 0) >= 20 && (resources['wood'] ?? 0) >= 15 && (resources['timber'] ?? 0) >= 5) {
+          return DragDropResult(action: TaskType.setupBrewery, targetRoomId: room.id);
+        }
+        if ((resources['funds'] ?? 0) >= 30 && (resources['wood'] ?? 0) >= 10 && (resources['timber'] ?? 0) >= 10) {
+          return DragDropResult(action: TaskType.setupDistillery, targetRoomId: room.id);
+        }
+        if ((resources['funds'] ?? 0) >= 15 && (resources['wood'] ?? 0) >= 20 && (resources['timber'] ?? 0) >= 5) {
+          return DragDropResult(action: TaskType.setupWorkshop, targetRoomId: room.id);
+        }
+        if ((resources['funds'] ?? 0) >= 10 && (resources['wood'] ?? 0) >= 15 && (resources['timber'] ?? 0) >= 10) {
+          return DragDropResult(action: TaskType.setupGranary, targetRoomId: room.id);
+        }
+        return null;
+
+      case RoomType.mine:
+      case RoomType.oilWell:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        return DragDropResult(action: TaskType.mining, targetRoomId: room.id);
+
+      default:
+        if (room.dirtiness > 0.05) {
+          return DragDropResult(action: TaskType.cleanRoom, targetRoomId: room.id);
+        }
+        final defaultAct = room.defaultAction;
+        if (defaultAct != null) {
+          return DragDropResult(action: defaultAct, targetRoomId: room.id);
+        }
+        return null;
+    }
+  }
+}
+
+class DragDropResult {
+  final TaskType action;
+  final String targetRoomId;
+  final String? recipeId;
+  final String? targetName;
+
+  DragDropResult({
+    required this.action,
+    required this.targetRoomId,
+    this.recipeId,
+    this.targetName,
+  });
 }
 
 class AnnouncementList extends ListBase<String> {

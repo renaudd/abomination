@@ -248,8 +248,10 @@ class _ResidentBarState extends State<ResidentBar> {
   Widget _buildTaskInfoColumn(Color inkColor) {
     final intents = widget.npc.intentQueue;
     final state = Provider.of<GameState>(context, listen: false);
-    final activeTask = widget.npc.activeTaskId != null 
-        ? state.activeTasks.firstWhereOrNull((t) => t.id == widget.npc.activeTaskId) 
+    final activeTask = widget.npc.activeTaskId != null
+        ? state.activeTasks.firstWhereOrNull(
+            (t) => t.id == widget.npc.activeTaskId,
+          )
         : null;
 
     if (intents.isEmpty && activeTask == null) {
@@ -281,27 +283,36 @@ class _ResidentBarState extends State<ResidentBar> {
     int remaining = 0;
     String topLabel = "";
     String roomName = "";
-    
+
     if (activeTask != null) {
       remaining = activeTask.minutesRemaining;
       topLabel = activeTask.type.displayName;
       if (activeTask.type == TaskType.eat && activeTask.targetName != null) {
         topLabel = "EAT ${activeTask.targetName}";
-      } else if (activeTask.type == TaskType.cook && activeTask.recipeId != null) {
+      } else if (activeTask.type == TaskType.cook &&
+          activeTask.recipeId != null) {
         topLabel = "COOK ${activeTask.recipeId!.replaceAll('_', ' ')}";
       }
-      final tRoom = state.rooms.firstWhereOrNull((r) => r.id == activeTask.targetId);
+      final tRoom = state.rooms.firstWhereOrNull(
+        (r) => r.id == activeTask.targetId,
+      );
       roomName = tRoom?.name ?? "Manor";
     } else {
       final activeIntent = intents.first;
-      remaining = (activeIntent.minutesRemaining ?? activeIntent.expectedDurationMin).toInt();
+      remaining =
+          (activeIntent.minutesRemaining ?? activeIntent.expectedDurationMin)
+              .toInt();
       topLabel = activeIntent.action.displayName;
-      if (activeIntent.action == TaskType.eat && activeIntent.targetName != null) {
+      if (activeIntent.action == TaskType.eat &&
+          activeIntent.targetName != null) {
         topLabel = "EAT ${activeIntent.targetName}";
-      } else if (activeIntent.action == TaskType.cook && activeIntent.recipeId != null) {
+      } else if (activeIntent.action == TaskType.cook &&
+          activeIntent.recipeId != null) {
         topLabel = "COOK ${activeIntent.recipeId!.replaceAll('_', ' ')}";
       }
-      final tRoom = state.rooms.firstWhereOrNull((r) => r.id == activeIntent.targetRoomId);
+      final tRoom = state.rooms.firstWhereOrNull(
+        (r) => r.id == activeIntent.targetRoomId,
+      );
       roomName = tRoom?.name ?? "Manor";
     }
 
@@ -333,7 +344,10 @@ class _ResidentBarState extends State<ResidentBar> {
           const SizedBox(height: 8),
           if (activeTask != null)
             _buildActionLabel(
-              (widget.npc.currentRoomId != activeTask.targetId && widget.npc.targetRoomId != null) ? "Traveling to:" : "Active Task:",
+              (widget.npc.currentRoomId != activeTask.targetId &&
+                      widget.npc.targetRoomId != null)
+                  ? "Traveling to:"
+                  : "Active Task:",
               topLabel,
               roomName,
               inkColor,
@@ -341,28 +355,37 @@ class _ResidentBarState extends State<ResidentBar> {
             )
           else if (intents.isNotEmpty)
             _buildActionLabel(
-              (widget.npc.currentRoomId != intents.first.targetRoomId && widget.npc.targetRoomId != null) ? "Traveling to:" : "Pending Task:",
+              (widget.npc.currentRoomId != intents.first.targetRoomId &&
+                      widget.npc.targetRoomId != null)
+                  ? "Traveling to:"
+                  : "Pending Task:",
               topLabel,
               roomName,
               inkColor,
               isDim: false,
             ),
-          ...intents.where((i) => activeTask == null || activeTask.intentId != i.id).map((intent) {
-            final room = state.rooms.firstWhereOrNull((r) => r.id == intent.targetRoomId);
-            String iLabel = intent.action.displayName;
-            if (intent.action == TaskType.eat && intent.targetName != null) {
-              iLabel = "EAT ${intent.targetName}";
-            } else if (intent.action == TaskType.cook && intent.recipeId != null) {
-              iLabel = "COOK ${intent.recipeId!.replaceAll('_', ' ')}";
-            }
-            return _buildActionLabel(
-              "Enqueued:",
-              iLabel,
-              room?.name ?? "Manor",
-              inkColor,
-              isDim: true,
-            );
-          }),
+          ...intents
+              .where((i) => activeTask == null || activeTask.intentId != i.id)
+              .map((intent) {
+                final room = state.rooms.firstWhereOrNull(
+                  (r) => r.id == intent.targetRoomId,
+                );
+                String iLabel = intent.action.displayName;
+                if (intent.action == TaskType.eat &&
+                    intent.targetName != null) {
+                  iLabel = "EAT ${intent.targetName}";
+                } else if (intent.action == TaskType.cook &&
+                    intent.recipeId != null) {
+                  iLabel = "COOK ${intent.recipeId!.replaceAll('_', ' ')}";
+                }
+                return _buildActionLabel(
+                  "Enqueued:",
+                  iLabel,
+                  room?.name ?? "Manor",
+                  inkColor,
+                  isDim: true,
+                );
+              }),
         ],
       ),
     );
@@ -375,8 +398,12 @@ class _ResidentBarState extends State<ResidentBar> {
     Color inkColor, {
     bool isDim = false,
   }) {
-    final displayValue = (value.startsWith("EAT") || value == "EAT" || value.startsWith("COOK") || value.startsWith("RESEARCH")) 
-        ? value 
+    final displayValue =
+        (value.startsWith("EAT") ||
+            value == "EAT" ||
+            value.startsWith("COOK") ||
+            value.startsWith("RESEARCH"))
+        ? value
         : (roomName != null ? "$value ($roomName)" : value);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
@@ -688,7 +715,7 @@ class _ResidentBarState extends State<ResidentBar> {
 
   Widget _buildRelationsTab(Color inkColor, GameState state) {
     final residents = state.npcs.where((n) => n.isResident).toList();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -838,7 +865,9 @@ class _ResidentBarState extends State<ResidentBar> {
   }
 
   Widget _buildContractTab(Color inkColor, GameState state) {
-    final contract = state.contracts.firstWhereOrNull((c) => c.npcId == widget.npc.id && c.isActive);
+    final contract = state.contracts.firstWhereOrNull(
+      (c) => c.npcId == widget.npc.id && c.isActive,
+    );
 
     if (contract == null) {
       return Center(
@@ -854,9 +883,11 @@ class _ResidentBarState extends State<ResidentBar> {
     }
 
     // 1. Fetch current terms
-    final int currentSalary = contract.terms['salary'] as int? ?? widget.npc.monthlySalary;
+    final int currentSalary =
+        contract.terms['salary'] as int? ?? widget.npc.monthlySalary;
     final int currentHours = contract.terms['hours'] as int? ?? 40;
-    final bool currentRoomAndBoard = contract.terms['roomAndBoard'] as bool? ?? true;
+    final bool currentRoomAndBoard =
+        contract.terms['roomAndBoard'] as bool? ?? true;
 
     // 2. Initialize buffered states if null
     _modifiedSalary ??= currentSalary;
@@ -864,15 +895,18 @@ class _ResidentBarState extends State<ResidentBar> {
     _modifiedRoomAndBoard ??= currentRoomAndBoard;
 
     // 3. Check if terms changed
-    final bool hasChanged = _modifiedSalary != currentSalary ||
+    final bool hasChanged =
+        _modifiedSalary != currentSalary ||
         _modifiedHours != currentHours ||
         _modifiedRoomAndBoard != currentRoomAndBoard;
 
     // 4. Calculate favorability score (Heuristics: +salary, -hours, +roomAndBoard)
     final int salaryDiff = _modifiedSalary! - currentSalary;
     final int hoursDiff = currentHours - _modifiedHours!;
-    final int roomAndBoardDiff = (_modifiedRoomAndBoard! ? 10 : 0) - (currentRoomAndBoard ? 10 : 0);
-    final int favorabilityScore = salaryDiff * 6 + hoursDiff * 2 + roomAndBoardDiff;
+    final int roomAndBoardDiff =
+        (_modifiedRoomAndBoard! ? 10 : 0) - (currentRoomAndBoard ? 10 : 0);
+    final int favorabilityScore =
+        salaryDiff * 6 + hoursDiff * 2 + roomAndBoardDiff;
 
     return SingleChildScrollView(
       child: Column(
@@ -888,7 +922,7 @@ class _ResidentBarState extends State<ResidentBar> {
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Render Current Terms Summary
           Container(
             width: double.infinity,
@@ -912,20 +946,32 @@ class _ResidentBarState extends State<ResidentBar> {
                 const SizedBox(height: 6),
                 Text(
                   "• Monthly Salary: $currentSalary CHF",
-                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.oldStandardTt(
+                    color: inkColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   "• Weekly Duty: $currentHours Hours / Week",
-                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.oldStandardTt(
+                    color: inkColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   "• Lodging Arrangement: ${currentRoomAndBoard ? 'Room and Board' : 'Room Only'}",
-                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.oldStandardTt(
+                    color: inkColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
           ),
-          
+
           const SizedBox(height: 20),
 
           // INTERACTIVE TERMS MODIFIERS
@@ -957,9 +1003,16 @@ class _ResidentBarState extends State<ResidentBar> {
                 height: 25,
                 child: TextField(
                   keyboardType: TextInputType.number,
-                  style: GoogleFonts.oldStandardTt(color: inkColor, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.oldStandardTt(
+                    color: inkColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 4,
+                    ),
                     border: OutlineInputBorder(borderRadius: BorderRadius.zero),
                   ),
                   onChanged: (value) {
@@ -1025,18 +1078,27 @@ class _ResidentBarState extends State<ResidentBar> {
             initialValue: _modifiedRoomAndBoard,
             decoration: InputDecoration(
               labelText: "BOARDING & PROVISIONS",
-              labelStyle: GoogleFonts.oswald(color: inkColor.withValues(alpha: 0.5), fontSize: 9),
+              labelStyle: GoogleFonts.oswald(
+                color: inkColor.withValues(alpha: 0.5),
+                fontSize: 9,
+              ),
               border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
             ),
             dropdownColor: const Color(0xFFE5D5B0),
             items: const [
               DropdownMenuItem(
                 value: true,
-                child: Text("ROOM & BOARD (FULL PROVISIONS)", style: TextStyle(fontSize: 11)),
+                child: Text(
+                  "ROOM & BOARD (FULL PROVISIONS)",
+                  style: TextStyle(fontSize: 11),
+                ),
               ),
               DropdownMenuItem(
                 value: false,
-                child: Text("ROOM ONLY (NO FOOD ALLOWANCE)", style: TextStyle(fontSize: 11)),
+                child: Text(
+                  "ROOM ONLY (NO FOOD ALLOWANCE)",
+                  style: TextStyle(fontSize: 11),
+                ),
               ),
             ],
             onChanged: (value) {
@@ -1063,17 +1125,20 @@ class _ResidentBarState extends State<ResidentBar> {
 
                         if (favorabilityScore > 0) {
                           responseTitle = "PLEASED AND RETRIBUTIVE";
-                          responseDesc = "${widget.npc.name} is expected to be highly pleased by these generous terms, improving loyalty and admiration.";
+                          responseDesc =
+                              "${widget.npc.name} is expected to be highly pleased by these generous terms, improving loyalty and admiration.";
                           responseColor = Colors.green[700]!;
                           isFavorable = true;
                         } else if (favorabilityScore < 0) {
                           responseTitle = "DEJECTED AND OFFENDED";
-                          responseDesc = "${widget.npc.name} is expected to be upset by these reduced terms, degrading respect and triggering intense resentment.";
+                          responseDesc =
+                              "${widget.npc.name} is expected to be upset by these reduced terms, degrading respect and triggering intense resentment.";
                           responseColor = Colors.red[800]!;
                           isFavorable = false;
                         } else {
                           responseTitle = "INDIFFERENT";
-                          responseDesc = "${widget.npc.name} will accept these neutral terms with professional indifference.";
+                          responseDesc =
+                              "${widget.npc.name} will accept these neutral terms with professional indifference.";
                           responseColor = Colors.grey[800]!;
                           isFavorable = true;
                         }
@@ -1085,7 +1150,11 @@ class _ResidentBarState extends State<ResidentBar> {
                               backgroundColor: const Color(0xFF1E1A15),
                               title: Text(
                                 "PROPOSE COVENANT MODIFICATION?",
-                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold),
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFE5D5B0),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               content: Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -1093,20 +1162,35 @@ class _ResidentBarState extends State<ResidentBar> {
                                 children: [
                                   Text(
                                     "ARE YOU SOLEMNLY SURE?",
-                                    style: GoogleFonts.oswald(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.oswald(
+                                      color: Colors.white38,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
                                     responseDesc,
-                                    style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 12, height: 1.4),
+                                    style: GoogleFonts.oldStandardTt(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                      height: 1.4,
+                                    ),
                                   ),
                                   const SizedBox(height: 16),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     color: responseColor.withValues(alpha: 0.2),
                                     child: Text(
                                       "NPC RESPONSE: $responseTitle",
-                                      style: GoogleFonts.oswald(color: responseColor, fontSize: 9, fontWeight: FontWeight.bold),
+                                      style: GoogleFonts.oswald(
+                                        color: responseColor,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1114,7 +1198,13 @@ class _ResidentBarState extends State<ResidentBar> {
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
-                                  child: Text("CANCEL", style: GoogleFonts.playfairDisplay(color: Colors.white38, fontSize: 12)),
+                                  child: Text(
+                                    "CANCEL",
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: Colors.white38,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () {
@@ -1124,8 +1214,12 @@ class _ResidentBarState extends State<ResidentBar> {
                                       'roomAndBoard': _modifiedRoomAndBoard,
                                       'interval': 'monthly',
                                     };
-                                    state.proposeContractModification(contract.id, newTerms, isFavorable: isFavorable);
-                                    
+                                    state.proposeContractModification(
+                                      contract.id,
+                                      newTerms,
+                                      isFavorable: isFavorable,
+                                    );
+
                                     // Reset buffer state
                                     setState(() {
                                       _modifiedSalary = null;
@@ -1134,15 +1228,26 @@ class _ResidentBarState extends State<ResidentBar> {
                                     });
 
                                     Navigator.pop(context); // Close dialog
-                                    
+
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text("${widget.npc.name}'s covenant terms have been modified."),
-                                        backgroundColor: const Color(0xFFC4B89B),
+                                        content: Text(
+                                          "${widget.npc.name}'s covenant terms have been modified.",
+                                        ),
+                                        backgroundColor: const Color(
+                                          0xFFC4B89B,
+                                        ),
                                       ),
                                     );
                                   },
-                                  child: Text("PROPOSE MODIFICATION", style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontWeight: FontWeight.bold, fontSize: 12)),
+                                  child: Text(
+                                    "PROPOSE MODIFICATION",
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: const Color(0xFFC4B89B),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
                               ],
                             );
@@ -1154,25 +1259,41 @@ class _ResidentBarState extends State<ResidentBar> {
                   backgroundColor: inkColor,
                   foregroundColor: const Color(0xFFE5D5B0),
                   disabledBackgroundColor: inkColor.withValues(alpha: 0.1),
-                  disabledForegroundColor: const Color(0xFFE5D5B0).withValues(alpha: 0.2),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  disabledForegroundColor: const Color(
+                    0xFFE5D5B0,
+                  ).withValues(alpha: 0.2),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
                 ),
-                child: Text("Propose Modification", style: GoogleFonts.oswald(fontSize: 10)),
+                child: Text(
+                  "Propose Modification",
+                  style: GoogleFonts.oswald(fontSize: 10),
+                ),
               ),
               const SizedBox(width: 8),
               OutlinedButton(
                 onPressed: () {
                   state.terminateContract(contract.id);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Contract with ${widget.npc.name} terminated.")),
+                    SnackBar(
+                      content: Text(
+                        "Contract with ${widget.npc.name} terminated.",
+                      ),
+                    ),
                   );
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.red[800],
                   side: BorderSide(color: Colors.red[800]!),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
                 ),
-                child: Text("Terminate", style: GoogleFonts.oswald(fontSize: 10)),
+                child: Text(
+                  "Terminate",
+                  style: GoogleFonts.oswald(fontSize: 10),
+                ),
               ),
             ],
           ),
@@ -1240,10 +1361,9 @@ class _ResidentBarState extends State<ResidentBar> {
   }
 
   Widget _buildProficienciesList(Color inkColor, GameState state) {
-    final proficiencies = widget.npc.proficiencies.entries
-        .where((e) => e.value > 0)
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final proficiencies =
+        widget.npc.proficiencies.entries.where((e) => e.value > 0).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     if (proficiencies.isEmpty) {
       return Column(
@@ -1288,7 +1408,8 @@ class _ResidentBarState extends State<ResidentBar> {
           spacing: 8,
           runSpacing: 8,
           children: proficiencies.map((e) {
-            final level = widget.npc.metadata['proficiency_level_${e.key}'] as int? ?? 0;
+            final level =
+                widget.npc.metadata['proficiency_level_${e.key}'] as int? ?? 0;
             String levelText = "NOVICE";
             if (level >= 8) {
               levelText = "EXPERT";
@@ -1307,9 +1428,7 @@ class _ResidentBarState extends State<ResidentBar> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.03),
-                border: Border.all(
-                  color: inkColor.withValues(alpha: 0.1),
-                ),
+                border: Border.all(color: inkColor.withValues(alpha: 0.1)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1352,7 +1471,7 @@ class _ResidentBarState extends State<ResidentBar> {
                       color: inkColor.withValues(alpha: 0.6),
                       minHeight: 2,
                     ),
-                  ]
+                  ],
                 ],
               ),
             );
@@ -1487,9 +1606,17 @@ class _ResidentBarState extends State<ResidentBar> {
                               padding: EdgeInsets.zero,
                               itemCount: widget.npc.consumptionLog.length,
                               itemBuilder: (context, idx) {
-                                final log = widget.npc.consumptionLog[widget.npc.consumptionLog.length - 1 - idx];
-                                final itemName = log['itemName'] as String? ?? 'Meal';
-                                final timestamp = log['timestamp'] as String? ?? '';
+                                final log =
+                                    widget.npc.consumptionLog[widget
+                                            .npc
+                                            .consumptionLog
+                                            .length -
+                                        1 -
+                                        idx];
+                                final itemName =
+                                    log['itemName'] as String? ?? 'Meal';
+                                final timestamp =
+                                    log['timestamp'] as String? ?? '';
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 2),
                                   child: Text(
@@ -1537,7 +1664,9 @@ class _ResidentBarState extends State<ResidentBar> {
                                 if (oldIndex < newIndex) {
                                   newIndex -= 1;
                                 }
-                                final queue = List<NPCIntent>.from(widget.npc.intentQueue);
+                                final queue = List<NPCIntent>.from(
+                                  widget.npc.intentQueue,
+                                );
                                 final item = queue.removeAt(oldIndex);
                                 queue.insert(newIndex, item);
                                 state.updateIntentQueue(widget.npc.id, queue);
@@ -1563,30 +1692,45 @@ class _ResidentBarState extends State<ResidentBar> {
                                       Expanded(
                                         child: Builder(
                                           builder: (context) {
-                                            final room = state.rooms.firstWhereOrNull((r) => r.id == intent.targetRoomId);
-                                            final roomName = room?.name ?? "Mansion";
-                                            final displayDesc = (intent.action == TaskType.restoreRoom)
-                                                ? "RESTORE $roomName".toUpperCase()
-                                                : "${intent.action.displayName} IN $roomName".toUpperCase();
-                                                
+                                            final room = state.rooms
+                                                .firstWhereOrNull(
+                                                  (r) =>
+                                                      r.id ==
+                                                      intent.targetRoomId,
+                                                );
+                                            final roomName =
+                                                room?.name ?? "Mansion";
+                                            final displayDesc =
+                                                (intent.action ==
+                                                    TaskType.restoreRoom)
+                                                ? "RESTORE $roomName"
+                                                      .toUpperCase()
+                                                : "${intent.action.displayName} IN $roomName"
+                                                      .toUpperCase();
+
                                             return Text(
                                               displayDesc,
-                                              style: GoogleFonts.playfairDisplay(
-                                                color: idx == 0
-                                                    ? inkColor
-                                                    : inkColor.withValues(
-                                                        alpha: 0.3,
-                                                      ),
-                                                fontSize: 10,
-                                                fontWeight: idx == 0
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                              ),
+                                              style:
+                                                  GoogleFonts.playfairDisplay(
+                                                    color: idx == 0
+                                                        ? inkColor
+                                                        : inkColor.withValues(
+                                                            alpha: 0.3,
+                                                          ),
+                                                    fontSize: 10,
+                                                    fontWeight: idx == 0
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal,
+                                                  ),
                                             );
-                                          }
+                                          },
                                         ),
                                       ),
-                                      const Icon(Icons.drag_handle, size: 12, color: Colors.black12),
+                                      const Icon(
+                                        Icons.drag_handle,
+                                        size: 12,
+                                        color: Colors.black12,
+                                      ),
                                     ],
                                   ),
                                 );

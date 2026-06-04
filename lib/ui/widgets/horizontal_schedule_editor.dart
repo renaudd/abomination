@@ -164,6 +164,7 @@ class HorizontalScheduleEditor extends StatelessWidget {
               duration: block.duration,
               startHourIndex: block.startHourIndex,
             ),
+            dragAnchorStrategy: (draggable, context, position) => const Offset(50, 20),
             feedback: Material(
               color: Colors.transparent,
               child: Container(

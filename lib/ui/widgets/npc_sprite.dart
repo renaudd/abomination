@@ -50,6 +50,7 @@ class NpcSprite extends StatelessWidget {
       top: currentPos.dy - 30, // Position above the "floor"
       child: Draggable<NPC>(
         data: npc,
+        dragAnchorStrategy: (draggable, context, position) => const Offset(20, 20),
         feedback: Opacity(
           opacity: 0.7,
           child: _buildSpriteContent(context, isWalking, isDragging: true),

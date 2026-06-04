@@ -15,6 +15,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../../models/active_business.dart';
 import '../widgets/hamlet_hotspot.dart';
@@ -179,11 +180,13 @@ class _HamletScreenState extends State<HamletScreen> {
   Widget _buildReturnSection(BuildContext context) {
     return Consumer<GameState>(
       builder: (context, state, child) {
-        final traveler = state.npcs.firstWhere(
+        final traveler = state.npcs.firstWhereOrNull(
           (n) =>
               n.worldDestinationId == 'hamlet' && n.worldTravelProgress >= 1.0,
-          orElse: () => throw Exception("No one here"),
         );
+        if (traveler == null) {
+          return const SizedBox.shrink();
+        }
         return Center(
           child: ElevatedButton.icon(
             onPressed: () {

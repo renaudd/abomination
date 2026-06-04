@@ -542,6 +542,22 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     );
   }
 
+  Duration _getTravelAnimationDuration(GameSpeed speed) {
+    switch (speed) {
+      case GameSpeed.slow:
+        return const Duration(milliseconds: 960);
+      case GameSpeed.normal:
+        return const Duration(milliseconds: 80);
+      case GameSpeed.fast:
+        return const Duration(milliseconds: 16);
+      case GameSpeed.superFast:
+        return const Duration(milliseconds: 16);
+      case GameSpeed.paused:
+      default:
+        return Duration.zero;
+    }
+  }
+
   List<Widget> _buildTravelingNpcs(BuildContext context) {
     final state = Provider.of<GameState>(context);
     final travelingNpcs = state.npcs.where(
@@ -555,11 +571,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
     // Map location IDs to exact screen coordinates based on original LocationTile centers (hamlet shifted right by 120px)
     final Map<String, Offset> coords = {
-      'manor': const Offset(355, 160),
-      'mountains': const Offset(215, 60),
-      'hamlet': const Offset(845, 496),
-      'woods': const Offset(1065, 100),
-      'river': const Offset(475, 496),
+      'manor': const Offset(300, 160),
+      'mountains': const Offset(160, 60),
+      'hamlet': const Offset(790, 496),
+      'woods': const Offset(1110, 100),
+      'river': const Offset(520, 496),
     };
 
     // Group NPCs into parties based on their travel metadata
@@ -569,6 +585,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           "${npc.worldDestinationId}_${npc.worldDepartureId}_${npc.worldTravelProgress.toStringAsFixed(3)}";
       parties.putIfAbsent(key, () => []).add(npc);
     }
+
+    final duration = _getTravelAnimationDuration(state.speed);
 
     return parties.entries.map((entry) {
       final party = entry.value;
@@ -597,7 +615,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           ? "${leader.name.toUpperCase()} + ${party.length - 1} OTHERS"
           : leader.name.toUpperCase();
 
-      return Positioned(
+      return AnimatedPositioned(
+        duration: duration,
+        curve: Curves.linear,
         top: currentPos.dy - 12,
         left: currentPos.dx - 12,
         child: Column(

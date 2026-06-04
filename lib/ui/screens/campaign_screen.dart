@@ -62,6 +62,14 @@ class _CampaignScreenState extends State<CampaignScreen> {
         final newAtk = stats.attack * (1.0 + atkLvl * 0.15);     // +15% ATK per level
         final newSpeed = stats.speed * (1.0 + spdLvl * 0.05);     // +5% Attack Speed per level
 
+        final lvl = 1 + [hpLvl, atkLvl, spdLvl].reduce((a, b) => a > b ? a : b);
+        double distance = stats.distance;
+        double rangedRange = stats.rangedRange;
+        if (id == 'cannoneer' && lvl >= 6) {
+          distance = 23.0;
+          rangedRange = 23.0;
+        }
+
         return npc.copyWith(
           combatStats: stats.copyWith(
             maxHealth: newMaxHp,
@@ -70,6 +78,8 @@ class _CampaignScreenState extends State<CampaignScreen> {
             speed: newSpeed,
             meleeDamage: stats.meleeDamage * (1.0 + atkLvl * 0.15),
             rangedDamage: stats.rangedDamage * (1.0 + atkLvl * 0.15),
+            distance: distance,
+            rangedRange: rangedRange,
           ),
         );
       }

@@ -108,7 +108,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     // Verify repair indicator is present
-    expect(find.text('REPAIR LEFT TOWER'), findsOneWidget);
+    expect(find.text('REPAIR WEST TOWER'), findsOneWidget);
 
     // Assign worker via service
     service.assignTowerRepair('tower_1', 'peasant');
@@ -231,5 +231,109 @@ void main() {
     expect(find.text('IRON-TIPPED SPEAR (RECOMMENDED)'), findsOneWidget);
     expect(find.text('FLINTLOCK RIFLE'), findsNothing);
     expect(find.text('HEAVY SPIKED MACE'), findsNothing);
+  });
+
+  testWidgets('Test humanoid-only repair and End Turn verification', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final gameState = GameState();
+    final service = SurvivalService(1);
+    service.initializeNewSurvivalGame('alphonse', SurvivalDifficulty.elementary);
+
+    // Give some cards: Giles (humanoid) and undead_rats (non-humanoid)
+    service.progress!.playerDeckIds.clear();
+    service.progress!.playerDeckIds.addAll(['giles', 'undead_rats']);
+    service.progress!.towerDamaged['tower_1'] = 1.0; // West tower is destroyed
+
+    // 1. Verify we cannot assign undead_rats to tower repair
+    final assignUndead = service.assignTowerRepair('tower_1', 'undead_rats');
+    expect(assignUndead, false); // Rejected!
+    expect(service.progress!.towerRepairWorkers['tower_1']?.contains('undead_rats') ?? false, false);
+
+    // 2. Verify we can assign Giles
+    final assignHuman = service.assignTowerRepair('tower_1', 'giles');
+    expect(assignHuman, true); // Allowed!
+    expect(service.progress!.towerRepairWorkers['tower_1']!.contains('giles'), true);
+
+    // Unassign Giles to test the End Turn verification
+    service.unassignUnitEverywhere('giles', force: true);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<GameState>.value(value: gameState),
+          ChangeNotifierProvider<SurvivalService>.value(value: service),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SurvivalEstateMapScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Tap "End Turn" button (represented in footer)
+    final endTurnFinder = find.text('END TURN & FIGHT');
+    expect(endTurnFinder, findsOneWidget);
+    await tester.tap(endTurnFinder);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Verify warning dialog is displayed because Giles is unassigned and tower is damaged
+    expect(find.text('REPAIRS REQUIRED'), findsOneWidget);
+
+    // Tap "AUTO-ASSIGN WORKERS" in warning dialog
+    final autoAssignFinder = find.text('AUTO-ASSIGN WORKERS');
+    expect(autoAssignFinder, findsOneWidget);
+    await tester.tap(autoAssignFinder);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Verify Giles is now automatically assigned to the tower repair
+    expect(service.progress!.towerRepairWorkers['tower_1']!.contains('giles'), true);
+  });
+
+  testWidgets('Test support cards (like Artillery Barrage) with 0 speed stats render correctly without division by zero', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final gameState = GameState();
+    final service = SurvivalService(1);
+    service.initializeNewSurvivalGame('alphonse', SurvivalDifficulty.elementary);
+
+    // Add artillery_barrage to player deck
+    service.progress!.playerDeckIds.add('artillery_barrage');
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<GameState>.value(value: gameState),
+          ChangeNotifierProvider<SurvivalService>.value(value: service),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SurvivalEstateMapScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Verify map is rendered and no division by zero exception is thrown
+    expect(find.byType(SurvivalEstateMapScreen), findsOneWidget);
   });
 }

@@ -493,8 +493,14 @@ class CombatManager extends ChangeNotifier {
       final double upgradedRange = 20.0 + (rangeLvl * 2.5) + (indRangeLvl * 1.5);
       final double upgradedSpeed = (2.0 - (speedLvl * 0.2) - (indSpeedLvl * 0.1)).clamp(0.4, 2.0);
 
+      final String tName = isSurvivalMode
+          ? (towerId == 'tower_1'
+              ? 'West Watchtower'
+              : (towerId == 'tower_2' ? 'Middle Watchtower' : 'East Watchtower'))
+          : '$playerTowerName ${lane + 1}';
+
       spawnTower(
-        name: '$playerTowerName ${lane + 1}',
+        name: tName,
         side: CombatSide.player,
         lane: lane,
         maxHealth: upgradedMaxHealth,
@@ -540,7 +546,29 @@ class CombatManager extends ChangeNotifier {
 
   void prepareDeck(List<NPC> units) {
     _deck.clear();
-    _deck.addAll(units);
+    for (var u in units) {
+      if (u.id == 'butler' || u.role == 'Butler') {
+        final musketeer = CombatUnitFactory.createMusketeers();
+        final abilities = List<Ability>.from(u.abilities);
+        if (!abilities.any((a) => a.id == 'execute_low_health')) {
+          abilities.add(const Ability(
+            id: 'execute_low_health',
+            name: 'Execute',
+            type: AbilityType.special,
+            description: 'Instantly kills an enemy unit with less than 50% health.',
+            chargeTime: 7.0,
+            effectData: {'threshold': 0.5, 'type': 'interrupt_kill'},
+          ));
+        }
+        final transformed = u.copyWith(
+          combatStats: musketeer.combatStats,
+          abilities: abilities,
+        );
+        _deck.add(transformed);
+      } else {
+        _deck.add(u);
+      }
+    }
     _deck.shuffle();
     _hand.clear();
     _pendingRecycleSquads.clear();
@@ -648,6 +676,8 @@ class CombatManager extends ChangeNotifier {
   }
 
   bool isValidPlacement(NPC npc, double worldX, double worldY) {
+    if (npc.isPlayer) return true;
+
     final stats = npc.combatStats;
     if (stats == null) return false;
 
@@ -658,6 +688,20 @@ class CombatManager extends ChangeNotifier {
         npc.name.contains('Caltrops') ||
         npc.name.contains('Totem') ||
         stats.unitType == UnitType.support;
+
+    // If 2 channels, block non-support units in the central 30% band of the battlefield
+    if (_map.laneCenters.length == 2 && !isSupport && worldX > 0.2 * _map.width) {
+      final centerY = _map.height / 2.0;
+      final halfBand = _map.height * 0.15;
+      if (worldY >= centerY - halfBand && worldY <= centerY + halfBand) {
+        return false;
+      }
+    }
+
+    // Always allow casting anywhere in the player's back 20% of the field
+    if (worldX <= 0.2 * _map.width) {
+      return true;
+    }
 
     if (isSupport) {
       final alphonse = _combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
@@ -688,24 +732,57 @@ class CombatManager extends ChangeNotifier {
     if (worldX > 0.8 * _map.width) return false;
     final double startingZoneLimit = 0.2 * _map.width;
     if (worldX > startingZoneLimit) {
-      int targetLaneIdx = -1;
-      for (int i = 0; i < _map.laneCenters.length; i++) {
-        if ((worldY - _map.laneCenters[i]).abs() <= 18.0) {
-          targetLaneIdx = i;
-          break;
-        }
-      }
-      if (targetLaneIdx == -1) return false;
-
-      double maxPlayerXOnLane = 0.0;
-      for (final c in _combatants) {
-        if (c.side == CombatSide.player && !c.isDead && !c.isTower) {
-          if ((c.y - _map.laneCenters[targetLaneIdx]).abs() <= 18.0) {
-            maxPlayerXOnLane = max(maxPlayerXOnLane, c.x);
+      if (_map.laneCenters.length == 2) {
+        final alphonse = _combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
+        if (alphonse != null) {
+          final double centerY = _map.height / 2.0;
+          final bool playerOnTop = alphonse.y < centerY;
+          final bool targetOnTop = worldY < centerY;
+          if (playerOnTop != targetOnTop) {
+            return false;
           }
         }
       }
-      if (worldX > maxPlayerXOnLane) return false;
+
+      int targetLaneIdx = 0;
+      double minDist = 99999.0;
+      for (int i = 0; i < _map.laneCenters.length; i++) {
+        final dist = (worldY - _map.laneCenters[i]).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          targetLaneIdx = i;
+        }
+      }
+
+      // Determine checking region of the field based on the lane index
+      double minY;
+      double maxY;
+
+      if (_map.laneCenters.length == 3 && targetLaneIdx == 1) {
+        // Middle lane for 3-lane maps: middle 40% of the field
+        minY = 0.3 * _map.height;
+        maxY = 0.7 * _map.height;
+      } else {
+        // Top lane(s) correspond to the top half, bottom lane(s) to the bottom half (with a 5-unit center line buffer)
+        if (targetLaneIdx == 0) {
+          minY = 0.0;
+          maxY = _map.height / 2.0 + 5.0;
+        } else {
+          minY = _map.height / 2.0 - 5.0;
+          maxY = _map.height;
+        }
+      }
+
+      bool hasUnitAhead = false;
+      for (final c in _combatants) {
+        if (c.side == CombatSide.player && !c.isDead && !c.isTower) {
+          if (c.y >= minY && c.y <= maxY && c.x >= worldX) {
+            hasUnitAhead = true;
+            break;
+          }
+        }
+      }
+      if (!hasUnitAhead) return false;
     }
     return true;
   }
@@ -713,6 +790,11 @@ class CombatManager extends ChangeNotifier {
   bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y, bool isAiLeader = false}) {
     final stats = npc.combatStats;
     if (stats == null) return false;
+
+    if (side == CombatSide.player) {
+      final playerCharacter = _combatants.firstWhereOrNull((c) => c.npc.isPlayer);
+      if (playerCharacter != null && playerCharacter.isDead) return false;
+    }
 
     // 1. Calculate proposed spawn location
     final double spawnX = x ?? (side == CombatSide.player ? (_fieldScroll + 15.0) : (_fieldScroll + 190.0));
@@ -798,9 +880,15 @@ class CombatManager extends ChangeNotifier {
         final double followerX = (spawnX + (side == CombatSide.player ? offset.dx : -offset.dx));
         final double followerY = (spawnY + offset.dy).clamp(2.0, _map.height - 2.0);
 
+        final isButlerSquad = npc.id == 'butler' || npc.role == 'Butler';
+        final followerName = isButlerSquad ? 'Musketeer' : '${npc.name} Recruit';
+        final followerAppearance = isButlerSquad
+            ? NPCAppearance.deterministic('Musketeers')
+            : npc.appearance;
+
         final followerNpc = NPC(
           id: '${npc.id}_follower_${i}_${DateTime.now().microsecondsSinceEpoch}',
-          name: '${npc.name} Recruit',
+          name: followerName,
           age: npc.age,
           gender: npc.gender,
           specimenType: npc.specimenType,
@@ -808,7 +896,7 @@ class CombatManager extends ChangeNotifier {
           bodyParts: npc.bodyParts,
           schedule: npc.schedule,
           diet: npc.diet,
-          appearance: npc.appearance,
+          appearance: followerAppearance,
           combatStats: stats.copyWith(unitCount: 1), // Followers themselves represent single entities
           metadata: npc.metadata, // Copy metadata including cardType!
         );
@@ -1563,6 +1651,13 @@ class CombatManager extends ChangeNotifier {
       c.npc = c.npc.copyWith(
         specialCharge: min(1.0, c.npc.specialCharge + chargeInc),
       );
+
+      // Auto-fire special ability if charged and ready (AI ONLY or in Survival Mode for ALL units!)
+      if (c.npc.specialCharge >= 1.0 && (c.side == CombatSide.enemy || isSurvivalMode)) {
+        if (canExecuteSpecial(c.npc.id)) {
+          executeSpecial(c.npc.id);
+        }
+      }
     }
     if (c.npc.isPlayer) {
       c.specialCharge2 = min(1.0, c.specialCharge2 + dt / 25.0);
@@ -1801,6 +1896,68 @@ class CombatManager extends ChangeNotifier {
 
     // 3. Mobile AI Hero (Opponent Leader) Locomotion & Attack AI
     if (c.isAiLeader) {
+      final double healthRatio = stats.health / stats.maxHealth;
+      HealingCauldron? targetCauldron;
+      if (healthRatio < 0.70) {
+        double minCauldronDist = 99999.0;
+        for (final caul in _cauldrons) {
+          if (caul.isAvailable) {
+            final dist = sqrt(pow(caul.x - c.x, 2) + pow(caul.y - c.y, 2));
+            if (dist < 100.0 && dist < minCauldronDist) {
+              minCauldronDist = dist;
+              targetCauldron = caul;
+            }
+          }
+        }
+      }
+
+      if (targetCauldron != null) {
+        // Move towards the healing cauldron instead of attacking or following normal targets
+        double tx = targetCauldron.x;
+        double ty = targetCauldron.y;
+
+        if (isPathObstructed(c.x, c.y, tx, ty)) {
+          double minDist = 99999.0;
+          double myLaneY = _map.laneCenters.first;
+          for (final ly in _map.laneCenters) {
+            final dist = (c.y - ly).abs();
+            if (dist < minDist) {
+              minDist = dist;
+              myLaneY = ly;
+            }
+          }
+          ty = myLaneY;
+        }
+
+        final dx = tx - c.x;
+        final dy = ty - c.y;
+        final len = sqrt(dx * dx + dy * dy);
+
+        double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+        double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+
+        bool inWall = _isPointInWall(nextX, nextY);
+
+        if (!inWall) {
+          c.x = nextX;
+          c.y = nextY;
+        } else {
+          double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+          bool tryXObstructed = _isPointInWall(tryX, c.y);
+          if (!tryXObstructed) {
+            c.x = tryX;
+          }
+
+          double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+          bool tryYObstructed = _isPointInWall(c.x, tryY);
+          if (!tryYObstructed) {
+            c.y = tryY;
+          }
+        }
+        enforceUnitBoundaries(c);
+        return; // Avoid attacking or targeting other characters this frame
+      }
+
       if (targets.isNotEmpty) {
         targets.sort((a, b) {
           final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
@@ -2059,11 +2216,6 @@ class CombatManager extends ChangeNotifier {
       if (c.attackCooldown <= 0) {
         _performAttack(c, target);
         c.attackCooldown = stats.speed * 1.2;
-      }
-
-      // Auto-fire special ability if charged (AI ONLY or in Survival Mode for ALL units!)
-      if (c.npc.specialCharge >= 1.0 && (c.side == CombatSide.enemy || isSurvivalMode)) {
-        executeSpecial(c.npc.id);
       }
     }
 

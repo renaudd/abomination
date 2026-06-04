@@ -120,8 +120,8 @@ class SurvivalProgress {
     this.autoSaveEnabled = true,
     Map<String, int>? factionStandings,
     Map<String, List<String>>? towerRepairWorkers,
-  }) : this.cardUpgrades = cardUpgrades ?? {},
-       this.factionStandings = factionStandings ?? {
+  }) : cardUpgrades = cardUpgrades ?? {},
+       factionStandings = factionStandings ?? {
          'Freemasons': 0,
          'Rosicrucians': 0,
          'Knights Templar': 0,
@@ -134,7 +134,7 @@ class SurvivalProgress {
          'Glarus': 10,
          'Army': 40,
        },
-       this.towerRepairWorkers = towerRepairWorkers ?? {
+       towerRepairWorkers = towerRepairWorkers ?? {
          'tower_1': [],
          'tower_2': [],
          'tower_3': [],

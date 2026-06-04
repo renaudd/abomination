@@ -725,9 +725,10 @@ class Room {
     return "$baseDesc $capabilities$hygieneNote";
   }
 
-  task_service.TaskType get defaultAction {
+  task_service.TaskType? get defaultAction {
     if (!isRestored) return task_service.TaskType.restoreRoom;
     final tasks = availableTasks;
+    if (tasks.isEmpty) return null;
     // Return first task that isn't 'cleanRoom' if possible, otherwise first task
     return tasks.firstWhere(
       (t) => t != task_service.TaskType.cleanRoom,

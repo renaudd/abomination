@@ -34,6 +34,7 @@ import '../../services/arena_save_service.dart';
 import '../widgets/options_dialog.dart';
 import '../../services/combat_unit_service.dart';
 import 'survival_estate_map_screen.dart';
+import 'main_menu_screen.dart';
 
 class CombatScreen extends StatefulWidget {
   final List<NPC>? customPlayerDeck;
@@ -310,13 +311,15 @@ class _CombatScreenState extends State<CombatScreen>
         state.simulationAiDeck!,
       );
     } else {
-      final player = state.npcs.firstWhere((n) => n.isPlayer);
-      final travelingCompanions = state.npcs.where((n) => 
-        !n.isPlayer && 
-        n.worldDestinationId == player.worldDestinationId &&
-        n.worldDepartureId == player.worldDepartureId &&
-        n.worldTravelProgress < 1.0
-      ).toList();
+      final player = state.npcs.firstWhereOrNull((n) => n.isPlayer);
+      final travelingCompanions = player != null
+          ? state.npcs.where((n) => 
+              !n.isPlayer && 
+              n.worldDestinationId == player.worldDestinationId &&
+              n.worldDepartureId == player.worldDepartureId &&
+              n.worldTravelProgress < 1.0
+            ).toList()
+          : <NPC>[];
 
       _combatManager.prepareDeck(travelingCompanions);
     }
@@ -384,13 +387,15 @@ class _CombatScreenState extends State<CombatScreen>
           gameState.updateNpc(updated);
         } else {
           // Alphonse gets vitality boost
-          final stats = npc.combatStats!;
-          final updated = npc.copyWith(
-            combatStats: stats.copyWith(
-              health: min(stats.maxHealth, stats.health + stats.maxHealth * 0.2),
-            ),
-          );
-          gameState.updateNpc(updated);
+          final stats = npc.combatStats;
+          if (stats != null) {
+            final updated = npc.copyWith(
+              combatStats: stats.copyWith(
+                health: min(stats.maxHealth, stats.health + stats.maxHealth * 0.2),
+              ),
+            );
+            gameState.updateNpc(updated);
+          }
         }
       }
       gameState.triggerUpdate();
@@ -950,185 +955,188 @@ class _CombatScreenState extends State<CombatScreen>
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'VICTORY',
-              style: GoogleFonts.oldStandardTt(
-                color: const Color(0xFFD4AF37), // Muted Gold
-                fontWeight: FontWeight.bold,
-                letterSpacing: 8,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'VICTORY',
+                style: GoogleFonts.oldStandardTt(
+                  color: const Color(0xFFD4AF37), // Muted Gold
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 8,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'THE ROAD IS LITTERED WITH THEIR DEFEAT.',
-              style: GoogleFonts.oldStandardTt(
-                color: Colors.white70,
-                fontSize: 14,
+              const SizedBox(height: 8),
+              Text(
+                'THE ROAD IS LITTERED WITH THEIR DEFEAT.',
+                style: GoogleFonts.oldStandardTt(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.yellow.withValues(alpha: 0.3)),
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'SPOILS OF WAR',
-                    style: GoogleFonts.oldStandardTt(
-                      color: Colors.yellow,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (widget.onSurvivalVictory != null) ...[
-                    if (_spoilsCash > 0)
-                      _buildSpoilRow(Icons.monetization_on, '$_spoilsCash CHF', color: Colors.amber.shade700),
-                    if (_spoilsFood > 0)
-                      _buildSpoilRow(Icons.restaurant, '$_spoilsFood FOOD', color: Colors.green.shade700),
-                    if (_spoilsWood > 0)
-                      _buildSpoilRow(Icons.forest, '$_spoilsWood WOOD', color: Colors.brown.shade700),
-                    if (_spoilsIron > 0)
-                      _buildSpoilRow(Icons.construction, '$_spoilsIron IRON', color: Colors.blueGrey.shade600),
-                  ] else ...[
-                    ..._combatManager.accumulatedLoot.entries
-                        .where((e) => e.value > 0)
-                        .map((e) {
-                          final icon = e.key == 'funds'
-                              ? Icons.monetization_on
-                              : Icons.restaurant;
-                          return _buildSpoilRow(
-                            icon,
-                            '${e.value} ${e.key.toUpperCase()}',
-                          );
-                        }),
-                  ],
-                  if (_combatManager.killedEnemies.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'ENEMIES VANQUISHED: ${_combatManager.killedEnemies.length}',
-                      style: GoogleFonts.oldStandardTt(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (widget.onSurvivalVictory != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 40),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
-                  color: Colors.white.withValues(alpha: 0.03),
+                  border: Border.all(color: Colors.yellow.withValues(alpha: 0.3)),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
                 child: Column(
                   children: [
                     Text(
-                      'CARD EXPERIENCE REPORT',
+                      'SPOILS OF WAR',
                       style: GoogleFonts.oldStandardTt(
-                        color: const Color(0xFFD4AF37),
+                        color: Colors.yellow,
                         fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    if (_combatManager.combatExp.isEmpty)
+                    const SizedBox(height: 16),
+                    if (widget.onSurvivalVictory != null) ...[
+                      if (_spoilsCash > 0)
+                        _buildSpoilRow(Icons.monetization_on, '$_spoilsCash CHF', color: Colors.amber.shade700),
+                      if (_spoilsFood > 0)
+                        _buildSpoilRow(Icons.restaurant, '$_spoilsFood FOOD', color: Colors.green.shade700),
+                      if (_spoilsWood > 0)
+                        _buildSpoilRow(Icons.forest, '$_spoilsWood WOOD', color: Colors.brown.shade700),
+                      if (_spoilsIron > 0)
+                        _buildSpoilRow(Icons.construction, '$_spoilsIron IRON', color: Colors.blueGrey.shade600),
+                    ] else ...[
+                      ..._combatManager.accumulatedLoot.entries
+                          .where((e) => e.value > 0)
+                          .map((e) {
+                            final icon = e.key == 'funds'
+                                ? Icons.monetization_on
+                                : Icons.restaurant;
+                            return _buildSpoilRow(
+                              icon,
+                              '${e.value} ${e.key.toUpperCase()}',
+                            );
+                          }),
+                    ],
+                    if (_combatManager.killedEnemies.isNotEmpty) ...[
+                      const SizedBox(height: 16),
                       Text(
-                        'No cards deployed.',
+                        'ENEMIES VANQUISHED: ${_combatManager.killedEnemies.length}',
                         style: GoogleFonts.oldStandardTt(
-                          color: Colors.white54,
+                          color: Colors.white70,
                           fontSize: 14,
                         ),
-                      )
-                    else
-                      ..._combatManager.combatExp.entries.map((entry) {
-                        final cardName = _getCardDisplayName(entry.key);
-                        final double xp = entry.value;
-                        final xpString = xp >= 0 ? '+${xp.toInt()} XP' : '${xp.toInt()} XP';
-                        final color = xp >= 0 ? Colors.green.shade400 : Colors.red.shade400;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '$cardName: ',
-                                style: GoogleFonts.oldStandardTt(
-                                  color: Colors.white70,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              Text(
-                                xpString,
-                                style: GoogleFonts.oswald(
-                                  color: color,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                      ),
+                    ],
                   ],
                 ),
               ),
+              if (widget.onSurvivalVictory != null) ...[
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+                    color: Colors.white.withValues(alpha: 0.03),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'CARD EXPERIENCE REPORT',
+                        style: GoogleFonts.oldStandardTt(
+                          color: const Color(0xFFD4AF37),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_combatManager.combatExp.isEmpty)
+                        Text(
+                          'No cards deployed.',
+                          style: GoogleFonts.oldStandardTt(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
+                        )
+                      else
+                        ..._combatManager.combatExp.entries.map((entry) {
+                          final cardName = _getCardDisplayName(entry.key);
+                          final double xp = entry.value;
+                          final xpString = xp >= 0 ? '+${xp.toInt()} XP' : '${xp.toInt()} XP';
+                          final color = xp >= 0 ? Colors.green.shade400 : Colors.red.shade400;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$cardName: ',
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: Colors.white70,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                Text(
+                                  xpString,
+                                  style: GoogleFonts.oswald(
+                                    color: color,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 48),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.yellow.shade800,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 64,
+                    vertical: 20,
+                  ),
+                  shape: const RoundedRectangleBorder(),
+                ),
+                onPressed: () {
+                  if (widget.onSurvivalVictory != null) {
+                    final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+                    final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
+                    final playerTowerHealth = _getPlayerTowerHealthMap();
+                    widget.onSurvivalVictory!(
+                      destroyedTowersCount,
+                      widget.customAiDeck ?? [],
+                      _spoilsFood,
+                      _spoilsCash,
+                      _spoilsIron,
+                      _spoilsWood,
+                      playerTowerHealth,
+                      _combatManager.combatExp,
+                      context,
+                    );
+                  } else if (widget.onVictory != null) {
+                    Navigator.pop(context);
+                    widget.onVictory!();
+                  } else {
+                    final state = Provider.of<GameState>(context, listen: false);
+                    state.addResources(_combatManager.accumulatedLoot);
+                    state.clearEncounterState();
+                    Navigator.pop(context);
+                  }
+                },
+                child: Text(
+                  'COLLECT & CONTINUE',
+                  style: GoogleFonts.oldStandardTt(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
-            const SizedBox(height: 48),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow.shade800,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 64,
-                  vertical: 20,
-                ),
-                shape: const RoundedRectangleBorder(),
-              ),
-              onPressed: () {
-                if (widget.onSurvivalVictory != null) {
-                  final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
-                  final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
-                  final playerTowerHealth = _getPlayerTowerHealthMap();
-                  widget.onSurvivalVictory!(
-                    destroyedTowersCount,
-                    widget.customAiDeck ?? [],
-                    _spoilsFood,
-                    _spoilsCash,
-                    _spoilsIron,
-                    _spoilsWood,
-                    playerTowerHealth,
-                    _combatManager.combatExp,
-                    context,
-                  );
-                } else if (widget.onVictory != null) {
-                  Navigator.pop(context);
-                  widget.onVictory!();
-                } else {
-                  final state = Provider.of<GameState>(context, listen: false);
-                  state.addResources(_combatManager.accumulatedLoot);
-                  state.clearEncounterState();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text(
-                'COLLECT & CONTINUE',
-                style: GoogleFonts.oldStandardTt(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1363,7 +1371,10 @@ class _CombatScreenState extends State<CombatScreen>
                   onPressed: () {
                     final state = Provider.of<GameState>(context, listen: false);
                     state.clearEncounterState();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+                      (route) => false,
+                    );
                   },
                 ),
               ],
@@ -1378,79 +1389,92 @@ class _CombatScreenState extends State<CombatScreen>
     return Container(
       color: const Color(0xFF2C2E3B).withValues(alpha: 0.95), // Slate/Ash Gray
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'STANDOFF',
-              style: GoogleFonts.oldStandardTt(
-                color: Colors.white,
-                fontSize: 84,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 10,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'STANDOFF',
+                style: GoogleFonts.oldStandardTt(
+                  color: Colors.white,
+                  fontSize: 84,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 10,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'NEITHER SIDE PREVAILED. THE STANDOFF CONTINUES.',
-              style: GoogleFonts.oldStandardTt(
-                color: Colors.white70,
-                fontSize: 14,
+              const SizedBox(height: 8),
+              Text(
+                'NEITHER SIDE PREVAILED. THE STANDOFF CONTINUES.',
+                style: GoogleFonts.oldStandardTt(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
               ),
-            ),
-            const SizedBox(height: 64),
-            if (widget.onSurvivalDraw != null) ...[
-              _DefeatButton(
-                label: 'CONTINUE',
-                onPressed: () {
-                  final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
-                  final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
-                  final playerTowerHealth = _getPlayerTowerHealthMap();
-                  widget.onSurvivalDraw!(
-                    destroyedTowersCount,
-                    widget.customAiDeck ?? [],
-                    playerTowerHealth,
-                    _combatManager.combatExp,
-                    context,
-                  );
-                },
-                primary: true,
-              ),
-            ] else if (widget.onDraw != null || widget.onDefeat != null) ...[
-              _DefeatButton(
-                label: 'CONTINUE',
-                onPressed: () {
-                  Navigator.pop(context);
-                  if (widget.onDraw != null) {
-                    widget.onDraw!();
-                  } else {
-                    widget.onDefeat!();
-                  }
-                },
-                primary: true,
-              ),
-            ] else ...[
-              _DefeatButton(
-                label: 'TRY BATTLE AGAIN',
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CombatScreen()),
-                  );
-                },
-                primary: true,
-              ),
-              const SizedBox(height: 16),
-              _DefeatButton(
-                label: 'RETREAT TO SAFETY',
-                onPressed: () {
-                  final state = Provider.of<GameState>(context, listen: false);
-                  state.clearEncounterState();
-                  Navigator.pop(context);
-                },
-              ),
+              const SizedBox(height: 64),
+              if (widget.onSurvivalDraw != null || widget.onSurvivalDefeat != null) ...[
+                _DefeatButton(
+                  label: 'CONTINUE',
+                  onPressed: () {
+                    final enemyTowers = _combatManager.combatants.where((c) => c.isTower && c.side == CombatSide.enemy);
+                    final destroyedTowersCount = enemyTowers.where((t) => t.isDead).length;
+                    final playerTowerHealth = _getPlayerTowerHealthMap();
+                    if (widget.onSurvivalDraw != null) {
+                      widget.onSurvivalDraw!(
+                        destroyedTowersCount,
+                        widget.customAiDeck ?? [],
+                        playerTowerHealth,
+                        _combatManager.combatExp,
+                        context,
+                      );
+                    } else {
+                      widget.onSurvivalDefeat!(
+                        destroyedTowersCount,
+                        widget.customAiDeck ?? [],
+                        playerTowerHealth,
+                        _combatManager.combatExp,
+                        context,
+                      );
+                    }
+                  },
+                  primary: true,
+                ),
+              ] else if (widget.onDraw != null || widget.onDefeat != null) ...[
+                _DefeatButton(
+                  label: 'CONTINUE',
+                  onPressed: () {
+                    Navigator.pop(context);
+                    if (widget.onDraw != null) {
+                      widget.onDraw!();
+                    } else {
+                      widget.onDefeat!();
+                    }
+                  },
+                  primary: true,
+                ),
+              ] else ...[
+                _DefeatButton(
+                  label: 'TRY BATTLE AGAIN',
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const CombatScreen()),
+                    );
+                  },
+                  primary: true,
+                ),
+                const SizedBox(height: 16),
+                _DefeatButton(
+                  label: 'RETREAT TO SAFETY',
+                  onPressed: () {
+                    final state = Provider.of<GameState>(context, listen: false);
+                    state.clearEncounterState();
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1631,7 +1655,7 @@ class _BattlefieldViewport extends StatelessWidget {
                         final npc = item.npc;
                         if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
                           return Positioned.fill(
-                            key: ValueKey('support_${item.npc.id}'),
+                            key: ValueKey('support_${item.squadId ?? 'tower'}_${item.npc.id}'),
                             child: _ArtilleryVisual(
                               combatant: item,
                               projection: projection,
@@ -1639,7 +1663,7 @@ class _BattlefieldViewport extends StatelessWidget {
                           );
                         } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
                           return Positioned.fill(
-                            key: ValueKey('support_${item.npc.id}'),
+                            key: ValueKey('support_${item.squadId ?? 'tower'}_${item.npc.id}'),
                             child: _TearGasVisual(
                               combatant: item,
                               projection: projection,
@@ -1647,7 +1671,7 @@ class _BattlefieldViewport extends StatelessWidget {
                           );
                         } else if (npc.name.contains('Caltrops')) {
                           return Positioned.fill(
-                            key: ValueKey('support_${item.npc.id}'),
+                            key: ValueKey('support_${item.squadId ?? 'tower'}_${item.npc.id}'),
                             child: _CaltropsVisual(
                               combatant: item,
                               projection: projection,
@@ -1656,7 +1680,7 @@ class _BattlefieldViewport extends StatelessWidget {
                         } else {
                           final pCenter = projection.project(item.x, item.y);
                           return Positioned(
-                            key: ValueKey('support_${item.npc.id}'),
+                            key: ValueKey('support_${item.squadId ?? 'tower'}_${item.npc.id}'),
                             left: pCenter.dx - 22.5,
                             top: pCenter.dy - 45.0,
                             width: 45.0,
@@ -1671,14 +1695,17 @@ class _BattlefieldViewport extends StatelessWidget {
                           );
                         }
                       } else {
-                        final stats = item.npc.combatStats!;
+                        final stats = item.npc.combatStats;
+                        if (stats == null) {
+                          return const SizedBox.shrink();
+                        }
                         final double baseSize = 40.0 * ((stats.radius) / 1.5).clamp(0.5, 2.2);
                         final double boxWidth = baseSize * 1.5;
                         final double boxHeight = baseSize * 2.25;
                         final screenPos = projection.project(item.x, item.y);
 
                         return Positioned(
-                          key: ValueKey('sprite_${item.npc.id}'),
+                          key: ValueKey('sprite_${item.squadId ?? 'tower'}_${item.npc.id}'),
                           left: screenPos.dx - boxWidth / 2,
                           top: screenPos.dy - boxHeight * 0.91,
                           width: boxWidth,
@@ -1824,7 +1851,10 @@ class _CombatantSprite extends StatelessWidget {
         return const SizedBox.shrink();
       }
     }
-    final stats = combatant.npc.combatStats!;
+    final stats = combatant.npc.combatStats;
+    if (stats == null) {
+      return const SizedBox.shrink();
+    }
     final healthPercent = (stats.health / stats.maxHealth).clamp(0.0, 1.0);
     final double opacity = combatant.isDead ? 0.3 : 1.0;
     // Scale based on Y depth
@@ -2454,13 +2484,18 @@ class _UnitCardState extends State<_UnitCard> {
 
   @override
   Widget build(BuildContext context) {
+    final stats = widget.npc.combatStats;
+    if (stats == null) {
+      return const SizedBox.shrink();
+    }
     final manager = Provider.of<CombatManager>(context, listen: false);
-    final cost = widget.npc.combatStats?.cost ?? 0;
+    final cost = stats.cost;
     final canAfford = manager.actionPoints >= cost;
     final screenSizeVal = MediaQuery.of(context).size;
 
     return Draggable<NPC>(
           data: widget.npc,
+          dragAnchorStrategy: (draggable, context, position) => const Offset(10, 10),
           feedback: Material(
             color: Colors.transparent,
             child: Opacity(
@@ -2479,6 +2514,7 @@ class _UnitCardState extends State<_UnitCard> {
           },
           onDragEnd: (details) {
             final screenState = context.findAncestorStateOfType<_CombatScreenState>();
+            final lastLocalPos = screenState?._previewLocalPosition;
             screenState?.clearDragPreview();
 
             final screenSize = screenSizeVal;
@@ -2489,13 +2525,26 @@ class _UnitCardState extends State<_UnitCard> {
               zoomFactor: manager.zoomFactor,
             );
             
-            // Allow dropping anywhere that projects to valid world Y
-            if (details.offset.dy < projection.yNear) {
-              // Compensate for the drag anchor (CharacterBlob is 50x50, anchor is center)
-              // We want the feet (bottom of blob) to match world position.
-              final dragFeetOffset =
-                  details.offset + const Offset(25, 50);
-              final worldPos = projection.unproject(dragFeetOffset);
+            final RenderBox? screenBox = screenState?.context.findRenderObject() as RenderBox?;
+            Offset? localDropPos;
+            if (lastLocalPos != null) {
+              localDropPos = lastLocalPos;
+            } else if (screenBox != null) {
+              final localFeedbackPos = screenBox.globalToLocal(details.offset);
+              localDropPos = localFeedbackPos + const Offset(10, 10);
+            }
+
+            if (localDropPos != null) {
+              final double screenW = screenSize.width;
+              final double screenH = screenSize.height;
+              final double barLeft = screenW - 20 - 492;
+              final double barTop = screenH - 12 - 78;
+
+              final bool insideCardBar = localDropPos.dx >= barLeft && localDropPos.dy >= barTop;
+              final bool insideScreen = localDropPos.dx >= 0 && localDropPos.dx <= screenW && localDropPos.dy >= 0 && localDropPos.dy <= screenH;
+
+              if (insideScreen && !insideCardBar) {
+                final worldPos = projection.unproject(localDropPos);
               final dropX = worldPos.dx;
               final dropY = worldPos.dy;
 
@@ -2522,7 +2571,7 @@ class _UnitCardState extends State<_UnitCard> {
                     widget.npc.name.contains('Tear') ||
                     widget.npc.name.contains('Caltrops') ||
                     widget.npc.name.contains('Totem') ||
-                    (widget.npc.combatStats?.unitType == UnitType.support);
+                    (stats.unitType == UnitType.support);
                 screenState?._showNotification(
                   isSupport
                       ? 'Deployment failed! Out of range or invalid support target.'
@@ -2532,16 +2581,17 @@ class _UnitCardState extends State<_UnitCard> {
                 );
               }
             }
-          },
-          child: GestureDetector(
+          }
+        },
+        child: GestureDetector(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
-              width: 88,
+              width: 84,
               height: 56,
-              margin: const EdgeInsets.only(right: 12),
+              margin: const EdgeInsets.only(right: 10),
               transform: Matrix4.translationValues(0, _isExpanded ? -10 : 0, 0),
               decoration: BoxDecoration(
                 color: const Color(0xFFFDF5E6), // Old Lace/Parchment
@@ -2566,118 +2616,170 @@ class _UnitCardState extends State<_UnitCard> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  SizedBox(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  SizedBox.expand(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Stats & Name (Left)
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                  width: 54,
-                                  height: 10,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      widget.npc.name.toUpperCase(),
-                                      style: GoogleFonts.oldStandardTt(
-                                        color: const Color(0xFF2E1A0A), // Dark Ink
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.1,
-                                      ),
-                                    ),
-                                  ),
+                        // Name row (full width at the top)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(4.0, 1.5, 4.0, 0.0),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 10,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                widget.npc.name.toUpperCase(),
+                                style: GoogleFonts.oldStandardTt(
+                                  color: const Color(0xFF2E1A0A), // Dark Ink
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.1,
                                 ),
-                                const SizedBox(height: 2),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (widget.npc.combatStats?.isFlying == true)
-                                      const Padding(
-                                        padding: EdgeInsets.only(right: 2.0),
-                                        child: Icon(Icons.flutter_dash, size: 8.0, color: Color(0xFF4E342E)),
-                                      ),
-                                    if (widget.npc.combatStats?.trait == CombatTrait.magicImmune)
-                                      const Padding(
-                                        padding: EdgeInsets.only(right: 2.0),
-                                        child: Icon(Icons.block, size: 8.0, color: Color(0xFFC62828)),
-                                      ),
-                                    if (widget.npc.combatStats?.unitType == UnitType.support)
-                                      const Padding(
-                                        padding: EdgeInsets.only(right: 2.0),
-                                        child: Icon(Icons.local_fire_department, size: 8.0, color: Color(0xFFE64A19)),
-                                      ),
-                                  ],
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                        // Damage & Health (Right)
+                        // Subtitle: Range and special indicators
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 4.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                          padding: const EdgeInsets.fromLTRB(4.0, 0.5, 4.0, 0.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (widget.npc.combatStats!.meleeDamage > 0 && widget.npc.combatStats!.rangedDamage > 0)
-                                _buildCombinedCardStat(
-                                  DaggerIcon(color: Colors.deepOrange.shade800, size: 6.5),
-                                  '${widget.npc.combatStats!.meleeDamage.toInt()}',
-                                  Icon(Icons.gps_fixed, size: 6.5, color: Colors.deepOrange.shade800),
-                                  '${widget.npc.combatStats!.rangedDamage.toInt()}',
-                                  Colors.deepOrange.shade800,
-                                )
-                              else ...[
-                                if (widget.npc.combatStats!.meleeDamage > 0 || widget.npc.combatStats!.rangedDamage == 0)
-                                  _buildCardStat(
-                                    DaggerIcon(color: Colors.deepOrange.shade800, size: 7.0),
-                                    '${widget.npc.combatStats!.meleeDamage.toInt() > 0 ? widget.npc.combatStats!.meleeDamage.toInt() : widget.npc.combatStats!.attack.toInt()}',
-                                    Colors.deepOrange.shade800,
-                                  ),
-                                if (widget.npc.combatStats!.rangedDamage > 0) ...[
-                                  if (widget.npc.combatStats!.meleeDamage > 0 || widget.npc.combatStats!.rangedDamage == 0)
-                                    const SizedBox(height: 1.0),
-                                  _buildCardStat(
-                                    Icon(Icons.gps_fixed, size: 7.0, color: Colors.deepOrange.shade800),
-                                    '${widget.npc.combatStats!.rangedDamage.toInt()}',
-                                    Colors.deepOrange.shade800,
-                                  ),
-                                ],
-                              ],
-                              const SizedBox(height: 1.0),
-                              _buildCardStat(
-                                Icon(Icons.favorite, size: 7.0, color: Colors.green.shade900),
-                                '${widget.npc.combatStats?.maxHealth.toInt() ?? 0}',
-                                Colors.green.shade900,
-                              ),
-                              const SizedBox(height: 1.0),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.group,
-                                    size: 7.5,
-                                    color: Color(0xFF4E342E),
-                                  ),
-                                  const SizedBox(width: 1.5),
-                                  Text(
-                                    '${widget.npc.combatStats?.unitCount ?? 1}',
-                                    style: GoogleFonts.oldStandardTt(
-                                      color: const Color(0xFF4E342E),
-                                      fontSize: 7.5,
-                                      fontWeight: FontWeight.bold,
+                              if (stats.rangedDamage > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 2.0),
+                                  child: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade600,
+                                      borderRadius: BorderRadius.circular(1.5),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '${stats.rangedRange.toInt()}',
+                                      style: GoogleFonts.oldStandardTt(
+                                        color: Colors.white,
+                                        fontSize: 7.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              if (stats.isFlying == true)
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 2.0),
+                                  child: Icon(Icons.flutter_dash, size: 9.0, color: Color(0xFF4E342E)),
+                                ),
+                              if (stats.trait == CombatTrait.magicImmune)
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 2.0),
+                                  child: Icon(Icons.block, size: 9.0, color: Color(0xFFC62828)),
+                                ),
+                              if (stats.unitType == UnitType.support)
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 2.0),
+                                  child: Icon(Icons.local_fire_department, size: 9.0, color: Color(0xFFE64A19)),
+                                ),
+                              if (widget.npc.abilities.isNotEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 2.0),
+                                  child: Icon(
+                                    Icons.flash_on,
+                                    size: 9.0,
+                                    color: Color(0xFFD4AF37),
+                                  ),
+                                ),
                             ],
+                          ),
+                        ),
+                        // Stats & Icons row (below the name)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                // Stats column (on the right)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 1.0),
+                                  child: Builder(
+                                    builder: (context) {
+                                      final isLongName = widget.npc.name.length > 8;
+                                      final double statFontSize = isLongName ? 7.5 : 8.5;
+                                      final double statIconSize = isLongName ? 7.0 : 8.0;
+
+                                      return Column(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          if (stats.meleeDamage > 0 && stats.rangedDamage > 0)
+                                            _buildCombinedCardStat(
+                                              DaggerIcon(color: Colors.deepOrange.shade800, size: statIconSize - 0.5),
+                                              '${stats.meleeAttackSpeed <= 0 ? 0 : (stats.meleeDamage / stats.meleeAttackSpeed).round()}',
+                                              Icon(Icons.gps_fixed, size: statIconSize - 0.5, color: Colors.deepOrange.shade800),
+                                              '${stats.rangedAttackSpeed <= 0 ? 0 : (stats.rangedDamage / stats.rangedAttackSpeed).round()}',
+                                              Colors.deepOrange.shade800,
+                                              fontSize: statFontSize - 0.5,
+                                            )
+                                          else ...[
+                                            if (stats.meleeDamage > 0 || stats.rangedDamage == 0)
+                                              _buildCardStat(
+                                                DaggerIcon(color: Colors.deepOrange.shade800, size: statIconSize),
+                                                stats.meleeDamage > 0
+                                                    ? '${stats.meleeAttackSpeed <= 0 ? 0 : (stats.meleeDamage / stats.meleeAttackSpeed).round()}'
+                                                    : '${stats.speed <= 0 ? 0 : (stats.attack / stats.speed).round()}',
+                                                Colors.deepOrange.shade800,
+                                                fontSize: statFontSize,
+                                              ),
+                                            if (stats.rangedDamage > 0) ...[
+                                              if (stats.meleeDamage > 0 || stats.rangedDamage == 0)
+                                                const SizedBox(height: 0.2),
+                                              _buildCardStat(
+                                                Icon(Icons.gps_fixed, size: statIconSize, color: Colors.deepOrange.shade800),
+                                                '${stats.rangedAttackSpeed <= 0 ? 0 : (stats.rangedDamage / stats.rangedAttackSpeed).round()}',
+                                                Colors.deepOrange.shade800,
+                                                fontSize: statFontSize,
+                                              ),
+                                            ],
+                                          ],
+                                          const SizedBox(height: 0.2),
+                                          _buildCardStat(
+                                            Icon(Icons.favorite, size: statIconSize, color: Colors.green.shade900),
+                                            '${stats.maxHealth.toInt()}',
+                                            Colors.green.shade900,
+                                            fontSize: statFontSize,
+                                          ),
+                                          const SizedBox(height: 0.2),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.group,
+                                                size: statIconSize + 0.5,
+                                                color: const Color(0xFF4E342E),
+                                              ),
+                                              const SizedBox(width: 1.5),
+                                              Text(
+                                                '${stats.unitCount}',
+                                                style: GoogleFonts.oldStandardTt(
+                                                  color: const Color(0xFF4E342E),
+                                                  fontSize: statFontSize,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -2687,18 +2789,31 @@ class _UnitCardState extends State<_UnitCard> {
                     left: 4,
                     bottom: 4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      width: 14,
+                      height: 14,
                       decoration: BoxDecoration(
                         color: canAfford ? const Color(0xFF3E2723) : const Color(0xFFB71C1C),
-                        border: Border.all(color: const Color(0xFFC4B89B), width: 0.8),
-                        borderRadius: BorderRadius.circular(2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFD4AF37),
+                          width: 1.0,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 1,
+                            offset: Offset(0.5, 0.5),
+                          ),
+                        ],
                       ),
+                      alignment: Alignment.center,
                       child: Text(
                         '$cost',
-                        style: GoogleFonts.oldStandardTt(
-                          color: Colors.white,
-                          fontSize: 8,
+                        style: GoogleFonts.oswald(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 8.5,
                           fontWeight: FontWeight.bold,
+                          height: 1.0,
                         ),
                       ),
                     ),
@@ -2753,15 +2868,11 @@ class _UnitCardState extends State<_UnitCard> {
                             const Divider(color: Colors.white24, height: 8),
                             _buildDetailRow(
                               'Speed',
-                              widget.npc.combatStats?.speed.toStringAsFixed(1) ??
-                                  '0',
+                              stats.speed.toStringAsFixed(1),
                             ),
                             _buildDetailRow(
                               'Range',
-                              widget.npc.combatStats?.distance.toStringAsFixed(
-                                    1,
-                                  ) ??
-                                  '0',
+                              stats.distance.toStringAsFixed(1),
                             ),
                             const Divider(color: Colors.white24, height: 8),
                             Text(
@@ -2807,9 +2918,9 @@ class _UnitCardState extends State<_UnitCard> {
         );
   }
 
-  Widget _buildCardStat(Widget icon, String value, Color color) {
+  Widget _buildCardStat(Widget icon, String value, Color color, {double? fontSize}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 0.5),
+      padding: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 0.0),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(2),
@@ -2823,7 +2934,7 @@ class _UnitCardState extends State<_UnitCard> {
             value,
             style: GoogleFonts.oldStandardTt(
               color: color,
-              fontSize: 7.5,
+              fontSize: fontSize ?? 7.5,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -2832,9 +2943,10 @@ class _UnitCardState extends State<_UnitCard> {
     );
   }
 
-  Widget _buildCombinedCardStat(Widget icon1, String value1, Widget icon2, String value2, Color color) {
+  Widget _buildCombinedCardStat(Widget icon1, String value1, Widget icon2, String value2, Color color, {double? fontSize}) {
+    final double fs = fontSize ?? 7.0;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 0.5),
+      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 0.0),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(2),
@@ -2848,7 +2960,7 @@ class _UnitCardState extends State<_UnitCard> {
             value1,
             style: GoogleFonts.oldStandardTt(
               color: color,
-              fontSize: 7.0,
+              fontSize: fs,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -2858,7 +2970,7 @@ class _UnitCardState extends State<_UnitCard> {
               '/',
               style: GoogleFonts.oldStandardTt(
                 color: color.withValues(alpha: 0.4),
-                fontSize: 6.5,
+                fontSize: fs - 0.5,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -2869,7 +2981,7 @@ class _UnitCardState extends State<_UnitCard> {
             value2,
             style: GoogleFonts.oldStandardTt(
               color: color,
-              fontSize: 7.0,
+              fontSize: fs,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -3751,25 +3863,100 @@ class _MinimapPainter extends CustomPainter {
   bool shouldRepaint(covariant _MinimapPainter oldDelegate) => true;
 }
 
-class _TowerRenderer extends StatelessWidget {
+class _TowerRenderer extends StatefulWidget {
   final Combatant combatant;
 
   const _TowerRenderer({required this.combatant});
 
   @override
+  State<_TowerRenderer> createState() => _TowerRendererState();
+}
+
+class _TowerRendererState extends State<_TowerRenderer> {
+  int _muzzlePositionIndex = 0;
+  bool _wasFiring = false;
+
+  @override
   Widget build(BuildContext context) {
-    final bool isWatchtower = combatant.towerType == 'watchtower';
+    final bool isWatchtower = widget.combatant.towerType == 'watchtower';
     final double width = isWatchtower ? 54.0 : 36.0;
     final double height = isWatchtower ? 96.0 : 36.0 * 1.2;
+
+    double progress = 0.0;
+    if (widget.combatant.attackCooldown > 0.0) {
+      final maxCooldown = (widget.combatant.npc.combatStats?.speed ?? 1.2) * 1.2;
+      progress = (widget.combatant.attackCooldown / maxCooldown).clamp(0.0, 1.0);
+    }
+    final bool isFiring = progress > 0.75;
+
+    if (isFiring && !_wasFiring) {
+      // Pick a new position for the muzzle flash!
+      // For watchtowers: 0 = window, 1 = left crenellation, 2 = right crenellation
+      _muzzlePositionIndex = Random().nextInt(3);
+    }
+    _wasFiring = isFiring;
+
+    double muzzleLeft = width / 2 - 6.0;
+    double muzzleTop = isWatchtower ? 12.0 : 6.0;
+
+    if (isWatchtower) {
+      if (_muzzlePositionIndex == 0) {
+        // Window center: X = 0.48 * width, Y = 0.43 * height
+        muzzleLeft = width * 0.48 - 6.0;
+        muzzleTop = height * 0.43 - 6.0;
+      } else if (_muzzlePositionIndex == 1) {
+        // Left crenellation: X = 0.21 * width, Y = 0.04 * height
+        muzzleLeft = width * 0.21 - 6.0;
+        muzzleTop = height * 0.04 - 6.0;
+      } else {
+        // Right crenellation: X = 0.72 * width, Y = 0.04 * height
+        muzzleLeft = width * 0.72 - 6.0;
+        muzzleTop = height * 0.04 - 6.0;
+      }
+    } else {
+      // Wagons and Dens
+      if (widget.combatant.towerType == 'wagon') {
+        final isPlayer = widget.combatant.side == CombatSide.player;
+        muzzleLeft = isPlayer ? width * 1.22 - 6.0 : -width * 0.22 - 6.0;
+        muzzleTop = height * 0.62 - 6.0;
+      } else if (widget.combatant.towerType!.contains('den')) {
+        muzzleLeft = width * 0.5 - 6.0;
+        muzzleTop = height * 0.75 - 6.0;
+      }
+    }
+
     return SizedBox(
       width: width,
       height: height,
-      child: CustomPaint(
-        painter: _TowerShapePainter(
-          towerType: combatant.towerType ?? 'wagon',
-          isDead: combatant.isDead,
-          side: combatant.side,
-        ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _TowerShapePainter(
+                towerType: widget.combatant.towerType ?? 'wagon',
+                isDead: widget.combatant.isDead,
+                side: widget.combatant.side,
+              ),
+            ),
+          ),
+          if (isFiring && !widget.combatant.isDead)
+            Positioned(
+              left: muzzleLeft,
+              top: muzzleTop,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Colors.amberAccent,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Colors.orangeAccent, blurRadius: 4, spreadRadius: 2)
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
