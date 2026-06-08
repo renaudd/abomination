@@ -17,6 +17,7 @@ import '../models/combat_stats.dart';
 import '../models/schedule.dart';
 import '../models/diet.dart';
 import '../models/body_part.dart';
+import 'dart:ui';
 
 class CombatUnitFactory {
   static int _idCounter = 0;
@@ -138,7 +139,7 @@ class CombatUnitFactory {
         meleeDamage: 5,
         meleeRange: 1.0,
         meleeAttackSpeed: 2.0,
-        targetingRule: TargetingRule.towersOnly,
+        targetingRule: TargetingRule.all,
         radius: 1.8,
       ),
     );
@@ -350,7 +351,7 @@ class CombatUnitFactory {
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.deterministic('Undead Rats'),
       combatStats: const CombatStats(
-        attack: 12,
+        attack: 14,
         health: 65,
         maxHealth: 65,
         speed: 0.5,
@@ -359,7 +360,7 @@ class CombatUnitFactory {
         cost: 3,
         unitType: UnitType.squad,
         unitCount: 4,
-        meleeDamage: 12,
+        meleeDamage: 14,
         meleeRange: 0.8,
         meleeAttackSpeed: 0.5,
         trait: CombatTrait.constantHeal,
@@ -551,7 +552,7 @@ class CombatUnitFactory {
         distance: 1.0,
         cost: 3,
         unitType: UnitType.squad,
-        unitCount: 5,
+        unitCount: 6,
         meleeDamage: 15,
         meleeRange: 1.0,
         meleeAttackSpeed: 1.1,
@@ -672,7 +673,7 @@ class CombatUnitFactory {
         attack: 5,
         health: 90,
         maxHealth: 90,
-        speed: 3.0,
+        speed: 2.5,
         movement: 0.8,
         distance: 18.0,
         cost: 3,
@@ -680,8 +681,8 @@ class CombatUnitFactory {
         unitCount: 1,
         rangedDamage: 120,
         rangedRange: 18.0,
-        rangedAttackSpeed: 3.0,
-        targetingRule: TargetingRule.nonTowers,
+        rangedAttackSpeed: 2.5,
+        targetingRule: TargetingRule.all,
         meleeDamage: 5,
         meleeRange: 1.0,
         meleeAttackSpeed: 1.0,
@@ -751,10 +752,10 @@ class CombatUnitFactory {
     );
   }
 
-  static NPC createWildBears() {
+  static NPC createWildBear() {
     return NPC(
-      id: _generateId('wild_bears'),
-      name: 'Wild Bears',
+      id: _generateId('wild_bear'),
+      name: 'Wild Bear',
       role: 'Beast',
       age: 6,
       gender: 'N/A',
@@ -762,7 +763,7 @@ class CombatUnitFactory {
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.deterministic('Wild Bears'),
+      appearance: NPCAppearance.deterministic('Wild Bear'),
       combatStats: const CombatStats(
         attack: 55,
         health: 420,
@@ -781,6 +782,8 @@ class CombatUnitFactory {
       ),
     );
   }
+
+  static NPC createWildBears() => createWildBear();
 
   static NPC createBandits() {
     return NPC(
@@ -922,15 +925,15 @@ class CombatUnitFactory {
         attack: 20,
         health: 105,
         maxHealth: 105,
-        speed: 1.3,
+        speed: 0.6,
         movement: 0.8,
-        distance: 1.6,
+        distance: 2.2,
         cost: 3,
         unitType: UnitType.squad,
-        unitCount: 3,
+        unitCount: 4,
         meleeDamage: 20,
-        meleeRange: 1.6,
-        meleeAttackSpeed: 1.3,
+        meleeRange: 2.2,
+        meleeAttackSpeed: 0.6,
         radius: 1.4,
       ),
     );
@@ -985,7 +988,7 @@ class CombatUnitFactory {
         attack: 0,
         health: 100,
         maxHealth: 100,
-        speed: 2.0,
+        speed: 1.5,
         movement: 1.0,
         distance: 10.0,
         cost: 3,
@@ -993,7 +996,7 @@ class CombatUnitFactory {
         unitCount: 2,
         rangedDamage: 35,
         rangedRange: 10.0,
-        rangedAttackSpeed: 2.0,
+        rangedAttackSpeed: 1.5,
         targetingRule: TargetingRule.squadsOnly,
         radius: 1.4,
       ),
@@ -1151,8 +1154,42 @@ class CombatUnitFactory {
   }
 
   // Backwards-Compatible Squad Fallback Methods
-  static NPC createGoon() => createThugs().copyWith(name: 'Goon');
-  static NPC createMilitia() => createHalberdiers().copyWith(name: 'Militia');
+  static NPC createFootman() {
+    final v = createVillagerMob();
+    return v.copyWith(
+      id: _generateId('footman'),
+      name: 'Footman',
+      combatStats: v.combatStats?.copyWith(unitCount: 5),
+    );
+  }
+
+  static NPC createGoons() {
+    final t = createThugs();
+    return t.copyWith(
+      id: _generateId('goons'),
+      name: 'Goons',
+      combatStats: t.combatStats?.copyWith(
+        movement: 1.1,
+        cost: 2,
+      ),
+    );
+  }
+
+  static NPC createGoon() => createGoons();
+
+  static NPC createMilitia() {
+    final h = createHalberdiers();
+    return h.copyWith(
+      id: _generateId('militia'),
+      name: 'Militia',
+      combatStats: h.combatStats?.copyWith(
+        distance: 12.0,
+        rangedDamage: 18,
+        rangedRange: 12.0,
+        rangedAttackSpeed: 1.5,
+      ),
+    );
+  }
   static NPC createBanditCaptain() => createThugs().copyWith(name: 'Bandit Captain');
   static NPC createFleshHound() => createWildWolves().copyWith(
     name: 'Flesh Hound',
@@ -1423,4 +1460,622 @@ class CombatUnitFactory {
       ],
     );
   }
+
+  static NPC createBats() {
+    return NPC(
+      id: 'bats_${DateTime.now().microsecondsSinceEpoch}',
+      name: 'Bats',
+      specimenType: 'Beast',
+      role: 'Creature',
+      age: 2,
+      gender: 'Unknown',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Bats'),
+      combatStats: const CombatStats(
+        attack: 25,
+        health: 220,
+        maxHealth: 220,
+        speed: 1.1,
+        movement: 6.5,
+        distance: 1.5,
+        cost: 2,
+        isFlying: true,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 25,
+        meleeRange: 1.5,
+        meleeAttackSpeed: 1.1,
+      ),
+    );
+  }
+
+  static NPC createStampede() {
+    return NPC(
+      id: 'stampede_${DateTime.now().microsecondsSinceEpoch}',
+      name: 'Stampede',
+      specimenType: 'Beast',
+      role: 'Support',
+      age: 4,
+      gender: 'Unknown',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Stampede'),
+      combatStats: const CombatStats(
+        attack: 40,
+        health: 350,
+        maxHealth: 350,
+        speed: 1.0,
+        movement: 8.0,
+        distance: 1.5,
+        cost: 3,
+        isFlying: false,
+        unitType: UnitType.support,
+        unitCount: 5,
+        meleeDamage: 40,
+        meleeRange: 1.5,
+        meleeAttackSpeed: 1.0,
+      ),
+    );
+  }
+
+  static NPC createBrewers() {
+    return NPC(
+      id: _generateId('brewers'),
+      name: 'Brewers',
+      role: 'Coven',
+      age: 32,
+      gender: 'Female',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Brewers').copyWith(
+        outfitColor: const Color(0xFF181818), // Black torso
+        hairColor: const Color(0xFF222222),
+      ),
+      equippedVisuals: const ['Broom', 'WitchHat'],
+      combatStats: const CombatStats(
+        attack: 30,
+        health: 220,
+        maxHealth: 220,
+        speed: 0.9,
+        movement: 0.8,
+        distance: 1.2,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 3,
+        meleeDamage: 30,
+        meleeRange: 1.2,
+        meleeAttackSpeed: 0.9,
+        radius: 1.3,
+      ),
+      abilities: const [
+        Ability(
+          id: 'brewers_persistent_heal',
+          name: 'Coven Brew',
+          type: AbilityType.trait,
+          description:
+              'Persistently heals herself and friendly units within 2 ft by 2 HP every 0.5 seconds (12 HP/s total when grouped).',
+        ),
+      ],
+    );
+  }
+
+  static NPC createHag() {
+    return NPC(
+      id: _generateId('hag'),
+      name: 'Hag',
+      role: 'Coven',
+      age: 68,
+      gender: 'Female',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Hag').copyWith(
+        outfitColor: const Color(0xFF5A1827), // Dark burgundy color
+        bodyType: BodyType.heavy, // Oversize body & corpulent torso
+      ),
+      equippedVisuals: const ['Broom', 'WitchHat'],
+      combatStats: const CombatStats(
+        attack: 45,
+        health: 650,
+        maxHealth: 650,
+        speed: 0.7,
+        movement: 0.8,
+        distance: 1.2,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 45,
+        meleeRange: 1.2,
+        meleeAttackSpeed: 0.7,
+        radius: 1.6,
+      ),
+      abilities: const [
+        Ability(
+          id: 'hag_persistent_heal',
+          name: 'Hag Vitality',
+          type: AbilityType.trait,
+          description:
+              'Heals friendly units within 3 ft (but not herself) by 5 HP every 0.5 seconds (10 HP/s total).',
+        ),
+      ],
+    );
+  }
+
+  static NPC createWitch() {
+    return NPC(
+      id: _generateId('witch'),
+      name: 'Witch',
+      role: 'Coven',
+      age: 29,
+      gender: 'Female',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Witch').copyWith(
+        outfitColor: const Color(0xFF616161), // Gray torso
+      ),
+      equippedVisuals: const ['Sling', 'WitchHat'],
+      combatStats: const CombatStats(
+        attack: 35,
+        health: 280,
+        maxHealth: 280,
+        speed: 0.8,
+        movement: 0.8,
+        distance: 10.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 35,
+        rangedRange: 10.0,
+        rangedAttackSpeed: 0.8, // High rate of fire sling
+        radius: 1.3,
+      ),
+      abilities: const [
+        Ability(
+          id: 'witch_charge_heal',
+          name: 'Coven Restoration',
+          type: AbilityType.special,
+          description:
+              'Heals the 4 closest friendly units within 4.5 ft by 50 health each.',
+          chargeTime: 12.0,
+        ),
+      ],
+    );
+  }
+
+  static NPC createWarlock() {
+    return NPC(
+      id: _generateId('warlock'),
+      name: 'Warlock',
+      role: 'Coven',
+      age: 54,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Warlock').copyWith(
+        outfitColor: const Color(0xFF4A1C40), // Dark plum hat and torso
+        bodyType: BodyType.muscular, // Less curved, masculine torso
+        facialHairStyle: FacialHairStyle.beard, // Long beard
+      ),
+      equippedVisuals: const ['Crossbow', 'PlumHat'],
+      combatStats: const CombatStats(
+        attack: 95,
+        health: 300,
+        maxHealth: 300,
+        speed: 2.8,
+        movement: 0.8,
+        distance: 15.0, // Crossbow better range than sling
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 95, // Much more powerful per hit
+        rangedRange: 15.0,
+        rangedAttackSpeed: 2.8, // Very slow rate of fire
+        radius: 1.4,
+      ),
+      abilities: const [
+        Ability(
+          id: 'warlock_lightning',
+          name: 'Lightning Strike',
+          type: AbilityType.special,
+          description:
+              'Strikes the nearest enemy for 150 damage and stuns them for 4 seconds.',
+          chargeTime: 15.0,
+        ),
+      ],
+    );
+  }
+
+  static NPC createGatlingGun() {
+    return NPC(
+      id: _generateId('gatling_gun'),
+      name: 'Gatling Gun',
+      role: 'Weapon',
+      age: 35,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('GatlingGun'),
+      equippedVisuals: const ['GatlingGun'],
+      combatStats: const CombatStats(
+        attack: 15,
+        health: 200,
+        maxHealth: 200,
+        speed: 0.15,
+        movement: 0.8,
+        distance: 9.0, // 9 ft range
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 15,
+        rangedRange: 9.0,
+        rangedAttackSpeed: 0.15, // Very high rate of fire once firing
+        radius: 1.5,
+      ),
+    );
+  }
+
+  static NPC createZeppelin() {
+    return NPC(
+      id: _generateId('zeppelin'),
+      name: 'Zeppelin',
+      role: 'Airship',
+      age: 50,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Zeppelin'),
+      equippedVisuals: const ['Zeppelin'],
+      combatStats: const CombatStats(
+        attack: 90,
+        health: 540,
+        maxHealth: 540,
+        speed: 2.0,
+        movement: 0.4,
+        distance: 4.0,
+        cost: 7,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 90,
+        rangedRange: 4.0,
+        rangedAttackSpeed: 2.0,
+        radius: 2.5,
+        isFlying: true,
+      ),
+    );
+  }
+
+  static NPC createValkyrie() {
+    return NPC(
+      id: _generateId('valkyrie'),
+      name: 'Valkyrie',
+      role: 'Air',
+      age: 25,
+      gender: 'Female',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Valkyrie'),
+      equippedVisuals: const ['Spear'],
+      combatStats: const CombatStats(
+        attack: 38,
+        health: 280,
+        maxHealth: 280,
+        speed: 1.0,
+        movement: 1.5,
+        distance: 1.5,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 38,
+        meleeRange: 1.5,
+        meleeAttackSpeed: 1.0,
+        radius: 1.4,
+        isFlying: true,
+      ),
+    );
+  }
+
+  static NPC createMinotaur() {
+    return NPC(
+      id: _generateId('minotaur'),
+      name: 'Minotaur',
+      role: 'Charger',
+      age: 34,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Minotaur'),
+      equippedVisuals: const ['Axe'],
+      combatStats: const CombatStats(
+        attack: 65,
+        health: 520,
+        maxHealth: 520,
+        speed: 1.2,
+        movement: 1.3,
+        distance: 1.5,
+        cost: 6,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 65,
+        meleeRange: 1.5,
+        meleeAttackSpeed: 1.2,
+        radius: 1.6,
+      ),
+      abilities: const [
+        Ability(
+          id: 'minotaur_charge',
+          name: 'Bull Charge',
+          type: AbilityType.charge,
+          description:
+              'Charges the nearest enemy at high speed dealing 100 collision damage.',
+          chargeTime: 10.0,
+        ),
+      ],
+    );
+  }
+
+  static NPC createPhoenix() {
+    return NPC(
+      id: _generateId('phoenix'),
+      name: 'Phoenix',
+      role: 'Air',
+      age: 100,
+      gender: 'Female',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Phoenix'),
+      combatStats: const CombatStats(
+        attack: 42,
+        health: 360,
+        maxHealth: 360,
+        speed: 1.1,
+        movement: 1.4,
+        distance: 8.0,
+        cost: 5,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 42,
+        rangedRange: 8.0,
+        rangedAttackSpeed: 1.1,
+        radius: 1.5,
+        isFlying: true,
+      ),
+    );
+  }
+
+  static NPC createNecromancer() {
+    return NPC(
+      id: _generateId('necromancer'),
+      name: 'Necromancer',
+      role: 'Coven',
+      age: 65,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Necromancer'),
+      equippedVisuals: const ['SkullStaff'],
+      combatStats: const CombatStats(
+        attack: 28,
+        health: 240,
+        maxHealth: 240,
+        speed: 1.4,
+        movement: 0.8,
+        distance: 12.0,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        rangedDamage: 28,
+        rangedRange: 12.0,
+        rangedAttackSpeed: 1.4,
+        radius: 1.3,
+      ),
+    );
+  }
+
+  static NPC createBatteringRam() {
+    return NPC(
+      id: _generateId('battering_ram'),
+      name: 'Battering Ram',
+      role: 'Siege',
+      age: 20,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('BatteringRam'),
+      combatStats: const CombatStats(
+        attack: 85,
+        health: 480,
+        maxHealth: 480,
+        speed: 1.8,
+        movement: 0.6,
+        distance: 1.6,
+        cost: 4,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 85,
+        meleeRange: 1.6,
+        meleeAttackSpeed: 1.8,
+        radius: 1.8,
+      ),
+    );
+  }
+
+  static NPC createSteampunkMech() {
+    return NPC(
+      id: _generateId('steampunk_mech'),
+      name: 'Steampunk Mech',
+      role: 'Behemoth',
+      age: 40,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('SteampunkMech'),
+      combatStats: const CombatStats(
+        attack: 80,
+        health: 750,
+        maxHealth: 750,
+        speed: 1.6,
+        movement: 0.6,
+        distance: 2.0,
+        cost: 7,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 80,
+        meleeRange: 2.0,
+        meleeAttackSpeed: 1.6,
+        radius: 2.0,
+      ),
+    );
+  }
+
+  static NPC createPoisonGas() {
+    return NPC(
+      id: _generateId('poison_gas'),
+      name: 'Poison Gas Cloud',
+      role: 'Support',
+      age: 1,
+      gender: 'None',
+      specimenType: 'Support',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('PoisonGas'),
+      combatStats: const CombatStats(
+        attack: 25,
+        health: 0,
+        maxHealth: 0,
+        speed: 1.0,
+        movement: 0.0,
+        distance: 15.0,
+        cost: 3,
+        unitType: UnitType.support,
+      ),
+    );
+  }
+
+  static NPC createLightningStorm() {
+    return NPC(
+      id: _generateId('lightning_storm'),
+      name: 'Lightning Storm',
+      role: 'Support',
+      age: 1,
+      gender: 'None',
+      specimenType: 'Support',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('LightningStorm'),
+      combatStats: const CombatStats(
+        attack: 40,
+        health: 0,
+        maxHealth: 0,
+        speed: 1.0,
+        movement: 0.0,
+        distance: 15.0,
+        cost: 4,
+        unitType: UnitType.support,
+      ),
+    );
+  }
+
+  static NPC createAirdrop() {
+    return NPC(
+      id: _generateId('airdrop'),
+      name: 'Reinforcement Airdrop',
+      role: 'Support',
+      age: 1,
+      gender: 'None',
+      specimenType: 'Support',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Airdrop'),
+      combatStats: const CombatStats(
+        attack: 0,
+        health: 0,
+        maxHealth: 0,
+        speed: 1.0,
+        movement: 0.0,
+        distance: 15.0,
+        cost: 3,
+        unitType: UnitType.support,
+      ),
+    );
+  }
+
+  static NPC createDivineShield() {
+    return NPC(
+      id: _generateId('divine_shield'),
+      name: 'Divine Shield',
+      role: 'Support',
+      age: 1,
+      gender: 'None',
+      specimenType: 'Support',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('DivineShield'),
+      combatStats: const CombatStats(
+        attack: 0,
+        health: 0,
+        maxHealth: 0,
+        speed: 1.0,
+        movement: 0.0,
+        distance: 15.0,
+        cost: 2,
+        unitType: UnitType.support,
+      ),
+    );
+  }
+
+  static NPC createNapalmStrike() {
+    return NPC(
+      id: _generateId('napalm_strike'),
+      name: 'Napalm Strike',
+      role: 'Support',
+      age: 1,
+      gender: 'None',
+      specimenType: 'Support',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('NapalmStrike'),
+      combatStats: const CombatStats(
+        attack: 60,
+        health: 0,
+        maxHealth: 0,
+        speed: 1.0,
+        movement: 0.0,
+        distance: 15.0,
+        cost: 4,
+        unitType: UnitType.support,
+      ),
+    );
+  }
 }
+

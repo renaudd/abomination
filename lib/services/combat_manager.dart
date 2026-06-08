@@ -90,6 +90,7 @@ class Combatant {
   bool isSquadLeader;
   Offset? formationOffset;
   double activeDeploymentTimer;
+  String? originCardName;
 
   Combatant({
     required this.npc,
@@ -112,6 +113,7 @@ class Combatant {
     this.isSquadLeader = false,
     this.formationOffset,
     this.activeDeploymentTimer = 0.0,
+    this.originCardName,
   });
 
   // For continuous movement (Alphonse)
@@ -123,16 +125,23 @@ class Combatant {
   double backstepDirY = 0.0;
   int stuckFrames = 0;
 
+  bool isStampedeHorse = false;
   double supportDurationRemaining = 0.0;
   double gasSlowTimer = 0.0;
+  double chargeDurationRemaining = 0.0;
 
   double get movementSpeedMultiplier {
     double mult = 1.0;
     if (gasSlowTimer > 0.0) {
       mult *= 0.4; // 60% slow
     }
+    if (chargeDurationRemaining > 0.0) {
+      mult *= 3.5; // 3.5x speed when charging!
+    }
     return mult;
   }
+
+  double get radius => npc.combatStats?.radius ?? 1.0;
 
   bool get isNonPhysicalSupport {
     return npc.combatStats?.unitType == UnitType.support &&
@@ -840,26 +849,64 @@ class CombatManager extends ChangeNotifier {
         initialSupportDuration = 3.0;
       } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
         initialSupportDuration = 6.0;
+      } else if (npc.name.contains('Stampede')) {
+        initialSupportDuration = 12.0;
       } else {
         initialSupportDuration = 60.0; // Default for Caltrops, Vampiric Totem, etc.
       }
     }
 
-    // Spawn the Leader
-    final leader = Combatant(
-      npc: npc,
-      side: side,
-      x: spawnX,
-      y: finalSpawnY,
-      laneIndex: closestLaneIdx,
-      isTower: false,
-      isAiLeader: isAiLeader,
-      squadId: squadId,
-      isSquadLeader: true,
-      activeDeploymentTimer: stats.deploymentTime,
-    )..supportDurationRemaining = initialSupportDuration;
+    Combatant? spawnedLeader;
+    if (npc.name.contains('Stampede')) {
+      final offsets = [
+        const Offset(0, 0),
+        const Offset(-6.0, -5.0),
+        const Offset(-6.0, 5.0),
+        const Offset(-12.0, -10.0),
+        const Offset(-12.0, 10.0),
+      ];
+      for (int i = 0; i < 5; i++) {
+        final horse =
+            Combatant(
+                npc: npc.copyWith(
+                  id: '${npc.id}_horse_$i',
+                  name: 'Stampede Horse',
+                ),
+                side: side,
+                x: spawnX + offsets[i].dx,
+                y: (finalSpawnY + offsets[i].dy).clamp(2.0, _map.height - 2.0),
+                laneIndex: closestLaneIdx,
+                isTower: false,
+                isAiLeader: isAiLeader,
+                squadId: squadId,
+                isSquadLeader: i == 0,
+                activeDeploymentTimer: stats.deploymentTime,
+                originCardName: npc.name,
+              )
+              ..supportDurationRemaining = initialSupportDuration
+              ..isStampedeHorse = true;
+        _combatants.add(horse);
+        if (i == 0) spawnedLeader = horse;
+      }
+    } else {
+      // Spawn the Leader
+      final leader = Combatant(
+        npc: npc,
+        side: side,
+        x: spawnX,
+        y: finalSpawnY,
+        laneIndex: closestLaneIdx,
+        isTower: false,
+        isAiLeader: isAiLeader,
+        squadId: squadId,
+        isSquadLeader: true,
+        activeDeploymentTimer: stats.deploymentTime,
+        originCardName: npc.name,
+      )..supportDurationRemaining = initialSupportDuration;
 
-    _combatants.add(leader);
+      _combatants.add(leader);
+      spawnedLeader = leader;
+    }
 
     if (side == CombatSide.player && isSurvivalMode) {
       final cardType = npc.metadata['cardType'];
@@ -913,6 +960,7 @@ class CombatManager extends ChangeNotifier {
           isSquadLeader: false,
           formationOffset: offset,
           activeDeploymentTimer: stats.deploymentTime,
+          originCardName: npc.name,
         );
 
         _combatants.add(follower);
@@ -920,9 +968,11 @@ class CombatManager extends ChangeNotifier {
     }
 
     // Trigger Horn abilities
-    for (final ability in npc.abilities) {
-      if (ability.type == AbilityType.horn) {
-        _applyAbilityEffect(leader, ability);
+    if (spawnedLeader != null) {
+      for (final ability in npc.abilities) {
+        if (ability.type == AbilityType.horn) {
+          _applyAbilityEffect(spawnedLeader, ability);
+        }
       }
     }
 
@@ -1222,6 +1272,44 @@ class CombatManager extends ChangeNotifier {
         );
         for (var i = 0; i < _aiHand.length; i++) {
           final unit = _aiHand[i];
+
+          // Prevent the NPC opponent from summoning a unit that is already on the board.
+          // If a card/unit is already in play, it cannot be summoned again until all active instances are eliminated.
+          final bool isAlreadyOnBoard = _combatants.any((c) {
+            if (c.side != CombatSide.enemy ||
+                c.isDead ||
+                c.isTower ||
+                c.isAiLeader) {
+              return false;
+            }
+
+            final uCardType = unit.metadata['cardType'];
+            final cCardType = c.npc.metadata['cardType'];
+            if (uCardType != null && cCardType != null && uCardType == cCardType) {
+              return true;
+            }
+
+            final String uBaseId = unit.id.split('_').first;
+            final String cBaseId = c.npc.id.split('_').first;
+            if (uBaseId == cBaseId && uBaseId.length > 2) {
+              return true;
+            }
+
+            final String uName = unit.name.replaceAll('s', '').trim().toLowerCase();
+            final String oName = (c.originCardName ?? c.npc.name).replaceAll('s', '').trim().toLowerCase();
+            final String cName = c.npc.name.replaceAll('s', '').trim().toLowerCase();
+
+            return oName == uName ||
+                cName == uName ||
+                cName.startsWith(uName) ||
+                oName.startsWith(uName) ||
+                uName.startsWith(oName) ||
+                (unit.name.contains('Stampede') && (oName.contains('stampede') || cName.contains('stampede'))) ||
+                (unit.name == 'Butler' && (oName.contains('butler') || cName.contains('musketeer')));
+          });
+
+          if (isAlreadyOnBoard) continue;
+
           final cost = unit.combatStats?.cost ?? 0;
           if (_aiActionPoints >= cost) {
             _aiActionPoints -= cost;
@@ -1393,6 +1481,12 @@ class CombatManager extends ChangeNotifier {
   }
 
   List<Combatant> filterTargets(Combatant seeker, List<Combatant> candidates) {
+    if (seeker.npc.name.contains('Cannoneer')) {
+      candidates = candidates.where((c) {
+        final dist = sqrt(pow(c.x - seeker.x, 2) + pow(c.y - seeker.y, 2));
+        return dist >= 4.0;
+      }).toList();
+    }
     final rule = seeker.npc.combatStats?.targetingRule ?? TargetingRule.all;
     switch (rule) {
       case TargetingRule.towersOnly:
@@ -1416,6 +1510,48 @@ class CombatManager extends ChangeNotifier {
     // Tick down gas slow timer
     if (c.gasSlowTimer > 0.0) {
       c.gasSlowTimer = max(0.0, c.gasSlowTimer - dt);
+    }
+
+    // Process Persistent Passive Healing Auras (Brewers & Hag)
+    if (c.npc.role == 'Coven') {
+      final nameLower = c.npc.name.toLowerCase();
+      final isBrewer = nameLower.contains('brewer');
+      final isHag = nameLower.contains('hag');
+
+      if (isBrewer || isHag) {
+        final double healRadius = isBrewer ? 15.0 : 20.0;
+        final double healPerSecond = isBrewer ? 4.0 : 10.0;
+        final double healAmount = healPerSecond * dt;
+
+        final allies = _combatants.where((other) {
+          if (other.side != c.side || other.isDead) return false;
+          if (isHag && other == c) {
+            return false; // Hag heals nearby allies but not herself
+          }
+          final dx = other.x - c.x;
+          final dy = other.y - c.y;
+          return sqrt(dx * dx + dy * dy) <= healRadius;
+        }).toList();
+
+        for (final ally in allies) {
+          final aStats = ally.npc.combatStats!;
+          if (aStats.health < aStats.maxHealth) {
+            final newHealth = min(aStats.maxHealth, aStats.health + healAmount);
+            ally.npc = ally.npc.copyWith(
+              combatStats: aStats.copyWith(health: newHealth),
+            );
+            if (Random().nextDouble() < 0.05) {
+              // Occasional floating green healing popup
+              ally.floatingMessages.add(
+                FloatingMessage(
+                  text: '+${(healPerSecond / 2).ceil()}',
+                  color: Colors.greenAccent,
+                ),
+              );
+            }
+          }
+        }
+      }
     }
 
     final stats = c.npc.combatStats!.copyWith(
@@ -1517,6 +1653,40 @@ class CombatManager extends ChangeNotifier {
             t.gasSlowTimer = 0.5; // Slow down
             if (newHealth <= 0) {
               _onCombatantDeath(t, c);
+            }
+          }
+        }
+      } else if (c.isStampedeHorse) {
+        final dir = c.side == CombatSide.player ? 1.0 : -1.0;
+        c.x += dir * 25.0 * dt;
+
+        if ((c.side == CombatSide.player && c.x >= _map.width - 5.0) ||
+            (c.side == CombatSide.enemy && c.x <= 5.0)) {
+          c.isDead = true;
+          return;
+        }
+
+        for (final t in targets) {
+          if (t.isTower) {
+            final dist = (t.x - c.x).abs();
+            if (dist < 8.0) {
+              c.isDead = true;
+              return;
+            }
+          } else {
+            final dx = t.x - c.x;
+            final dy = t.y - c.y;
+            final dist = sqrt(dx * dx + dy * dy);
+            if (dist <= c.npc.combatStats!.radius + t.npc.combatStats!.radius) {
+              final newHealth = max(0.0, t.npc.combatStats!.health - 45.0 * dt);
+              t.npc = t.npc.copyWith(
+                combatStats: t.npc.combatStats!.copyWith(health: newHealth),
+              );
+              t.flashTimer = 0.25;
+              t.recentDamage += 45.0 * dt;
+              if (newHealth <= 0) {
+                _onCombatantDeath(t, c);
+              }
             }
           }
         }
@@ -1653,7 +1823,8 @@ class CombatManager extends ChangeNotifier {
       );
 
       // Auto-fire special ability if charged and ready (AI ONLY or in Survival Mode for ALL units!)
-      if (c.npc.specialCharge >= 1.0 && (c.side == CombatSide.enemy || isSurvivalMode)) {
+      if (c.npc.specialCharge >= 1.0 &&
+          (c.side == CombatSide.enemy || (isSurvivalMode && !c.npc.isPlayer))) {
         if (canExecuteSpecial(c.npc.id)) {
           executeSpecial(c.npc.id);
         }
@@ -1661,6 +1832,36 @@ class CombatManager extends ChangeNotifier {
     }
     if (c.npc.isPlayer) {
       c.specialCharge2 = min(1.0, c.specialCharge2 + dt / 25.0);
+    }
+
+    if (c.chargeDurationRemaining > 0.0) {
+      c.chargeDurationRemaining = max(0.0, c.chargeDurationRemaining - dt);
+      final collidedEnemies =
+          _combatants
+              .where(
+                (other) =>
+                    other.side != c.side &&
+                    !other.isDead &&
+                    !other.isTower &&
+                    sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <=
+                        c.radius +
+                            (other.npc.combatStats?.radius ?? 1.0) +
+                            1.8,
+              )
+              .toList();
+
+      for (final col in collidedEnemies) {
+        final colStats = col.npc.combatStats!;
+        final colDmg = 85.0 * dt;
+        final colHealth = max(0.0, colStats.health - colDmg);
+        col.npc = col.npc.copyWith(
+          combatStats: colStats.copyWith(health: colHealth),
+        );
+        _addFloatingMessage(col, 'COLLIDE', Colors.redAccent);
+        if (colHealth <= 0) {
+          _onCombatantDeath(col, c);
+        }
+      }
     }
 
     // B. Targeting
@@ -2314,7 +2515,12 @@ class CombatManager extends ChangeNotifier {
 
     // Damage calculation
     double damage;
-    if (stats.damageFormula != null && stats.damageFormula!.contains('-')) {
+    if (attacker.npc.name.contains('Cannoneer')) {
+      final isTowerOrVehicle =
+          target.isTower || targetStats.unitType == UnitType.vehicle;
+      damage = isTowerOrVehicle ? 115.0 : 75.0;
+    } else if (stats.damageFormula != null &&
+        stats.damageFormula!.contains('-')) {
       final parts = stats.damageFormula!.split('-');
       final minDmg = double.tryParse(parts[0]) ?? stats.attack;
       final maxDmg = double.tryParse(parts[1]) ?? stats.attack * 1.5;
@@ -2355,6 +2561,62 @@ class CombatManager extends ChangeNotifier {
       _addLog('${target.npc.name} has been defeated!', side: target.side);
     }
 
+    final bool isMeleeStrike = stats.distance <= 2.0;
+    if (isMeleeStrike) {
+      final nameLower = attacker.npc.name.toLowerCase();
+      final bool isConeCleave =
+          nameLower.contains('bear') || nameLower.contains('mech');
+      final bool isCircularCleave = nameLower.contains('werewolf');
+
+      if (isConeCleave || isCircularCleave) {
+        final double cleaveRadius = isCircularCleave ? 6.5 : 5.0;
+        final double attackSign = (target.x - attacker.x).sign;
+
+        final secondaryTargets =
+            _combatants
+                .where((other) {
+                  if (other == target ||
+                      other.side == attacker.side ||
+                      other.isDead ||
+                      other.isNonPhysicalSupport ||
+                      other.isTower) {
+                    return false;
+                  }
+                  if (other.npc.combatStats?.isFlying == true) return false;
+
+                  final double dist = sqrt(
+                    pow(other.x - attacker.x, 2) + pow(other.y - attacker.y, 2),
+                  );
+                  if (dist > cleaveRadius) return false;
+
+                  if (isConeCleave &&
+                      (other.x - attacker.x).sign != attackSign &&
+                      attackSign != 0) {
+                    return false;
+                  }
+                  return true;
+                })
+                .toList();
+
+        for (final sec in secondaryTargets) {
+          final secStats = sec.npc.combatStats!;
+          final secDmg = damage * 0.65;
+          final secHealth = max(0.0, secStats.health - secDmg);
+          sec.npc = sec.npc.copyWith(
+            combatStats: secStats.copyWith(health: secHealth),
+          );
+          _addFloatingMessage(
+            sec,
+            '-${secDmg.toInt()}',
+            Colors.deepOrangeAccent,
+          );
+          if (secHealth <= 0) {
+            _onCombatantDeath(sec, attacker);
+          }
+        }
+      }
+    }
+
     // Handle Trait effects
     for (final ability in attacker.npc.abilities) {
       if (ability.type == AbilityType.trait &&
@@ -2374,6 +2636,36 @@ class CombatManager extends ChangeNotifier {
           ),
         );
         _addLog('${c.npc.name} accuracy boosted!', side: c.side);
+        break;
+
+      case 'witch_charge_heal':
+        const reach = 9.0;
+        final allies =
+            _combatants
+                .where(
+                  (other) =>
+                      other.side == c.side &&
+                      !other.isDead &&
+                      sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <=
+                          reach,
+                )
+                .toList();
+        allies.sort(
+          (a, b) => sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2)).compareTo(
+            sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2)),
+          ),
+        );
+        for (int i = 0; i < min(4, allies.length); i++) {
+          final ally = allies[i];
+          final stats = ally.npc.combatStats!;
+          ally.npc = ally.npc.copyWith(
+            combatStats: stats.copyWith(
+              health: min(stats.maxHealth, stats.health + 50.0),
+            ),
+          );
+          _addFloatingMessage(ally, '+50', Colors.greenAccent);
+        }
+        _addLog('${c.npc.name} cast Coven Restoration!', side: c.side);
         break;
 
       case 'horn_heal':
@@ -2743,6 +3035,14 @@ class CombatManager extends ChangeNotifier {
       case 'dragon_breath':
         return _combatants.any(
           (other) => other.side != c.side && !other.isDead && (other.x - c.x).abs() <= 30.0,
+        );
+      case 'witch_charge_heal':
+        return _combatants.any(
+          (other) =>
+              other.side == c.side &&
+              other != c &&
+              !other.isDead &&
+              sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= 9.0,
         );
       default:
         return true;

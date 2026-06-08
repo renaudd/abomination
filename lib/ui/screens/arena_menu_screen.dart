@@ -20,6 +20,8 @@ import '../../models/npc.dart';
 import '../../services/arena_save_service.dart';
 import '../../services/combat_unit_factory.dart';
 import '../widgets/character_blob_renderer.dart';
+import '../widgets/combat_card_detail_modal.dart';
+import '../../services/combat_unit_service.dart';
 import 'combat_simulator_screen.dart';
 import 'campaign_screen.dart';
 import 'tournament_screen.dart';
@@ -703,7 +705,50 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
             const SizedBox(height: 4),
             Text(
               desc,
-              style: GoogleFonts.oldStandardTt(color: Colors.white60, fontSize: 10, height: 1.4),
+              style: GoogleFonts.oldStandardTt(
+                color: Colors.white60,
+                fontSize: 10,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: deck.map((cardId) {
+                final unit = CombatUnitService.createUnit(cardId);
+                return Expanded(
+                  child: InkWell(
+                    onTap: () => CombatCardDetailModal.show(context, cardId),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black38,
+                        border: Border.all(
+                          color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          CharacterBlobRenderer(
+                            npc: unit,
+                            size: 24,
+                            isCombat: true,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            unit.name.toUpperCase(),
+                            style: GoogleFonts.oswald(
+                              fontSize: 8,
+                              color: Colors.white70,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -753,84 +798,203 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
   }
 
   Widget _buildTournamentSelectCard(String label, List<String> deck) {
-    return SizedBox(
-      width: double.infinity,
-      height: 38,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
-          shape: const RoundedRectangleBorder(),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        border: Border.all(
+          color: const Color(0xFFC4B89B).withValues(alpha: 0.3),
         ),
-        onPressed: () {
-          Navigator.pop(context); // Close dialog
-          _showLeaderSelection(
-            onLeaderSelected: (leaderId) async {
-              // Generate 31 Opponent Names
-              final List<String> opponentNames = [
-                'Baron von Richter', 'Gladiator Titus', 'Inquisitor Sarah', 'Vagrant Jack',
-                'Lady Isabella', 'Commander Krieger', 'Outlaw Jesse', 'Sniper Vance',
-                'Warlord Marcus', 'Engineer Geller', 'Mercenary Hawke', 'Necromancer Silas',
-                'Dragoons Captain', 'Priestess Sophia', 'Feral Houndmaster', 'Keeper Bran',
-                'Bandit King Silas', 'Royal Guard Justin', 'Cultist Brother Paul', 'Alchemist Victor',
-                'Forest Warden Cedric', 'Steam Mechanic Hans', 'Saber Master Ray', 'Highwayman Rex',
-                'Bounty Hunter Clint', 'Plague Carrier Sean', 'Dread Golem Master', 'Squire Dennis',
-                'Swiss Scout Lukas', 'Knight Commander Gerald', 'Wild Wolf Alfa'
-              ];
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC4B89B),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  _showLeaderSelection(
+                    onLeaderSelected: (leaderId) async {
+                      // Generate 31 Opponent Names
+                      final List<String> opponentNames = [
+                        'Baron von Richter',
+                        'Gladiator Titus',
+                        'Inquisitor Sarah',
+                        'Vagrant Jack',
+                        'Lady Isabella',
+                        'Commander Krieger',
+                        'Outlaw Jesse',
+                        'Sniper Vance',
+                        'Warlord Marcus',
+                        'Engineer Geller',
+                        'Mercenary Hawke',
+                        'Necromancer Silas',
+                        'Dragoons Captain',
+                        'Priestess Sophia',
+                        'Feral Houndmaster',
+                        'Keeper Bran',
+                        'Bandit King Silas',
+                        'Royal Guard Justin',
+                        'Cultist Brother Paul',
+                        'Alchemist Victor',
+                        'Forest Warden Cedric',
+                        'Steam Mechanic Hans',
+                        'Saber Master Ray',
+                        'Highwayman Rex',
+                        'Bounty Hunter Clint',
+                        'Plague Carrier Sean',
+                        'Dread Golem Master',
+                        'Squire Dennis',
+                        'Swiss Scout Lukas',
+                        'Knight Commander Gerald',
+                        'Wild Wolf Alfa',
+                      ];
 
-              // 32 participants (Player at index 0 + 31 generated)
-              final List<String> allParticipants = ['Player', ...opponentNames];
+                      // 32 participants (Player at index 0 + 31 generated)
+                      final List<String> allParticipants = [
+                        'Player',
+                        ...opponentNames,
+                      ];
 
-              // Generate decks for all 32 participants
-              final Map<String, List<String>> participantDecks = {'Player': deck};
-              
-              final List<List<String>> deckPools = [
-                ['militia', 'militia', 'pikemen', 'marksmen'],
-                ['bicycle_gang', 'bicycle_gang', 'musketeers', 'cannoneer'],
-                ['rats_unit', 'rats_unit', 'bats_unit', 'undead_rats'],
-                ['wild_wolves', 'wild_wolves', 'wild_foxes', 'wild_bears'],
-                ['cavalry', 'cavalry', 'pikemen', 'musketeers'],
-                ['wooden_tank', 'armored_car', 'cannoneer', 'motorcycle_gang']
-              ];
+                      // Generate decks for all 32 participants
+                      final Map<String, List<String>> participantDecks = {
+                        'Player': deck,
+                      };
 
-              for (var oppName in opponentNames) {
-                participantDecks[oppName] = deckPools[Random().nextInt(deckPools.length)];
-              }
+                      final List<List<String>> deckPools = [
+                        ['militia', 'militia', 'pikemen', 'marksmen'],
+                        [
+                          'bicycle_gang',
+                          'bicycle_gang',
+                          'musketeers',
+                          'cannoneer',
+                        ],
+                        ['rats_unit', 'rats_unit', 'bats_unit', 'undead_rats'],
+                        [
+                          'wild_wolves',
+                          'wild_wolves',
+                          'wild_foxes',
+                          'wild_bears',
+                        ],
+                        ['cavalry', 'cavalry', 'pikemen', 'musketeers'],
+                        [
+                          'wooden_tank',
+                          'armored_car',
+                          'cannoneer',
+                          'motorcycle_gang',
+                        ],
+                      ];
 
-              final newTournament = TournamentProgress(
-                playerDeckIds: deck,
-                currentRound: 1,
-                participants: allParticipants,
-                participantDecks: participantDecks,
-                matches: [],
-                isEliminated: false,
-                playerLeaderId: leaderId,
+                      for (var oppName in opponentNames) {
+                        participantDecks[oppName] =
+                            deckPools[Random().nextInt(deckPools.length)];
+                      }
+
+                      final newTournament = TournamentProgress(
+                        playerDeckIds: deck,
+                        currentRound: 1,
+                        participants: allParticipants,
+                        participantDecks: participantDecks,
+                        matches: [],
+                        isEliminated: false,
+                        playerLeaderId: leaderId,
+                      );
+
+                      // Populate the bracket matches for Round 1 (16 pairings)
+                      for (int i = 0; i < 16; i++) {
+                        newTournament.matches.add(
+                          TournamentMatch(
+                            round: 1,
+                            p1: allParticipants[i * 2],
+                            p2: allParticipants[i * 2 + 1],
+                          ),
+                        );
+                      }
+
+                      final progress = ArenaProgress(
+                        slot: _activeSlot,
+                        saveTime: DateTime.now(),
+                        tournament: newTournament,
+                      );
+
+                      await ArenaSaveService.saveProgress(progress);
+                      await _loadActiveSlot();
+                      _enterTournament(
+                        progress.tournament!,
+                        explicitProgress: progress,
+                      );
+                    },
+                  );
+                },
+                child: Text(
+                  'CHOOSE DECK',
+                  style: GoogleFonts.oswald(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: deck.map((cardId) {
+              final unit = CombatUnitService.createUnit(cardId);
+              return Expanded(
+                child: InkWell(
+                  onTap: () => CombatCardDetailModal.show(context, cardId),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black38,
+                      border: Border.all(
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        CharacterBlobRenderer(
+                          npc: unit,
+                          size: 24,
+                          isCombat: true,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          unit.name.toUpperCase(),
+                          style: GoogleFonts.oswald(
+                            fontSize: 8,
+                            color: Colors.white70,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               );
-
-              // Populate the bracket matches for Round 1 (16 pairings)
-              for (int i = 0; i < 16; i++) {
-                newTournament.matches.add(TournamentMatch(
-                  round: 1,
-                  p1: allParticipants[i * 2],
-                  p2: allParticipants[i * 2 + 1],
-                ));
-              }
-
-              final progress = ArenaProgress(
-                slot: _activeSlot,
-                saveTime: DateTime.now(),
-                tournament: newTournament,
-              );
-              
-              await ArenaSaveService.saveProgress(progress);
-              await _loadActiveSlot();
-              _enterTournament(progress.tournament!, explicitProgress: progress);
-            },
-          );
-        },
-        child: Text(
-          label,
-          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 11, fontWeight: FontWeight.bold),
-        ),
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -873,206 +1037,273 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
               ),
               content: SizedBox(
                 width: 420,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Carousel controls with larger portrait
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left, color: Color(0xFFC4B89B), size: 32),
-                            onPressed: () {
-                              setState(() {
-                                currentIndex = (currentIndex - 1 + leaders.length) % leaders.length;
-                              });
-                            },
+                height: 310, // Optimized compact height ensures excellent legibility on iPhone screens
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 1. LOCKED TOP CAROUSEL HEADER
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.chevron_left,
+                            color: Color(0xFFC4B89B),
+                            size: 28,
                           ),
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.black38,
-                              border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2), width: 1.5),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: CharacterBlobRenderer(
-                                npc: currentLeader,
-                                size: 80,
-                                isIdle: true,
-                                showSpeechBubble: false,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right, color: Color(0xFFC4B89B), size: 32),
-                            onPressed: () {
-                              setState(() {
-                                currentIndex = (currentIndex + 1) % leaders.length;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Leader Name
-                      Text(
-                        currentLeader.name.toUpperCase(),
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      // Leader Role
-                      Text(
-                        currentLeader.role.toUpperCase(),
-                        style: GoogleFonts.oldStandardTt(
-                          color: const Color(0xFFD4AF37),
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Stats Grid
-                      Container(
-                        padding: const EdgeInsets.all(10.0),
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.15)),
-                        ),
-                        child: Table(
-                          columnWidths: const {
-                            0: FlexColumnWidth(1),
-                            1: FlexColumnWidth(1),
+                          onPressed: () {
+                            setState(() {
+                              currentIndex =
+                                  (currentIndex - 1 + leaders.length) %
+                                  leaders.length;
+                            });
                           },
-                          children: [
-                            TableRow(
-                              children: [
-                                _buildStatRow('HP / Max HP', '${stats.health.toInt()} / ${stats.maxHealth.toInt()}'),
-                                _buildStatRow('Attack Power', '${stats.attack.toInt()}'),
-                              ],
-                            ),
-                            TableRow(
-                              children: [
-                                _buildStatRow('Attack Range', '${stats.distance.toStringAsFixed(1)} ft'),
-                                _buildStatRow('Speed Factor', '${stats.speed.toStringAsFixed(1)}x'),
-                              ],
-                            ),
-                          ],
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Special Abilities Section
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'SPECIAL ABILITIES',
-                          style: GoogleFonts.playfairDisplay(
-                            color: const Color(0xFFC4B89B),
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      
-                      if (currentLeader.abilities.isEmpty)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'No active special abilities.',
-                            style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9.5),
-                          ),
-                        )
-                      else
-                        Column(
-                          children: currentLeader.abilities.map((ability) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8.0),
-                              padding: const EdgeInsets.all(8.0),
-                              decoration: BoxDecoration(
-                                color: Colors.black38,
-                                border: Border.all(color: Colors.white10),
+                        Container(
+                          width: 68, // Smaller portrait container for iPhone landscape
+                          height: 68,
+                          decoration: BoxDecoration(
+                            color: Colors.black38,
+                            border: Border.all(
+                              color: const Color(0xFFC4B89B).withValues(
+                                alpha: 0.2,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Center(
+                            child: CharacterBlobRenderer(
+                              npc: currentLeader,
+                              size: 54, // Proportional animated portrait
+                              isIdle: true,
+                              showSpeechBubble: false,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.chevron_right,
+                            color: Color(0xFFC4B89B),
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              currentIndex =
+                                  (currentIndex + 1) % leaders.length;
+                            });
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+
+                    // LOCKED LEADER NAME & ROLE
+                    Text(
+                      currentLeader.name.toUpperCase(),
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      currentLeader.role.toUpperCase(),
+                      style: GoogleFonts.oldStandardTt(
+                        color: const Color(0xFFD4AF37),
+                        fontSize: 9.0,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const Divider(color: Colors.white10, height: 8),
+
+                    // 2. SCROLLABLE STATS & ABILITIES (Between Header and Bottom Button)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: [
+                            // Stats Grid
+                            Container(
+                              padding: const EdgeInsets.all(6.0),
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                border: Border.all(
+                                  color: const Color(0xFFC4B89B).withValues(
+                                    alpha: 0.15,
+                                  ),
+                                ),
+                              ),
+                              child: Table(
+                                columnWidths: const {
+                                  0: FlexColumnWidth(1),
+                                  1: FlexColumnWidth(1),
+                                },
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  TableRow(
                                     children: [
-                                      Text(
-                                        ability.name,
-                                        style: GoogleFonts.playfairDisplay(
-                                          color: const Color(0xFFE5D5B0),
-                                          fontSize: 11.0,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      _buildStatRow(
+                                        'HP / Max HP',
+                                        '${stats.health.toInt()} / ${stats.maxHealth.toInt()}',
                                       ),
-                                      Text(
-                                        'Charge: ${ability.chargeTime?.toInt() ?? 0}s',
-                                        style: GoogleFonts.oldStandardTt(
-                                          color: const Color(0xFFD4AF37),
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      _buildStatRow(
+                                        'Attack Power',
+                                        '${stats.attack.toInt()}',
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    ability.description,
-                                    style: GoogleFonts.oldStandardTt(
-                                      color: Colors.white70,
-                                      fontSize: 9.5,
-                                      height: 1.3,
-                                    ),
+                                  TableRow(
+                                    children: [
+                                      _buildStatRow(
+                                        'Attack Range',
+                                        '${stats.distance.toStringAsFixed(1)} ft',
+                                      ),
+                                      _buildStatRow(
+                                        'Speed Factor',
+                                        '${stats.speed.toStringAsFixed(1)}x',
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            );
-                          }).toList(),
-                        ),
-                      const SizedBox(height: 20),
-                      
-                      // Select Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 38,
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFC4B89B), width: 1.5),
-                            backgroundColor: const Color(0xFF15100B),
-                            shape: const RoundedRectangleBorder(),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context); // Close dialog
-                            onLeaderSelected(currentLeader.id);
-                          },
-                          child: Text(
-                            'SELECT THIS LEADER',
-                            style: GoogleFonts.playfairDisplay(
-                              color: Colors.white, 
-                              fontSize: 11.5, 
-                              fontWeight: FontWeight.bold, 
-                              letterSpacing: 1.5,
                             ),
+                            const SizedBox(height: 8),
+
+                            // Special Abilities Section
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'SPECIAL ABILITIES',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFC4B89B),
+                                  fontSize: 10.0,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+
+                            if (currentLeader.abilities.isEmpty)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'No active special abilities.',
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: Colors.white38,
+                                    fontSize: 9.0,
+                                  ),
+                                ),
+                              )
+                            else
+                              Column(
+                                children:
+                                    currentLeader.abilities.map((ability) {
+                                      return Container(
+                                        margin: const EdgeInsets.only(
+                                          bottom: 6.0,
+                                        ),
+                                        padding: const EdgeInsets.all(6.0),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black38,
+                                          border: Border.all(
+                                            color: Colors.white10,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  ability.name,
+                                                  style: GoogleFonts
+                                                      .playfairDisplay(
+                                                        color: const Color(
+                                                          0xFFE5D5B0,
+                                                        ),
+                                                        fontSize: 10.5,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                ),
+                                                Text(
+                                                  'Charge: ${ability.chargeTime?.toInt() ?? 0}s',
+                                                  style: GoogleFonts
+                                                      .oldStandardTt(
+                                                        color: const Color(
+                                                          0xFFD4AF37,
+                                                        ),
+                                                        fontSize: 8.0,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              ability.description,
+                                              style: GoogleFonts.oldStandardTt(
+                                                color: Colors.white70,
+                                                fontSize: 9.0,
+                                                height: 1.25,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const Divider(color: Colors.white10, height: 8),
+
+                    // 3. ANCHORED "SELECT THIS LEADER" BUTTON AT THE BOTTOM
+                    SizedBox(
+                      width: double.infinity,
+                      height: 32,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: Color(0xFFC4B89B),
+                            width: 1.5,
+                          ),
+                          backgroundColor: const Color(0xFF15100B),
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context); // Close dialog
+                          onLeaderSelected(currentLeader.id);
+                        },
+                        child: Text(
+                          'SELECT THIS LEADER',
+                          style: GoogleFonts.playfairDisplay(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );

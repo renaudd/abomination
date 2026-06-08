@@ -99,7 +99,7 @@ class _HamletHotspotState extends State<HamletHotspot> {
                 ),
 
                 // Label Tooltip (visible on hover)
-                if (_isHovered)
+                if (true)
                   Positioned(
                     top: -45,
                     child: Container(

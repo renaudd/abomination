@@ -64,8 +64,9 @@ class CombatUnitService {
         return CombatUnitFactory.createWildFoxes();
       case 'wild_wolves':
         return CombatUnitFactory.createWildWolves();
+      case 'wild_bear':
       case 'wild_bears':
-        return CombatUnitFactory.createWildBears();
+        return CombatUnitFactory.createWildBear();
       case 'bandits':
         return CombatUnitFactory.createBandits();
       case 'thugs':
@@ -91,14 +92,66 @@ class CombatUnitService {
       case 'militia':
         return CombatUnitFactory.createMilitia();
       case 'goon':
-        return CombatUnitFactory.createGoon();
+      case 'goons':
+        return CombatUnitFactory.createGoons();
+      case 'footman':
+        return CombatUnitFactory.createFootman();
       case 'rats_unit':
         return CombatUnitFactory.createRatsUnit();
       case 'bandit_captain':
         return CombatUnitFactory.createBanditCaptain();
+      case 'boss_rudolf':
+        return CombatUnitFactory.createBossRudolf();
+      case 'boss_gearbox':
+        return CombatUnitFactory.createBossGearbox();
+      case 'boss_elizabeth':
+        return CombatUnitFactory.createBossElizabeth();
+      case 'boss_thorne':
+        return CombatUnitFactory.createBossThorne();
+      case 'bats':
+      case 'bats_unit':
+        return CombatUnitFactory.createBats();
+      case 'stampede':
+      case 'stampede_card':
+        return CombatUnitFactory.createStampede();
+      case 'brewers':
+        return CombatUnitFactory.createBrewers();
+      case 'hag':
+        return CombatUnitFactory.createHag();
+      case 'witch':
+        return CombatUnitFactory.createWitch();
+      case 'warlock':
+        return CombatUnitFactory.createWarlock();
+      case 'gatling_gun':
+        return CombatUnitFactory.createGatlingGun();
+      case 'zeppelin':
+        return CombatUnitFactory.createZeppelin();
+      case 'valkyrie':
+        return CombatUnitFactory.createValkyrie();
+      case 'minotaur':
+        return CombatUnitFactory.createMinotaur();
+      case 'phoenix':
+        return CombatUnitFactory.createPhoenix();
+      case 'necromancer':
+        return CombatUnitFactory.createNecromancer();
+      case 'battering_ram':
+        return CombatUnitFactory.createBatteringRam();
+      case 'steampunk_mech':
+        return CombatUnitFactory.createSteampunkMech();
+      case 'poison_gas':
+        return CombatUnitFactory.createPoisonGas();
+      case 'lightning_storm':
+        return CombatUnitFactory.createLightningStorm();
+      case 'airdrop':
+        return CombatUnitFactory.createAirdrop();
+      case 'divine_shield':
+        return CombatUnitFactory.createDivineShield();
+      case 'napalm_strike':
+        return CombatUnitFactory.createNapalmStrike();
       default:
         return CombatUnitFactory.createVillagerMob();
     }
   }
 
 }
+

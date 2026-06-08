@@ -14,7 +14,7 @@
 
 import 'package:flutter/foundation.dart';
 
-enum AbilityType { horn, special, trait, knell }
+enum AbilityType { horn, special, trait, knell, charge }
 
 enum UnitType { squad, vehicle, support }
 

@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/combat_unit_service.dart';
 import '../widgets/character_blob_renderer.dart';
+import '../widgets/combat_card_detail_modal.dart';
 import '../widgets/combat_controls_dialog.dart';
 import 'combat_simulator_map_selection_screen.dart';
 
@@ -178,9 +179,14 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                             horizontal: 10,
                             vertical: 8,
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                          child: InkWell(
+                            onTap: () => CombatCardDetailModal.show(
+                              context,
+                              type,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                               Padding(
                                 padding: const EdgeInsets.only(top: 2),
                                 child: CharacterBlobRenderer(
@@ -254,7 +260,8 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                               ),
                             ],
                           ),
-                        );
+                        ),
+                      );
                       },
                     ),
                   ),
@@ -311,9 +318,14 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                                   color: Colors.black26,
                                 ),
                                 child: hasUnit
-                                    ? Stack(
-                                        alignment: Alignment.center,
-                                        children: [
+                                    ? InkWell(
+                                        onTap: () => CombatCardDetailModal.show(
+                                          context,
+                                          currentDeck[index],
+                                        ),
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
                                           Column(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
@@ -355,7 +367,8 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
                                             ),
                                           ),
                                         ],
-                                      )
+                                      ),
+                                    )
                                     : const Center(
                                         child: Icon(
                                           Icons.add,

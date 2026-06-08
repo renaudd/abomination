@@ -24,6 +24,7 @@ import '../../services/survival_service.dart';
 import '../../state/game_state.dart';
 import '../../models/combat_map.dart';
 import '../widgets/character_blob_renderer.dart';
+import '../widgets/combat_card_detail_modal.dart';
 import '../../models/combat_stats.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
@@ -430,7 +431,11 @@ class _CombatScreenState extends State<CombatScreen>
 
         // Spawn the first 2 units instantly so battle starts with immediate threats in top and bottom lanes
         final spawnYs = [_combatManager.map.laneCenters.first, _combatManager.map.laneCenters.last];
-        final initialSpawns = state.pendingEncounterEnemies!.take(2).toList();
+        final seenNames = <String>{};
+        final initialSpawns = state.pendingEncounterEnemies!
+            .where((e) => seenNames.add(e.name))
+            .take(2)
+            .toList();
         int idx = 0;
         for (var enemy in initialSpawns) {
           _combatManager.spawnUnit(
@@ -549,9 +554,19 @@ class _CombatScreenState extends State<CombatScreen>
           if (event is KeyDownEvent) {
             _pressedKeys.add(key);
             if (key == PhysicalKeyboardKey.keyR) {
-              _combatManager.executeSpecial('alphonse');
+              final playerId = _combatManager.combatants
+                      .firstWhereOrNull((c) => c.npc.isPlayer)
+                      ?.npc
+                      .id ??
+                  'alphonse';
+              _combatManager.executeSpecial(playerId);
             } else if (key == PhysicalKeyboardKey.keyF) {
-              _combatManager.executeSpecial2('alphonse');
+              final playerId = _combatManager.combatants
+                      .firstWhereOrNull((c) => c.npc.isPlayer)
+                      ?.npc
+                      .id ??
+                  'alphonse';
+              _combatManager.executeSpecial2(playerId);
             } else if (_combatManager.isCombatActive && !_combatManager.isVictory && !_combatManager.isDefeat && !_combatManager.isDraw) {
               // Hotkeys to select cards 1-5 from hand
               if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
@@ -1090,7 +1105,9 @@ class _CombatScreenState extends State<CombatScreen>
                   ),
                 ),
               ],
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
+              _buildOpponentDeckInspectorButton(context),
+              const SizedBox(height: 24),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.yellow.shade800,
@@ -1139,6 +1156,49 @@ class _CombatScreenState extends State<CombatScreen>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildOpponentDeckInspectorButton(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFE5D5B0),
+        side: const BorderSide(color: Color(0xFFC4B89B)),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+      ),
+      icon: const Icon(Icons.style),
+      label: Text(
+        'OPPONENT DECK DETAIL',
+        style: GoogleFonts.oswald(letterSpacing: 1.5),
+      ),
+      onPressed: () {
+        final opponentDeck =
+            widget.customAiDeck ??
+            _combatManager.combatants
+                .where((c) => c.side == CombatSide.enemy && !c.isTower)
+                .map((c) => c.npc)
+                .toList();
+        final opponentLeader =
+            widget.customEnemyHero ??
+            _combatManager.combatants
+                .firstWhereOrNull(
+                  (c) =>
+                      c.side == CombatSide.enemy &&
+                      (c.isAiLeader || c.isSquadLeader),
+                )
+                ?.npc ??
+            CombatUnitFactory.createAlphonse().copyWith(
+              name: 'Enemy Commander',
+            );
+        showDialog(
+          context: context,
+          builder:
+              (context) => _OpponentDeckInspectorScreen(
+                opponentDeck: opponentDeck,
+                opponentLeader: opponentLeader,
+              ),
+        );
+      },
     );
   }
 
@@ -1264,6 +1324,8 @@ class _CombatScreenState extends State<CombatScreen>
                 ),
               ],
               const SizedBox(height: 32),
+              _buildOpponentDeckInspectorButton(context),
+              const SizedBox(height: 24),
               if (isSurvival) ...[
                 if (widget.survivalDifficulty == SurvivalDifficulty.elementary ||
                     widget.survivalDifficulty == SurvivalDifficulty.arcade) ...[
@@ -1411,7 +1473,9 @@ class _CombatScreenState extends State<CombatScreen>
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 64),
+              const SizedBox(height: 32),
+              _buildOpponentDeckInspectorButton(context),
+              const SizedBox(height: 32),
               if (widget.onSurvivalDraw != null || widget.onSurvivalDefeat != null) ...[
                 _DefeatButton(
                   label: 'CONTINUE',
@@ -1699,9 +1763,10 @@ class _BattlefieldViewport extends StatelessWidget {
                         if (stats == null) {
                           return const SizedBox.shrink();
                         }
-                        final double baseSize = 40.0 * ((stats.radius) / 1.5).clamp(0.5, 2.2);
+                        final double baseSize =
+                            40.0 * ((stats.radius) / 1.5).clamp(0.5, 2.2);
                         final double boxWidth = baseSize * 1.5;
-                        final double boxHeight = baseSize * 2.25;
+                        final double boxHeight = baseSize * 3.0;
                         final screenPos = projection.project(item.x, item.y);
 
                         return Positioned(
@@ -1868,10 +1933,14 @@ class _CombatantSprite extends StatelessWidget {
     // Character Widget construction
     final Widget characterWidget = Stack(
       alignment: Alignment.center,
+      clipBehavior: Clip.none,
       children: [
         combatant.isTower
             ? _TowerRenderer(combatant: combatant)
-            : (combatant.isDead
+            : (combatant.npc.name.contains('Bats') ||
+                    combatant.npc.name.contains('Bat')
+                ? _BatsRenderer(combatant: combatant, size: baseSize)
+                : (combatant.isDead
                 ? Transform.rotate(
                     angle: pi / 2,
                     child: CharacterBlobRenderer(
@@ -1880,6 +1949,7 @@ class _CombatantSprite extends StatelessWidget {
                       isWalking: false,
                       showSpeechBubble: false,
                       isCombat: true,
+                      isLiveBattlefield: true,
                     ),
                   )
                 : CharacterBlobRenderer(
@@ -1889,7 +1959,8 @@ class _CombatantSprite extends StatelessWidget {
                     showSpeechBubble: false,
                     attackCooldown: combatant.attackCooldown,
                     isCombat: true,
-                  )),
+                    isLiveBattlefield: true,
+                  ))),
 
         // Staggered recent damage numerical overlay
         if (isFlashing && combatant.recentDamage > 0)
@@ -2355,6 +2426,74 @@ class _CombatBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final manager = Provider.of<CombatManager>(context);
+    final playerLeader = manager.combatants
+            .firstWhereOrNull((c) => c.npc.isPlayer)
+            ?.npc;
+    final playerId = playerLeader?.id ?? 'alphonse';
+
+    final ab1 = playerLeader?.abilities
+            .firstWhereOrNull((a) => a.type == AbilityType.special);
+    final label1 = ab1?.name.toUpperCase() ?? "MASTER'S COMMAND";
+    final desc1 = ab1?.description ??
+        "Nearby allies gain +50% Attack Speed for 8 seconds.";
+
+    IconData icon1 = Icons.gavel;
+    if (ab1 != null) {
+      final s = ab1.name.toLowerCase();
+      if (s.contains('shield')) {
+        icon1 = Icons.security;
+      } else if (s.contains('cry')) {
+        icon1 = Icons.campaign;
+      } else if (s.contains('overclock')) {
+        icon1 = Icons.speed;
+      } else if (s.contains('tesla')) {
+        icon1 = Icons.bolt;
+      } else if (s.contains('mist')) {
+        icon1 = Icons.cloud;
+      } else if (s.contains('swarm')) {
+        icon1 = Icons.pest_control;
+      } else if (s.contains('root')) {
+        icon1 = Icons.grass;
+      } else if (s.contains('howl')) {
+        icon1 = Icons.pets;
+      } else if (s.contains('rot')) {
+        icon1 = Icons.water_drop;
+      }
+    }
+
+    final abList = playerLeader?.abilities
+            .where((a) => a.type == AbilityType.special)
+            .toList() ??
+        [];
+    final ab2 = abList.length > 1 ? abList[1] : null;
+    final label2 = ab2?.name.toUpperCase() ?? "LIGHTNING STRIKE";
+    final desc2 = ab2?.description ??
+        "Strike the nearest enemy for 150 dmg and stun them for 4s.";
+
+    IconData icon2 = Icons.flash_on;
+    if (ab2 != null) {
+      final s = ab2.name.toLowerCase();
+      if (s.contains('shield')) {
+        icon2 = Icons.security;
+      } else if (s.contains('cry')) {
+        icon2 = Icons.campaign;
+      } else if (s.contains('overclock')) {
+        icon2 = Icons.speed;
+      } else if (s.contains('tesla')) {
+        icon2 = Icons.bolt;
+      } else if (s.contains('mist')) {
+        icon2 = Icons.cloud;
+      } else if (s.contains('swarm')) {
+        icon2 = Icons.pest_control;
+      } else if (s.contains('root')) {
+        icon2 = Icons.grass;
+      } else if (s.contains('howl')) {
+        icon2 = Icons.pets;
+      } else if (s.contains('rot')) {
+        icon2 = Icons.water_drop;
+      }
+    }
+
     return GestureDetector(
       onTap: () {}, // Absorbs gestures to block underlying map panning/zooming!
       behavior: HitTestBehavior.opaque,
@@ -2428,7 +2567,7 @@ class _CombatBottomBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Tooltip(
-                  message: "MASTER'S COMMAND - TAP TO TRIGGER: Nearby allies gain +50% Attack Speed for 8 seconds.",
+                  message: "$label1 - TAP TO TRIGGER: $desc1",
                   textStyle: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2A1B1B),
@@ -2437,16 +2576,16 @@ class _CombatBottomBar extends StatelessWidget {
                   ),
                   child: _SpecialAbilityButton(
                     label: '',
-                    icon: Icons.gavel,
+                    icon: icon1,
                     isCharged: manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer)?.npc.specialCharge == 1.0,
                     onPressed: () {
-                      manager.executeSpecial('alphonse');
+                      manager.executeSpecial(playerId);
                     },
                   ),
                 ),
                 const SizedBox(height: 8),
                 Tooltip(
-                  message: "LIGHTNING STRIKE - TAP TO TRIGGER: Strike the nearest enemy for 150 dmg and stun them for 4s.",
+                  message: "$label2 - TAP TO TRIGGER: $desc2",
                   textStyle: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2A1B1B),
@@ -2455,10 +2594,10 @@ class _CombatBottomBar extends StatelessWidget {
                   ),
                   child: _SpecialAbilityButton(
                     label: '',
-                    icon: Icons.flash_on,
+                    icon: icon2,
                     isCharged: (manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer)?.specialCharge2 ?? 0.0) >= 1.0,
                     onPressed: () {
-                      manager.executeSpecial2('alphonse');
+                      manager.executeSpecial2(playerId);
                     },
                   ),
                 ),
@@ -5593,3 +5732,942 @@ class _TearGasPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _TearGasPainter oldDelegate) => true;
 }
+
+class _BatsRenderer extends StatefulWidget {
+  final Combatant combatant;
+  final double size;
+
+  const _BatsRenderer({required this.combatant, required this.size});
+
+  @override
+  State<_BatsRenderer> createState() => _BatsRendererState();
+}
+
+class _BatsRendererState extends State<_BatsRenderer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _flapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _flapController = AnimationController(
+      duration: const Duration(milliseconds: 120),
+      vsync: this,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _flapController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _flapController,
+      builder: (context, child) {
+        final hoverDy = -12.0 + sin(_flapController.value * pi * 2) * 6.0;
+        final wingAngle = 0.15 + _flapController.value * 0.75;
+
+        return Transform.translate(
+          offset: Offset(0, hoverDy),
+          child: CustomPaint(
+            size: Size(widget.size * 1.5, widget.size * 1.0),
+            painter: _BatWingPainter(wingAngle: wingAngle),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BatWingPainter extends CustomPainter {
+  final double wingAngle;
+
+  _BatWingPainter({required this.wingAngle});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final bodyPaint = Paint()..color = const Color(0xFF1E1B18);
+    final eyePaint = Paint()..color = Colors.redAccent;
+    final earPaint = Paint()..color = const Color(0xFF2A2421);
+
+    final leftEar = Path()
+      ..moveTo(center.dx - 4, center.dy - 6)
+      ..lineTo(center.dx - 8, center.dy - 14)
+      ..lineTo(center.dx - 1, center.dy - 10)
+      ..close();
+    final rightEar = Path()
+      ..moveTo(center.dx + 4, center.dy - 6)
+      ..lineTo(center.dx + 8, center.dy - 14)
+      ..lineTo(center.dx + 1, center.dy - 10)
+      ..close();
+    canvas.drawPath(leftEar, earPaint);
+    canvas.drawPath(rightEar, earPaint);
+
+    canvas.drawOval(
+      Rect.fromCenter(center: center, width: 14, height: 18),
+      bodyPaint,
+    );
+
+    canvas.drawCircle(Offset(center.dx - 3, center.dy - 4), 1.5, eyePaint);
+    canvas.drawCircle(Offset(center.dx + 3, center.dy - 4), 1.5, eyePaint);
+
+    final wingPaint = Paint()
+      ..color = const Color(0xFF12100E)
+      ..style = PaintingStyle.fill;
+    final ribPaint = Paint()
+      ..color = const Color(0xFF3A2E2B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    canvas.save();
+    canvas.translate(center.dx - 6, center.dy - 2);
+    canvas.rotate(-wingAngle);
+    final leftWing = Path()
+      ..moveTo(0, 0)
+      ..lineTo(-8, -12) // Upper shoulder joint
+      ..lineTo(-24, -16) // Wingtip thumb hook (Point 1)
+      ..quadraticBezierTo(-18, -4, -28, 6) // Sharp outer pointy tip (Point 2)
+      ..quadraticBezierTo(-20, 2, -16, 12) // Scallop 1 to Point 3
+      ..quadraticBezierTo(-10, 4, -8, 10) // Scallop 2 to Point 4
+      ..quadraticBezierTo(-4, 4, 0, 4) // Scallop 3 back to body
+      ..close();
+    canvas.drawPath(leftWing, wingPaint);
+    canvas.drawLine(const Offset(-8, -12), const Offset(-28, 6), ribPaint);
+    canvas.drawLine(const Offset(-8, -12), const Offset(-16, 12), ribPaint);
+    canvas.drawLine(const Offset(-8, -12), const Offset(-8, 10), ribPaint);
+    canvas.restore();
+
+    canvas.save();
+    canvas.translate(center.dx + 6, center.dy - 2);
+    canvas.rotate(wingAngle);
+    final rightWing = Path()
+      ..moveTo(0, 0)
+      ..lineTo(8, -12)
+      ..lineTo(24, -16)
+      ..quadraticBezierTo(18, -4, 28, 6)
+      ..quadraticBezierTo(20, 2, 16, 12)
+      ..quadraticBezierTo(10, 4, 8, 10)
+      ..quadraticBezierTo(4, 4, 0, 4)
+      ..close();
+    canvas.drawPath(rightWing, wingPaint);
+    canvas.drawLine(const Offset(8, -12), const Offset(28, 6), ribPaint);
+    canvas.drawLine(const Offset(8, -12), const Offset(16, 12), ribPaint);
+    canvas.drawLine(const Offset(8, -12), const Offset(8, 10), ribPaint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _BatWingPainter oldDelegate) =>
+      oldDelegate.wingAngle != wingAngle;
+}
+
+class _OpponentDeckInspectorScreen extends StatefulWidget {
+  final List<NPC> opponentDeck;
+  final NPC opponentLeader;
+
+  const _OpponentDeckInspectorScreen({
+    required this.opponentDeck,
+    required this.opponentLeader,
+  });
+
+  @override
+  State<_OpponentDeckInspectorScreen> createState() =>
+      _OpponentDeckInspectorScreenState();
+}
+
+class _OpponentDeckInspectorScreenState
+    extends State<_OpponentDeckInspectorScreen> {
+  bool _showLeader = false;
+  bool _showCardDetails = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final double totalGridHeight = size.height * 0.65;
+    final double cellHeight = (totalGridHeight - 12.0) / 2.0;
+    final double cardHeight = cellHeight - 10.0;
+    final double cellWidth = cardHeight * 0.7;
+    final double aspectRatio = cellWidth / cellHeight;
+
+    return Dialog(
+      backgroundColor: const Color(0xFF15100B),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFFC4B89B), width: 1.5),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      insetPadding: const EdgeInsets.all(16),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.9,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Top Navigation Banner
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !_showLeader
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFF2A2421),
+                        foregroundColor: !_showLeader
+                            ? Colors.black
+                            : const Color(0xFFE5D5B0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      onPressed: () => setState(() => _showLeader = false),
+                      child: Text(
+                        'OPPONENT DECK (${widget.opponentDeck.length})',
+                        style: GoogleFonts.playfairDisplay(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _showLeader
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFF2A2421),
+                        foregroundColor: _showLeader
+                            ? Colors.black
+                            : const Color(0xFFE5D5B0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      onPressed: () => setState(() => _showLeader = true),
+                      child: Text(
+                        'COMMANDER: ${widget.opponentLeader.name.toUpperCase()}',
+                        style: GoogleFonts.playfairDisplay(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (!_showLeader) ...[
+                      const SizedBox(width: 16),
+                      // Button in the top left corner flips the cards to their detail side
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            _showCardDetails ? Icons.portrait : Icons.menu_book,
+                            color: const Color(0xFFD4AF37),
+                            size: 22,
+                          ),
+                          tooltip: _showCardDetails
+                              ? 'Show Portraits'
+                              : 'Show Tactical Specs',
+                          onPressed: () => setState(
+                            () => _showCardDetails = !_showCardDetails,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Color(0xFFE5D5B0)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white12, height: 1),
+            const SizedBox(height: 16),
+
+            // Scrollable Content Area optimized for mobile exactly like Survival Mode Deck
+            Expanded(
+              child: _showLeader
+                  ? _buildFullOpponentLeaderView(widget.opponentLeader)
+                  : widget.opponentDeck.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No normal unit cards identified in opponent deck.',
+                        style: GoogleFonts.oldStandardTt(
+                          color: Colors.white54,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: SizedBox(
+                        width: cellWidth * 6 + 5 * 12.0,
+                        height: totalGridHeight,
+                        child: GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 6,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: aspectRatio,
+                              ),
+                          itemCount: 12,
+                          itemBuilder: (context, index) {
+                            final isOccupied =
+                                index < widget.opponentDeck.length;
+                            if (!isOccupied) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF15100B),
+                                  border: Border.all(
+                                    color: const Color(0xFFC4B89B).withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.add_circle_outline,
+                                        color: Colors.white10,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'VACANT SLOT',
+                                        style: GoogleFonts.playfairDisplay(
+                                          color: Colors.white12,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            final npc = widget.opponentDeck[index];
+                            return GestureDetector(
+                              onTap: () => CombatCardDetailModal.show(
+                                context,
+                                npc.id,
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF211B15),
+                                  border: Border.all(
+                                    color: const Color(0xFFC4B89B).withValues(
+                                      alpha: 0.4,
+                                    ),
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: !_showCardDetails
+                                    ? _buildPortraitCardFace(npc)
+                                    : _buildTacticalCardFace(npc),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC4B89B),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 48,
+                  vertical: 14,
+                ),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'RETURN TO POST-COMBAT REPORT',
+                style: GoogleFonts.oswald(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPortraitCardFace(NPC npc) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Card textured backing: assets/images/card_background.png with deep brown fallback
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/card_background.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: const Color(0xFF1A130E),
+            ),
+          ),
+        ),
+        // Elegant inner border
+        Positioned.fill(
+          child: Container(
+            margin: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
+                width: 0.8,
+              ),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ),
+        // Character Portrait
+        Positioned(
+          top: 24,
+          bottom: 4,
+          left: 4,
+          right: 4,
+          child: Center(
+            child: CharacterBlobRenderer(npc: npc, size: 76, isCombat: true),
+          ),
+        ),
+        // Top Banner Overlay showing ONLY squad name
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.85),
+              border: const Border(
+                bottom: BorderSide(color: Color(0xFFC4B89B), width: 0.8),
+              ),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                npc.name.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Bottom-Left circular AP Cost indicator
+        Positioned(
+          left: 6,
+          bottom: 6,
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: const Color(0xFF3E2723), // Mahogany Cost Backing
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 2,
+                  offset: Offset(1, 1),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${npc.combatStats?.cost ?? 1}',
+              style: GoogleFonts.oswald(
+                color: const Color(0xFFE5D5B0),
+                fontSize: 17.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTacticalCardFace(NPC npc) {
+    final stats =
+        npc.combatStats ??
+        const CombatStats(
+          attack: 10,
+          health: 100,
+          maxHealth: 100,
+          speed: 1.0,
+          movement: 1.0,
+          distance: 1.0,
+          cost: 2,
+        );
+    final squadSize = stats.unitCount;
+    final cost = stats.cost;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDF5E6), // Parchment backing
+        border: Border.all(color: const Color(0xFF5D4037), width: 1.8),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 5.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 22,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                npc.name.toUpperCase(),
+                style: GoogleFonts.oldStandardTt(
+                  color: const Color(0xFF2E1A0A),
+                  fontSize: 18.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            height: 14,
+            child: Row(
+              children: [
+                if (stats.rangedDamage > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 5.0),
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade600,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${stats.rangedRange.toInt()}',
+                        style: GoogleFonts.oldStandardTt(
+                          color: Colors.white,
+                          fontSize: 9.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (stats.isFlying == true)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 5.0),
+                    child: Icon(
+                      Icons.flutter_dash,
+                      size: 12.0,
+                      color: Color(0xFF4E342E),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3E2723),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFFD4AF37),
+                    width: 1.5,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$cost',
+                  style: GoogleFonts.oswald(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 17.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DaggerIcon(
+                        color: Colors.deepOrange.shade800,
+                        size: 12.0,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${stats.meleeAttackSpeed <= 0 ? 0 : (stats.meleeDamage / stats.meleeAttackSpeed).round()}',
+                        style: GoogleFonts.oswald(
+                          color: Colors.deepOrange.shade800,
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.favorite,
+                        size: 12.0,
+                        color: Colors.green.shade900,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${stats.maxHealth.toInt()}',
+                        style: GoogleFonts.oswald(
+                          color: Colors.green.shade900,
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.group,
+                        size: 12.0,
+                        color: Color(0xFF4E342E),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'x${stats.unitCount}',
+                        style: GoogleFonts.oldStandardTt(
+                          color: const Color(0xFF4E342E),
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFullOpponentLeaderView(NPC leader) {
+    final stats =
+        leader.combatStats ??
+        const CombatStats(
+          attack: 35,
+          health: 500,
+          maxHealth: 500,
+          speed: 1.0,
+          movement: 1.0,
+          distance: 1.0,
+          cost: 4,
+        );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: const Color(0xFF18120D),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'OPPONENT COMMANDER DOSSIER & ATTRIBUTES',
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left Panel: Bio & Portrait
+                Expanded(
+                  flex: 3,
+                  child: Card(
+                    color: const Color(0xFF130E0A),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFD4AF37),
+                                width: 2.0,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black45,
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: ClipOval(
+                              child: CharacterBlobRenderer(
+                                npc: leader,
+                                size: 72,
+                                isCombat: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            leader.name.toUpperCase(),
+                            style: GoogleFonts.playfairDisplay(
+                              color: const Color(0xFFE5D5B0),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            leader.role.toUpperCase(),
+                            style: GoogleFonts.oldStandardTt(
+                              color: const Color(0xFFD4AF37),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            leader.id == 'boss_rudolf'
+                                ? 'Passive Bonuses: Shield formations gain +20% structural integrity and infantry units receive +10% morale.'
+                                : leader.id == 'boss_gearbox'
+                                ? 'Passive Bonuses: Clockwork constructs deploy 15% faster and gain +10 armor.'
+                                : leader.id == 'boss_elizabeth'
+                                ? 'Passive Bonuses: Undead swarms gain +15% lifesteal and nocturnal vision.'
+                                : leader.id == 'boss_thorne'
+                                ? 'Passive Bonuses: Beast companions gain +20% movement speed and wilderness camouflage.'
+                                : 'Passive Bonuses: Military units gain +10% critical chance, and defensive towers receive +15% armor.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.oldStandardTt(
+                              color: Colors.white70,
+                              fontSize: 11.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // Right Panel: Detailed Stats & Abilities
+                Expanded(
+                  flex: 5,
+                  child: Card(
+                    color: const Color(0xFF130E0A),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'TACTICAL COMMANDER STATS & SPECIAL ABILITIES',
+                            style: GoogleFonts.playfairDisplay(
+                              color: const Color(0xFFC4B89B),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          _buildStatRow(
+                            'Commander Class / Rank',
+                            leader.name.toUpperCase(),
+                          ),
+                          _buildStatRow(
+                            'Specimen Lineage',
+                            leader.specimenType.toUpperCase(),
+                          ),
+                          _buildStatRow(
+                            'Direct Placement Cost',
+                            '${stats.cost} AP',
+                          ),
+                          _buildStatRow(
+                            'Structural Vitality (HP)',
+                            '${stats.health.toInt()} HP',
+                          ),
+                          _buildStatRow(
+                            'Action Speed Multiplier',
+                            '${stats.movement.toStringAsFixed(1)} m/s',
+                          ),
+                          const Divider(color: Colors.white10, height: 12),
+                          _buildStatRow(
+                            'Melee Strike Force',
+                            '${stats.meleeDamage.toInt() > 0 ? stats.meleeDamage.toInt() : stats.attack.toInt()} Damage',
+                          ),
+                          _buildStatRow(
+                            'Melee Strike Cooldown',
+                            '${stats.meleeAttackSpeed.toStringAsFixed(1)}s',
+                          ),
+                          _buildStatRow(
+                            'Melee Strike Distance',
+                            '${stats.meleeRange.toStringAsFixed(1)} ft',
+                          ),
+                          _buildStatRow(
+                            'Target Selector Rule',
+                            stats.targetingRule.name.toUpperCase(),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'COMMANDER SPECIAL ABILITIES',
+                            style: GoogleFonts.playfairDisplay(
+                              color: const Color(0xFFD4AF37),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (leader.abilities.isEmpty)
+                            Text(
+                              'NO SPECIAL ABILITIES REGISTERED.',
+                              style: GoogleFonts.oldStandardTt(
+                                color: Colors.white38,
+                                fontSize: 10,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            )
+                          else
+                            ...leader.abilities.map((a) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    border: Border.all(color: Colors.white10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        a.name.toUpperCase(),
+                                        style: GoogleFonts.playfairDisplay(
+                                          color: const Color(0xFFE5D5B0),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        a.detailedDescription.toUpperCase(),
+                                        style: GoogleFonts.oldStandardTt(
+                                          color: const Color(0xFFC4B89B),
+                                          fontSize: 9,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String val) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.oswald(
+              color: Colors.white54,
+              fontSize: 10,
+              letterSpacing: 0.5,
+            ),
+          ),
+          Text(
+            val,
+            style: GoogleFonts.oswald(
+              color: const Color(0xFFD4AF37),
+              fontSize: 10.5,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+

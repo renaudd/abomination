@@ -5,6 +5,7 @@ import 'package:abomination/state/game_state.dart';
 import 'package:abomination/services/survival_service.dart';
 import 'package:abomination/models/survival_state.dart';
 import 'package:abomination/ui/screens/survival_estate_map_screen.dart';
+import 'package:abomination/services/combat_unit_service.dart';
 
 void main() {
   testWidgets('Test building other facilities in SurvivalEstateMapScreen widget', (WidgetTester tester) async {
@@ -336,4 +337,30 @@ void main() {
     // Verify map is rendered and no division by zero exception is thrown
     expect(find.byType(SurvivalEstateMapScreen), findsOneWidget);
   });
+
+  test('Test new combat units and GameState simulation isolation', () {
+    // 1. Verify boss unit creation
+    final rudolf = CombatUnitService.createUnit('boss_rudolf');
+    expect(rudolf.name, 'General Rudolf');
+
+    // 2. Verify Bats unit properties
+    final bats = CombatUnitService.createUnit('bats');
+    expect(bats.name, 'Bats');
+    expect(bats.combatStats!.isFlying, true);
+    expect(bats.specimenType, 'Beast');
+
+    // 3. Verify Stampede support card
+    final stampede = CombatUnitService.createUnit('stampede');
+    expect(stampede.name, 'Stampede');
+    expect(stampede.combatStats!.unitCount, 5);
+
+    // 4. Verify GameState simulation clearance
+    final state = GameState();
+    state.startCombatSimulation([bats], [rudolf]);
+    expect(state.simulationPlayerDeck?.length, 1);
+
+    state.clearEncounterState();
+    expect(state.simulationPlayerDeck, null);
+  });
 }
+

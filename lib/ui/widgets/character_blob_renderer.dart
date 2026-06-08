@@ -26,6 +26,7 @@ class CharacterBlobRenderer extends StatelessWidget {
   final double? attackCooldown; // Optional parameter for dynamic combat firing sequences
 
   final bool isCombat;
+  final bool isLiveBattlefield;
 
   const CharacterBlobRenderer({
     super.key,
@@ -37,6 +38,7 @@ class CharacterBlobRenderer extends StatelessWidget {
     this.showSpeechBubble = true,
     this.attackCooldown,
     this.isCombat = false,
+    this.isLiveBattlefield = false,
   });
 
   @override
@@ -54,8 +56,10 @@ class CharacterBlobRenderer extends StatelessWidget {
           children: [
             if ((npc.combatStats?.swarmSize ?? 0) > 0)
               _buildSwarm(npc, size)
+            else if (npc.specimenType == 'Bat' ||
+                npc.name.toLowerCase().contains('bat'))
+              _buildBat(size)
             else if (npc.specimenType == 'Rat' ||
-                npc.specimenType == 'Bat' ||
                 npc.specimenType == 'FlyingRat')
               _buildAnimal(npc.specimenType, size)
             else if (npc.specimenType == 'Hound')
@@ -117,17 +121,28 @@ class CharacterBlobRenderer extends StatelessWidget {
                   height: _getBodyHeight(appearance.bodyType, size),
                   decoration: BoxDecoration(
                     color: appearance.outfitColor,
-                    borderRadius: BorderRadius.circular(_getBodyRadius(appearance.bodyType, size)),
+                    borderRadius: BorderRadius.circular(
+                      _getBodyRadius(appearance.bodyType, size),
+                    ),
                     border: Border.all(color: Colors.black12, width: 0.5),
                   ),
                 ),
-                offset: Offset(0, size * 0.1),
+                offset: Offset(
+                  0,
+                  size *
+                      ((npc.role == 'Coven' ||
+                              npc.equippedVisuals.contains('WitchHat') ||
+                              npc.equippedVisuals.contains('PlumHat'))
+                          ? 0.3
+                          : 0.1),
+                ),
               ),
 
               // Head (Circle)
               _buildAnimatedContainer(
                 child: Stack(
                   alignment: Alignment.center,
+                  clipBehavior: Clip.none,
                   children: [
                     // Hair (Back)
                     if (appearance.hairStyle != HairStyle.none &&
@@ -179,9 +194,23 @@ class CharacterBlobRenderer extends StatelessWidget {
                     // Samurai Kabuto Helmet
                     if (npc.name.toLowerCase().contains('samurai'))
                       _buildSamuraiHelmet(size),
+
+                    // Coven Witch/Warlock Hat
+                    if (npc.role == 'Coven' ||
+                        npc.equippedVisuals.contains('WitchHat') ||
+                        npc.equippedVisuals.contains('PlumHat'))
+                      _buildWitchHat(size, _getHatColor(npc)),
                   ],
                 ),
-                offset: Offset(0, -size * 0.15),
+                offset: Offset(
+                  0,
+                  size *
+                      ((npc.role == 'Coven' ||
+                              npc.equippedVisuals.contains('WitchHat') ||
+                              npc.equippedVisuals.contains('PlumHat'))
+                          ? 0.05
+                          : -0.15),
+                ),
                 delayFactor: 0.5,
               ),
 
@@ -191,12 +220,41 @@ class CharacterBlobRenderer extends StatelessWidget {
                   (item) => _buildItemBlob(item, size),
                 ),
 
-              // Pole Weapons (Halberdier, Pikeman, Mob/Villager)
+              // Healing Energy Waves Aura (ONLY on live battlefield, NOT on card portraits!)
+              if (isLiveBattlefield &&
+                  (npc.name.toLowerCase().contains('brewer') ||
+                      npc.name.toLowerCase().contains('hag')))
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _HealingWavesPainter(
+                      progress:
+                          (DateTime.now().millisecondsSinceEpoch % 1500) /
+                          1500.0,
+                    ),
+                  ),
+                ),
+
+              // Staff Sling (Witch)
+              if (isCombat &&
+                  (npc.name.toLowerCase().contains('witch') ||
+                      npc.equippedVisuals.contains('Sling')))
+                _buildStaffSlingOverlay(size),
+
+              // Crossbow (Warlock)
+              if (isCombat &&
+                  (npc.name.toLowerCase().contains('warlock') ||
+                      npc.equippedVisuals.contains('Crossbow')))
+                _buildCrossbowOverlay(size),
+
+              // Pole Weapons (Halberdier, Pikeman, Mob/Villager, Broomstick)
               if (isCombat &&
                   (npc.name.toLowerCase().contains('halberd') ||
                       npc.name.toLowerCase().contains('pike') ||
                       npc.name.toLowerCase().contains('mob') ||
-                      npc.name.toLowerCase().contains('villager')))
+                      npc.name.toLowerCase().contains('villager') ||
+                      npc.equippedVisuals.contains('Broom') ||
+                      npc.name.toLowerCase().contains('brewer') ||
+                      npc.name.toLowerCase().contains('hag')))
                 _buildPoleWeaponOverlay(size),
 
               // Ranged Infantry Muskets / Firearm users
@@ -411,64 +469,10 @@ class CharacterBlobRenderer extends StatelessWidget {
     return _BobbingAnimation(
       isWalking: isWalking,
       isIdle: isIdle,
-      delayFactor: 0,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Tail
-          Positioned(
-            right: 0,
-            bottom: size * 0.2,
-            child: Container(
-              width: size * 0.6,
-              height: 2,
-              decoration: BoxDecoration(
-                color: Colors.pink.shade100,
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-          ),
-          // Body (Tear Drop Shape, facing left)
-          Container(
-            width: size * 0.72,
-            height: size * 0.42,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade700,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(size * 0.04), // Pointed front snout
-                bottomLeft: Radius.circular(size * 0.04),
-                topRight: Radius.circular(size * 0.28), // Rounded back
-                bottomRight: Radius.circular(size * 0.28),
-              ),
-            ),
-          ),
-          // Ears
-          Positioned(
-            left: size * 0.1,
-            top: size * 0.2,
-            child: Container(
-              width: size * 0.2,
-              height: size * 0.2,
-              decoration: BoxDecoration(
-                color: Colors.pink.shade100,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          // Eyes
-          Positioned(
-            left: size * 0.15,
-            top: size * 0.35,
-            child: Container(
-              width: 2,
-              height: 2,
-              decoration: const BoxDecoration(
-                color: Colors.black,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-        ],
+      delayFactor: 0.0,
+      child: CustomPaint(
+        size: Size(size * 1.2, size * 0.8),
+        painter: _RatPainter(bodyColor: const Color(0xFF4E342E)),
       ),
     );
   }
@@ -514,13 +518,9 @@ class CharacterBlobRenderer extends StatelessWidget {
                 ),
               )
           else
-            Container(
-              width: size,
-              height: size * 0.4,
-              decoration: BoxDecoration(
-                color: wingColor,
-                borderRadius: BorderRadius.circular(size * 0.1),
-              ),
+            CustomPaint(
+              size: Size(size * 1.2, size * 0.6),
+              painter: _PortraitBatWingPainter(color: wingColor),
             ),
           // Body
           Container(
@@ -1895,7 +1895,68 @@ class CharacterBlobRenderer extends StatelessWidget {
     );
   }
 
+  Color _getHatColor(NPC npc) {
+    final nameLower = npc.name.toLowerCase();
+    if (nameLower.contains('hag')) return const Color(0xFF5A1827);
+    if (nameLower.contains('witch')) return const Color(0xFF616161);
+    if (nameLower.contains('warlock') ||
+        npc.equippedVisuals.contains('PlumHat')) {
+      return const Color(0xFF3B1735);
+    }
+    return const Color(0xFF111111);
+  }
+
+  Widget _buildWitchHat(double size, Color hatColor) {
+    return Positioned(
+      top: -size * 0.35,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CustomPaint(
+            size: Size(size * 0.35, size * 0.4),
+            painter: _WitchHatConePainter(color: hatColor),
+          ),
+          Container(
+            width: size * 0.7,
+            height: size * 0.08,
+            decoration: BoxDecoration(
+              color: hatColor,
+              borderRadius: BorderRadius.all(
+                Radius.elliptical(size * 0.35, size * 0.04),
+              ),
+              border: Border.all(color: Colors.black26, width: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildItemBlob(String item, double size) {
+    if (item == 'WitchHat' ||
+        item == 'PlumHat' ||
+        item == 'Broom' ||
+        item == 'Sling' ||
+        item == 'Crossbow') {
+      return const SizedBox.shrink();
+    }
+
+    IconData iconData = Icons.inventory_2;
+    Color itemColor = Colors.blueGrey;
+    if (item == 'Broom') {
+      iconData = Icons.cleaning_services;
+      itemColor = Colors.amber.shade800;
+    } else if (item == 'Sling') {
+      iconData = Icons.adjust;
+      itemColor = Colors.grey.shade600;
+    } else if (item == 'Crossbow') {
+      iconData = Icons.crisis_alert;
+      itemColor = Colors.brown.shade700;
+    } else if (item == 'GatlingGun') {
+      iconData = Icons.build;
+      itemColor = Colors.blueGrey.shade900;
+    }
+
     return _BobbingAnimation(
       isWalking: isWalking,
       isIdle: isIdle,
@@ -1903,10 +1964,10 @@ class CharacterBlobRenderer extends StatelessWidget {
       child: Transform.translate(
         offset: Offset(size * 0.35, size * 0.1),
         child: Container(
-          width: size * 0.25,
-          height: size * 0.25,
+          width: size * 0.3,
+          height: size * 0.3,
           decoration: BoxDecoration(
-            color: Colors.blueGrey,
+            color: itemColor,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white24, width: 1),
             boxShadow: const [
@@ -1917,8 +1978,8 @@ class CharacterBlobRenderer extends StatelessWidget {
               ),
             ],
           ),
-          child: const Center(
-            child: Icon(Icons.inventory_2, size: 6, color: Colors.white70),
+          child: Center(
+            child: Icon(iconData, size: size * 0.18, color: Colors.white70),
           ),
         ),
       ),
@@ -2073,8 +2134,15 @@ class CharacterBlobRenderer extends StatelessWidget {
   }
 
   Widget _buildSamuraiHelmet(double size) {
+    double progress = 0.0;
+    if (attackCooldown != null) {
+      final maxCooldown = (npc.combatStats?.speed ?? 0.8) * 1.2;
+      progress = (attackCooldown! / maxCooldown).clamp(0.0, 1.0);
+    }
+    final bool isSlashing = progress > 0.65;
+
     return Positioned(
-      top: -size * 0.22, // Sits on top of the head circle
+      top: -size * 0.22,
       child: Stack(
         alignment: Alignment.center,
         clipBehavior: Clip.none,
@@ -2091,9 +2159,12 @@ class CharacterBlobRenderer extends StatelessWidget {
                     width: size * 0.14,
                     height: size * 0.26,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFB71C1C), // Crimson red
+                      color: const Color(0xFFB71C1C),
                       borderRadius: BorderRadius.circular(2),
-                      border: Border.all(color: const Color(0xFFD4AF37), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFFD4AF37),
+                        width: 1,
+                      ),
                     ),
                   ),
                 ),
@@ -2106,7 +2177,10 @@ class CharacterBlobRenderer extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFFB71C1C),
                       borderRadius: BorderRadius.circular(2),
-                      border: Border.all(color: const Color(0xFFD4AF37), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFFD4AF37),
+                        width: 1,
+                      ),
                     ),
                   ),
                 ),
@@ -2118,8 +2192,10 @@ class CharacterBlobRenderer extends StatelessWidget {
             width: size * 0.52,
             height: size * 0.36,
             decoration: BoxDecoration(
-              color: const Color(0xFF1F2022), // Dark steel iron
-              borderRadius: BorderRadius.vertical(top: Radius.circular(size * 0.26)),
+              color: const Color(0xFF1F2022),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(size * 0.26),
+              ),
               border: Border.all(color: Colors.black, width: 1.5),
             ),
           ),
@@ -2131,6 +2207,15 @@ class CharacterBlobRenderer extends StatelessWidget {
               painter: _CrescentCrestPainter(),
             ),
           ),
+          if (isSlashing)
+            Positioned(
+              left: -size * 0.6,
+              top: size * 0.2,
+              child: CustomPaint(
+                size: Size(size * 0.7, size * 0.6),
+                painter: _SamuraiSlashPainter(),
+              ),
+            ),
         ],
       ),
     );
@@ -2254,10 +2339,18 @@ class CharacterBlobRenderer extends StatelessWidget {
       type = 'halberd';
     } else if (nameLower.contains('mob') || nameLower.contains('villager')) {
       type = 'pitchfork';
+    } else if (nameLower.contains('brewer') ||
+        nameLower.contains('hag') ||
+        npc.equippedVisuals.contains('Broom')) {
+      type = 'broomstick';
     }
 
-    final double thrustDx = isAttacking ? -size * 0.25 : size * 0.28;
-    final double thrustDy = isAttacking ? size * 0.18 : -size * 0.15;
+    final double thrustDx = isAttacking
+        ? -size * 0.25
+        : size * (type == 'broomstick' ? 0.22 : 0.28);
+    final double thrustDy = isAttacking
+        ? size * 0.18
+        : -size * (type == 'broomstick' ? 0.05 : 0.15);
     final double thrustAngle = isAttacking ? -1.3 : -0.15;
 
     return AnimatedPositioned(
@@ -2273,12 +2366,12 @@ class CharacterBlobRenderer extends StatelessWidget {
             // 1. Wooden Shaft (Pole)
             Container(
               width: 2.2,
-              height: size * 1.1,
+              height: size * (type == 'broomstick' ? 0.75 : 1.1),
               color: const Color(0xFF5C4033),
             ),
             // 2. Specialized Tip
             Positioned(
-              top: -size * 0.25,
+              top: -size * (type == 'broomstick' ? 0.15 : 0.25),
               child: _buildPoleTip(type, size),
             ),
           ],
@@ -2379,6 +2472,28 @@ class CharacterBlobRenderer extends StatelessWidget {
           ),
         ],
       );
+    } else if (type == 'broomstick') {
+      // Broomstick straw bristles head
+      return Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          // Wooden binding collar
+          Container(
+            width: size * 0.16,
+            height: 3.5,
+            color: const Color(0xFF3E2723),
+          ),
+          // Flared Straw Bristles
+          Positioned(
+            bottom: 3.5,
+            child: CustomPaint(
+              size: Size(size * 0.28, size * 0.35),
+              painter: _BroomBristlesPainter(color: Colors.amber.shade700),
+            ),
+          ),
+        ],
+      );
     } else {
       // Straight Pike tip
       return Container(
@@ -2394,10 +2509,105 @@ class CharacterBlobRenderer extends StatelessWidget {
   }
 
   bool _isUsingFirearm(NPC npc) {
+    if (npc.name.toLowerCase().contains('witch') ||
+        npc.name.toLowerCase().contains('warlock')) {
+      return false;
+    }
+    if (npc.equippedVisuals.contains('Sling') ||
+        npc.equippedVisuals.contains('Crossbow')) {
+      return false;
+    }
     if (npc.combatStats == null) return false;
     if (npc.combatStats!.rangedDamage > 0) return true;
-    if (npc.isPlayer && (npc.name.toLowerCase().contains('frankenstein') || npc.id == 'alphonse')) return true;
+    if (npc.isPlayer &&
+        (npc.name.toLowerCase().contains('frankenstein') ||
+            npc.id == 'alphonse')) {
+      return true;
+    }
     return false;
+  }
+
+  Widget _buildStaffSlingOverlay(double size) {
+    double progress = 0.0;
+    if (attackCooldown != null) {
+      final maxCooldown = (npc.combatStats?.speed ?? 1.2) * 1.2;
+      progress = (attackCooldown! / maxCooldown).clamp(0.0, 1.0);
+    }
+    final bool isAttacking = progress > 0.7;
+    final double thrustDx = isAttacking ? -size * 0.3 : -size * 0.2;
+    final double thrustDy = isAttacking ? size * 0.15 : -size * 0.05;
+    final double thrustAngle = isAttacking ? -1.0 : -0.15;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 70),
+      left: thrustDx,
+      top: thrustDy,
+      child: Transform.rotate(
+        angle: thrustAngle,
+        child: CustomPaint(
+          size: Size(size * 0.5, size * 1.0),
+          painter: _StaffSlingPainter(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCrossbowOverlay(double size) {
+    double progress = 0.0;
+    if (attackCooldown != null) {
+      final maxCooldown = (npc.combatStats?.speed ?? 1.2) * 1.2;
+      progress = (attackCooldown! / maxCooldown).clamp(0.0, 1.0);
+    }
+    final bool isFiring = progress > 0.75;
+
+    final double posX = isFiring ? -size * 0.35 : -size * 0.17;
+    final double posY = isFiring ? size * 0.2 : size * 0.35;
+    final double rotAngle = isFiring ? -0.1 : -1.0;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 70),
+      left: posX,
+      top: posY,
+      child: Transform.rotate(
+        angle: rotAngle,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.centerLeft,
+          children: [
+            CustomPaint(
+              size: Size(size * 0.7, size * 0.7),
+              painter: _CrossbowPainter(),
+            ),
+            if (isFiring)
+              Positioned(
+                left: -size * 0.6,
+                top: size * 0.32,
+                child: Container(
+                  width: size * 0.5,
+                  height: 3.0,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Colors.amberAccent,
+                        Colors.white,
+                        Colors.transparent,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.amber,
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildMusketOverlay(double size) {
@@ -2857,3 +3067,433 @@ class _ClawSlashPainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
+
+class _SamuraiSlashPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.95)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
+
+    final glowPaint = Paint()
+      ..color = Colors.redAccent.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    final Path path = Path();
+    path.moveTo(size.width, 12.0);
+    path.quadraticBezierTo(
+      size.width * 0.3,
+      size.height * 0.4 + 12.0,
+      0,
+      size.height * 0.7 + 12.0,
+    );
+
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class _PortraitBatWingPainter extends CustomPainter {
+  final Color color;
+  _PortraitBatWingPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final ribPaint = Paint()
+      ..color = Colors.white24
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final double w = size.width * 0.45;
+    final double h = size.height * 0.8;
+
+    canvas.save();
+    canvas.translate(center.dx - 2, center.dy);
+    final left = Path()
+      ..moveTo(0, 0)
+      ..lineTo(-w * 0.3, -h * 0.7) // Top claw
+      ..lineTo(-w * 0.9, -h * 0.8) // Thumb tip
+      ..quadraticBezierTo(-w * 0.7, -h * 0.2, -w, h * 0.6) // Pointy outer rib tip
+      ..quadraticBezierTo(-w * 0.7, h * 0.1, -w * 0.6, h * 0.7) // Scallop 1 to Pointy rib 2
+      ..quadraticBezierTo(-w * 0.35, h * 0.2, -w * 0.3, h * 0.6) // Scallop 2 to Pointy rib 3
+      ..quadraticBezierTo(-w * 0.15, h * 0.2, 0, h * 0.2) // Scallop 3 back to body
+      ..close();
+    canvas.drawPath(left, paint);
+    canvas.drawLine(Offset(-w * 0.3, -h * 0.7), Offset(-w, h * 0.6), ribPaint);
+    canvas.drawLine(Offset(-w * 0.3, -h * 0.7), Offset(-w * 0.6, h * 0.7), ribPaint);
+    canvas.drawLine(Offset(-w * 0.3, -h * 0.7), Offset(-w * 0.3, h * 0.6), ribPaint);
+    canvas.restore();
+
+    canvas.save();
+    canvas.translate(center.dx + 2, center.dy);
+    final right = Path()
+      ..moveTo(0, 0)
+      ..lineTo(w * 0.3, -h * 0.7)
+      ..lineTo(w * 0.9, -h * 0.8)
+      ..quadraticBezierTo(w * 0.7, -h * 0.2, w, h * 0.6)
+      ..quadraticBezierTo(w * 0.7, h * 0.1, w * 0.6, h * 0.7)
+      ..quadraticBezierTo(w * 0.35, h * 0.2, w * 0.3, h * 0.6)
+      ..quadraticBezierTo(w * 0.15, h * 0.2, 0, h * 0.2)
+      ..close();
+    canvas.drawPath(right, paint);
+    canvas.drawLine(Offset(w * 0.3, -h * 0.7), Offset(w, h * 0.6), ribPaint);
+    canvas.drawLine(Offset(w * 0.3, -h * 0.7), Offset(w * 0.6, h * 0.7), ribPaint);
+    canvas.drawLine(Offset(w * 0.3, -h * 0.7), Offset(w * 0.3, h * 0.6), ribPaint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _PortraitBatWingPainter oldDelegate) => false;
+}
+
+class _WitchHatConePainter extends CustomPainter {
+  final Color color;
+  _WitchHatConePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(size.width / 2, 0) // Pointy top
+      ..lineTo(0, size.height)
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WitchHatConePainter oldDelegate) => false;
+}
+
+class _BroomBristlesPainter extends CustomPainter {
+  final Color color;
+  _BroomBristlesPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(size.width * 0.35, size.height)
+      ..lineTo(size.width * 0.65, size.height)
+      ..lineTo(size.width * 1.1, -size.height * 0.2) // Prominently flared sweeping straw brush
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        -size.height * 0.35,
+        -size.width * 0.1,
+        -size.height * 0.2,
+      )
+      ..close();
+    canvas.drawPath(path, paint);
+
+    // Gorgeous straw texture lines
+    final linePaint = Paint()
+      ..color = const Color(0xFF5D4037)
+      ..strokeWidth = 1.2;
+    canvas.drawLine(
+      Offset(size.width * 0.45, size.height),
+      Offset(size.width * 0.1, -size.height * 0.1),
+      linePaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.5, size.height),
+      Offset(size.width * 0.5, -size.height * 0.2),
+      linePaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.55, size.height),
+      Offset(size.width * 0.9, -size.height * 0.1),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BroomBristlesPainter oldDelegate) => false;
+}
+
+class _StaffSlingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Upright polished oak staff
+    final staffPaint = Paint()
+      ..color = const Color(0xFF5D4037)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * 0.5, size.height),
+      Offset(size.width * 0.5, size.height * 0.2),
+      staffPaint,
+    );
+
+    // Leather draw cords hanging from staff tip
+    final cordPaint = Paint()
+      ..color = const Color(0xFFBCAAA4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawArc(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.3, size.height * 0.25),
+        width: size.width * 0.5,
+        height: size.height * 0.15,
+      ),
+      0,
+      math.pi,
+      false,
+      cordPaint,
+    );
+
+    // Leather sling pouch
+    final pouchPaint = Paint()
+      ..color = const Color(0xFF8D6E63)
+      ..style = PaintingStyle.fill;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.3, size.height * 0.32),
+        width: size.width * 0.35,
+        height: size.height * 0.1,
+      ),
+      pouchPaint,
+    );
+
+    // Loaded glowing stone projectile inside pouch
+    final bulletPaint = Paint()..color = const Color(0xFFCFD8DC);
+    canvas.drawCircle(
+      Offset(size.width * 0.3, size.height * 0.3),
+      size.width * 0.08,
+      bulletPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _StaffSlingPainter oldDelegate) => false;
+}
+
+class _CrossbowPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Horizontal Mahogany Tiller / Stock
+    final stockPaint = Paint()
+      ..color = const Color(0xFF3E2723)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * 0.1, size.height * 0.5),
+      Offset(size.width * 0.9, size.height * 0.5),
+      stockPaint,
+    );
+
+    // Arched Steel Prod mounted horizontally across front
+    final prodPaint = Paint()
+      ..color = const Color(0xFF90A4AE)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+    final prodPath = Path()
+      ..moveTo(size.width * 0.25, size.height * 0.05)
+      ..quadraticBezierTo(
+        size.width * 0.05,
+        size.height * 0.5,
+        size.width * 0.25,
+        size.height * 0.95,
+      );
+    canvas.drawPath(prodPath, prodPaint);
+
+    // Taut Bowstring
+    final stringPaint = Paint()
+      ..color = Colors.white70
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawLine(
+      Offset(size.width * 0.25, size.height * 0.05),
+      Offset(size.width * 0.55, size.height * 0.5),
+      stringPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.25, size.height * 0.95),
+      Offset(size.width * 0.55, size.height * 0.5),
+      stringPaint,
+    );
+
+    // Loaded Silver/Amber Bolt
+    final boltPaint = Paint()
+      ..color = Colors.amberAccent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * 0.5, size.height * 0.5),
+      Offset(size.width * 0.1, size.height * 0.5),
+      boltPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CrossbowPainter oldDelegate) => false;
+}
+
+class _HealingWavesPainter extends CustomPainter {
+  final double progress;
+  _HealingWavesPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width * 0.9;
+
+    // Primary expanding wave ring
+    final paint1 = Paint()
+      ..color = const Color(0xFF00E676).withValues(alpha: (1.0 - progress) * 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(center, maxRadius * progress, paint1);
+
+    // Secondary inner trailing wave ring
+    final progress2 = (progress + 0.5) % 1.0;
+    final paint2 = Paint()
+      ..color = const Color(0xFFB9F6CA).withValues(alpha: (1.0 - progress2) * 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.25;
+    canvas.drawCircle(center, maxRadius * progress2, paint2);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HealingWavesPainter oldDelegate) => true;
+}
+
+class _RatPainter extends CustomPainter {
+  final Color bodyColor;
+  _RatPainter({required this.bodyColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = bodyColor
+          ..style = PaintingStyle.fill;
+
+    // Arched hunched rat body
+    final path =
+        Path()
+          ..moveTo(size.width * 0.1, size.height * 0.75) // Snout tip
+          ..quadraticBezierTo(
+            size.width * 0.2,
+            size.height * 0.35,
+            size.width * 0.55,
+            size.height * 0.35,
+          ) // Arched back
+          ..quadraticBezierTo(
+            size.width * 0.85,
+            size.height * 0.45,
+            size.width * 0.85,
+            size.height * 0.8,
+          ) // Rump
+          ..lineTo(size.width * 0.2, size.height * 0.8) // Belly
+          ..close();
+    canvas.drawPath(path, paint);
+
+    // Pinkish Ear
+    final earPaint = Paint()..color = const Color(0xFFF8BBD0);
+    canvas.drawCircle(
+      Offset(size.width * 0.32, size.height * 0.38),
+      size.width * 0.1,
+      earPaint,
+    );
+    final innerEar = Paint()..color = const Color(0xFFF06292);
+    canvas.drawCircle(
+      Offset(size.width * 0.32, size.height * 0.38),
+      size.width * 0.06,
+      innerEar,
+    );
+
+    // Beady Black Eye & Red Glint
+    final eyePaint = Paint()..color = Colors.black;
+    canvas.drawCircle(
+      Offset(size.width * 0.22, size.height * 0.55),
+      size.width * 0.035,
+      eyePaint,
+    );
+    final glint = Paint()..color = Colors.redAccent;
+    canvas.drawCircle(
+      Offset(size.width * 0.21, size.height * 0.54),
+      size.width * 0.015,
+      glint,
+    );
+
+    // Whiskers
+    final whiskerPaint =
+        Paint()
+          ..color = Colors.black45
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8;
+    canvas.drawLine(
+      Offset(size.width * 0.12, size.height * 0.7),
+      Offset(0, size.height * 0.65),
+      whiskerPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.12, size.height * 0.72),
+      Offset(0, size.height * 0.72),
+      whiskerPaint,
+    );
+
+    // Elegant Wavy Tail
+    final tailPaint =
+        Paint()
+          ..color = const Color(0xFFF8BBD0)
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = size.width * 0.05;
+    final tailPath =
+        Path()
+          ..moveTo(size.width * 0.82, size.height * 0.75)
+          ..quadraticBezierTo(
+            size.width * 1.05,
+            size.height * 0.6,
+            size.width * 1.15,
+            size.height * 0.85,
+          );
+    canvas.drawPath(tailPath, tailPaint);
+
+    // Little Paws
+    final pawPaint = Paint()..color = const Color(0xFFB0BEC5);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.3, size.height * 0.82),
+        width: size.width * 0.08,
+        height: size.height * 0.06,
+      ),
+      pawPaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.7, size.height * 0.82),
+        width: size.width * 0.1,
+        height: size.height * 0.06,
+      ),
+      pawPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _RatPainter oldDelegate) => false;
+}
+
+

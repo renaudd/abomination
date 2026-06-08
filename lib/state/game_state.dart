@@ -761,6 +761,8 @@ class GameState extends ChangeNotifier {
   };
 
   void loadFromJson(Map<String, dynamic> json) {
+    _simulationPlayerDeck = null;
+    _simulationAiDeck = null;
     _currentDate = GameDate.fromJson(json['currentDate']);
     _speed = GameSpeed.values[json['speed'] as int? ?? GameSpeed.paused.index];
     _combatControlMode = json['combatControlMode'] as String? ?? 'pad';
@@ -1432,12 +1434,16 @@ class GameState extends ChangeNotifier {
     _pendingEncounterData = null;
     _pendingEncounterEnemies = null;
     _playerDistanceSinceEncounter = 0.0;
+    _simulationPlayerDeck = null;
+    _simulationAiDeck = null;
     _speed = GameSpeed.normal;
     notifyListeners();
   }
 
   void startCombatEncounter() {
     _pendingCombatEncounter = false;
+    _simulationPlayerDeck = null;
+    _simulationAiDeck = null;
     notifyListeners();
   }
 
@@ -5619,9 +5625,7 @@ class GameState extends ChangeNotifier {
         _npcs[index] = npc.copyWith(worldTravelProgress: 1.0);
         _lastAnnouncement =
             "${npc.name} has arrived at ${npc.worldDestinationId!.toUpperCase()}.";
-        if (npc.isPlayer) {
-          _pendingNavigationTarget = npc.worldDestinationId;
-        }
+        _pendingNavigationTarget = npc.worldDestinationId;
         setSpeed(GameSpeed.normal);
       }
       notifyListeners();

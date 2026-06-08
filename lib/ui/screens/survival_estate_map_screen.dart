@@ -361,6 +361,29 @@ bool _weaponRequiresArsenal(String name) {
 
 String? _getWeaponCompatibilityError(String cardId, String weaponName) {
   final wn = weaponName.toLowerCase();
+  final sampleUnit = CombatUnitService.createUnit(cardId);
+  final bool hasSpecialAbilities =
+      sampleUnit.abilities.isNotEmpty ||
+      cardId == 'witch' ||
+      cardId == 'warlock' ||
+      cardId == 'hag' ||
+      cardId == 'brewers' ||
+      cardId == 'necromancer' ||
+      cardId == 'minotaur' ||
+      cardId == 'phoenix' ||
+      cardId == 'valkyrie' ||
+      cardId == 'steampunk_mech';
+
+  if (hasSpecialAbilities) {
+    if (wn.contains('musket') ||
+        wn.contains('matchlock') ||
+        wn.contains('flintlock') ||
+        wn.contains('sub-carbine') ||
+        wn.contains('rivet')) {
+      return 'Units with specialized magical or physical abilities cannot equip standard industrial firearms.';
+    }
+  }
+
   if (cardId == 'peasant') {
     if (wn.contains('laser') ||
         wn.contains('voltaic') ||
@@ -389,6 +412,23 @@ String? _getWeaponCompatibilityError(String cardId, String weaponName) {
 
 String? _getWeaponAdvantageOrDisadvantage(String cardId, String weaponName) {
   final wn = weaponName.toLowerCase();
+  final sampleUnit = CombatUnitService.createUnit(cardId);
+  final baseCost = sampleUnit.combatStats?.cost ?? 3;
+  final baseAtk = sampleUnit.combatStats?.attack ?? 10;
+  final baseWep =
+      _generalWeaponMarket.where((w) => w.name == weaponName).firstOrNull;
+  final bool isAdvanced =
+      baseWep != null &&
+      (baseWep.tier >= 2 || baseWep.damage >= baseAtk * 1.35);
+
+  if (isAdvanced) {
+    if (baseCost <= 3) {
+      return 'PERFORMANCE IMPACT: +2 AP Summon Cost & -25% Locomotion Speed (High-Cost Encumbrance)';
+    } else {
+      return 'ELITE WEAPON SYNERGY: +1 AP Summon Cost (+15% Damage & +1.0ft Range Mastery)';
+    }
+  }
+
   if (cardId == 'peasant') {
     if (wn.contains('spear') || wn.contains('mace') || wn.contains('halberd')) {
       return 'ADVANTAGE: +10% Melee Damage (Peasant affinity)';
@@ -644,7 +684,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
   final List<Map<String, dynamic>> _draftPool = [
     {'type': 'peasant', 'cost': 150, 'name': 'Peasant'},
-    {'type': 'goon', 'cost': 200, 'name': 'Goon'},
+    {'type': 'bats', 'cost': 200, 'name': 'Bats'},
     {'type': 'militia', 'cost': 220, 'name': 'Militia'},
     {'type': 'brown_rats', 'cost': 180, 'name': 'Brown Rats Swarm'},
     {'type': 'undead_rats', 'cost': 190, 'name': 'Undead Rats Swarm'},
@@ -660,7 +700,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     {'type': 'sniper', 'cost': 300, 'name': 'Sniper'},
     {'type': 'pikemen', 'cost': 230, 'name': 'Pikemen'},
     {'type': 'marksmen', 'cost': 240, 'name': 'Marksmen'},
-    {'type': 'motorcycle_gang', 'cost': 290, 'name': 'Motorcycle Gang'},
+    {'type': 'wild_bear', 'cost': 290, 'name': 'Wild Bear'},
+    {'type': 'brewers', 'cost': 210, 'name': 'Brewers'},
+    {'type': 'hag', 'cost': 280, 'name': 'Hag'},
+    {'type': 'witch', 'cost': 240, 'name': 'Witch'},
+    {'type': 'warlock', 'cost': 250, 'name': 'Warlock'},
+    {'type': 'goons', 'cost': 220, 'name': 'Goons'},
+    {'type': 'deserters', 'cost': 210, 'name': 'Deserters'},
   ];
 
   @override
@@ -2426,37 +2472,81 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     final mult = 1.0 + (lvl - 1) * 0.1;
                     double distance = npc.combatStats!.distance;
                     double rangedRange = npc.combatStats!.rangedRange;
+                    double baseAttack = npc.combatStats!.attack.toDouble();
+                    double baseSpeed = npc.combatStats!.speed;
+                    double baseMovement = npc.combatStats!.movement;
+                    int baseCost = npc.combatStats!.cost;
+
                     if (t == 'cannoneer' && lvl >= 6) {
                       distance = 23.0;
                       rangedRange = 23.0;
                     }
+
+                    final int rawWepIdx =
+                        progress.cardUpgrades['${t}_equipped_weapon_idx'] ??
+                        (t == 'samurai'
+                            ? progress.cardUpgrades['samurai_equipped_weapon']
+                            : 0) ??
+                        0;
+                    if (rawWepIdx > 0) {
+                      final int cSamIdx = rawWepIdx.clamp(
+                        0,
+                        _samuraiUpgrades.length - 1,
+                      );
+                      final int cGenIdx = (rawWepIdx - 1).clamp(
+                        0,
+                        _generalWeaponMarket.length - 1,
+                      );
+                      final String wepName =
+                          t == 'samurai'
+                              ? _samuraiUpgrades[cSamIdx].name
+                              : _generalWeaponMarket[cGenIdx].name;
+                      final wepStats = _getEquippedWeaponStats(t, wepName);
+                      final bool isAdvanced =
+                          wepStats.damage >= baseAttack * 1.35 ||
+                          (t == 'samurai' && rawWepIdx > 1);
+
+                      baseAttack = wepStats.damage;
+                      distance = wepStats.range;
+                      rangedRange = wepStats.range;
+
+                      if (isAdvanced) {
+                        if (baseCost <= 3) {
+                          baseCost += 2;
+                          baseSpeed *= 1.2;
+                          baseMovement *= 0.75;
+                        } else {
+                          baseCost += 1;
+                          baseAttack *= 1.15;
+                          distance += 1.0;
+                          rangedRange += 1.0;
+                        }
+                      }
+                    }
+
                     return npc.copyWith(
                       metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
                       combatStats: npc.combatStats?.copyWith(
+                        cost: baseCost,
+                        speed: baseSpeed,
+                        movement: baseMovement,
                         health: npc.combatStats!.health * mult,
                         maxHealth: npc.combatStats!.maxHealth * mult,
-                        attack: npc.combatStats!.attack * mult,
-                        meleeDamage: npc.combatStats!.meleeDamage * mult,
-                        rangedDamage: npc.combatStats!.rangedDamage * mult,
+                        attack: baseAttack * mult,
+                        meleeDamage: baseAttack * mult,
+                        rangedDamage: baseAttack * mult,
                         distance: distance,
                         rangedRange: rangedRange,
                       ),
                     );
                   }).toList();
-                  final aiUnits = [
-                    CombatUnitFactory.createGoon(),
-                    CombatUnitFactory.createGoon(),
-                    CombatUnitFactory.createMilitia(),
-                    CombatUnitFactory.createMilitia(),
-                  ];
-
-                  state.startCombatSimulation(playerUnits, aiUnits);
+                  final aiUnits = _generateDiverseSurvivalOpponentDeck(progress.currentTurn);
 
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => CombatScreen(
-                        customPlayerHero: CombatUnitFactory.createAlphonse(),
+                        customPlayerHero: CombatUnitService.createUnit(progress.selectedLeaderId).copyWith(isPlayer: true),
                         customPlayerDeck: playerUnits,
                         customAiDeck: aiUnits,
                         cardUpgrades: progress.cardUpgrades,
@@ -4221,14 +4311,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 'MANOR COMMAND RECORDS & REGISTRY',
                 style: GoogleFonts.playfairDisplay(
                   color: const Color(0xFFE5D5B0),
-                  fontSize: 18,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+                  letterSpacing: 1.0,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
 
           Expanded(
             child: Row(
@@ -4238,7 +4328,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 Expanded(
                   flex: 4,
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: const Color(0xFF15100B),
                       border: Border.all(
@@ -4252,13 +4342,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           'CHRONICLES OF COMPLETED ACTIONS',
                           style: GoogleFonts.playfairDisplay(
                             color: const Color(0xFFD4AF37),
-                            fontSize: 12,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         const Divider(color: Colors.white10),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 3),
                         Expanded(
                           child: service.logs.isEmpty
                               ? Center(
@@ -4267,7 +4357,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     style: GoogleFonts.oldStandardTt(
                                       color: Colors.white24,
                                       fontStyle: FontStyle.italic,
-                                      fontSize: 11,
+                                      fontSize: 10,
                                     ),
                                   ),
                                 )
@@ -4278,7 +4368,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                         .logs[service.logs.length - 1 - index];
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 4,
+                                        vertical: 2,
                                       ),
                                       child: Text(
                                         '• $log',
@@ -4286,7 +4376,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                           color: const Color(
                                             0xFFE5D5B0,
                                           ).withValues(alpha: 0.8),
-                                          fontSize: 11.5,
+                                          fontSize: 10,
                                         ),
                                       ),
                                     );
@@ -4298,7 +4388,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   ),
                 ),
 
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
 
                 // Right column: Active Assignments & Land Covenants
                 Expanded(
@@ -4308,7 +4398,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       Expanded(
                         flex: 4,
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: const Color(0xFF15100B),
                             border: Border.all(
@@ -4324,13 +4414,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 'CURRENT LABOR & TRAINING ASSIGNMENTS',
                                 style: GoogleFonts.playfairDisplay(
                                   color: const Color(0xFFD4AF37),
-                                  fontSize: 12,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 4),
                               const Divider(color: Colors.white10),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 3),
                               Expanded(
                                 child: _buildManorAssignmentsList(
                                   progress,
@@ -4342,7 +4432,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
 
                       Expanded(
                         flex: 3,
@@ -4350,7 +4440,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           children: [
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF15100B),
                                   border: Border.all(
@@ -4366,23 +4456,23 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                       'COVENANTS & TREATIES',
                                       style: GoogleFonts.playfairDisplay(
                                         color: const Color(0xFFD4AF37),
-                                        fontSize: 12,
+                                        fontSize: 9.5,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 4),
                                     const Divider(color: Colors.white10),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 3),
                                     Expanded(
                                       child: progress.currentTurn < 4
                                           ? Center(
                                               child: Padding(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 16,
+                                                      horizontal: 8,
                                                     ),
                                                 child: Text(
-                                                  'The registry of treaties remains vacant. No formal covenants or external agreements have been ratified.',
+                                                  'The registry of treaties remains vacant. No formal covenants or agreements ratified.',
                                                   textAlign: TextAlign.center,
                                                   style:
                                                       GoogleFonts.playfairDisplay(
@@ -4392,10 +4482,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                                             ).withValues(
                                                               alpha: 0.4,
                                                             ),
-                                                        fontSize: 10,
+                                                        fontSize: 9,
                                                         fontStyle:
                                                             FontStyle.italic,
-                                                        height: 1.3,
+                                                        height: 1.15,
                                                       ),
                                                 ),
                                               ),
@@ -4413,10 +4503,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF15100B),
                                   border: Border.all(
@@ -4432,20 +4522,23 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                       'SECRET SOCIETY STANDINGS',
                                       style: GoogleFonts.playfairDisplay(
                                         color: const Color(0xFFD4AF37),
-                                        fontSize: 12,
+                                        fontSize: 9.5,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 4),
                                     const Divider(color: Colors.white10),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 3),
                                     Expanded(
                                       child: ListView(
                                         children: progress
                                             .factionStandings
                                             .entries
                                             .map((entry) {
-                                              final factionName = entry.key;
+                                              final factionName = entry.key ==
+                                                      'Army'
+                                                  ? 'Your Army'
+                                                  : entry.key;
                                               final rating = entry.value;
                                               Color ratingColor =
                                                   Colors.white70;
@@ -4932,8 +5025,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Deep brown backing
-        Positioned.fill(child: Container(color: const Color(0xFF1A130E))),
+        // Card textured backing: assets/images/card_background.png with deep brown fallback
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/card_background.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: const Color(0xFF1A130E),
+            ),
+          ),
+        ),
         // Elegant inner border
         Positioned.fill(
           child: Container(
@@ -5389,7 +5490,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Passive Bonuses: Military units gain +10% critical chance, and defensive towers receive +15% armor when under the direct command of Alphonse.',
+                            leader.id == 'boss_rudolf'
+                                ? 'Passive Bonuses: Shield formations gain +20% structural integrity and infantry units receive +10% morale.'
+                                : leader.id == 'boss_gearbox'
+                                ? 'Passive Bonuses: Clockwork constructs deploy 15% faster and gain +10 armor.'
+                                : leader.id == 'boss_elizabeth'
+                                ? 'Passive Bonuses: Undead swarms gain +15% lifesteal and nocturnal vision.'
+                                : leader.id == 'boss_thorne'
+                                ? 'Passive Bonuses: Beast companions gain +20% movement speed and wilderness camouflage.'
+                                : 'Passive Bonuses: Military units gain +10% critical chance, and defensive towers receive +15% armor when under the direct command of Alphonse.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.oldStandardTt(
                               color: Colors.white70,
@@ -5470,6 +5579,60 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             'Target Selector Rule',
                             stats.targetingRule.name.toUpperCase(),
                           ),
+
+                          const SizedBox(height: 12),
+                          Text(
+                            'COMMANDER SPECIAL ABILITIES',
+                            style: GoogleFonts.playfairDisplay(
+                              color: const Color(0xFFD4AF37),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (leader.abilities.isEmpty)
+                            Text(
+                              'NO SPECIAL ABILITIES REGISTERED.',
+                              style: GoogleFonts.oldStandardTt(
+                                color: Colors.white38,
+                                fontSize: 10,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            )
+                          else
+                            ...leader.abilities.map((a) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    border: Border.all(color: Colors.white10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        a.name.toUpperCase(),
+                                        style: GoogleFonts.playfairDisplay(
+                                          color: const Color(0xFFE5D5B0),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        a.detailedDescription.toUpperCase(),
+                                        style: GoogleFonts.oldStandardTt(
+                                          color: const Color(0xFFC4B89B),
+                                          fontSize: 9,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
                         ],
                       ),
                     ),
@@ -7546,9 +7709,34 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                             const Divider(color: Colors.white10, height: 10),
 
-                            _buildInspectorStatRow(
-                              'Melee Attack Force',
-                              '${((stats.meleeDamage.toInt() > 0 ? stats.meleeDamage.toInt() : stats.attack.toInt()) * (1.0 + (lvl - 1) * 0.1)).toInt()} Damage',
+                            Builder(
+                              builder: (context) {
+                                final double mult = 1.0 + (lvl - 1) * 0.1;
+                                final double baseMelee = stats.meleeDamage > 0
+                                    ? stats.meleeDamage
+                                    : stats.attack;
+                                final double meleeHit = baseMelee * mult;
+                                final double meleeSpd =
+                                    stats.meleeAttackSpeed > 0
+                                        ? stats.meleeAttackSpeed
+                                        : stats.speed;
+                                final double meleeDps = meleeSpd > 0
+                                    ? (meleeHit / meleeSpd)
+                                    : meleeHit;
+
+                                return Column(
+                                  children: [
+                                    _buildInspectorStatRow(
+                                      'Melee Damage per Attack',
+                                      '${meleeHit.toStringAsFixed(1)} Dmg',
+                                    ),
+                                    _buildInspectorStatRow(
+                                      'Melee Damage per Second (DPS)',
+                                      '${meleeDps.toStringAsFixed(1)} DPS',
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                             _buildInspectorStatRow(
                               'Melee Strike Cooldown',
@@ -7570,9 +7758,32 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              _buildInspectorStatRow(
-                                'Ranged Bullet Damage',
-                                '${stats.rangedDamage.toInt()} Damage',
+                              Builder(
+                                builder: (context) {
+                                  final double mult = 1.0 + (lvl - 1) * 0.1;
+                                  final double rangedHit =
+                                      stats.rangedDamage * mult;
+                                  final double rangedSpd =
+                                      stats.rangedAttackSpeed > 0
+                                          ? stats.rangedAttackSpeed
+                                          : stats.speed;
+                                  final double rangedDps = rangedSpd > 0
+                                      ? (rangedHit / rangedSpd)
+                                      : rangedHit;
+
+                                  return Column(
+                                    children: [
+                                      _buildInspectorStatRow(
+                                        'Ranged Damage per Attack',
+                                        '${rangedHit.toStringAsFixed(1)} Dmg',
+                                      ),
+                                      _buildInspectorStatRow(
+                                        'Ranged Damage per Second (DPS)',
+                                        '${rangedDps.toStringAsFixed(1)} DPS',
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                               _buildInspectorStatRow(
                                 'Ranged Fire Rate Cooldown',
@@ -9466,31 +9677,77 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       final mult = 1.0 + (lvl - 1) * 0.1;
       double distance = npc.combatStats!.distance;
       double rangedRange = npc.combatStats!.rangedRange;
+      double baseAttack = npc.combatStats!.attack.toDouble();
+      double baseSpeed = npc.combatStats!.speed;
+      double baseMovement = npc.combatStats!.movement;
+      int baseCost = npc.combatStats!.cost;
+
       if (t == 'cannoneer' && lvl >= 6) {
         distance = 23.0;
         rangedRange = 23.0;
       }
+
+      final int rawWepIdx =
+          progress.cardUpgrades['${t}_equipped_weapon_idx'] ??
+          (t == 'samurai'
+              ? progress.cardUpgrades['samurai_equipped_weapon']
+              : 0) ??
+          0;
+      if (rawWepIdx > 0) {
+        final int cSamIdx = rawWepIdx.clamp(0, _samuraiUpgrades.length - 1);
+        final int cGenIdx = (rawWepIdx - 1).clamp(
+          0,
+          _generalWeaponMarket.length - 1,
+        );
+        final String wepName =
+            t == 'samurai'
+                ? _samuraiUpgrades[cSamIdx].name
+                : _generalWeaponMarket[cGenIdx].name;
+        final wepStats = _getEquippedWeaponStats(t, wepName);
+        final bool isAdvanced =
+            wepStats.damage >= baseAttack * 1.35 ||
+            (t == 'samurai' && rawWepIdx > 1);
+
+        baseAttack = wepStats.damage;
+        distance = wepStats.range;
+        rangedRange = wepStats.range;
+
+        if (isAdvanced) {
+          if (baseCost <= 3) {
+            baseCost += 2;
+            baseSpeed *= 1.2;
+            baseMovement *= 0.75;
+          } else {
+            baseCost += 1;
+            baseAttack *= 1.15;
+            distance += 1.0;
+            rangedRange += 1.0;
+          }
+        }
+      }
+
       return npc.copyWith(
         metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
         combatStats: npc.combatStats?.copyWith(
+          cost: baseCost,
+          speed: baseSpeed,
+          movement: baseMovement,
           health: npc.combatStats!.health * mult,
           maxHealth: npc.combatStats!.maxHealth * mult,
-          attack: npc.combatStats!.attack * mult,
-          meleeDamage: npc.combatStats!.meleeDamage * mult,
-          rangedDamage: npc.combatStats!.rangedDamage * mult,
+          attack: baseAttack * mult,
+          meleeDamage: baseAttack * mult,
+          rangedDamage: baseAttack * mult,
           distance: distance,
           rangedRange: rangedRange,
         ),
       );
     }).toList();
 
-    state.startCombatSimulation(playerUnits, aiUnits);
-
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CombatScreen(
-          customPlayerHero: CombatUnitFactory.createAlphonse(),
+          customPlayerHero: CombatUnitService.createUnit(progress.selectedLeaderId).copyWith(isPlayer: true),
           customPlayerDeck: playerUnits,
           customAiDeck: aiUnits,
           cardUpgrades: progress.cardUpgrades,
@@ -9740,7 +9997,46 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       ],
     );
   }
+
+  List<NPC> _generateDiverseSurvivalOpponentDeck(int turn) {
+    int targetDeckSize = 5;
+    if (turn >= 9) {
+      targetDeckSize = 12;
+    } else if (turn >= 6) {
+      targetDeckSize = 9;
+    } else if (turn >= 3) {
+      targetDeckSize = 7;
+    }
+
+    final pool = [
+      CombatUnitFactory.createGoons(),
+      CombatUnitFactory.createMilitia(),
+      CombatUnitFactory.createPikemen(),
+      CombatUnitFactory.createMarksmen(),
+      if (turn >= 1) CombatUnitFactory.createBats(),
+      if (turn >= 2) CombatUnitFactory.createBrewers(),
+      if (turn >= 3) CombatUnitFactory.createFleshGolem(),
+      if (turn >= 4) CombatUnitFactory.createArmoredCar(),
+      if (turn >= 5) CombatUnitFactory.createWitch(),
+      if (turn >= 6) CombatUnitFactory.createWerewolf(),
+      if (turn >= 7) CombatUnitFactory.createHag(),
+      if (turn >= 8) CombatUnitFactory.createWarlock(),
+      if (turn >= 9) ...[
+        CombatUnitFactory.createStampede(),
+        CombatUnitFactory.createChimera(),
+        CombatUnitFactory.createGatlingGun(),
+      ],
+    ];
+
+    final list = <NPC>[];
+    for (int i = 0; i < targetDeckSize; i++) {
+      list.add(pool[i % pool.length]);
+    }
+    return list;
+  }
 }
+
+
 
 // CUSTOM PAINTER FOR ORGANIC BACKGROUND DIVIDER LINES
 class MapDividerPainter extends CustomPainter {
