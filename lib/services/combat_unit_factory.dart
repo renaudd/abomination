@@ -1478,7 +1478,7 @@ class CombatUnitFactory {
         health: 220,
         maxHealth: 220,
         speed: 1.1,
-        movement: 6.5,
+        movement: 6.4,
         distance: 1.5,
         cost: 2,
         isFlying: true,
@@ -1504,7 +1504,7 @@ class CombatUnitFactory {
       diet: NPCDiet.defaultDiet(),
       appearance: NPCAppearance.deterministic('Stampede'),
       combatStats: const CombatStats(
-        attack: 40,
+        attack: 85,
         health: 350,
         maxHealth: 350,
         speed: 1.0,
@@ -1514,7 +1514,7 @@ class CombatUnitFactory {
         isFlying: false,
         unitType: UnitType.support,
         unitCount: 5,
-        meleeDamage: 40,
+        meleeDamage: 85,
         meleeRange: 1.5,
         meleeAttackSpeed: 1.0,
       ),
@@ -1923,18 +1923,18 @@ class CombatUnitFactory {
     );
   }
 
-  static NPC createSteampunkMech() {
+  static NPC createSteampunkRobot() {
     return NPC(
-      id: _generateId('steampunk_mech'),
-      name: 'Steampunk Mech',
+      id: _generateId('steampunk_robot'),
+      name: 'Steampunk Robot',
       role: 'Behemoth',
       age: 40,
-      gender: 'Male',
-      specimenType: 'Human',
+      gender: 'None',
+      specimenType: 'Machine',
       bodyParts: _defaultBodyParts(),
       schedule: NPCSchedule.visitor(),
       diet: NPCDiet.defaultDiet(),
-      appearance: NPCAppearance.deterministic('SteampunkMech'),
+      appearance: NPCAppearance.deterministic('SteampunkRobot'),
       combatStats: const CombatStats(
         attack: 80,
         health: 750,
@@ -1948,6 +1948,36 @@ class CombatUnitFactory {
         meleeDamage: 80,
         meleeRange: 2.0,
         meleeAttackSpeed: 1.6,
+        radius: 2.0,
+      ),
+    );
+  }
+
+  static NPC createSteampunkMech() {
+    return NPC(
+      id: _generateId('steampunk_mech'),
+      name: 'Steampunk Mech',
+      role: 'Behemoth',
+      age: 35,
+      gender: 'Male',
+      specimenType: 'Human',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('SteampunkMech'),
+      combatStats: const CombatStats(
+        attack: 85,
+        health: 700,
+        maxHealth: 700,
+        speed: 1.5,
+        movement: 0.8,
+        distance: 2.0,
+        cost: 6,
+        unitType: UnitType.squad,
+        unitCount: 1,
+        meleeDamage: 85,
+        meleeRange: 2.0,
+        meleeAttackSpeed: 1.5,
         radius: 2.0,
       ),
     );

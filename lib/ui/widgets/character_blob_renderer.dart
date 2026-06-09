@@ -56,6 +56,8 @@ class CharacterBlobRenderer extends StatelessWidget {
           children: [
             if ((npc.combatStats?.swarmSize ?? 0) > 0)
               _buildSwarm(npc, size)
+            else if (npc.name.toLowerCase().contains('ram'))
+              _buildBatteringRam(size)
             else if (npc.specimenType == 'Bat' ||
                 npc.name.toLowerCase().contains('bat'))
               _buildBat(size)
@@ -92,6 +94,34 @@ class CharacterBlobRenderer extends StatelessWidget {
               _buildVampiricTotemIcon(size)
             else if (npc.name.toLowerCase().contains('cavalry'))
               _buildCavalry(size)
+            else if (npc.name.toLowerCase().contains('caltrop'))
+              _buildCaltropsIcon(size)
+            else if (npc.name.toLowerCase().contains('stampede'))
+              _buildStampedeIcon(size)
+            else if (npc.name.toLowerCase().contains('gatling'))
+              _buildGatlingGun(size)
+            else if (npc.name.toLowerCase().contains('zeppelin'))
+              _buildZeppelin(size)
+            else if (npc.name.toLowerCase().contains('valkyrie'))
+              _buildValkyrie(size)
+            else if (npc.name.toLowerCase().contains('minotaur'))
+              _buildMinotaur(size)
+            else if (npc.name.toLowerCase().contains('phoenix'))
+              _buildPhoenix(size)
+            else if (npc.name.toLowerCase().contains('necromancer'))
+              _buildNecromancer(size)
+            else if (npc.name.toLowerCase().contains('robot'))
+              _buildSteampunkRobot(size)
+            else if (npc.name.toLowerCase().contains('mech'))
+              _buildHumanPilotedMech(size)
+            else if (npc.name.toLowerCase().contains('lightning'))
+              _buildLightningStormIcon(size)
+            else if (npc.name.toLowerCase().contains('airdrop'))
+              _buildAirdropIcon(size)
+            else if (npc.name.toLowerCase().contains('divine') || npc.name.toLowerCase().contains('shield'))
+              _buildDivineShieldIcon(size)
+            else if (npc.name.toLowerCase().contains('napalm'))
+              _buildNapalmStrikeIcon(size)
             else ...[
               // Shadow
               Positioned(
@@ -2911,6 +2941,832 @@ class CharacterBlobRenderer extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaltropsIcon(double size) {
+    return _BobbingAnimation(
+      isWalking: false,
+      isIdle: isIdle,
+      delayFactor: 0.1,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            _buildSingleCaltrop(size * 0.45, Colors.blueGrey.shade700),
+            Positioned(
+              left: size * 0.1,
+              bottom: size * 0.15,
+              child: Transform.rotate(
+                angle: -0.4,
+                child: _buildSingleCaltrop(size * 0.35, Colors.blueGrey.shade900),
+              ),
+            ),
+            Positioned(
+              right: size * 0.12,
+              top: size * 0.15,
+              child: Transform.rotate(
+                angle: 0.5,
+                child: _buildSingleCaltrop(size * 0.38, const Color(0xFF455A64)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleCaltrop(double s, Color color) {
+    return SizedBox(
+      width: s,
+      height: s,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(width: s * 0.18, height: s * 0.9, color: color),
+          Transform.rotate(
+            angle: 1.047,
+            child: Container(width: s * 0.18, height: s * 0.9, color: color),
+          ),
+          Transform.rotate(
+            angle: -1.047,
+            child: Container(width: s * 0.18, height: s * 0.9, color: color),
+          ),
+          Container(
+            width: s * 0.3,
+            height: s * 0.3,
+            decoration: const BoxDecoration(
+              color: Colors.white60,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStampedeIcon(double size) {
+    return _BobbingAnimation(
+      isWalking: isWalking,
+      isIdle: isIdle,
+      delayFactor: 0.05,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: -size * 0.15,
+              top: -size * 0.05,
+              child: Transform.scale(
+                scale: 0.8,
+                child: _buildSingleHorse(size * 0.8, const Color(0xFF4A2810)),
+              ),
+            ),
+            Positioned(
+              left: size * 0.05,
+              top: size * 0.05,
+              child: _buildSingleHorse(size * 0.9, const Color(0xFF8B5A2B)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleHorse(double s, Color color) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          bottom: -s * 0.08,
+          left: s * 0.15,
+          right: s * 0.15,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(width: s * 0.08, height: s * 0.24, color: Colors.black),
+              Container(width: s * 0.08, height: s * 0.24, color: Colors.black),
+              Container(width: s * 0.08, height: s * 0.24, color: Colors.black),
+              Container(width: s * 0.08, height: s * 0.24, color: Colors.black),
+            ],
+          ),
+        ),
+        Positioned(
+          right: -s * 0.1,
+          bottom: s * 0.08,
+          child: Transform.rotate(
+            angle: 0.3,
+            child: Container(
+              width: s * 0.12,
+              height: s * 0.36,
+              decoration: const BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(4)),
+              ),
+            ),
+          ),
+        ),
+        Container(
+          width: s * 0.76,
+          height: s * 0.36,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(s * 0.1),
+          ),
+        ),
+        Positioned(
+          left: -s * 0.08,
+          top: -s * 0.16,
+          child: Transform.rotate(
+            angle: -0.4,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                Container(width: s * 0.18, height: s * 0.35, color: color),
+                Positioned(right: 0, top: 2, child: Container(width: 4, height: s * 0.25, color: Colors.black87)),
+                Positioned(
+                  top: -s * 0.08,
+                  left: -s * 0.05,
+                  child: Container(
+                    width: s * 0.24,
+                    height: s * 0.16,
+                    decoration: BoxDecoration(color: const Color(0xFF3D2008), borderRadius: BorderRadius.circular(s * 0.04)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGatlingGun(double size) {
+    return Transform.scale(
+      scale: 0.68,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: SizedBox(
+          width: size * 1.15,
+          height: size * 1.15,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: size * 0.6,
+                height: size * 0.3,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5D4037),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFF3E2723), width: 1.5),
+                ),
+              ),
+            Positioned(
+              left: -size * 0.25,
+              top: size * 0.28,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: size * 0.45, height: size * 0.05, color: const Color(0xFFB0BEC5)),
+                  const SizedBox(height: 2),
+                  Container(width: size * 0.5, height: size * 0.06, color: const Color(0xFFCFD8DC)),
+                  const SizedBox(height: 2),
+                  Container(width: size * 0.45, height: size * 0.05, color: const Color(0xFF90A4AE)),
+                ],
+              ),
+            ),
+            Positioned(
+              top: size * 0.1,
+              child: Container(
+                width: size * 0.25,
+                height: size * 0.25,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD4AF37),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: size * 0.1,
+              child: Container(
+                width: size * 0.45,
+                height: size * 0.45,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3E2723),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF8D6E63), width: 4),
+                ),
+                child: const Center(
+                  child: Icon(Icons.radio_button_checked, color: Color(0xFFD7CCC8), size: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildZeppelin(double size) {
+    return _BobbingAnimation(
+      isWalking: false,
+      isIdle: isIdle,
+      delayFactor: 0.15,
+      child: Transform.scale(
+        scale: 0.68,
+        child: SizedBox(
+          width: size,
+          height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              right: -size * 0.15,
+              child: Container(
+                width: size * 0.2,
+                height: size * 0.4,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF455A64),
+                  borderRadius: BorderRadius.only(topRight: Radius.circular(8), bottomRight: Radius.circular(8)),
+                ),
+              ),
+            ),
+            Container(
+              width: size * 0.9,
+              height: size * 0.5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD7CCC8),
+                borderRadius: BorderRadius.all(Radius.elliptical(45, 25)),
+                border: Border.all(color: const Color(0xFF5D4037), width: 2),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 4)),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: size * 0.1,
+              child: Container(
+                width: size * 0.4,
+                height: size * 0.15,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3E2723),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFF8D6E63), width: 1),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Icon(Icons.circle, color: Colors.amberAccent, size: 4),
+                    Icon(Icons.circle, color: Colors.amberAccent, size: 4),
+                    Icon(Icons.circle, color: Colors.amberAccent, size: 4),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildValkyrie(double size) {
+    return _BobbingAnimation(
+      isWalking: false,
+      isIdle: isIdle,
+      delayFactor: 0.1,
+      child: Transform.scale(
+        scale: 0.68,
+        child: SizedBox(
+          width: size,
+          height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: -size * 0.15,
+              child: Transform.rotate(
+                angle: -0.4,
+                child: Container(
+                  width: size * 0.35,
+                  height: size * 0.6,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(20), bottomLeft: Radius.circular(8)),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -size * 0.15,
+              child: Transform.rotate(
+                angle: 0.4,
+                child: Container(
+                  width: size * 0.35,
+                  height: size * 0.6,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(8)),
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              width: size * 0.45,
+              height: size * 0.6,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD4AF37),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFB7950B), width: 1.5),
+              ),
+            ),
+            Positioned(
+              top: size * 0.05,
+              child: Container(
+                width: size * 0.3,
+                height: size * 0.25,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFBDC3C7),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              left: size * 0.05,
+              child: Container(width: 3, height: size * 0.8, color: const Color(0xFFECF0F1)),
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildMinotaur(double size) {
+    return Transform.scale(
+      scale: 0.68,
+      child: SizedBox(
+        width: size,
+        height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size * 0.7,
+            height: size * 0.75,
+            decoration: BoxDecoration(
+              color: const Color(0xFF3E2723),
+              borderRadius: BorderRadius.circular(size * 0.2),
+              border: Border.all(color: const Color(0xFF212121), width: 2),
+            ),
+          ),
+          Positioned(
+            top: -size * 0.1,
+            left: size * 0.05,
+            child: Transform.rotate(
+              angle: -0.6,
+              child: Container(
+                width: size * 0.15,
+                height: size * 0.35,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(12)),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -size * 0.1,
+            right: size * 0.05,
+            child: Transform.rotate(
+              angle: 0.6,
+              child: Container(
+                width: size * 0.15,
+                height: size * 0.35,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.only(topRight: Radius.circular(12)),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: size * 0.15,
+            child: Container(
+              width: size * 0.35,
+              height: size * 0.25,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4E342E),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Icon(Icons.circle, color: Colors.redAccent, size: 6),
+                  Icon(Icons.circle, color: Colors.redAccent, size: 6),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: -size * 0.1,
+            child: Container(width: 6, height: size * 0.85, color: const Color(0xFF757575)),
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _buildPhoenix(double size) {
+    return _BobbingAnimation(
+      isWalking: false,
+      isIdle: isIdle,
+      delayFactor: 0.05,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size * 0.95,
+              height: size * 0.65,
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [Color(0xFFFFFF00), Color(0xFFFF3D00), Color(0xFFD50000)],
+                ),
+                borderRadius: BorderRadius.all(Radius.elliptical(45, 20)),
+                boxShadow: [
+                  BoxShadow(color: Colors.deepOrangeAccent, blurRadius: 10, spreadRadius: 4),
+                ],
+              ),
+            ),
+            const Positioned(
+              top: -4,
+              child: Icon(Icons.local_fire_department, color: Colors.amberAccent, size: 36),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNecromancer(double size) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size * 0.55,
+            height: size * 0.75,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1120),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.purple.shade900, width: 1.5),
+            ),
+          ),
+          Positioned(
+            top: size * 0.15,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.circle, color: Colors.greenAccent, size: 5),
+                SizedBox(width: 8),
+                Icon(Icons.circle, color: Colors.greenAccent, size: 5),
+              ],
+            ),
+          ),
+          Positioned(
+            left: -size * 0.1,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.auto_awesome, color: Colors.greenAccent, size: 18),
+                Container(width: 3, height: size * 0.75, color: const Color(0xFFD7CCC8)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBatteringRam(double size) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size * 0.85,
+            height: size * 0.55,
+            decoration: BoxDecoration(
+              color: const Color(0xFF4E342E),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFF212121), width: 2),
+            ),
+          ),
+          Positioned(
+            left: -size * 0.15,
+            top: size * 0.25,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: size * 0.25,
+                  height: size * 0.18,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF37474F),
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8)),
+                  ),
+                ),
+                Container(width: size * 0.65, height: size * 0.14, color: const Color(0xFF795548)),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: size * 0.05,
+            left: size * 0.1,
+            child: const Icon(Icons.radio_button_checked, color: Colors.black87, size: 20),
+          ),
+          Positioned(
+            bottom: size * 0.05,
+            right: size * 0.1,
+            child: const Icon(Icons.radio_button_checked, color: Colors.black87, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSteampunkRobot(double size) {
+    return FittedBox(
+      fit: BoxFit.contain,
+      child: SizedBox(
+        width: size * 1.15,
+        height: size * 1.15,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: -size * 0.15,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 8, height: size * 0.2, color: const Color(0xFFD84315)),
+                  const SizedBox(width: 12),
+                  Container(width: 8, height: size * 0.2, color: const Color(0xFFD84315)),
+                ],
+              ),
+            ),
+            Container(
+              width: size * 0.75,
+              height: size * 0.8,
+              decoration: BoxDecoration(
+                color: const Color(0xFF37474F),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFB0BEC5), width: 2),
+              ),
+            ),
+            Positioned(
+              top: size * 0.25,
+              child: Container(
+                width: size * 0.4,
+                height: size * 0.25,
+                decoration: BoxDecoration(
+                  color: Colors.deepOrangeAccent,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black87, width: 2),
+                ),
+                child: const Center(
+                  child: Icon(Icons.grid_on, color: Colors.black87, size: 16),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -size * 0.1,
+              top: size * 0.3,
+              child: Container(width: size * 0.2, height: size * 0.25, color: const Color(0xFF455A64)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHumanPilotedMech(double size) {
+    return FittedBox(
+      fit: BoxFit.contain,
+      child: SizedBox(
+        width: size * 1.15,
+        height: size * 1.15,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              bottom: 0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: size * 0.15, height: size * 0.45, color: const Color(0xFF455A64)),
+                  SizedBox(width: size * 0.25),
+                  Container(width: size * 0.15, height: size * 0.45, color: const Color(0xFF37474F)),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: size * 0.35,
+              child: Container(
+                width: size * 0.75,
+                height: size * 0.45,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4AF37),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF5D4037), width: 2),
+                ),
+              ),
+            ),
+            Positioned(
+              top: size * 0.05,
+              child: Container(
+                width: size * 0.35,
+                height: size * 0.45,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8D6E63),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: size * 0.22,
+                      height: size * 0.22,
+                      decoration: const BoxDecoration(color: Color(0xFFFFCCBC), shape: BoxShape.circle),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: size * 0.1,
+              top: size * 0.3,
+              child: Transform.rotate(
+                angle: -0.4,
+                child: Container(width: 4, height: size * 0.35, color: Colors.black87),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLightningStormIcon(double size) {
+    return _BobbingAnimation(
+      isWalking: false,
+      isIdle: isIdle,
+      delayFactor: 0.1,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size * 0.9,
+              height: size * 0.6,
+              decoration: BoxDecoration(
+                color: const Color(0xFF263238),
+                borderRadius: BorderRadius.circular(size * 0.3),
+                border: Border.all(color: Colors.blueGrey.shade700, width: 2),
+                boxShadow: const [
+                  BoxShadow(color: Colors.cyanAccent, blurRadius: 10, spreadRadius: 2),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: -size * 0.2,
+              child: const Icon(Icons.bolt, color: Colors.yellowAccent, size: 40),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAirdropIcon(double size) {
+    return _BobbingAnimation(
+      isWalking: false,
+      isIdle: isIdle,
+      delayFactor: 0.2,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: -size * 0.1,
+              child: Container(
+                width: size * 0.8,
+                height: size * 0.35,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5F5DC),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+              ),
+            ),
+            Container(width: 1.5, height: size * 0.4, color: Colors.white70),
+            Positioned(
+              bottom: size * 0.05,
+              child: Container(
+                width: size * 0.5,
+                height: size * 0.4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5D4037),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFF3E2723), width: 2),
+                ),
+                child: const Center(
+                  child: Icon(Icons.add, color: Colors.redAccent, size: 22),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivineShieldIcon(double size) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: size * 0.95,
+            height: size * 0.95,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.amber.withValues(alpha: 0.35),
+              border: Border.all(color: Colors.yellowAccent, width: 3),
+              boxShadow: const [
+                BoxShadow(color: Colors.amberAccent, blurRadius: 12, spreadRadius: 4),
+              ],
+            ),
+          ),
+          const Icon(Icons.shield, color: Colors.white, size: 28),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNapalmStrikeIcon(double size) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size * 0.9,
+            height: size * 0.75,
+            decoration: BoxDecoration(
+              gradient: const RadialGradient(
+                colors: [Color(0xFFFFFFFF), Color(0xFFFF6D00), Color(0xFFB71C1C), Color(0xFF212121)],
+              ),
+              borderRadius: BorderRadius.circular(size * 0.35),
+              boxShadow: const [
+                BoxShadow(color: Colors.redAccent, blurRadius: 15, spreadRadius: 6),
+              ],
+            ),
+          ),
+          const Icon(Icons.whatshot, color: Colors.amberAccent, size: 36),
         ],
       ),
     );

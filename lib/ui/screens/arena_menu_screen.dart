@@ -761,241 +761,158 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1D1712),
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.4), width: 1.5),
-          ),
-          title: Text(
-            'SELECT TOURNAMENT DECK',
-            style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
-            textAlign: TextAlign.center,
-          ),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Choose a starting deck. All combatants inside the tournament compete with basic card tiers (no upgrades allowed).',
-                  style: GoogleFonts.oldStandardTt(color: Colors.white60, fontSize: 11, height: 1.5),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                _buildTournamentSelectCard('PEASANT REBELS DECK', ['militia', 'militia', 'pikemen', 'marksmen']),
-                const SizedBox(height: 8),
-                _buildTournamentSelectCard('CLOCKWORK DRONES DECK', ['bicycle_gang', 'bicycle_gang', 'musketeers', 'cannoneer']),
-                const SizedBox(height: 8),
-                _buildTournamentSelectCard('NECROMANTIC CRYPT DECK', ['rats_unit', 'rats_unit', 'bats_unit', 'undead_rats']),
-                const SizedBox(height: 8),
-                _buildTournamentSelectCard('FOG-FOREST BEASTS DECK', ['wild_wolves', 'wild_wolves', 'wild_foxes', 'wild_bears']),
-              ],
-            ),
-          ),
+        return TournamentDeckBuilderDialog(
+          onDeckSelected: (deck) {
+            _showLeaderSelection(
+              onLeaderSelected: (leaderId) async {
+                // Generate 31 Opponent Names
+                final List<String> opponentNames = [
+                  'Baron von Richter',
+                  'Gladiator Titus',
+                  'Inquisitor Sarah',
+                  'Vagrant Jack',
+                  'Lady Isabella',
+                  'Commander Krieger',
+                  'Outlaw Jesse',
+                  'Sniper Vance',
+                  'Warlord Marcus',
+                  'Engineer Geller',
+                  'Mercenary Hawke',
+                  'Necromancer Silas',
+                  'Dragoons Captain',
+                  'Priestess Sophia',
+                  'Feral Houndmaster',
+                  'Keeper Bran',
+                  'Bandit King Silas',
+                  'Royal Guard Justin',
+                  'Cultist Brother Paul',
+                  'Alchemist Victor',
+                  'Forest Warden Cedric',
+                  'Steam Mechanic Hans',
+                  'Saber Master Ray',
+                  'Highwayman Rex',
+                  'Bounty Hunter Clint',
+                  'Plague Carrier Sean',
+                  'Dread Golem Master',
+                  'Squire Dennis',
+                  'Swiss Scout Lukas',
+                  'Knight Commander Gerald',
+                  'Wild Wolf Alfa',
+                ];
+
+                // 32 participants (Player at index 0 + 31 generated)
+                final List<String> allParticipants = [
+                  'Player',
+                  ...opponentNames,
+                ];
+
+                // Generate decks for all 32 participants
+                final Map<String, List<String>> participantDecks = {
+                  'Player': deck,
+                };
+
+                final List<List<String>> deckPools = [
+                  [
+                    'militia',
+                    'goons',
+                    'pikemen',
+                    'marksmen',
+                    'valkyrie',
+                    'minotaur',
+                    'steampunk_mech',
+                    'warlock',
+                    'witch',
+                    'gatling_gun',
+                    'phoenix',
+                    'necromancer',
+                  ],
+                  [
+                    'bicycle_gang',
+                    'motorcycle_gang',
+                    'musketeers',
+                    'cannoneer',
+                    'armored_car',
+                    'wooden_tank',
+                    'werewolf',
+                    'chimera',
+                    'flesh_golem',
+                    'samurai',
+                    'mercenaries',
+                    'commandos',
+                  ],
+                  [
+                    'rats_unit',
+                    'bats',
+                    'undead_rats',
+                    'brown_rats',
+                    'wild_wolves',
+                    'wild_foxes',
+                    'wild_bears',
+                    'bandits',
+                    'thugs',
+                    'deserters',
+                    'halberdiers',
+                    'policemen',
+                  ],
+                  [
+                    'cavalry',
+                    'stampede',
+                    'brewers',
+                    'hag',
+                    'battering_ram',
+                    'poison_gas',
+                    'lightning_storm',
+                    'airdrop',
+                    'divine_shield',
+                    'napalm_strike',
+                    'sniper',
+                    'artillery_barrage',
+                  ],
+                ];
+
+                for (var oppName in opponentNames) {
+                  participantDecks[oppName] =
+                      deckPools[Random().nextInt(deckPools.length)];
+                }
+
+                final newTournament = TournamentProgress(
+                  playerDeckIds: deck,
+                  currentRound: 1,
+                  participants: allParticipants,
+                  participantDecks: participantDecks,
+                  matches: [],
+                  isEliminated: false,
+                  playerLeaderId: leaderId,
+                );
+
+                // Populate the bracket matches for Round 1 (16 pairings)
+                for (int i = 0; i < 16; i++) {
+                  newTournament.matches.add(
+                    TournamentMatch(
+                      round: 1,
+                      p1: allParticipants[i * 2],
+                      p2: allParticipants[i * 2 + 1],
+                    ),
+                  );
+                }
+
+                final progress = ArenaProgress(
+                  slot: _activeSlot,
+                  saveTime: DateTime.now(),
+                  tournament: newTournament,
+                );
+
+                await ArenaSaveService.saveProgress(progress);
+                await _loadActiveSlot();
+                _enterTournament(
+                  progress.tournament!,
+                  explicitProgress: progress,
+                );
+              },
+            );
+          },
         );
       },
-    );
-  }
-
-  Widget _buildTournamentSelectCard(String label, List<String> deck) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        border: Border.all(
-          color: const Color(0xFFC4B89B).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.playfairDisplay(
-                  color: const Color(0xFFE5D5B0),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC4B89B),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                  _showLeaderSelection(
-                    onLeaderSelected: (leaderId) async {
-                      // Generate 31 Opponent Names
-                      final List<String> opponentNames = [
-                        'Baron von Richter',
-                        'Gladiator Titus',
-                        'Inquisitor Sarah',
-                        'Vagrant Jack',
-                        'Lady Isabella',
-                        'Commander Krieger',
-                        'Outlaw Jesse',
-                        'Sniper Vance',
-                        'Warlord Marcus',
-                        'Engineer Geller',
-                        'Mercenary Hawke',
-                        'Necromancer Silas',
-                        'Dragoons Captain',
-                        'Priestess Sophia',
-                        'Feral Houndmaster',
-                        'Keeper Bran',
-                        'Bandit King Silas',
-                        'Royal Guard Justin',
-                        'Cultist Brother Paul',
-                        'Alchemist Victor',
-                        'Forest Warden Cedric',
-                        'Steam Mechanic Hans',
-                        'Saber Master Ray',
-                        'Highwayman Rex',
-                        'Bounty Hunter Clint',
-                        'Plague Carrier Sean',
-                        'Dread Golem Master',
-                        'Squire Dennis',
-                        'Swiss Scout Lukas',
-                        'Knight Commander Gerald',
-                        'Wild Wolf Alfa',
-                      ];
-
-                      // 32 participants (Player at index 0 + 31 generated)
-                      final List<String> allParticipants = [
-                        'Player',
-                        ...opponentNames,
-                      ];
-
-                      // Generate decks for all 32 participants
-                      final Map<String, List<String>> participantDecks = {
-                        'Player': deck,
-                      };
-
-                      final List<List<String>> deckPools = [
-                        ['militia', 'militia', 'pikemen', 'marksmen'],
-                        [
-                          'bicycle_gang',
-                          'bicycle_gang',
-                          'musketeers',
-                          'cannoneer',
-                        ],
-                        ['rats_unit', 'rats_unit', 'bats_unit', 'undead_rats'],
-                        [
-                          'wild_wolves',
-                          'wild_wolves',
-                          'wild_foxes',
-                          'wild_bears',
-                        ],
-                        ['cavalry', 'cavalry', 'pikemen', 'musketeers'],
-                        [
-                          'wooden_tank',
-                          'armored_car',
-                          'cannoneer',
-                          'motorcycle_gang',
-                        ],
-                      ];
-
-                      for (var oppName in opponentNames) {
-                        participantDecks[oppName] =
-                            deckPools[Random().nextInt(deckPools.length)];
-                      }
-
-                      final newTournament = TournamentProgress(
-                        playerDeckIds: deck,
-                        currentRound: 1,
-                        participants: allParticipants,
-                        participantDecks: participantDecks,
-                        matches: [],
-                        isEliminated: false,
-                        playerLeaderId: leaderId,
-                      );
-
-                      // Populate the bracket matches for Round 1 (16 pairings)
-                      for (int i = 0; i < 16; i++) {
-                        newTournament.matches.add(
-                          TournamentMatch(
-                            round: 1,
-                            p1: allParticipants[i * 2],
-                            p2: allParticipants[i * 2 + 1],
-                          ),
-                        );
-                      }
-
-                      final progress = ArenaProgress(
-                        slot: _activeSlot,
-                        saveTime: DateTime.now(),
-                        tournament: newTournament,
-                      );
-
-                      await ArenaSaveService.saveProgress(progress);
-                      await _loadActiveSlot();
-                      _enterTournament(
-                        progress.tournament!,
-                        explicitProgress: progress,
-                      );
-                    },
-                  );
-                },
-                child: Text(
-                  'CHOOSE DECK',
-                  style: GoogleFonts.oswald(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: deck.map((cardId) {
-              final unit = CombatUnitService.createUnit(cardId);
-              return Expanded(
-                child: InkWell(
-                  onTap: () => CombatCardDetailModal.show(context, cardId),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black38,
-                      border: Border.all(
-                        color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        CharacterBlobRenderer(
-                          npc: unit,
-                          size: 24,
-                          isCombat: true,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          unit.name.toUpperCase(),
-                          style: GoogleFonts.oswald(
-                            fontSize: 8,
-                            color: Colors.white70,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1398,4 +1315,327 @@ class _BrassGeometricPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class TournamentDeckBuilderDialog extends StatefulWidget {
+  final Function(List<String>) onDeckSelected;
+
+  const TournamentDeckBuilderDialog({super.key, required this.onDeckSelected});
+
+  @override
+  State<TournamentDeckBuilderDialog> createState() => _TournamentDeckBuilderDialogState();
+}
+
+class _TournamentDeckBuilderDialogState extends State<TournamentDeckBuilderDialog> {
+  final List<String> _selectedDeck = [];
+
+  final List<String> _availableTypes = [
+    'giles',
+    'cannoneer',
+    'musketeers',
+    'cavalry',
+    'bicycle_gang',
+    'motorcycle_gang',
+    'armored_car',
+    'wooden_tank',
+    'undead_rats',
+    'brown_rats',
+    'werewolf',
+    'chimera',
+    'flesh_golem',
+    'villager_mob',
+    'samurai',
+    'mercenaries',
+    'commandos',
+    'sniper',
+    'wild_foxes',
+    'wild_wolves',
+    'wild_bears',
+    'bandits',
+    'thugs',
+    'deserters',
+    'halberdiers',
+    'pikemen',
+    'policemen',
+    'marksmen',
+    'artillery_barrage',
+    'tear_gas_grenade',
+    'caltrops',
+    'vampiric_totem',
+    'militia',
+    'goons',
+    'footman',
+    'bandit_captain',
+    'bats',
+    'stampede',
+    'brewers',
+    'hag',
+    'witch',
+    'warlock',
+    'gatling_gun',
+    'zeppelin',
+    'valkyrie',
+    'minotaur',
+    'phoenix',
+    'necromancer',
+    'battering_ram',
+    'steampunk_mech',
+    'poison_gas',
+    'lightning_storm',
+    'airdrop',
+    'divine_shield',
+    'napalm_strike',
+  ];
+
+  void _addCard(String type) {
+    setState(() {
+      if (_selectedDeck.length < 12 && !_selectedDeck.contains(type)) {
+        _selectedDeck.add(type);
+      }
+    });
+  }
+
+  void _removeCard(int index) {
+    setState(() {
+      _selectedDeck.removeAt(index);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Size size = MediaQuery.of(context).size;
+    final bool isCompact = size.width < 600;
+
+    return Dialog(
+      backgroundColor: const Color(0xFF1A1612),
+      shape: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
+      insetPadding: EdgeInsets.all(isCompact ? 8 : 24),
+      child: SizedBox(
+        width: isCompact ? size.width * 0.95 : 850,
+        height: isCompact ? size.height * 0.9 : 650,
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.black45,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'BUILD CUSTOM TOURNAMENT DECK',
+                    style: GoogleFonts.playfairDisplay(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: isCompact ? 13 : 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Color(0xFFC4B89B)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // Content (Row on desktop/tablet, Column on phone)
+            Expanded(
+              child: isCompact
+                  ? Column(
+                      children: [
+                        Expanded(flex: 3, child: _buildAvailableCards()),
+                        const Divider(color: Colors.white10, height: 1),
+                        Expanded(flex: 2, child: _buildSelectedDeck()),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(flex: 5, child: _buildAvailableCards()),
+                        const VerticalDivider(color: Colors.white10, width: 1),
+                        Expanded(flex: 4, child: _buildSelectedDeck()),
+                      ],
+                    ),
+            ),
+
+            // Footer
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.black54,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'CARDS SELECTED: ${_selectedDeck.length} / 12',
+                    style: GoogleFonts.oswald(
+                      color: _selectedDeck.length == 12
+                          ? Colors.greenAccent
+                          : Colors.orangeAccent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD4AF37),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    onPressed: _selectedDeck.length == 12
+                        ? () {
+                            Navigator.pop(context);
+                            widget.onDeckSelected(_selectedDeck);
+                          }
+                        : null,
+                    child: Text(
+                      'CONFIRM DECK & SELECT COMMANDER',
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailableCards() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10),
+          child: Text(
+            'AVAILABLE CARDS (TAP TO ADD)',
+            style: GoogleFonts.oswald(
+              color: const Color(0xFFC4B89B),
+              fontSize: 11,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _availableTypes.length,
+            itemBuilder: (context, index) {
+              final type = _availableTypes[index];
+              final sample = CombatUnitService.createUnit(type);
+              final stats = sample.combatStats!;
+
+              return Container(
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  leading: CharacterBlobRenderer(npc: sample, size: 30, isCombat: true),
+                  title: Text(
+                    type.toUpperCase().replaceAll('_', ' '),
+                    style: GoogleFonts.playfairDisplay(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'HP:${stats.maxHealth.toInt()} | ATK:${stats.attack.toInt()} | Cost:${stats.cost} AP',
+                    style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 10),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.add_circle_outline, color: Color(0xFFD4AF37)),
+                    onPressed: () => _addCard(type),
+                  ),
+                  onTap: () => CombatCardDetailModal.show(context, type),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedDeck() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10),
+          child: Text(
+            'YOUR TOURNAMENT DECK (TAP SLOT TO REMOVE)',
+            style: GoogleFonts.oswald(
+              color: const Color(0xFFC4B89B),
+              fontSize: 11,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemCount: 12,
+              itemBuilder: (context, index) {
+                final bool hasUnit = index < _selectedDeck.length;
+                if (!hasUnit) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.add, color: Colors.white12, size: 24),
+                    ),
+                  );
+                }
+
+                final cardId = _selectedDeck[index];
+                final unit = CombatUnitService.createUnit(cardId);
+
+                return InkWell(
+                  onTap: () => _removeCard(index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black45,
+                      border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CharacterBlobRenderer(npc: unit, size: 26, isCombat: true),
+                        const SizedBox(height: 4),
+                        Text(
+                          unit.name.toUpperCase(),
+                          style: GoogleFonts.oswald(color: Colors.white70, fontSize: 8.5),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${unit.combatStats!.cost} AP',
+                          style: GoogleFonts.oswald(color: Colors.cyanAccent, fontSize: 8),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/combat_unit_service.dart';
@@ -67,6 +66,30 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
     'tear_gas_grenade',
     'caltrops',
     'vampiric_totem',
+    'militia',
+    'goons',
+    'footman',
+    'bandit_captain',
+    'bats',
+    'stampede',
+    'brewers',
+    'hag',
+    'witch',
+    'warlock',
+    'gatling_gun',
+    'zeppelin',
+    'valkyrie',
+    'minotaur',
+    'phoenix',
+    'necromancer',
+    'battering_ram',
+    'steampunk_mech',
+    'steampunk_robot',
+    'poison_gas',
+    'lightning_storm',
+    'airdrop',
+    'divine_shield',
+    'napalm_strike',
   ];
 
   @override
@@ -76,15 +99,11 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
   }
 
   void _randomizeDecks() {
-    final random = Random();
+    final shuffled = _availableTypes.toList()..shuffle();
     _playerDeckTypes.clear();
     _aiDeckTypes.clear();
-    for (int i = 0; i < 12; i++) {
-      _playerDeckTypes.add(
-        _availableTypes[random.nextInt(_availableTypes.length)],
-      );
-      _aiDeckTypes.add(_availableTypes[random.nextInt(_availableTypes.length)]);
-    }
+    _playerDeckTypes.addAll(shuffled.take(12));
+    _aiDeckTypes.addAll(shuffled.skip(12).take(12));
   }
 
   void _addUnit(String type) {
@@ -92,7 +111,7 @@ class _CombatSimulatorScreenState extends State<CombatSimulatorScreen> {
       final targetDeck = _isPlayerDeckSelected
           ? _playerDeckTypes
           : _aiDeckTypes;
-      if (targetDeck.length < 12) {
+      if (targetDeck.length < 12 && !targetDeck.contains(type)) {
         targetDeck.add(type);
       }
     });

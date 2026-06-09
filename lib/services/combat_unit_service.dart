@@ -138,6 +138,9 @@ class CombatUnitService {
         return CombatUnitFactory.createBatteringRam();
       case 'steampunk_mech':
         return CombatUnitFactory.createSteampunkMech();
+      case 'steampunk_robot':
+      case 'robot':
+        return CombatUnitFactory.createSteampunkRobot();
       case 'poison_gas':
         return CombatUnitFactory.createPoisonGas();
       case 'lightning_storm':

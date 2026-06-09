@@ -249,6 +249,7 @@ class CombatManager extends ChangeNotifier {
   final List<NPC> _aiHand = [];
   Map<String, int> upgrades = {};
   bool isSurvivalMode = false;
+  bool isNormalGameMode = false;
   final Map<String, double> combatExp = {};
   final Map<String, NPC> _pendingRecycleSquads = {};
   final Map<String, int> _cardLevels = {};
@@ -624,6 +625,13 @@ class CombatManager extends ChangeNotifier {
       if (toDraw != null) {
         _deck.removeAt(drawIndex);
         _hand.add(toDraw);
+        if (_isAiVsAi) {
+          _deck.add(
+            toDraw.copyWith(
+              id: '${toDraw.id}_refill_${DateTime.now().microsecondsSinceEpoch}',
+            ),
+          );
+        }
         notifyListeners();
       }
     }
@@ -655,8 +663,15 @@ class CombatManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setupSimulation(List<NPC> playerDeck, List<NPC> aiDeck) {
+  bool _isAiVsAi = false;
+
+  void setupSimulation(
+    List<NPC> playerDeck,
+    List<NPC> aiDeck, {
+    bool isAiVsAi = false,
+  }) {
     _isSimulation = true;
+    _isAiVsAi = isAiVsAi;
     prepareDeck(playerDeck);
 
     _aiHand.clear();
@@ -699,7 +714,7 @@ class CombatManager extends ChangeNotifier {
         stats.unitType == UnitType.support;
 
     // If 2 channels, block non-support units in the central 30% band of the battlefield
-    if (_map.laneCenters.length == 2 && !isSupport && worldX > 0.2 * _map.width) {
+    if (_map.laneCenters.length == 2 && !isSupport && worldX > _map.playerBackFieldLimit) {
       final centerY = _map.height / 2.0;
       final halfBand = _map.height * 0.15;
       if (worldY >= centerY - halfBand && worldY <= centerY + halfBand) {
@@ -707,8 +722,8 @@ class CombatManager extends ChangeNotifier {
       }
     }
 
-    // Always allow casting anywhere in the player's back 20% of the field
-    if (worldX <= 0.2 * _map.width) {
+    // Always allow casting anywhere in the player's back field
+    if (worldX <= _map.playerBackFieldLimit) {
       return true;
     }
 
@@ -717,8 +732,8 @@ class CombatManager extends ChangeNotifier {
       if (alphonse == null) return false;
 
       if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
-        if (worldX > 0.8 * _map.width) {
-          final hasPresence = _combatants.any((c) => c.side == CombatSide.player && !c.isDead && c.x >= 0.7 * _map.width);
+        if (worldX > _map.enemyBackFieldLimit) {
+          final hasPresence = _combatants.any((c) => c.side == CombatSide.player && !c.isDead && c.x >= _map.enemyBackFieldLimit - 0.1 * _map.width);
           if (!hasPresence) return false;
         }
         return true;
@@ -738,8 +753,8 @@ class CombatManager extends ChangeNotifier {
   }
 
   bool isValidPlacementForTroop(double worldX, double worldY) {
-    if (worldX > 0.8 * _map.width) return false;
-    final double startingZoneLimit = 0.2 * _map.width;
+    if (worldX > _map.enemyBackFieldLimit) return false;
+    final double startingZoneLimit = _map.playerBackFieldLimit;
     if (worldX > startingZoneLimit) {
       if (_map.laneCenters.length == 2) {
         final alphonse = _combatants.firstWhereOrNull((c) => c.npc.isPlayer && !c.isDead);
@@ -809,15 +824,11 @@ class CombatManager extends ChangeNotifier {
     final double spawnX = x ?? (side == CombatSide.player ? (_fieldScroll + 15.0) : (_fieldScroll + 190.0));
     final double spawnY = (y ?? (Random().nextDouble() * _map.height)).clamp(2.0, _map.height - 2.0);
 
-    // 2. Enforce player spawn limits
-    if (side == CombatSide.player) {
+    // 2. Enforce manual player spawn limits & deduct Action Points (Only when NOT simulation!)
+    if (side == CombatSide.player && !_isAiVsAi) {
       if (!isValidPlacement(npc, spawnX, spawnY)) return false;
-    }
+      if (_actionPoints < stats.cost) return false;
 
-    // 3. Check and deduct Action Points
-    if (side == CombatSide.player && _actionPoints < stats.cost) return false;
-
-    if (side == CombatSide.player) {
       _actionPoints -= stats.cost;
       _hand.removeWhere((n) => n.id == npc.id);
       drawCard();
@@ -1165,15 +1176,17 @@ class CombatManager extends ChangeNotifier {
           // Trigger standard kill callback
           onEnemyKill?.call(c.npc);
           
-          // Roll for loot
-          final rand = Random();
-          if (rand.nextDouble() < 0.4) {
-            _accumulatedLoot['funds'] =
-                (_accumulatedLoot['funds'] ?? 0) + 5 + rand.nextInt(15);
-          }
-          if (rand.nextDouble() < 0.6) {
-            _accumulatedLoot['meat'] =
-                (_accumulatedLoot['meat'] ?? 0) + 1 + rand.nextInt(3);
+          // Roll for loot (only in normal game mode)
+          if (isNormalGameMode) {
+            final rand = Random();
+            if (rand.nextDouble() < 0.4) {
+              _accumulatedLoot['funds'] =
+                  (_accumulatedLoot['funds'] ?? 0) + 5 + rand.nextInt(15);
+            }
+            if (rand.nextDouble() < 0.6) {
+              _accumulatedLoot['meat'] =
+                  (_accumulatedLoot['meat'] ?? 0) + 1 + rand.nextInt(3);
+            }
           }
         }
         return true;
@@ -1328,13 +1341,63 @@ class CombatManager extends ChangeNotifier {
             // Otherwise, spawn near the enemy base/corner tower.
             final double spawnX;
             if (aiLeader != null) {
-              spawnX = (aiLeader.x + 25.0).clamp(100.0, _map.width - 20.0);
+              spawnX = (aiLeader.x + 25.0).clamp(_map.enemyBackFieldLimit, _map.width - 15.0);
             } else {
-              spawnX = (_map.enemyCornerTowerX - 20.0).clamp(100.0, _map.width - 20.0);
+              spawnX = (_map.enemyCornerTowerX - 20.0).clamp(_map.enemyBackFieldLimit, _map.width - 15.0);
             }
             
             spawnUnit(unit, CombatSide.enemy, x: spawnX, y: spawnYs[lane]);
             break; // One per tick
+          }
+        }
+      }
+
+      if (_isAiVsAi && _hand.isNotEmpty) {
+        _actionPoints = min(maxAP, _actionPoints + apPerSecond * rateMultiplier * dt);
+        _hand.sort(
+          (a, b) => (b.combatStats?.cost ?? 0).compareTo(a.combatStats?.cost ?? 0),
+        );
+        for (var i = 0; i < _hand.length; i++) {
+          final unit = _hand[i];
+          final bool isAlreadyOnBoard = _combatants.any((c) {
+            if (c.side != CombatSide.player || c.isDead || c.isTower || c.npc.isPlayer) {
+              return false;
+            }
+            final uCardType = unit.metadata['cardType'];
+            final cCardType = c.npc.metadata['cardType'];
+            if (uCardType != null && cCardType != null && uCardType == cCardType) {
+              return true;
+            }
+            final String uBaseId = unit.id.split('_').first;
+            final String cBaseId = c.npc.id.split('_').first;
+            if (uBaseId == cBaseId && uBaseId.length > 2) {
+              return true;
+            }
+            final String uName = unit.name.replaceAll('s', '').trim().toLowerCase();
+            final String oName = (c.originCardName ?? c.npc.name).replaceAll('s', '').trim().toLowerCase();
+            final String cName = c.npc.name.replaceAll('s', '').trim().toLowerCase();
+            return oName == uName || cName == uName || cName.startsWith(uName);
+          });
+
+          if (isAlreadyOnBoard) continue;
+
+          final cost = unit.combatStats?.cost ?? 0;
+          if (_actionPoints >= cost) {
+            _actionPoints -= cost;
+            _hand.removeAt(i);
+            final lane = Random().nextInt(_map.laneCenters.length);
+            final spawnYs = _map.laneCenters;
+            final pLeader = _combatants.firstWhereOrNull(
+              (c) => c.side == CombatSide.player && c.npc.isPlayer && !c.isDead,
+            );
+            final double spawnX;
+            if (pLeader != null) {
+              spawnX = (pLeader.x - 25.0).clamp(15.0, _map.playerBackFieldLimit);
+            } else {
+              spawnX = (_map.playerCornerTowerX + 20.0).clamp(15.0, _map.playerBackFieldLimit);
+            }
+            spawnUnit(unit, CombatSide.player, x: spawnX, y: spawnYs[lane]);
+            break;
           }
         }
       }
@@ -1999,8 +2062,8 @@ class CombatManager extends ChangeNotifier {
       return;
     }
 
-    // 2. Mobile Player Hero Locomotion & Auto-Attack Logic
-    if (c.npc.isPlayer) {
+    // 2. Mobile Player Hero Locomotion & Auto-Attack Logic (Only when NOT simulation!)
+    if (c.npc.isPlayer && !_isAiVsAi) {
       if (c.waypointX != null && c.waypointY != null) {
         // Check if path to final waypoint is obstructed by a centerline wall
         final bool pathBlocked = isPathObstructed(c.x, c.y, c.waypointX!, c.waypointY!);
@@ -2095,8 +2158,9 @@ class CombatManager extends ChangeNotifier {
       return;
     }
 
-    // 3. Mobile AI Hero (Opponent Leader) Locomotion & Attack AI
-    if (c.isAiLeader) {
+    // 3. Mobile AI Hero (Opponent Leader or Lefthand Simulation Leader) Locomotion & Attack AI
+    final bool isAutonomousLeader = c.isAiLeader || (c.npc.isPlayer && _isAiVsAi);
+    if (isAutonomousLeader) {
       final double healthRatio = stats.health / stats.maxHealth;
       HealingCauldron? targetCauldron;
       if (healthRatio < 0.70) {
@@ -2227,7 +2291,7 @@ class CombatManager extends ChangeNotifier {
           }
         }
       } else {
-        // No active targets! Seek nearest channel and proceed towards player central/corner towers!
+        // No active targets! Seek nearest channel and proceed towards enemy base or player base
         double minDist = 99999.0;
         double nearestLaneY = _map.laneCenters.first;
         for (final ly in _map.laneCenters) {
@@ -2247,8 +2311,8 @@ class CombatManager extends ChangeNotifier {
           c.moveDirY = 0.0;
         }
 
-        // 2. Proceed down channel towards player central/corner towers (X = 0)
-        c.moveDirX = -1.0;
+        // 2. Proceed down channel
+        c.moveDirX = c.side == CombatSide.player ? 1.0 : -1.0;
         c.x += c.moveDirX * stats.movement * dt * 1.5 * 2.25;
       }
       
@@ -3098,6 +3162,7 @@ class CombatManager extends ChangeNotifier {
   }
 
   void setPlayerTarget(String enemyId) {
+    if (_isAiVsAi) return;
     // Force Alphonse or units to target a specific enemy
     final alphonse = _combatants.firstWhere((c) => c.npc.isPlayer);
     alphonse.targetId = enemyId;
@@ -3111,6 +3176,7 @@ class CombatManager extends ChangeNotifier {
   }
 
   void movePlayer(double targetX, double targetY) {
+    if (_isAiVsAi) return;
     final alphonse = _combatants.firstWhere((c) => c.npc.isPlayer);
     double tx = targetX.clamp(0.0, _map.width);
     double ty = targetY.clamp(2.0, _map.height - 2.0);

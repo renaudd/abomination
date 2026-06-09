@@ -61,6 +61,7 @@ class CombatScreen extends StatefulWidget {
   final void Function(int destroyedTowersCount, List<NPC> enemyDeck, Map<String, double> playerTowerHealth, Map<String, double> combatExp, BuildContext context)? onSurvivalDraw;
   final int? survivalTurn;
   final SurvivalDifficulty? survivalDifficulty;
+  final bool? isSimulationOnly;
 
   const CombatScreen({
     super.key,
@@ -77,6 +78,7 @@ class CombatScreen extends StatefulWidget {
     this.onSurvivalDraw,
     this.survivalTurn,
     this.survivalDifficulty,
+    this.isSimulationOnly,
   });
 
   @override
@@ -285,11 +287,20 @@ class _CombatScreenState extends State<CombatScreen>
     _previousSpeed = _gameState.speed;
     _gameState.setSpeedSilent(GameSpeed.paused); // Pause background Manor updates synchronously and silently to prevent thread/state concurrency issues!
     
+    final isCustomCombat = widget.customPlayerDeck != null;
+    final isSimulation = state.simulationPlayerDeck != null || isCustomCombat;
+    final bool isNormalGame = widget.survivalTurn == null &&
+        !isSimulation &&
+        widget.customPlayerHero == null &&
+        widget.customEnemyHero == null &&
+        widget.onVictory == null;
+
     _combatManager = CombatManager()
       ..map = state.selectedCombatMap
       ..combatControlMode = state.combatControlMode
       ..upgrades = widget.cardUpgrades ?? {}
-      ..isSurvivalMode = widget.survivalTurn != null;
+      ..isSurvivalMode = widget.survivalTurn != null
+      ..isNormalGameMode = isNormalGame;
 
     _checkSaveSlots();
 
@@ -298,13 +309,11 @@ class _CombatScreenState extends State<CombatScreen>
       _keyboardFocusNode.requestFocus();
     });
 
-    final isCustomCombat = widget.customPlayerDeck != null;
-    final isSimulation = state.simulationPlayerDeck != null || isCustomCombat;
-
     if (isCustomCombat) {
       _combatManager.setupSimulation(
         widget.customPlayerDeck!,
         widget.customAiDeck ?? [],
+        isAiVsAi: widget.isSimulationOnly ?? false,
       );
     } else if (isSimulation) {
       _combatManager.setupSimulation(
@@ -765,7 +774,7 @@ class _CombatScreenState extends State<CombatScreen>
                           _previewLocalPosition = null;
                         } else {
                           _showNotification(
-                            'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
+                            'Deployment failed! Must be in home zone (${(_combatManager.map.backFieldRatio * 100).toInt()}%) or behind an allied unit on a lane.',
                             Colors.red.shade900,
                             duration: const Duration(seconds: 2),
                           );
@@ -992,57 +1001,58 @@ class _CombatScreenState extends State<CombatScreen>
                 ),
               ),
               const SizedBox(height: 40),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.yellow.withValues(alpha: 0.3)),
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'SPOILS OF WAR',
-                      style: GoogleFonts.oldStandardTt(
-                        color: Colors.yellow,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (widget.onSurvivalVictory != null) ...[
-                      if (_spoilsCash > 0)
-                        _buildSpoilRow(Icons.monetization_on, '$_spoilsCash CHF', color: Colors.amber.shade700),
-                      if (_spoilsFood > 0)
-                        _buildSpoilRow(Icons.restaurant, '$_spoilsFood FOOD', color: Colors.green.shade700),
-                      if (_spoilsWood > 0)
-                        _buildSpoilRow(Icons.forest, '$_spoilsWood WOOD', color: Colors.brown.shade700),
-                      if (_spoilsIron > 0)
-                        _buildSpoilRow(Icons.construction, '$_spoilsIron IRON', color: Colors.blueGrey.shade600),
-                    ] else ...[
-                      ..._combatManager.accumulatedLoot.entries
-                          .where((e) => e.value > 0)
-                          .map((e) {
-                            final icon = e.key == 'funds'
-                                ? Icons.monetization_on
-                                : Icons.restaurant;
-                            return _buildSpoilRow(
-                              icon,
-                              '${e.value} ${e.key.toUpperCase()}',
-                            );
-                          }),
-                    ],
-                    if (_combatManager.killedEnemies.isNotEmpty) ...[
-                      const SizedBox(height: 16),
+              if (widget.onSurvivalVictory != null || _combatManager.isNormalGameMode) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.yellow.withValues(alpha: 0.3)),
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                  child: Column(
+                    children: [
                       Text(
-                        'ENEMIES VANQUISHED: ${_combatManager.killedEnemies.length}',
+                        'SPOILS OF WAR',
                         style: GoogleFonts.oldStandardTt(
-                          color: Colors.white70,
-                          fontSize: 14,
+                          color: Colors.yellow,
+                          fontSize: 18,
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      if (widget.onSurvivalVictory != null) ...[
+                        if (_spoilsCash > 0)
+                          _buildSpoilRow(Icons.monetization_on, '$_spoilsCash CHF', color: Colors.amber.shade700),
+                        if (_spoilsFood > 0)
+                          _buildSpoilRow(Icons.restaurant, '$_spoilsFood FOOD', color: Colors.green.shade700),
+                        if (_spoilsWood > 0)
+                          _buildSpoilRow(Icons.forest, '$_spoilsWood WOOD', color: Colors.brown.shade700),
+                        if (_spoilsIron > 0)
+                          _buildSpoilRow(Icons.construction, '$_spoilsIron IRON', color: Colors.blueGrey.shade600),
+                      ] else ...[
+                        ..._combatManager.accumulatedLoot.entries
+                            .where((e) => e.value > 0)
+                            .map((e) {
+                              final icon = e.key == 'funds'
+                                  ? Icons.monetization_on
+                                  : Icons.restaurant;
+                              return _buildSpoilRow(
+                                icon,
+                                '${e.value} ${e.key.toUpperCase()}',
+                              );
+                            }),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+              ],
+              if (_combatManager.killedEnemies.isNotEmpty)
+                Text(
+                  'ENEMIES VANQUISHED: ${_combatManager.killedEnemies.length}',
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
               if (widget.onSurvivalVictory != null) ...[
                 const SizedBox(height: 24),
                 Container(
@@ -1145,7 +1155,9 @@ class _CombatScreenState extends State<CombatScreen>
                   }
                 },
                 child: Text(
-                  'COLLECT & CONTINUE',
+                  _combatManager.isNormalGameMode || widget.onSurvivalVictory != null
+                      ? 'COLLECT & CONTINUE'
+                      : 'CONTINUE',
                   style: GoogleFonts.oldStandardTt(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -2714,7 +2726,7 @@ class _UnitCardState extends State<_UnitCard> {
                 screenState?._showNotification(
                   isSupport
                       ? 'Deployment failed! Out of range or invalid support target.'
-                      : 'Deployment failed! Must be in home zone (20%) or behind an allied unit on a lane.',
+                      : 'Deployment failed! Must be in home zone (${(manager.map.backFieldRatio * 100).toInt()}%) or behind an allied unit on a lane.',
                   Colors.red.shade900,
                   duration: const Duration(seconds: 2),
                 );

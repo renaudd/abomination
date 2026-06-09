@@ -21,6 +21,8 @@ import '../../models/combat_stats.dart';
 import '../../services/arena_save_service.dart';
 import '../../services/combat_unit_service.dart';
 import '../../services/combat_unit_factory.dart';
+import '../widgets/character_blob_renderer.dart';
+import '../widgets/combat_card_detail_modal.dart';
 import 'combat_screen.dart';
 
 class TournamentScreen extends StatefulWidget {
@@ -46,15 +48,42 @@ class _TournamentScreenState extends State<TournamentScreen> {
     _tournament = widget.progress.tournament!;
   }
 
-  /// Formulas resolution for all NPC vs NPC matches in the current round.
-  void _resolveNpcMatches() {
-    final activeRoundMatches = _tournament.matches.where((m) => m.round == _tournament.currentRound).toList();
+  /// Formulaic resolution for all remaining unplayed NPC vs NPC matches in the current round.
+  void _resolveRemainingNpcMatches() async {
+    final activeRoundMatches = _tournament.matches
+        .where((m) => m.round == _tournament.currentRound)
+        .toList();
     for (var match in activeRoundMatches) {
-      if (match.winner != null) continue; // Skip Player's match if already resolved
-      
-      // Resolve NPC vs NPC formulaically
+      if (match.winner != null) continue;
+      if (match.p1 == 'Player' || match.p2 == 'Player') continue;
+
       final winner = _tournament.resolveNpcMatch(match.p1, match.p2);
       match.winner = winner;
+    }
+
+    _checkRoundCompletion();
+    await ArenaSaveService.saveProgress(widget.progress);
+    setState(() {});
+  }
+
+  void _checkRoundCompletion() async {
+    final activeRoundMatches = _tournament.matches
+        .where((m) => m.round == _tournament.currentRound)
+        .toList();
+
+    if (activeRoundMatches.every((m) => m.winner != null)) {
+      if (_tournament.currentRound == 5) {
+        if (!_tournament.isEliminated && activeRoundMatches.any((m) => m.winner == 'Player')) {
+          _showTournamentEndPopup(isVictory: true);
+        }
+      } else {
+        _setupNextRound();
+        if (!_tournament.isEliminated && activeRoundMatches.any((m) => (m.p1 == 'Player' || m.p2 == 'Player') && m.winner == 'Player')) {
+          _showTournamentEndPopup(isVictory: false);
+        }
+      }
+      await ArenaSaveService.saveProgress(widget.progress);
+      setState(() {});
     }
   }
 
@@ -96,6 +125,25 @@ class _TournamentScreenState extends State<TournamentScreen> {
     return leader;
   }
 
+  NPC _getNpcHero(String name) {
+    return CombatUnitFactory.createBossRudolf().copyWith(
+      id: 'tournament_npc_${name.replaceAll(' ', '_')}',
+      name: name,
+      combatStats: const CombatStats(
+        attack: 30,
+        health: 260,
+        maxHealth: 260,
+        speed: 1.0,
+        movement: 1.0,
+        distance: 1.5,
+        defense: 1,
+        accuracy: 0.85,
+        cost: 0,
+        unitCount: 1,
+      ),
+    );
+  }
+
   void _launchBattle() {
     // Find the player's active match
     final playerMatch = _tournament.matches.firstWhereOrNull(
@@ -110,23 +158,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
     final playerDeck = _tournament.playerDeckIds.map((id) => CombatUnitService.createUnit(id)).toList();
     final aiDeck = opponentDeckIds.map((id) => CombatUnitService.createUnit(id)).toList();
 
-    // Create a custom opponent General with basic stats
-    final bossEnemy = CombatUnitFactory.createBossRudolf().copyWith(
-      id: 'tournament_opponent_leader',
-      name: opponentName,
-      combatStats: const CombatStats(
-        attack: 30,
-        health: 260,
-        maxHealth: 260,
-        speed: 1.0,
-        movement: 1.0,
-        distance: 1.5,
-        defense: 1,
-        accuracy: 0.85,
-        cost: 0,
-        unitCount: 1,
-      ),
-    );
+    final bossEnemy = _getNpcHero(opponentName);
 
     Navigator.push(
       context,
@@ -139,28 +171,288 @@ class _TournamentScreenState extends State<TournamentScreen> {
           onVictory: () async {
             // Player won!
             playerMatch.winner = 'Player';
-            _resolveNpcMatches(); // Formulaically resolve all other NPC matches
+            _checkRoundCompletion();
 
-            if (_tournament.currentRound == 5) {
-              // Tournament Won!
-              await ArenaSaveService.saveProgress(widget.progress);
+            await ArenaSaveService.saveProgress(widget.progress);
+            if (_tournament.currentRound == 5 && playerMatch.winner == 'Player') {
               _showTournamentEndPopup(isVictory: true);
-            } else {
-              _setupNextRound();
-              await ArenaSaveService.saveProgress(widget.progress);
-              _showTournamentEndPopup(isVictory: false);
             }
           },
           onDefeat: () async {
             // Player lost and is eliminated!
             playerMatch.winner = opponentName;
             _tournament.isEliminated = true;
-            _resolveNpcMatches(); // Resolve remaining matches for completeness
+            _checkRoundCompletion();
             await ArenaSaveService.saveProgress(widget.progress);
             _showTournamentEndPopup(isVictory: false, isElimination: true);
           },
         ),
       ),
+    );
+  }
+
+  void _launchSimulationMatch(TournamentMatch match) {
+    final p1DeckIds = _tournament.participantDecks[match.p1] ?? ['militia', 'goons'];
+    final p2DeckIds = _tournament.participantDecks[match.p2] ?? ['militia', 'goons'];
+
+    final p1Deck = p1DeckIds.map((id) => CombatUnitService.createUnit(id)).toList();
+    final p2Deck = p2DeckIds.map((id) => CombatUnitService.createUnit(id)).toList();
+
+    final hero1 = _getNpcHero(match.p1).copyWith(isPlayer: true);
+    final hero2 = _getNpcHero(match.p2);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CombatScreen(
+          customPlayerDeck: p1Deck,
+          customAiDeck: p2Deck,
+          customEnemyHero: hero2,
+          customPlayerHero: hero1,
+          isSimulationOnly: true,
+          onVictory: () async {
+            match.winner = match.p1;
+            _checkRoundCompletion();
+            await ArenaSaveService.saveProgress(widget.progress);
+            setState(() {});
+          },
+          onDefeat: () async {
+            match.winner = match.p2;
+            _checkRoundCompletion();
+            await ArenaSaveService.saveProgress(widget.progress);
+            setState(() {});
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showDeckDialog(String ownerName, List<String> deckIds) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1A1612),
+          shape: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
+          child: SizedBox(
+            width: 650,
+            height: 550,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.black45,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "${ownerName.toUpperCase()}'S DECK",
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFFC4B89B)),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                      ),
+                      itemCount: deckIds.length,
+                      itemBuilder: (context, idx) {
+                        final cardId = deckIds[idx];
+                        final unit = CombatUnitService.createUnit(cardId);
+                        return InkWell(
+                          onTap: () => CombatCardDetailModal.show(context, cardId),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black38,
+                              border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CharacterBlobRenderer(npc: unit, size: 28, isCombat: true),
+                                const SizedBox(height: 4),
+                                Text(
+                                  unit.name.toUpperCase(),
+                                  style: GoogleFonts.oswald(color: Colors.white70, fontSize: 9),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "${unit.combatStats!.cost} AP",
+                                  style: GoogleFonts.oswald(color: Colors.cyanAccent, fontSize: 8.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMatchDetailsDialog(TournamentMatch m) {
+    final bool isCurrentRound = _tournament.currentRound == m.round;
+    final bool canPlayOrSimulate = isCurrentRound && m.winner == null;
+    final bool isPlayerMatch = m.p1 == 'Player' || m.p2 == 'Player';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1D1712),
+          shape: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
+          title: Text(
+            'MATCHUP DETAILS (ROUND ${m.round})',
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0),
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${m.p1.toUpperCase()} vs ${m.p2.toUpperCase()}',
+                style: GoogleFonts.oswald(
+                  color: const Color(0xFFD4AF37),
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (m.winner != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'WINNER: ${m.winner!.toUpperCase()}',
+                  style: GoogleFonts.oswald(color: Colors.greenAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.style, color: Color(0xFFC4B89B), size: 16),
+                    label: Text(
+                      "EXAMINE ${m.p1.toUpperCase()}'S DECK",
+                      style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10.5),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFC4B89B)),
+                    ),
+                    onPressed: () {
+                      final deckIds = m.p1 == 'Player' ? _tournament.playerDeckIds : (_tournament.participantDecks[m.p1] ?? []);
+                      _showDeckDialog(m.p1, deckIds);
+                    },
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.style, color: Color(0xFFC4B89B), size: 16),
+                    label: Text(
+                      "EXAMINE ${m.p2.toUpperCase()}'S DECK",
+                      style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10.5),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFC4B89B)),
+                    ),
+                    onPressed: () {
+                      final deckIds = m.p2 == 'Player' ? _tournament.playerDeckIds : (_tournament.participantDecks[m.p2] ?? []);
+                      _showDeckDialog(m.p2, deckIds);
+                    },
+                  ),
+                ],
+              ),
+              if (canPlayOrSimulate && !_tournament.isEliminated) ...[
+                const SizedBox(height: 24),
+                const Divider(color: Colors.white12),
+                const SizedBox(height: 12),
+                if (isPlayerMatch)
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.sports_esports, color: Colors.black, size: 18),
+                    label: Text(
+                      'ENTER BATTLE (PLAY)',
+                      style: GoogleFonts.playfairDisplay(color: Colors.black, fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD4AF37),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _launchBattle();
+                    },
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.visibility, color: Color(0xFFE5D5B0), size: 18),
+                        label: Text(
+                          'WATCH BATTLE (SIMULATION)',
+                          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 11),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFC4B89B)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _launchSimulationMatch(m);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.flash_on, color: Colors.black, size: 18),
+                        label: Text(
+                          'INSTANT RESOLVE (RESULTS)',
+                          style: GoogleFonts.playfairDisplay(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD4AF37),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          m.winner = _tournament.resolveNpcMatch(m.p1, m.p2);
+                          _checkRoundCompletion();
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -240,6 +532,9 @@ class _TournamentScreenState extends State<TournamentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final Size size = MediaQuery.of(context).size;
+    final bool isCompact = size.width < 600;
+
     // Find the player's active match
     final playerMatch = _tournament.matches.firstWhereOrNull(
       (m) => m.round == _tournament.currentRound && (m.p1 == 'Player' || m.p2 == 'Player'),
@@ -254,83 +549,189 @@ class _TournamentScreenState extends State<TournamentScreen> {
             ? 'THE GRAND FINALS'
             : 'ROUND OF ${32 ~/ (1 << (_tournament.currentRound - 1))}';
 
+    final activeMatches = _tournament.matches.where((m) => m.round == _tournament.currentRound).toList();
+    final bool hasUnresolvedMatches = activeMatches.any((m) => m.winner == null);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF15100B),
         title: Text(
           'GRAND TOURNAMENT',
-          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 15, letterSpacing: 2),
+          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: isCompact ? 14 : 16, letterSpacing: 2),
         ),
         iconTheme: const IconThemeData(color: Color(0xFFC4B89B)),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.remove_red_eye, color: Color(0xFFD4AF37), size: 18),
+            label: Text(
+              'VIEW MY DECK',
+              style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 11.5, fontWeight: FontWeight.bold),
+            ),
+            onPressed: () => _showDeckDialog('Player', _tournament.playerDeckIds),
+          ),
+          const SizedBox(width: 12),
+        ],
       ),
       body: Container(
         color: const Color(0xFF1D1712), // Deep mahogany
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(isCompact ? 10.0 : 16.0),
         child: Column(
           children: [
             // Current Round & Match Header Panel
             Container(
-              padding: const EdgeInsets.all(14.0),
+              padding: EdgeInsets.all(isCompact ? 10.0 : 14.0),
               decoration: BoxDecoration(
                 color: Colors.black26,
                 border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.25), width: 1),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    _tournament.isEliminated ? Icons.cancel : Icons.emoji_events,
-                    color: _tournament.isEliminated ? Colors.redAccent : Colors.yellow.shade800,
-                    size: 32,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: isCompact
+                  ? Column(
                       children: [
-                        Text(
-                          roundTitle.toUpperCase(),
-                          style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                        Row(
+                          children: [
+                            Icon(
+                              _tournament.isEliminated ? Icons.cancel : Icons.emoji_events,
+                              color: _tournament.isEliminated ? Colors.redAccent : Colors.yellow.shade800,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    roundTitle.toUpperCase(),
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: const Color(0xFFC4B89B),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _tournament.isEliminated
+                                        ? 'ELIMINATED FROM THE BRACKET'
+                                        : 'MATCHUP: PLAYER vs $opponentName',
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: const Color(0xFFE5D5B0),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _tournament.isEliminated
-                              ? 'ELIMINATED FROM THE BRACKET'
-                              : 'MATCHUP: PLAYER vs $opponentName',
-                          style: GoogleFonts.playfairDisplay(
-                            color: const Color(0xFFE5D5B0),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            if (!_tournament.isEliminated && playerMatch != null && playerMatch.winner == null)
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFD4AF37),
+                                  foregroundColor: Colors.black,
+                                  shape: const RoundedRectangleBorder(),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                ),
+                                onPressed: _launchBattle,
+                                child: Text(
+                                  'ENTER MATCH',
+                                  style: GoogleFonts.playfairDisplay(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            if (!_tournament.isEliminated && hasUnresolvedMatches)
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFFC4B89B)),
+                                  shape: const RoundedRectangleBorder(),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                ),
+                                onPressed: _resolveRemainingNpcMatches,
+                                child: Text(
+                                  'QUICK RESOLVE ROUND',
+                                  style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
+                    )
+                  : Row(
+                      children: [
+                        Icon(
+                          _tournament.isEliminated ? Icons.cancel : Icons.emoji_events,
+                          color: _tournament.isEliminated ? Colors.redAccent : Colors.yellow.shade800,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                roundTitle.toUpperCase(),
+                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _tournament.isEliminated
+                                    ? 'ELIMINATED FROM THE BRACKET'
+                                    : 'MATCHUP: PLAYER vs $opponentName',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFE5D5B0),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        if (!_tournament.isEliminated && playerMatch != null && playerMatch.winner == null)
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4AF37),
+                              foregroundColor: Colors.black,
+                              shape: const RoundedRectangleBorder(),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            ),
+                            onPressed: _launchBattle,
+                            child: Text(
+                              'ENTER MATCH',
+                              style: GoogleFonts.playfairDisplay(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        if (!_tournament.isEliminated && hasUnresolvedMatches)
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFC4B89B)),
+                              shape: const RoundedRectangleBorder(),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            onPressed: _resolveRemainingNpcMatches,
+                            child: Text(
+                              'QUICK RESOLVE ROUND',
+                              style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10),
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  if (!_tournament.isEliminated)
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.yellow.shade800),
-                        backgroundColor: Colors.black26,
-                        shape: const RoundedRectangleBorder(),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      ),
-                      onPressed: _launchBattle,
-                      child: Text(
-                        'ENTER MATCH',
-                        style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-                      ),
-                    ),
-                ],
-              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
             // Bracket Tree visual representation header
             Text(
-              'TOURNAMENT BRACKET PROGRESSION',
-              style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+              'TOURNAMENT BRACKET PROGRESSION (TAP MATCH TO VIEW)',
+              style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: isCompact ? 10 : 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
             // Scrollable Bracket view
             Expanded(
@@ -339,7 +740,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
                   color: Colors.black12,
                   border: Border.all(color: Colors.white12),
                 ),
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.all(isCompact ? 8.0 : 16.0),
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: 5, // 5 rounds total
@@ -349,8 +750,8 @@ class _TournamentScreenState extends State<TournamentScreen> {
                     final isCurrentRound = _tournament.currentRound == roundNum;
 
                     return Container(
-                      width: 180,
-                      margin: const EdgeInsets.only(right: 20.0),
+                      width: isCompact ? 150 : 180,
+                      margin: const EdgeInsets.only(right: 16.0),
                       decoration: BoxDecoration(
                         border: Border(
                           right: BorderSide(
@@ -363,12 +764,12 @@ class _TournamentScreenState extends State<TournamentScreen> {
                         children: [
                           // Round Title
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0),
+                            padding: const EdgeInsets.only(bottom: 8.0),
                             child: Text(
                               roundNum == 5 ? 'FINALS' : 'ROUND ${1 << (5 - roundNum)}',
                               style: GoogleFonts.playfairDisplay(
                                 color: isCurrentRound ? const Color(0xFFE5D5B0) : Colors.white30,
-                                fontSize: 11,
+                                fontSize: isCompact ? 10.5 : 11,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 1.0,
                               ),
@@ -381,7 +782,6 @@ class _TournamentScreenState extends State<TournamentScreen> {
                               itemCount: 16 ~/ (1 << index),
                               itemBuilder: (context, matchIndex) {
                                 if (matchIndex >= roundMatches.length) {
-                                  // Pairings not generated yet
                                   return Container(
                                     height: 38,
                                     margin: const EdgeInsets.only(bottom: 8.0),
@@ -402,43 +802,46 @@ class _TournamentScreenState extends State<TournamentScreen> {
                                 final bool p1Won = m.winner == m.p1;
                                 final bool p2Won = m.winner == m.p2;
 
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8.0),
-                                  padding: const EdgeInsets.all(6.0),
-                                  decoration: BoxDecoration(
-                                    color: isCurrentRound ? Colors.black38 : Colors.black12,
-                                    border: Border.all(
-                                      color: isCurrentRound ? const Color(0xFFC4B89B).withValues(alpha: 0.2) : Colors.white12,
-                                      width: isCurrentRound ? 1.0 : 0.5,
+                                return InkWell(
+                                  onTap: () => _showMatchDetailsDialog(m),
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 8.0),
+                                    padding: const EdgeInsets.all(6.0),
+                                    decoration: BoxDecoration(
+                                      color: isCurrentRound ? Colors.black38 : Colors.black12,
+                                      border: Border.all(
+                                        color: isCurrentRound ? const Color(0xFFC4B89B).withValues(alpha: 0.4) : Colors.white12,
+                                        width: isCurrentRound ? 1.5 : 0.5,
+                                      ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        m.p1,
-                                        style: TextStyle(
-                                          color: p1Won
-                                              ? Colors.green.shade300
-                                              : (p2Won ? Colors.white24 : Colors.white70),
-                                          fontSize: 9.5,
-                                          fontWeight: p1Won ? FontWeight.bold : FontWeight.normal,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          m.p1,
+                                          style: TextStyle(
+                                            color: p1Won
+                                                ? Colors.green.shade300
+                                                : (p2Won ? Colors.white24 : Colors.white70),
+                                            fontSize: 9.5,
+                                            fontWeight: p1Won ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        m.p2,
-                                        style: TextStyle(
-                                          color: p2Won
-                                              ? Colors.green.shade300
-                                              : (p1Won ? Colors.white24 : Colors.white70),
-                                          fontSize: 9.5,
-                                          fontWeight: p2Won ? FontWeight.bold : FontWeight.normal,
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          m.p2,
+                                          style: TextStyle(
+                                            color: p2Won
+                                                ? Colors.green.shade300
+                                                : (p1Won ? Colors.white24 : Colors.white70),
+                                            fontSize: 9.5,
+                                            fontWeight: p2Won ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 );
                               },

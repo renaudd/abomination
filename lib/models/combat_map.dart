@@ -61,6 +61,18 @@ class CombatMap {
     }
   }
 
+  /// Whether this battlefield is particularly short (such as Saint Gotthard Ravine or width under 300).
+  bool get isParticularlyShort => width < 300.0 || sizeCategory == CombatMapSize.small;
+
+  /// The percentage ratio defining the home back field (25% on short maps, 20% on normal/large maps).
+  double get backFieldRatio => isParticularlyShort ? 0.25 : 0.20;
+
+  /// The player's back field summoning boundary (X coordinate).
+  double get playerBackFieldLimit => width * backFieldRatio;
+
+  /// The opponent's back field summoning boundary (X coordinate).
+  double get enemyBackFieldLimit => width * (1.0 - backFieldRatio);
+
   static List<CombatMap> get allMaps => [
     const CombatMap(
       name: 'Alpine Pass (Default)',
