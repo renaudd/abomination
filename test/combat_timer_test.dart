@@ -71,8 +71,8 @@ void main() {
       
       // Drain AP so we don't hit maxAP (10.0) during the test tick
       // Spawn Rats (costs 3 AP) twice:
-      manager.spawnUnit(CombatUnitFactory.createRatsUnit(), CombatSide.player, y: 30.0);
-      manager.spawnUnit(CombatUnitFactory.createRatsUnit(), CombatSide.player, y: 30.0);
+      manager.spawnUnit(CombatUnitFactory.createBrownRats(), CombatSide.player, y: 30.0);
+      manager.spawnUnit(CombatUnitFactory.createBrownRats(), CombatSide.player, y: 30.0);
       
       final apStartOverdrive = manager.actionPoints; // 4.0
       expect(apStartOverdrive, 4.0);

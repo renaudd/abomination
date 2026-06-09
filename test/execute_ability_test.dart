@@ -149,8 +149,8 @@ void main() {
       final giles = CombatUnitFactory.createFlaubert().copyWith(
         combatStats: CombatUnitFactory.createFlaubert().combatStats!.copyWith(distance: 1.0),
       );
-      final rat = CombatUnitFactory.createRatsUnit().copyWith(
-        combatStats: CombatUnitFactory.createRatsUnit().combatStats!.copyWith(isFlying: true),
+      final rat = CombatUnitFactory.createBrownRats().copyWith(
+        combatStats: CombatUnitFactory.createBrownRats().combatStats!.copyWith(isFlying: true),
       );
 
       manager.spawnUnit(giles, CombatSide.player, x: 50.0, y: 42.5);
@@ -167,8 +167,8 @@ void main() {
 
     test('Sniper (Ranged) CAN target Flying Rat', () {
       final sniper = CombatUnitFactory.createSniper();
-      final rat = CombatUnitFactory.createRatsUnit().copyWith(
-        combatStats: CombatUnitFactory.createRatsUnit().combatStats!.copyWith(isFlying: true),
+      final rat = CombatUnitFactory.createBrownRats().copyWith(
+        combatStats: CombatUnitFactory.createBrownRats().combatStats!.copyWith(isFlying: true),
       );
 
       manager.spawnUnit(sniper, CombatSide.player, x: 10.0, y: 42.5);
@@ -186,8 +186,8 @@ void main() {
       final bat = CombatUnitFactory.createBatsUnit().copyWith(
         combatStats: CombatUnitFactory.createBatsUnit().combatStats!.copyWith(isFlying: true),
       );
-      final rat = CombatUnitFactory.createRatsUnit().copyWith(
-        combatStats: CombatUnitFactory.createRatsUnit().combatStats!.copyWith(isFlying: true),
+      final rat = CombatUnitFactory.createBrownRats().copyWith(
+        combatStats: CombatUnitFactory.createBrownRats().combatStats!.copyWith(isFlying: true),
       );
 
       manager.spawnUnit(bat, CombatSide.player, x: 50.0, y: 42.5);
@@ -242,7 +242,7 @@ void main() {
     });
 
     test('Squad cards stay out of deck/hand until all members of the squad are dead (Leader dies first)', () {
-      final rats = CombatUnitFactory.createRatsUnit().copyWith(id: 'rats_unit');
+      final rats = CombatUnitFactory.createBrownRats().copyWith(id: 'rats_unit');
       manager.prepareDeck([rats]);
       expect(manager.hand.length, 1);
 
@@ -304,7 +304,7 @@ void main() {
     });
 
     test('Squad cards stay out of deck/hand until all members of the squad are dead (Followers die first)', () {
-      final rats = CombatUnitFactory.createRatsUnit().copyWith(id: 'rats_unit');
+      final rats = CombatUnitFactory.createBrownRats().copyWith(id: 'rats_unit');
       manager.prepareDeck([rats]);
       expect(manager.hand.length, 1);
 
