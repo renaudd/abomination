@@ -1203,7 +1203,6 @@ class CombatUnitFactory {
       ),
     ],
   );
-  static NPC createRatsUnit() => createUndeadRats().copyWith(name: 'Rats Unit');
   static NPC createBatsUnit() => createWildFoxes().copyWith(
     name: 'Bats Unit',
     abilities: [

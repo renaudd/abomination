@@ -645,7 +645,7 @@ class _ManorScreenState extends State<ManorScreen> {
             }).toList();
 
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
@@ -1411,7 +1411,7 @@ class _ManorScreenState extends State<ManorScreen> {
                         })
                         .map((taskType) {
                           return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
+                            padding: const EdgeInsets.only(top: 2.0),
                             child: _assignmentButton(
                               context,
                               state,
@@ -1644,7 +1644,7 @@ class _ManorScreenState extends State<ManorScreen> {
     final icon = _getTaskIcon(type);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 2),
       width: double.infinity,
       child: OutlinedButton(
         onPressed: onPressed,
@@ -1654,7 +1654,7 @@ class _ManorScreenState extends State<ManorScreen> {
                 ? const Color(0xFFC4B89B).withValues(alpha: 0.2)
                 : const Color(0xFFE5D5B0),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           backgroundColor: isGreyed ? Colors.transparent : Colors.black12,
         ),

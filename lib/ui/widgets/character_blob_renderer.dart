@@ -3173,6 +3173,7 @@ class CharacterBlobRenderer extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 

@@ -181,7 +181,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
     } else if (campaignId == 'necropolis_crypt') {
       for (int i = 0; i < unitCount; i++) {
         if (stage < 5) {
-          deck.add(i % 2 == 0 ? 'rats_unit' : 'bats_unit');
+          deck.add(i % 2 == 0 ? 'brown_rats' : 'bats_unit');
         } else if (stage < 10) {
           deck.add(i % 3 == 0 ? 'undead_rats' : (i % 3 == 1 ? 'bats_unit' : 'werewolf'));
         } else if (stage < 15) {

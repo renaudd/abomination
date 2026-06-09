@@ -20,7 +20,21 @@ class CombatUnitService {
     return [CombatUnitFactory.createFlaubert()];
   }
 
-  static NPC createUnit(String type) {
+  static NPC createUnit(String rawType) {
+    String t = rawType.toLowerCase();
+    if (t.startsWith('squad_')) {
+      t = t.substring(6);
+    }
+    final parts = t.split('_');
+    final validParts = <String>[];
+    for (final p in parts) {
+      if (p.isEmpty) continue;
+      if (p.codeUnitAt(0) >= 48 && p.codeUnitAt(0) <= 57) break;
+      if (p == 'follower' || p == 'horse' || p == 'recruit' || p == 'refill' || p == 'cycle') break;
+      validParts.add(p);
+    }
+    final type = validParts.join('_');
+
     switch (type) {
       case 'alphonse':
         return CombatUnitFactory.createAlphonse();
@@ -96,8 +110,6 @@ class CombatUnitService {
         return CombatUnitFactory.createGoons();
       case 'footman':
         return CombatUnitFactory.createFootman();
-      case 'rats_unit':
-        return CombatUnitFactory.createRatsUnit();
       case 'bandit_captain':
         return CombatUnitFactory.createBanditCaptain();
       case 'boss_rudolf':

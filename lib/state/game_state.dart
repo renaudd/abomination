@@ -5714,8 +5714,8 @@ class GameState extends ChangeNotifier {
         );
         _pendingEncounterEnemies = [
           CombatUnitFactory.createFleshHound(),
-          CombatUnitFactory.createRatsUnit(),
-          CombatUnitFactory.createRatsUnit(),
+          CombatUnitFactory.createBrownRats(),
+          CombatUnitFactory.createBrownRats(),
         ];
       }
     }

@@ -637,7 +637,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                 _buildCampaignSelectCard(
                   title: 'THE NECROPOLIS CRYPT',
                   desc: 'Control a swarm of plague-ridden rats and undead bodies inside the catacombs. Starting Deck: Bat units and giant rats.',
-                  deck: ['rats_unit', 'rats_unit', 'bats_unit', 'undead_rats'],
+                  deck: ['brown_rats', 'brown_rats', 'bats_unit', 'undead_rats'],
                   id: 'necropolis_crypt',
                 ),
                 const SizedBox(height: 8),
@@ -841,7 +841,6 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                     'commandos',
                   ],
                   [
-                    'rats_unit',
                     'bats',
                     'undead_rats',
                     'brown_rats',

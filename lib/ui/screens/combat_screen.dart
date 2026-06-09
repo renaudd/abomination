@@ -6238,7 +6238,6 @@ class _OpponentDeckInspectorScreenState
           distance: 1.0,
           cost: 2,
         );
-    final squadSize = stats.unitCount;
     final cost = stats.cost;
 
     return Container(
