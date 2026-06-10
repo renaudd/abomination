@@ -553,7 +553,6 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       case GameSpeed.superFast:
         return const Duration(milliseconds: 16);
       case GameSpeed.paused:
-      default:
         return Duration.zero;
     }
   }

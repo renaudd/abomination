@@ -4073,6 +4073,17 @@ class CharacterBlobRenderer extends StatelessWidget {
   );
 }
 
+class _GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = Colors.cyanAccent..strokeWidth = 0.5;
+    for (double x = 0; x < size.width; x += 6) canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
+    for (double y = 0; y < size.height; y += 6) canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
 class _CrescentCrestPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
