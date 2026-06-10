@@ -446,6 +446,12 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void exploreMapHex() {
+    _exploredHexesCount++;
+    _checkObjectives();
+    notifyListeners();
+  }
+
   void setRebelConstructs(bool active) {
     _rebelConstructsActive = active;
     notifyListeners();
@@ -5115,6 +5121,81 @@ class GameState extends ChangeNotifier {
       _checkObjectives();
     }
     notifyListeners();
+  }
+
+  List<Objective> _getChapter2Objectives() {
+    return [
+      Objective(
+        id: 'chap2_explore_map',
+        title: 'Chapter 2: The Expanding Domain',
+        description: 'Explore the grand strategic World Map and uncover at least 8 Hex Coordinates.',
+        type: ObjectiveType.tutorial,
+        requirements: {'map_hexes_explored': 8},
+      ),
+      Objective(
+        id: 'chap2_grow_population',
+        title: 'Chapter 2: Sovereign Household',
+        description: 'Upgrade residential Sleeping Quarters and recruit resident staff to grow Manor population to at least 12.',
+        type: ObjectiveType.tutorial,
+        requirements: {'manor_population': 12},
+      ),
+      Objective(
+        id: 'chap2_raise_army',
+        title: 'Chapter 2: The Standing Battalion',
+        description: 'Muster an active military standing army containing at least 6 distinct tactical squads.',
+        type: ObjectiveType.tutorial,
+        requirements: {'standing_army_size': 6},
+      ),
+      Objective(
+        id: 'chap2_win_combats',
+        title: 'Chapter 2: Colosseum Triumphs',
+        description: 'Deploy your army into the Arena Colosseum to achieve victory in at least 3 combats.',
+        type: ObjectiveType.tutorial,
+        requirements: {'combats_won': 3},
+      ),
+      Objective(
+        id: 'chap2_make_money',
+        title: 'Chapter 2: Industrial Capital',
+        description: 'Amass a liquid sovereign treasury of at least 1,500 CHF cash reserves.',
+        type: ObjectiveType.tutorial,
+        requirements: {'treasury_funds': 1500},
+      ),
+      Objective(
+        id: 'chap2_convert_rooms',
+        title: 'Chapter 2: Architectural Renaissance',
+        description: 'Commission master carpenters and masons to convert and restore at least 6 distinct specialized Manor Wing rooms.',
+        type: ObjectiveType.tutorial,
+        requirements: {'rooms_restored_count': 6},
+      ),
+      Objective(
+        id: 'chap2_scientific_knowledge',
+        title: 'Chapter 2: Scientific Enlightenment',
+        description: 'Conduct fundamental research and experimental procedures to achieve Level 2 qualification across at least 3 academic disciplines.',
+        type: ObjectiveType.science,
+        requirements: {'science_level_count': 3},
+      ),
+      Objective(
+        id: 'chap2_expand_cookbook',
+        title: 'Chapter 2: Culinary Experimentation',
+        description: 'Hired chefs successfully perform the New Recipe action in the Scullery to develop and unlock at least 4 culinary dishes.',
+        type: ObjectiveType.tutorial,
+        requirements: {'new_recipes_unlocked': 4},
+      ),
+      Objective(
+        id: 'chap2_grow_plants',
+        title: 'Chapter 2: Botanical Mastery',
+        description: 'Cultivate the loamy soil of the Manor Garden and Greenhouse to bring at least 15 botanical crops to total harvest maturity.',
+        type: ObjectiveType.tutorial,
+        requirements: {'garden_harvests': 15},
+      ),
+      Objective(
+        id: 'chap2_secret_societies',
+        title: 'Chapter 2: Secret Society Factions',
+        description: 'Engage in diplomatic dialogue, philosophical study, or priorate warfare to interact with and achieve formal faction standing with at least 2 distinct Victorian Secret Societies.',
+        type: ObjectiveType.tutorial,
+        requirements: {'secret_society_interactions': 2},
+      ),
+    ];
   }
 
   void _initializeObjectives() {
@@ -11465,6 +11546,7 @@ class GameState extends ChangeNotifier {
           eqTask = TaskType.recombineSpecimen;
           break;
         case ManorCrisisType.intruder:
+        case ManorCrisisType.golemTantrum:
           eqTask = TaskType.defendManor;
           break;
       }

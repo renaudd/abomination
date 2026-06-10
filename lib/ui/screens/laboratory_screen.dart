@@ -19,8 +19,8 @@ import '../../state/game_state.dart';
 import '../../models/npc.dart';
 import '../../models/experiment.dart';
 import '../../models/room.dart';
-import '../../models/npc_schedule.dart';
-import '../../models/npc_diet.dart';
+import '../../models/schedule.dart';
+import '../../models/diet.dart';
 
 class LaboratoryScreen extends StatelessWidget {
   final Room room;
