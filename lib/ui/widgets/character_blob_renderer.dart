@@ -45,9 +45,11 @@ class CharacterBlobRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     final appearance = npc.appearance;
 
-    return SizedBox(
+    return Container(
       width: size,
       height: size,
+      clipBehavior: Clip.hardEdge,
+      alignment: Alignment.center,
       child: Transform.rotate(
         angle: npc.status == NPCStatus.fainted ? math.pi / 2 : 0,
         child: Stack(
@@ -122,16 +124,46 @@ class CharacterBlobRenderer extends StatelessWidget {
               _buildDivineShieldIcon(size)
             else if (npc.name.toLowerCase().contains('napalm'))
               _buildNapalmStrikeIcon(size)
-            else if (npc.name.toLowerCase().contains('geometry') || npc.name.toLowerCase().contains('trowel'))
-              _buildDivineShieldIcon(size)
+            else if (npc.name.toLowerCase().contains('sapper'))
+              _buildMasonicSapperIcon(size)
+            else if (npc.name.toLowerCase().contains('geometry'))
+              _buildSacredGeometryIcon(size)
+            else if (npc.name.toLowerCase().contains('behemoth'))
+              _buildHomunculusBehemothIcon(size)
             else if (npc.name.toLowerCase().contains('elixir') || npc.name.toLowerCase().contains('vitality'))
-              _buildDivineShieldIcon(size)
+              _buildElixirOfVitalityIcon(size)
+            else if (npc.name.toLowerCase().contains('pyre'))
+              _buildTemplarPyreKnightIcon(size)
             else if (npc.name.toLowerCase().contains('greek fire') || npc.name.toLowerCase().contains('grail'))
-              _buildNapalmStrikeIcon(size)
+              _buildGreekFireFlaskIcon(size)
+            else if (npc.name.toLowerCase().contains('assassin'))
+              _buildVaultAssassinIcon(size)
+            else if (npc.name.toLowerCase().contains('collector'))
+              _buildZurichDebtCollectorIcon(size)
+            else if (npc.name.toLowerCase().contains('arsonist'))
+              _buildCarbonariArsonistIcon(size)
+            else if (npc.name.toLowerCase().contains('martyr'))
+              _buildRevolutionaryMartyrIcon(size)
+            else if (npc.name.toLowerCase().contains('mesmerist'))
+              _buildHermeticMesmeristIcon(size)
             else if (npc.name.toLowerCase().contains('hypnosis') || npc.name.toLowerCase().contains('pendulum'))
-              _buildVampiricTotemIcon(size)
+              _buildAstralHypnosisIcon(size)
+            else if (npc.name.toLowerCase().contains('raider'))
+              _buildFenianNightRaiderIcon(size)
+            else if (npc.name.toLowerCase().contains('insurgent'))
+              _buildInsurgentCellIcon(size)
             else if (npc.name.toLowerCase().contains('cuirassier'))
-              _buildCavalry(size)
+              _buildRoyalistCuirassierIcon(size)
+            else if (npc.name.toLowerCase().contains('standard bearer'))
+              _buildRoyalistStandardBearerIcon(size)
+            else if (npc.name.toLowerCase().contains('herbalist'))
+              _buildForesterHerbalistIcon(size)
+            else if (npc.name.toLowerCase().contains('beastmaster'))
+              _buildForesterBeastmasterIcon(size)
+            else if (npc.name.toLowerCase().contains('thug'))
+              _buildThugsIcon(size)
+            else if (npc.name.toLowerCase().contains('captain'))
+              _buildBanditCaptainIcon(size)
             else ...[
               // Shadow
               Positioned(
@@ -3782,6 +3814,166 @@ class CharacterBlobRenderer extends StatelessWidget {
       ),
     );
   }
+
+  // ============================================================================
+  // DISTINCT VICTORIAN & SECRET SOCIETY GRAPHICAL MODELS
+  // ============================================================================
+
+  Widget _buildMasonicSapperIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF78909C), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF37474F), width: 2))),
+      Positioned(top: size * 0.12, child: Container(width: size * 0.45, height: size * 0.18, decoration: BoxDecoration(color: const Color(0xFFFFD54F), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF5D4037), width: 1.5)))),
+      Positioned(bottom: size * 0.08, child: Container(width: size * 0.5, height: size * 0.28, decoration: BoxDecoration(color: const Color(0xFFD32F2F), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF212121), width: 1.5)), child: const Center(child: Icon(Icons.warning, color: Colors.white, size: 10)))),
+    ])),
+  );
+
+  Widget _buildSacredGeometryIcon(double size) => SizedBox(
+    width: size, height: size, child: Container(decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF006064), Color(0xFF0097A7)]), borderRadius: BorderRadius.circular(size * 0.15), border: Border.all(color: const Color(0xFF80DEEA), width: 1.5)), child: Center(child: Transform.rotate(angle: math.pi / 4, child: Container(width: size * 0.5, height: size * 0.5, decoration: BoxDecoration(border: Border.all(color: const Color(0xFFFFD54F), width: 2)))))),
+  );
+
+  Widget _buildHomunculusBehemothIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.75, height: size * 0.85, decoration: BoxDecoration(color: const Color(0xFFC8E6C9), borderRadius: BorderRadius.circular(size * 0.3), border: Border.all(color: const Color(0xFF1B5E20), width: 2.5), boxShadow: const [BoxShadow(color: Colors.greenAccent, blurRadius: 6, spreadRadius: 1)])),
+      Positioned(top: size * 0.25, child: Container(width: size * 0.6, height: 4, color: const Color(0xFF4A148C))),
+      Positioned(top: size * 0.45, child: Container(width: size * 0.5, height: 4, color: const Color(0xFF4A148C))),
+      Positioned(bottom: size * 0.15, child: Icon(Icons.science, color: Colors.purple.shade700, size: size * 0.35)),
+    ])),
+  );
+
+  Widget _buildElixirOfVitalityIcon(double size) => SizedBox(
+    width: size, height: size, child: Container(decoration: BoxDecoration(color: const Color(0xFF1E1E1E), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFFFD54F), width: 1.5)), child: Center(child: Container(width: size * 0.6, height: size * 0.6, decoration: const BoxDecoration(gradient: RadialGradient(colors: [Color(0xFF69F0AE), Color(0xFF00E676)]), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.greenAccent, blurRadius: 8)]), child: const Center(child: Icon(Icons.favorite, color: Colors.white, size: 12))))),
+  );
+
+  Widget _buildTemplarPyreKnightIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFFE53935), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFFFEB3B), width: 2))),
+      Positioned(top: size * 0.15, child: Container(width: size * 0.4, height: size * 0.15, color: const Color(0xFF212121))),
+      Positioned(bottom: size * 0.15, child: Icon(Icons.local_fire_department, color: Colors.amber.shade400, size: size * 0.45)),
+    ])),
+  );
+
+  Widget _buildGreekFireFlaskIcon(double size) => SizedBox(
+    width: size, height: size, child: Container(decoration: BoxDecoration(gradient: const RadialGradient(colors: [Color(0xFFFFB300), Color(0xFFFF6F00)]), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF3E2723), width: 1.5)), child: Center(child: Icon(Icons.whatshot, color: Colors.red.shade900, size: size * 0.7))),
+  );
+
+  Widget _buildVaultAssassinIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF263238), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF37474F), width: 2))),
+      Positioned(top: size * 0.2, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Container(width: size * 0.15, height: size * 0.15, decoration: BoxDecoration(color: Colors.cyanAccent, shape: BoxShape.circle, border: Border.all(color: Colors.black))), const SizedBox(width: 4), Container(width: size * 0.15, height: size * 0.15, decoration: BoxDecoration(color: Colors.cyanAccent, shape: BoxShape.circle, border: Border.all(color: Colors.black)))])),
+      Positioned(bottom: size * 0.1, child: Container(width: size * 0.1, height: size * 0.55, color: const Color(0xFFCFD8DC))),
+    ])),
+  );
+
+  Widget _buildZurichDebtCollectorIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF3E2723), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFD4AF37), width: 2))),
+      Positioned(top: size * 0.3, child: Container(width: size * 0.5, height: 2, color: const Color(0xFFFFD54F))),
+      Positioned(bottom: size * 0.12, child: Container(width: size * 0.45, height: size * 0.25, decoration: BoxDecoration(color: const Color(0xFF1B5E20), borderRadius: BorderRadius.circular(2), border: Border.all(color: Colors.white)), child: const Center(child: Text('\$', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))))),
+    ])),
+  );
+
+  Widget _buildCarbonariArsonistIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF212121), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFBF360C), width: 2))),
+      Positioned(top: size * 0.1, child: Icon(Icons.fireplace, color: Colors.deepOrange.shade500, size: size * 0.5)),
+    ])),
+  );
+
+  Widget _buildRevolutionaryMartyrIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFFB71C1C), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: Colors.white, width: 2))),
+      Positioned(bottom: size * 0.15, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Container(width: size * 0.12, height: size * 0.35, color: Colors.orange), const SizedBox(width: 2), Container(width: size * 0.12, height: size * 0.35, color: Colors.orange)])),
+      Positioned(top: size * 0.15, child: Icon(Icons.star, color: Colors.yellow.shade600, size: size * 0.3)),
+    ])),
+  );
+
+  Widget _buildHermeticMesmeristIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF311B92), Color(0xFF512DA8)]), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFFFD54F), width: 2))),
+      Positioned(top: size * 0.2, child: Icon(Icons.remove_red_eye, color: Colors.amber.shade300, size: size * 0.4)),
+    ])),
+  );
+
+  Widget _buildAstralHypnosisIcon(double size) => SizedBox(
+    width: size, height: size, child: Container(decoration: BoxDecoration(gradient: const SweepGradient(colors: [Color(0xFF6A1B9A), Color(0xFFAB47BC), Color(0xFF6A1B9A)]), borderRadius: BorderRadius.circular(size * 0.5), border: Border.all(color: Colors.cyanAccent, width: 1.5)), child: Center(child: Icon(Icons.sync, color: Colors.white, size: size * 0.6))),
+  );
+
+  Widget _buildFenianNightRaiderIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF004D40), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF69F0AE), width: 2))),
+      Positioned(top: size * 0.18, child: Container(width: size * 0.35, height: size * 0.12, color: Colors.black87)),
+      Positioned(bottom: size * 0.12, child: Icon(Icons.colorize, color: Colors.greenAccent.shade400, size: size * 0.4)),
+    ])),
+  );
+
+  Widget _buildInsurgentCellIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF4E342E), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF8D6E63), width: 2))),
+      Positioned(top: size * 0.15, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.person, color: Colors.amber.shade200, size: size * 0.25), Icon(Icons.person, color: Colors.amber.shade200, size: size * 0.25), Icon(Icons.person, color: Colors.amber.shade200, size: size * 0.25)])),
+      Positioned(bottom: size * 0.1, child: Container(width: size * 0.45, height: size * 0.15, color: Colors.green.shade800)),
+    ])),
+  );
+
+  Widget _buildRoyalistCuirassierIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFECEFF1), Color(0xFFB0BEC5)]), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF0D47A1), width: 2.5))),
+      Positioned(top: size * 0.15, child: Container(width: size * 0.3, height: size * 0.25, decoration: const BoxDecoration(color: Color(0xFF1565C0), shape: BoxShape.circle))),
+      Positioned(bottom: size * 0.1, child: Container(width: size * 0.45, height: size * 0.2, decoration: BoxDecoration(color: const Color(0xFFFFD54F), borderRadius: BorderRadius.circular(2)))),
+    ])),
+  );
+
+  Widget _buildRoyalistStandardBearerIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFFFC107), width: 2))),
+      Positioned(top: size * 0.25, child: Icon(Icons.emoji_flags, color: Colors.blue.shade900, size: size * 0.45)),
+    ])),
+  );
+
+  Widget _buildForesterHerbalistIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF33691E), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFAED581), width: 2))),
+      Positioned(top: size * 0.25, child: Icon(Icons.spa, color: Colors.lightGreen.shade200, size: size * 0.45)),
+    ])),
+  );
+
+  Widget _buildForesterBeastmasterIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF5D4037), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF3E2723), width: 2))),
+      Positioned(top: size * 0.25, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.person, color: Colors.white, size: size * 0.3), const SizedBox(width: 2), Icon(Icons.pets, color: Colors.orange.shade300, size: size * 0.25)])),
+    ])),
+  );
+
+  Widget _buildThugsIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFF4E342E), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFF000000), width: 2))),
+      Positioned(top: -size * 0.05, child: Container(width: size * 0.45, height: size * 0.2, decoration: BoxDecoration(color: const Color(0xFF212121), borderRadius: BorderRadius.circular(2)))),
+      Positioned(bottom: size * 0.15, child: Container(width: 6, height: size * 0.55, color: const Color(0xFF8D6E63))),
+    ])),
+  );
+
+  Widget _buildBanditCaptainIcon(double size) => Transform.scale(
+    scale: 0.58,
+    child: SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * 0.65, height: size * 0.75, decoration: BoxDecoration(color: const Color(0xFFC62828), borderRadius: BorderRadius.circular(size * 0.2), border: Border.all(color: const Color(0xFFFFD54F), width: 2))),
+      Positioned(top: size * 0.15, child: Container(width: size * 0.4, height: size * 0.15, color: Colors.black)),
+      Positioned(bottom: size * 0.15, child: Icon(Icons.security, color: Colors.amber.shade400, size: size * 0.4)),
+    ])),
+  );
 }
 
 class _CrescentCrestPainter extends CustomPainter {
