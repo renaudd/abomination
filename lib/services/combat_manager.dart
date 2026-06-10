@@ -2700,7 +2700,8 @@ class CombatManager extends ChangeNotifier {
     } else {
       c.stuckFrames = 0;
     }
-  }
+  } // Close combatants loop
+} // Close update method
 
   void _performAttack(Combatant attacker, Combatant target) {
     if (target.isDead || target.isNonPhysicalSupport) return;
