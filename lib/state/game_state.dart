@@ -427,6 +427,23 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  int _reanimatedRatsCount = 0;
+  int _reanimatedBatsCount = 0;
+  int _reanimatedHumanCount = 0;
+  int _activeChapter = 1;
+  bool _showChapter2Modal = false;
+  
+  int get reanimatedRatsCount => _reanimatedRatsCount;
+  int get reanimatedBatsCount => _reanimatedBatsCount;
+  int get reanimatedHumanCount => _reanimatedHumanCount;
+  int get activeChapter => _activeChapter;
+  bool get showChapter2Modal => _showChapter2Modal;
+  
+  void dismissChapter2Modal() {
+    _showChapter2Modal = false;
+    notifyListeners();
+  }
+
   void setRebelConstructs(bool active) {
     _rebelConstructsActive = active;
     notifyListeners();
@@ -1291,6 +1308,52 @@ class GameState extends ChangeNotifier {
       if (!active && !enqueued) return qId;
     }
     return _researchQueue.isEmpty ? null : _researchQueue.first;
+  }
+
+  String? getFirstUnassignedResearchForRoom(String roomId) {
+    for (var qId in _researchQueue) {
+      final researchId = qId.startsWith('activity:') ? qId.replaceFirst('activity:', '') : qId;
+      bool isLab = researchId.startsWith('reanimation') || researchId.contains('vivisection') || researchId.contains('dissection') || researchId.contains('transmutation') || researchId.contains('lobotomy');
+      bool isLibrary = researchId.contains('archive') || researchId.contains('catalog') || researchId.contains('transcribe');
+      bool isStudy = !isLab && !isLibrary;
+
+      if (roomId == 'laboratory' && !isLab) continue;
+      if (roomId == 'library' && !isLibrary) continue;
+      if (roomId == 'study' && !isStudy) continue;
+
+      bool active = _taskService.activeTasks.any(
+        (t) =>
+            (t.type == TaskType.research ||
+                t.type == TaskType.study ||
+                t.type == TaskType.experiment) &&
+            (t.recipeId == researchId || t.recipeId == qId),
+      );
+      bool enqueued = _npcs.any(
+        (n) => n.intentQueue.any(
+          (i) =>
+              (i.action == TaskType.research ||
+                  i.action == TaskType.study ||
+                  i.action == TaskType.experiment) &&
+              (i.recipeId == researchId || i.recipeId == qId),
+        ),
+      );
+      if (!active && !enqueued) return qId;
+    }
+    return null;
+  }
+
+  void recordCombatVictory() {
+    _customTaskCounts['combats_won'] = (_customTaskCounts['combats_won'] ?? 0) + 1;
+    _checkObjectives();
+    notifyListeners();
+  }
+
+  void interactWithSecretSociety(String factionName) {
+    _customTaskCounts['secret_society_interactions'] = (_customTaskCounts['secret_society_interactions'] ?? 0) + 1;
+    _lastAnnouncement = "Held formal diplomatic correspondence with the ${factionName.toUpperCase()}.";
+    _announcementHistory.insert(0, "[${_currentDate.formattedTime}] DIPLOMACY: $_lastAnnouncement");
+    _checkObjectives();
+    notifyListeners();
   }
 
   List<Objective> get objectives => List.unmodifiable(_objectives);
@@ -4466,6 +4529,41 @@ class GameState extends ChangeNotifier {
       }
     }
 
+    // Golem Tantrum Triggers
+    for (int i = 0; i < _npcs.length; i++) {
+      final npc = _npcs[i];
+      if (npc.metadata['isFleshGolem'] == true && npc.currentRoomId != null) {
+        if (_crises.any((c) => c.type == ManorCrisisType.golemTantrum && c.roomId == npc.currentRoomId)) {
+          continue;
+        }
+        
+        bool shownCompassion = npc.metadata['shownCompassion'] == true;
+        double baseTantrumChance = shownCompassion ? 0.000001 : 0.000005; // 5x higher risk if treated cruelly
+        if (npc.satisfaction < 30) baseTantrumChance *= 4;
+        if (npc.hunger > 70) baseTantrumChance *= 3;
+
+        if (Random().nextDouble() < baseTantrumChance) {
+          final tantrum = ManorCrisis(
+            type: ManorCrisisType.golemTantrum,
+            roomId: npc.currentRoomId!,
+            discoveryDate: _currentDate.toDateTime(),
+            severity: 0.2,
+            isDiscovered: true,
+          );
+          _crises.add(tantrum);
+          newCrisisDetected = true;
+          final rIdx = _rooms.indexWhere((r) => r.id == npc.currentRoomId);
+          if (rIdx != -1) {
+            _rooms[rIdx] = _rooms[rIdx].copyWith(dirtiness: 1.0);
+          }
+          _announcementHistory.insert(
+            0,
+            "[${_currentDate.formattedTime}] EMERGENCY: ${npc.name} is throwing a violent Temper Tantrum in the ${_rooms.firstWhereOrNull((r) => r.id == npc.currentRoomId)?.name ?? 'Manor'}!",
+          );
+        }
+      }
+    }
+
     // 2. Crisis Progression & Spreading
     for (int i = _crises.length - 1; i >= 0; i--) {
       var crisis = _crises[i];
@@ -5150,6 +5248,49 @@ class GameState extends ChangeNotifier {
         }
       }
 
+      if (reqs.containsKey('map_hexes_explored')) {
+        final count = reqs['map_hexes_explored'] as int;
+        if (_exploredHexesCount < count) completed = false;
+      }
+      if (reqs.containsKey('manor_population')) {
+        final count = reqs['manor_population'] as int;
+        if (_npcs.where((n) => n.isResident).length < count) completed = false;
+      }
+      if (reqs.containsKey('standing_army_size')) {
+        final count = reqs['standing_army_size'] as int;
+        final pIdx = _npcs.indexWhere((n) => n.isPlayer);
+        final pArmySize = pIdx != -1 ? _npcs[pIdx].lastEscortIds.length : 0;
+        if (pArmySize < count) completed = false;
+      }
+      if (reqs.containsKey('combats_won')) {
+        final count = reqs['combats_won'] as int;
+        if ((_customTaskCounts['combats_won'] ?? 0) < count) completed = false;
+      }
+      if (reqs.containsKey('treasury_funds')) {
+        final count = reqs['treasury_funds'] as int;
+        if ((_resources['funds'] ?? 0) < count) completed = false;
+      }
+      if (reqs.containsKey('rooms_restored_count')) {
+        final count = reqs['rooms_restored_count'] as int;
+        if (_rooms.where((r) => r.isRestored).length < count) completed = false;
+      }
+      if (reqs.containsKey('science_level_count')) {
+        final count = reqs['science_level_count'] as int;
+        if (_researchLevels.values.where((lvl) => lvl >= 2).length < count) completed = false;
+      }
+      if (reqs.containsKey('new_recipes_unlocked')) {
+        final count = reqs['new_recipes_unlocked'] as int;
+        if (_knownRecipes.length < count) completed = false;
+      }
+      if (reqs.containsKey('garden_harvests')) {
+        final count = reqs['garden_harvests'] as int;
+        if ((_customTaskCounts['garden_harvests'] ?? 0) < count) completed = false;
+      }
+      if (reqs.containsKey('secret_society_interactions')) {
+        final count = reqs['secret_society_interactions'] as int;
+        if ((_customTaskCounts['secret_society_interactions'] ?? 0) < count) completed = false;
+      }
+
       if (completed) {
         objective.isCompleted = true;
         changed = true;
@@ -5209,6 +5350,17 @@ class GameState extends ChangeNotifier {
               requirements: {'experiment_performed': 'reanimation'},
             ),
           );
+        } else if (objective.id == 'first_construct_4') {
+          if (_activeChapter == 1) {
+            _activeChapter = 2;
+            _showChapter2Modal = true;
+            _lastAnnouncement = "CHAPTER 2: THE EXPANDING DOMAIN UNLOCKED!";
+            _announcementHistory.insert(
+              0,
+              "[${_currentDate.formattedTime}] CHAPTER 2: The Modern Prometheus Unlocked.",
+            );
+            _objectives.addAll(_getChapter2Objectives());
+          }
         } else if (objective.id == 'build_laboratory') {
           updateResource('funds', 200);
           _lastAnnouncement =
@@ -8131,6 +8283,87 @@ class GameState extends ChangeNotifier {
         "[${_currentDate.formattedTime}] RESEARCH: $actionTitle completed. Gained +${points.toInt()} points in Small Creature Anatomy & Alchemy.",
       );
       _checkDiscoveries();
+    }
+
+    if (task.type == TaskType.experiment || task.type == TaskType.research || task.type == TaskType.study) {
+      final matchId = task.recipeId ?? task.targetName ?? '';
+      if (matchId == 'reanimation_rat' || matchId.contains('RAT')) {
+        _reanimatedRatsCount++;
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Rat subject (${_reanimatedRatsCount}/4).");
+        if (_reanimatedRatsCount == 4) {
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] NECROMANCY: A permanent unit of Undead Rats has joined your standing army!");
+          final newSquad = CombatUnitFactory.createUndeadRats();
+          _npcs.add(newSquad);
+          final pIdx = _npcs.indexWhere((n) => n.isPlayer);
+          if (pIdx != -1) {
+            final p = _npcs[pIdx];
+            _npcs[pIdx] = p.copyWith(lastEscortIds: [...p.lastEscortIds, newSquad.id]);
+          }
+        }
+        if (!_performedExperiments.contains('reanimation')) _performedExperiments.add('reanimation');
+        _researchQueue.removeWhere((q) => q == 'reanimation_rat' || q == 'activity:reanimation_rat');
+        _checkObjectives();
+      } else if (matchId == 'reanimation_bat' || matchId.contains('BAT')) {
+        _reanimatedBatsCount++;
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Bat subject (${_reanimatedBatsCount}/4).");
+        if (_reanimatedBatsCount == 4) {
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] NECROMANCY: A permanent unit of Undead Bats has joined your standing army!");
+          final newSquad = CombatUnitFactory.createUndeadBats();
+          _npcs.add(newSquad);
+          final pIdx = _npcs.indexWhere((n) => n.isPlayer);
+          if (pIdx != -1) {
+            final p = _npcs[pIdx];
+            _npcs[pIdx] = p.copyWith(lastEscortIds: [...p.lastEscortIds, newSquad.id]);
+          }
+        }
+        if (!_performedExperiments.contains('reanimation')) _performedExperiments.add('reanimation');
+        _researchQueue.removeWhere((q) => q == 'reanimation_bat' || q == 'activity:reanimation_bat');
+        _checkObjectives();
+      } else if (matchId.startsWith('reanimation_human') || matchId.contains('HUMAN')) {
+        final parts = matchId.split(':');
+        final targetHumanId = parts.length > 1 ? parts[1] : task.reservedEntityIds.firstOrNull;
+        final humanIndex = _npcs.indexWhere((n) => n.id == targetHumanId);
+        if (humanIndex != -1) {
+          final humanNpc = _npcs[humanIndex];
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: The modern Prometheus awakes! ${humanNpc.name} transformed into a living Flesh Golem!");
+          
+          final golemStats = CombatUnitFactory.createFleshGolem().combatStats ?? const CombatStats(attack: 45, health: 300, maxHealth: 300, trait: CombatTrait.constantHeal);
+          final golemAppearance = CombatUnitFactory.createFleshGolem().appearance;
+          
+          _npcs[humanIndex] = humanNpc.copyWith(
+            name: "${humanNpc.name} (Flesh Golem)",
+            role: "Flesh Golem",
+            specimenType: "Flesh Golem",
+            appearance: golemAppearance,
+            combatStats: golemStats,
+            metadata: Map.from(humanNpc.metadata)..addAll({
+              'isFleshGolem': true,
+              'temperTantrumRisk': 0.4,
+              'shownCompassion': true,
+            }),
+          );
+          
+          final pIdx = _npcs.indexWhere((n) => n.isPlayer);
+          if (pIdx != -1) {
+            final p = _npcs[pIdx];
+            if (!p.lastEscortIds.contains(humanNpc.id)) {
+              _npcs[pIdx] = p.copyWith(lastEscortIds: [...p.lastEscortIds, humanNpc.id]);
+            }
+          }
+        } else {
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: The modern Prometheus awakes! Transformed human subject into a living Flesh Golem!");
+          final newSquad = CombatUnitFactory.createFleshGolem();
+          _npcs.add(newSquad);
+          final pIdx = _npcs.indexWhere((n) => n.isPlayer);
+          if (pIdx != -1) {
+            final p = _npcs[pIdx];
+            _npcs[pIdx] = p.copyWith(lastEscortIds: [...p.lastEscortIds, newSquad.id]);
+          }
+        }
+        if (!_performedExperiments.contains('reanimation')) _performedExperiments.add('reanimation');
+        _researchQueue.removeWhere((q) => q.contains('reanimation_human'));
+        _checkObjectives();
+      }
     }
 
     // Character status synchronization

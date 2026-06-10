@@ -52,6 +52,7 @@ import '../../models/active_business.dart';
 import '../widgets/flaubert_event_dialog.dart';
 import '../widgets/dental_event_dialog.dart';
 import '../widgets/restaurant_tycoon_dialog.dart';
+import '../widgets/chapter2_announcement_dialog.dart';
 
 class ManorScreen extends StatefulWidget {
   const ManorScreen({super.key});
@@ -200,6 +201,27 @@ class _ManorScreenState extends State<ManorScreen> {
     }
   }
 
+  bool _isShowingChapter2Modal = false;
+
+  void _checkChapter2Modal(GameState state) {
+    if (state.showChapter2Modal && !_isShowingChapter2Modal && ModalRoute.of(context)?.isCurrent == true) {
+      _isShowingChapter2Modal = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Chapter2AnnouncementDialog(),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isShowingChapter2Modal = false;
+            });
+          }
+        });
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = Provider.of<GameState>(context);
@@ -209,6 +231,7 @@ class _ManorScreenState extends State<ManorScreen> {
     _checkDentalSetup(state);
     _checkDentalEvent(state);
     _checkRestaurantTycoonEvent(state);
+    _checkChapter2Modal(state);
 
     if (state.isGameOver) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1430,6 +1453,7 @@ class _ManorScreenState extends State<ManorScreen> {
                                 liveRoom,
                                 taskType,
                               ),
+                              room: liveRoom,
                             ),
                           );
                         }),
@@ -1594,6 +1618,7 @@ class _ManorScreenState extends State<ManorScreen> {
     TaskType type,
     VoidCallback? onPressed, {
     bool isGreyed = false,
+    Room? room,
   }) {
     final metadata = TaskService.getMetadata(type);
     String label = type.displayName.toUpperCase();
@@ -1620,45 +1645,58 @@ class _ManorScreenState extends State<ManorScreen> {
           }
         }
       }
-    } else if (type == TaskType.research && state.researchQueue.isNotEmpty) {
-      final topic = state.getFirstUnassignedResearch();
+    } else if ((type == TaskType.research || type == TaskType.experiment || type == TaskType.study) && state.researchQueue.isNotEmpty) {
+      final topic = room != null ? state.getFirstUnassignedResearchForRoom(room.id) : state.getFirstUnassignedResearch();
       if (topic != null) {
-        final parts = topic.split(':');
-        if (parts[0] == 'recipe' && parts.length >= 2) {
-          final recipeId = parts[1];
-          final recipe = KitchenService.getAvailableRecipes().firstWhereOrNull((r) => r.id == recipeId);
-          label = "STUDY EXPERIMENTAL ${recipe?.name.toUpperCase() ?? recipeId.toUpperCase()}";
-        } else if (parts.length >= 3) {
-          final activityId = parts[1];
-          final itemId = parts[2];
-          final item = state.inventory.firstWhereOrNull((i) => i.id == itemId);
-          final itemName = item?.name ?? itemId;
-          if (activityId == 'generic_research') {
-            label = "RESEARCH ${itemName.toUpperCase()}";
-          } else if (activityId.contains('dissection')) {
-            label = "DISSECT ${itemName.toUpperCase()}";
-          } else if (activityId.contains('vivisection')) {
-            label = "VIVISECT ${itemName.toUpperCase()}";
-          } else if (activityId == 'archive_forbidden_scrolls') {
-            label = "ARCHIVE FORBIDDEN SCROLLS";
-          } else if (activityId == 'catalog_specimen_notes') {
-            label = "CATALOG SPECIMEN NOTES";
-          } else {
-            label = "${activityId.replaceAll('_', ' ').toUpperCase()} (${itemName.toUpperCase()})";
-          }
-        } else if (parts.length == 2) {
-          final activityId = parts[1];
-          if (activityId.contains('vivisection')) {
-            label = "PERFORM VIVISECTION";
-          } else if (activityId == 'archive_forbidden_scrolls') {
-            label = "ARCHIVE FORBIDDEN SCROLLS";
-          } else if (activityId == 'catalog_specimen_notes') {
-            label = "CATALOG SPECIMEN NOTES";
-          } else {
-            label = "RESEARCH ${activityId.toUpperCase().replaceAll('_', ' ')}";
-          }
+        final cleanTopic = topic.startsWith('activity:') ? topic.replaceFirst('activity:', '') : topic;
+        if (cleanTopic == 'reanimation_rat') {
+          label = "PERFORM REANIMATION (RAT SUBJECT)";
+          durationLabel = "180 MINUTES";
+        } else if (cleanTopic == 'reanimation_bat') {
+          label = "PERFORM REANIMATION (BAT SUBJECT)";
+          durationLabel = "180 MINUTES";
+        } else if (cleanTopic.startsWith('reanimation_human')) {
+          final tgtNpc = state.npcs.firstWhereOrNull((n) => n.id == cleanTopic.split(':').last);
+          label = "PERFORM REANIMATION (${tgtNpc?.name.toUpperCase() ?? 'HUMAN'})";
+          durationLabel = "240 MINUTES";
         } else {
-          label = "RESEARCH ${topic.toUpperCase().replaceAll('_', ' ')}";
+          final parts = topic.split(':');
+          if (parts[0] == 'recipe' && parts.length >= 2) {
+            final recipeId = parts[1];
+            final recipe = KitchenService.getAvailableRecipes().firstWhereOrNull((r) => r.id == recipeId);
+            label = "STUDY EXPERIMENTAL ${recipe?.name.toUpperCase() ?? recipeId.toUpperCase()}";
+          } else if (parts.length >= 3) {
+            final activityId = parts[1];
+            final itemId = parts[2];
+            final item = state.inventory.firstWhereOrNull((i) => i.id == itemId);
+            final itemName = item?.name ?? itemId;
+            if (activityId == 'generic_research') {
+              label = "RESEARCH ${itemName.toUpperCase()}";
+            } else if (activityId.contains('dissection')) {
+              label = "DISSECT ${itemName.toUpperCase()}";
+            } else if (activityId.contains('vivisection')) {
+              label = "VIVISECT ${itemName.toUpperCase()}";
+            } else if (activityId == 'archive_forbidden_scrolls') {
+              label = "ARCHIVE FORBIDDEN SCROLLS";
+            } else if (activityId == 'catalog_specimen_notes') {
+              label = "CATALOG SPECIMEN NOTES";
+            } else {
+              label = "${activityId.replaceAll('_', ' ').toUpperCase()} (${itemName.toUpperCase()})";
+            }
+          } else if (parts.length == 2) {
+            final activityId = parts[1];
+            if (activityId.contains('vivisection')) {
+              label = "PERFORM VIVISECTION";
+            } else if (activityId == 'archive_forbidden_scrolls') {
+              label = "ARCHIVE FORBIDDEN SCROLLS";
+            } else if (activityId == 'catalog_specimen_notes') {
+              label = "CATALOG SPECIMEN NOTES";
+            } else {
+              label = "RESEARCH ${activityId.toUpperCase().replaceAll('_', ' ')}";
+            }
+          } else {
+            label = "RESEARCH ${topic.toUpperCase().replaceAll('_', ' ')}";
+          }
         }
       }
     }

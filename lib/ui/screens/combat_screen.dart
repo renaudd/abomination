@@ -959,6 +959,7 @@ class _CombatScreenState extends State<CombatScreen>
       case 'gravedigger': return 'Gravedigger';
       case 'plague_monk': return 'Plague Monk';
       case 'undead_rats': return 'Undead Rats';
+      case 'undead_bats': return 'Undead Bats';
       case 'winged_rat': return 'Winged Rat';
       case 'werewolf': return 'Werewolf';
       case 'flesh_golem': return 'Flesh Golem';
@@ -5791,12 +5792,13 @@ class _BatsRendererState extends State<_BatsRenderer>
       builder: (context, child) {
         final hoverDy = -12.0 + sin(_flapController.value * pi * 2) * 6.0;
         final wingAngle = 0.15 + _flapController.value * 0.75;
+        final isUndead = widget.combatant.npc.name.contains('Undead');
 
         return Transform.translate(
           offset: Offset(0, hoverDy),
           child: CustomPaint(
             size: Size(widget.size * 1.5, widget.size * 1.0),
-            painter: _BatWingPainter(wingAngle: wingAngle),
+            painter: _BatWingPainter(wingAngle: wingAngle, isUndead: isUndead),
           ),
         );
       },
@@ -5806,15 +5808,16 @@ class _BatsRendererState extends State<_BatsRenderer>
 
 class _BatWingPainter extends CustomPainter {
   final double wingAngle;
+  final bool isUndead;
 
-  _BatWingPainter({required this.wingAngle});
+  _BatWingPainter({required this.wingAngle, this.isUndead = false});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final bodyPaint = Paint()..color = const Color(0xFF1E1B18);
-    final eyePaint = Paint()..color = Colors.redAccent;
-    final earPaint = Paint()..color = const Color(0xFF2A2421);
+    final bodyPaint = Paint()..color = isUndead ? const Color(0xFF4A1E5B) : const Color(0xFF1E1B18);
+    final eyePaint = Paint()..color = isUndead ? Colors.greenAccent : Colors.redAccent;
+    final earPaint = Paint()..color = isUndead ? const Color(0xFF331441) : const Color(0xFF2A2421);
 
     final leftEar = Path()
       ..moveTo(center.dx - 4, center.dy - 6)
@@ -5838,10 +5841,10 @@ class _BatWingPainter extends CustomPainter {
     canvas.drawCircle(Offset(center.dx + 3, center.dy - 4), 1.5, eyePaint);
 
     final wingPaint = Paint()
-      ..color = const Color(0xFF12100E)
+      ..color = isUndead ? const Color(0xFF1B2F21) : const Color(0xFF12100E)
       ..style = PaintingStyle.fill;
     final ribPaint = Paint()
-      ..color = const Color(0xFF3A2E2B)
+      ..color = isUndead ? const Color(0xFF2A4232) : const Color(0xFF3A2E2B)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 

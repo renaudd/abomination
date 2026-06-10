@@ -378,6 +378,46 @@ class CombatUnitFactory {
     );
   }
 
+  static NPC createUndeadBats() {
+    return NPC(
+      id: _generateId('undead_bats'),
+      name: 'Undead Bats',
+      role: 'Swarm',
+      age: 1,
+      gender: 'N/A',
+      specimenType: 'Bat',
+      bodyParts: _defaultBodyParts(),
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      appearance: NPCAppearance.deterministic('Undead Bats'),
+      combatStats: const CombatStats(
+        attack: 16,
+        health: 55,
+        maxHealth: 55,
+        speed: 0.6,
+        movement: 1.5,
+        distance: 1.0,
+        cost: 3,
+        unitType: UnitType.squad,
+        unitCount: 4,
+        meleeDamage: 16,
+        meleeRange: 1.0,
+        meleeAttackSpeed: 0.6,
+        trait: CombatTrait.constantHeal,
+        radius: 1.0,
+      ),
+      abilities: [
+        const Ability(
+          id: 'vampiric_screech',
+          name: 'Vampiric Screech',
+          type: AbilityType.special,
+          description: 'Emits a piercing occult screech, draining 35 health from all nearby enemies and healing the swarm.',
+          chargeTime: 9.0,
+        ),
+      ],
+    );
+  }
+
   static NPC createBrownRats() {
     return NPC(
       id: _generateId('brown_rats'),

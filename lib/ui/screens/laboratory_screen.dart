@@ -48,9 +48,37 @@ class LaboratoryScreen extends StatelessWidget {
       ),
       body: Consumer<GameState>(
         builder: (context, state, child) {
-          final occupants = state.npcs
-              .where((n) => n.isResident || (n.currentRoomId != null && state.rooms.any((r) => r.id == n.currentRoomId)))
-              .toList();
+          final ratSpecimen = NPC(
+            id: 'specimen_rat',
+            name: 'Deceased Rat Specimen',
+            role: 'Specimen',
+            age: 1,
+            gender: 'N/A',
+            specimenType: 'Rat',
+            bodyParts: const [],
+            schedule: NPCSchedule.visitor(),
+            diet: NPCDiet.defaultDiet(),
+            appearance: NPCAppearance.deterministic('Brown Rats'),
+          );
+          final batSpecimen = NPC(
+            id: 'specimen_bat',
+            name: 'Wing-torn Bat Specimen',
+            role: 'Specimen',
+            age: 1,
+            gender: 'N/A',
+            specimenType: 'Bat',
+            bodyParts: const [],
+            schedule: NPCSchedule.visitor(),
+            diet: NPCDiet.defaultDiet(),
+            appearance: NPCAppearance.deterministic('Bats Unit'),
+          );
+
+          final occupants = [
+            ratSpecimen,
+            batSpecimen,
+            ...state.npcs.where((n) => n.isResident || (n.currentRoomId != null && state.rooms.any((r) => r.id == n.currentRoomId))),
+          ];
+
           final activeExperiments = state.activeExperiments
               .where((e) => state.npcs.any((o) => o.id == e.subjectId))
               .toList();
@@ -414,9 +442,22 @@ class LaboratoryScreen extends StatelessWidget {
       onTap: isLocked
           ? null
           : () {
-              final exp = Experiment.create(npc.id, type);
-              state.startExperiment(exp);
-              Navigator.pop(context);
+              if (type == ExperimentType.reanimation) {
+                final targetKey = npc.id == 'specimen_rat'
+                    ? 'reanimation_rat'
+                    : (npc.id == 'specimen_bat'
+                        ? 'reanimation_bat'
+                        : 'reanimation_human:${npc.id}');
+                state.addScienceActivityToQueue(
+                  targetKey,
+                  reservedEntityIds: npc.id.startsWith('specimen_') ? const [] : [npc.id],
+                );
+                Navigator.pop(context);
+              } else {
+                final exp = Experiment.create(npc.id, type);
+                state.startExperiment(exp);
+                Navigator.pop(context);
+              }
             },
       trailing: Icon(
         isLocked ? Icons.lock : Icons.chevron_right,

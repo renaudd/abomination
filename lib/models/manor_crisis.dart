@@ -18,6 +18,7 @@ enum ManorCrisisType {
   fire,
   specimenEscape,
   intruder,
+  golemTantrum,
 }
 
 class ManorCrisis {
