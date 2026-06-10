@@ -45,11 +45,9 @@ class CharacterBlobRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     final appearance = npc.appearance;
 
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      clipBehavior: Clip.hardEdge,
-      alignment: Alignment.center,
       child: Transform.rotate(
         angle: npc.status == NPCStatus.fainted ? math.pi / 2 : 0,
         child: Stack(
