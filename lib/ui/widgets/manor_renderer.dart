@@ -427,6 +427,9 @@ class _EmergencyOverlayState extends State<_EmergencyOverlay>
       case ManorCrisisType.intruder:
         icon = Icons.warning;
         break;
+      case ManorCrisisType.golemTantrum:
+        icon = Icons.person_off;
+        break;
     }
 
     return AnimatedBuilder(

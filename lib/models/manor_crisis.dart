@@ -82,6 +82,8 @@ class ManorCrisis {
         return 'SPECIMEN ESCAPE';
       case ManorCrisisType.intruder:
         return 'INTRUDER';
+      case ManorCrisisType.golemTantrum:
+        return 'TEMPER TANTRUM';
     }
   }
 
@@ -93,6 +95,8 @@ class ManorCrisis {
         return 'A research subject has escaped containment!';
       case ManorCrisisType.intruder:
         return 'An unauthorized individual has entered the manor.';
+      case ManorCrisisType.golemTantrum:
+        return 'The Promethean Flesh Golem is throwing a violent temper tantrum!';
     }
   }
 }

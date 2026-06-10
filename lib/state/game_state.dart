@@ -430,12 +430,14 @@ class GameState extends ChangeNotifier {
   int _reanimatedRatsCount = 0;
   int _reanimatedBatsCount = 0;
   int _reanimatedHumanCount = 0;
+  int _exploredHexesCount = 0;
   int _activeChapter = 1;
   bool _showChapter2Modal = false;
   
   int get reanimatedRatsCount => _reanimatedRatsCount;
   int get reanimatedBatsCount => _reanimatedBatsCount;
   int get reanimatedHumanCount => _reanimatedHumanCount;
+  int get exploredHexesCount => _exploredHexesCount;
   int get activeChapter => _activeChapter;
   bool get showChapter2Modal => _showChapter2Modal;
   
@@ -5268,7 +5270,7 @@ class GameState extends ChangeNotifier {
       }
       if (reqs.containsKey('treasury_funds')) {
         final count = reqs['treasury_funds'] as int;
-        if ((_resources['funds'] ?? 0) < count) completed = false;
+        if ((resources['funds'] ?? 0) < count) completed = false;
       }
       if (reqs.containsKey('rooms_restored_count')) {
         final count = reqs['rooms_restored_count'] as int;
@@ -5276,7 +5278,7 @@ class GameState extends ChangeNotifier {
       }
       if (reqs.containsKey('science_level_count')) {
         final count = reqs['science_level_count'] as int;
-        if (_researchLevels.values.where((lvl) => lvl >= 2).length < count) completed = false;
+        if (_researchPoints.values.where((pts) => pts >= 20.0).length < count) completed = false;
       }
       if (reqs.containsKey('new_recipes_unlocked')) {
         final count = reqs['new_recipes_unlocked'] as int;
@@ -8289,7 +8291,7 @@ class GameState extends ChangeNotifier {
       final matchId = task.recipeId ?? task.targetName ?? '';
       if (matchId == 'reanimation_rat' || matchId.contains('RAT')) {
         _reanimatedRatsCount++;
-        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Rat subject (${_reanimatedRatsCount}/4).");
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Rat subject ($_reanimatedRatsCount/4).");
         if (_reanimatedRatsCount == 4) {
           _announcementHistory.insert(0, "[${_currentDate.formattedTime}] NECROMANCY: A permanent unit of Undead Rats has joined your standing army!");
           final newSquad = CombatUnitFactory.createUndeadRats();
@@ -8305,7 +8307,7 @@ class GameState extends ChangeNotifier {
         _checkObjectives();
       } else if (matchId == 'reanimation_bat' || matchId.contains('BAT')) {
         _reanimatedBatsCount++;
-        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Bat subject (${_reanimatedBatsCount}/4).");
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Bat subject ($_reanimatedBatsCount/4).");
         if (_reanimatedBatsCount == 4) {
           _announcementHistory.insert(0, "[${_currentDate.formattedTime}] NECROMANCY: A permanent unit of Undead Bats has joined your standing army!");
           final newSquad = CombatUnitFactory.createUndeadBats();
@@ -8320,6 +8322,7 @@ class GameState extends ChangeNotifier {
         _researchQueue.removeWhere((q) => q == 'reanimation_bat' || q == 'activity:reanimation_bat');
         _checkObjectives();
       } else if (matchId.startsWith('reanimation_human') || matchId.contains('HUMAN')) {
+        _reanimatedHumanCount++;
         final parts = matchId.split(':');
         final targetHumanId = parts.length > 1 ? parts[1] : task.reservedEntityIds.firstOrNull;
         final humanIndex = _npcs.indexWhere((n) => n.id == targetHumanId);
@@ -8327,8 +8330,9 @@ class GameState extends ChangeNotifier {
           final humanNpc = _npcs[humanIndex];
           _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: The modern Prometheus awakes! ${humanNpc.name} transformed into a living Flesh Golem!");
           
-          final golemStats = CombatUnitFactory.createFleshGolem().combatStats ?? const CombatStats(attack: 45, health: 300, maxHealth: 300, trait: CombatTrait.constantHeal);
-          final golemAppearance = CombatUnitFactory.createFleshGolem().appearance;
+          final golemSquad = CombatUnitFactory.createFleshGolem();
+          final golemStats = golemSquad.combatStats!;
+          final golemAppearance = golemSquad.appearance;
           
           _npcs[humanIndex] = humanNpc.copyWith(
             name: "${humanNpc.name} (Flesh Golem)",
