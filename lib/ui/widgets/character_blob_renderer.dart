@@ -125,7 +125,7 @@ class CharacterBlobRenderer extends StatelessWidget {
             else if (npc.name.toLowerCase().contains('geometry') || npc.name.toLowerCase().contains('trowel'))
               _buildDivineShieldIcon(size)
             else if (npc.name.toLowerCase().contains('elixir') || npc.name.toLowerCase().contains('vitality'))
-              _buildHealingCauldronIcon(size)
+              _buildDivineShieldIcon(size)
             else if (npc.name.toLowerCase().contains('greek fire') || npc.name.toLowerCase().contains('grail'))
               _buildNapalmStrikeIcon(size)
             else if (npc.name.toLowerCase().contains('hypnosis') || npc.name.toLowerCase().contains('pendulum'))

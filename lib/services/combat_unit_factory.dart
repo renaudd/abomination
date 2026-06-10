@@ -2149,7 +2149,7 @@ class CombatUnitFactory {
     metadata: const {'faction': 'Rosicrucians', 'cardType': 'homunculus_behemoth', 'description': 'A massive, lumbering alchemical creation possessing immense physical vitality (800 HP) but virtually zero offensive capability.'},
     combatStats: const CombatStats(attack: 5, health: 800, maxHealth: 800, speed: 2.5, movement: 1.8, distance: 1.5, defense: 4, cost: 4, unitCount: 1, trait: CombatTrait.poisonImmune),
   );
-  static NPC createElixirOfVitality() => createHealingCauldron().copyWith(
+  static NPC createElixirOfVitality() => createDivineShield().copyWith(
     id: _generateId('elixir_of_vitality'),
     name: 'Elixir of Vitality',
     role: 'Support',

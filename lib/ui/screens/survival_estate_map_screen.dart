@@ -3525,6 +3525,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         ),
       ),
     );
+  }
+
   bool _isAdvancedPlot(String plotKey) {
     return plotKey == 'plot_a' || plotKey == 'plot_b';
   }
