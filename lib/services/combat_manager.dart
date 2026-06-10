@@ -56,7 +56,7 @@ class FloatingMessage {
 
 class Combatant {
   NPC npc;
-  final CombatSide side;
+  CombatSide side;
   double x; // Horizontal position (0.0 to 200.0 feet)
   double y; // Vertical position (0.0 to 85.0 feet)
   double attackCooldown = 0.0;
@@ -91,6 +91,25 @@ class Combatant {
   Offset? formationOffset;
   double activeDeploymentTimer;
   String? originCardName;
+
+  // Elemental & Status Effect Fields
+  bool isBurning = false;
+  double burnDamagePerSec = 0.0;
+  double burnDurationRemaining = 0.0;
+
+  bool isPoisoned = false;
+  double poisonDamagePerSec = 0.0;
+  double poisonDurationRemaining = 0.0;
+
+  bool isMindControlled = false;
+  CombatSide? originalSide;
+  double mindControlDurationRemaining = 0.0;
+
+  double speedBuffMultiplier = 1.0;
+  double speedBuffDurationRemaining = 0.0;
+
+  double attackSpeedBuffMultiplier = 1.0;
+  double attackSpeedBuffDurationRemaining = 0.0;
 
   Combatant({
     required this.npc,
@@ -978,8 +997,60 @@ class CombatManager extends ChangeNotifier {
       }
     }
 
-    // Trigger Horn abilities
+    // On-Summon Triggers
     if (spawnedLeader != null) {
+      final BattlehornEffect horn = stats.battlehorn;
+      if (horn == BattlehornEffect.rallyAttackSpeed || npc.name.toLowerCase().contains('standard bearer')) {
+        _addFloatingMessage(spawnedLeader, 'RALLY CRY!', Colors.yellowAccent);
+        for (final other in _combatants) {
+          if (other.isDead || other.isTower || other.side != side) continue;
+          final distSq = pow(other.x - spawnedLeader.x, 2) + pow(other.y - spawnedLeader.y, 2);
+          if (distSq < 40.0 * 40.0) {
+            other.attackSpeedBuffMultiplier = 1.3;
+            other.attackSpeedBuffDurationRemaining = 8.0;
+            _addFloatingMessage(other, '+30% ATK SPEED', Colors.yellow);
+          }
+        }
+      } else if (horn == BattlehornEffect.speedBuff || npc.name.toLowerCase().contains('trowel') || npc.name.toLowerCase().contains('geometry')) {
+        _addFloatingMessage(spawnedLeader, 'SACRED HASTE!', Colors.cyanAccent);
+        for (final other in _combatants) {
+          if (other.isDead || other.isTower || other.side != side) continue;
+          other.speedBuffMultiplier = 1.4;
+          other.speedBuffDurationRemaining = 10.0;
+          _addFloatingMessage(other, '+40% MOVE SPEED', Colors.cyan);
+        }
+      }
+
+      // Check support spell instantaneous triggers
+      if (npc.name.toLowerCase().contains('hypnosis') || npc.name.toLowerCase().contains('pendulum')) {
+        // Find strongest enemy unit and mind control it for 12 seconds
+        final enemies = _combatants.where((c) => !c.isDead && !c.isTower && c.side != side && !c.isAiLeader && !c.npc.isPlayer).toList();
+        if (enemies.isNotEmpty) {
+          enemies.sort((a, b) => (b.npc.combatStats?.maxHealth ?? 0).compareTo(a.npc.combatStats?.maxHealth ?? 0));
+          final target = enemies.first;
+          target.originalSide = target.side;
+          target.side = side;
+          target.isMindControlled = true;
+          target.mindControlDurationRemaining = 12.0;
+          _addFloatingMessage(target, 'HYPNOTIZED!', Colors.purpleAccent);
+        }
+      } else if (npc.name.toLowerCase().contains('greek fire') || npc.name.toLowerCase().contains('holy grail')) {
+        // Greek Fire area ignition
+        for (final enemy in _combatants) {
+          if (enemy.isDead || enemy.side == side) continue;
+          final distSq = pow(enemy.x - spawnX, 2) + pow(enemy.y - spawnY, 2);
+          if (distSq < 35.0 * 35.0) {
+            applyDirectDamage(enemy, 40.0, 'greek_fire');
+            if (enemy.npc.combatStats?.trait != CombatTrait.fireImmune) {
+              enemy.isBurning = true;
+              enemy.burnDamagePerSec = 15.0;
+              enemy.burnDurationRemaining = 8.0;
+              _addFloatingMessage(enemy, 'GREEK FIRE!', Colors.deepOrange);
+            }
+          }
+        }
+      }
+
       for (final ability in npc.abilities) {
         if (ability.type == AbilityType.horn) {
           _applyAbilityEffect(spawnedLeader, ability);
@@ -1756,6 +1827,73 @@ class CombatManager extends ChangeNotifier {
       }
 
       return; // Skip normal locomotion, auto-targeting, or auto-attacks for Support units
+    }
+
+    // A-1a. Elemental DOTs & Status Effect Processing Engine
+    if (!c.isDead && !c.isTower) {
+      // 1. Burning
+      if (c.isBurning) {
+        c.burnDurationRemaining -= dt;
+        final double res = stats.trait == CombatTrait.fireImmune ? 1.0 : (stats.trait == CombatTrait.fireResistant ? 0.5 : (stats.trait == CombatTrait.fireVulnerable ? -0.5 : 0.0));
+        final double dmg = c.burnDamagePerSec * dt * max(0.0, 1.0 - res);
+        if (dmg > 0) {
+          applyDirectDamage(c, dmg, 'fire_dot');
+        }
+        // Roll for fire spreading to nearby units
+        if (Random().nextDouble() < 0.25 * dt) {
+          for (final n in _combatants) {
+            if (n == c || n.isDead || n.isBurning) continue;
+            final nTrait = n.npc.combatStats?.trait ?? CombatTrait.none;
+            if (nTrait == CombatTrait.fireImmune) continue;
+            final dist = sqrt(pow(n.x - c.x, 2) + pow(n.y - c.y, 2));
+            if (dist < 30.0) {
+              n.isBurning = true;
+              n.burnDamagePerSec = c.burnDamagePerSec * 0.8;
+              n.burnDurationRemaining = 4.0;
+              _addFloatingMessage(n, 'CAUGHT FIRE!', Colors.deepOrangeAccent);
+            }
+          }
+        }
+        // Baseline chance to self-extinguish per second
+        if (Random().nextDouble() < 0.35 * dt || c.burnDurationRemaining <= 0) {
+          c.isBurning = false;
+          c.burnDurationRemaining = 0;
+          _addFloatingMessage(c, 'EXTINGUISHED', Colors.lightBlueAccent);
+        }
+      }
+
+      // 2. Poison DOT
+      if (c.isPoisoned) {
+        c.poisonDurationRemaining -= dt;
+        final bool isImmune = stats.trait == CombatTrait.poisonImmune || stats.unitType == UnitType.vehicle;
+        if (!isImmune) {
+          final double dmg = c.poisonDamagePerSec * dt;
+          applyDirectDamage(c, dmg, 'poison_dot');
+        }
+        if (c.poisonDurationRemaining <= 0) {
+          c.isPoisoned = false;
+        }
+      }
+
+      // 3. Mind Control
+      if (c.isMindControlled) {
+        c.mindControlDurationRemaining -= dt;
+        if (c.mindControlDurationRemaining <= 0) {
+          c.isMindControlled = false;
+          if (c.originalSide != null) c.side = c.originalSide!;
+          _addFloatingMessage(c, 'FREE WILL RESTORED', Colors.purpleAccent);
+        }
+      }
+
+      // 4. Speed & Attack Speed Buffs
+      if (c.speedBuffDurationRemaining > 0) {
+        c.speedBuffDurationRemaining -= dt;
+        if (c.speedBuffDurationRemaining <= 0) c.speedBuffMultiplier = 1.0;
+      }
+      if (c.attackSpeedBuffDurationRemaining > 0) {
+        c.attackSpeedBuffDurationRemaining -= dt;
+        if (c.attackSpeedBuffDurationRemaining <= 0) c.attackSpeedBuffMultiplier = 1.0;
+      }
     }
 
     // A-1b. Standard Deployment Timer ticking
@@ -2620,6 +2758,24 @@ class CombatManager extends ChangeNotifier {
       combatStats: targetStats.copyWith(health: newHealth),
     );
 
+    // Elemental Attack Status Triggers
+    if (stats.trait == CombatTrait.poisonAttack || attacker.npc.name.toLowerCase().contains('poison') || attacker.npc.name.toLowerCase().contains('raider') || attacker.npc.name.toLowerCase().contains('herbalist')) {
+      if (targetStats.trait != CombatTrait.poisonImmune && targetStats.unitType != UnitType.vehicle) {
+        target.isPoisoned = true;
+        target.poisonDamagePerSec = damage * 0.4;
+        target.poisonDurationRemaining = 5.0;
+        _addFloatingMessage(target, 'POISONED!', Colors.greenAccent);
+      }
+    }
+    if (stats.trait == CombatTrait.fireAttack || attacker.npc.name.toLowerCase().contains('pyre') || attacker.npc.name.toLowerCase().contains('incendiary') || attacker.npc.name.toLowerCase().contains('arsonist')) {
+      if (targetStats.trait != CombatTrait.fireImmune && !target.isBurning) {
+        target.isBurning = true;
+        target.burnDamagePerSec = damage * 0.5;
+        target.burnDurationRemaining = 6.0;
+        _addFloatingMessage(target, 'IGNITED!', Colors.deepOrange);
+      }
+    }
+
     if (newHealth <= 0) {
       _onCombatantDeath(target, attacker);
       _addLog('${target.npc.name} has been defeated!', side: target.side);
@@ -3351,6 +3507,24 @@ class CombatManager extends ChangeNotifier {
   }
   void _onCombatantDeath(Combatant target, Combatant? killer) {
     target.isDead = true;
+
+    // On-Death Triggers
+    final DeathknellEffect knell = target.npc.combatStats?.deathknell ?? DeathknellEffect.none;
+    if (knell == DeathknellEffect.dropFunds || target.npc.name.toLowerCase().contains('collector')) {
+      if (isSurvivalMode || isNormalGameMode) {
+        _addFloatingMessage(target, '+50 CHF', Colors.amber);
+      }
+    } else if (knell == DeathknellEffect.explosion || target.npc.name.toLowerCase().contains('martyr')) {
+      _addFloatingMessage(target, 'MARTYR BLAST!', Colors.redAccent);
+      for (final other in _combatants) {
+        if (other == target || other.isDead || other.side == target.side) continue;
+        final distSq = pow(other.x - target.x, 2) + pow(other.y - target.y, 2);
+        if (distSq < 45.0 * 45.0) {
+          applyDirectDamage(other, 150.0, 'martyr_blast');
+        }
+      }
+    }
+
     if (isSurvivalMode) {
       if (killer != null && killer.side == CombatSide.player) {
         final cardType = killer.npc.metadata['cardType'];

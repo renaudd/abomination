@@ -2106,5 +2106,216 @@ class CombatUnitFactory {
       ),
     );
   }
+
+  // ============================================================================
+  // SECRET SOCIETY FACTIONS: EXCLUSIVE COMMANDERS & COMBAT CARDS
+  // ============================================================================
+
+  // --- 1. FREEMASONS ---
+  static NPC createHiramAbiff() => createAlphonse().copyWith(
+    id: 'hiram_abiff',
+    name: 'Grand Master Hiram',
+    role: 'Commander',
+    metadata: const {'faction': 'Freemasons', 'cardType': 'hiram_abiff', 'description': 'Grand Architect of the Masonic Order. Fortifies nearby structures with unyielding sacred geometry.'},
+    combatStats: const CombatStats(attack: 45, health: 450, maxHealth: 450, speed: 1.4, movement: 3.5, distance: 1.5, defense: 5, cost: 0, trait: CombatTrait.constantHeal),
+  );
+  static NPC createMasonicSapper() => createHalberdiers().copyWith(
+    id: _generateId('masonic_sapper'),
+    name: 'Masonic Sapper',
+    role: 'Siege Squad',
+    metadata: const {'faction': 'Freemasons', 'cardType': 'masonic_sapper', 'description': 'Demolition specialists sworn to the square and compass. Bypasses foot soldiers to target towers exclusively.'},
+    combatStats: const CombatStats(attack: 90, health: 120, maxHealth: 120, speed: 1.5, movement: 4.2, distance: 1.5, cost: 3, unitCount: 2, targetingRule: TargetingRule.towersOnly),
+  );
+  static NPC createSacredGeometry() => createDivineShield().copyWith(
+    id: _generateId('sacred_geometry'),
+    name: 'Sacred Geometry',
+    role: 'Support',
+    metadata: const {'faction': 'Freemasons', 'cardType': 'sacred_geometry', 'description': 'An ancient architectural blessing that imbues friendly units with +40% tactical movement velocity.'},
+    combatStats: const CombatStats(attack: 0, health: 0, maxHealth: 0, speed: 1.0, movement: 0.0, distance: 0.0, cost: 2, unitType: UnitType.support, battlehorn: BattlehornEffect.speedBuff),
+  );
+
+  // --- 2. ROSICRUCIANS ---
+  static NPC createChristianRosenkreuz() => createAlphonse().copyWith(
+    id: 'christian_rosenkreuz',
+    name: 'Magus Rosenkreuz',
+    role: 'Commander',
+    metadata: const {'faction': 'Rosicrucians', 'cardType': 'christian_rosenkreuz', 'description': 'Legendary mystic and occult alchemist. Wields esoteric toxin attacks that corrupt the enemy\'s life force.'},
+    combatStats: const CombatStats(attack: 38, health: 380, maxHealth: 380, speed: 1.2, movement: 3.8, distance: 12.0, cost: 0, trait: CombatTrait.poisonAttack),
+  );
+  static NPC createHomunculusBehemoth() => createFleshGolem().copyWith(
+    id: _generateId('homunculus_behemoth'),
+    name: 'Homunculus Behemoth',
+    role: 'Tank Squad',
+    metadata: const {'faction': 'Rosicrucians', 'cardType': 'homunculus_behemoth', 'description': 'A massive, lumbering alchemical creation possessing immense physical vitality (800 HP) but virtually zero offensive capability.'},
+    combatStats: const CombatStats(attack: 5, health: 800, maxHealth: 800, speed: 2.5, movement: 1.8, distance: 1.5, defense: 4, cost: 4, unitCount: 1, trait: CombatTrait.poisonImmune),
+  );
+  static NPC createElixirOfVitality() => createHealingCauldron().copyWith(
+    id: _generateId('elixir_of_vitality'),
+    name: 'Elixir of Vitality',
+    role: 'Support',
+    metadata: const {'faction': 'Rosicrucians', 'cardType': 'elixir_of_vitality', 'description': 'A concentrated alchemical mist that revitalizes friendly forces and purges physical debuffs.'},
+    combatStats: const CombatStats(attack: 0, health: 0, maxHealth: 0, speed: 1.0, movement: 0.0, distance: 0.0, cost: 2, unitType: UnitType.support, battlehorn: BattlehornEffect.heal),
+  );
+
+  // --- 3. KNIGHTS TEMPLAR ---
+  static NPC createJacquesDeMolay() => createAlphonse().copyWith(
+    id: 'jacques_de_molay',
+    name: 'Grand Prior Jacques',
+    role: 'Commander',
+    metadata: const {'faction': 'Knights Templar', 'cardType': 'jacques_de_molay', 'description': 'Unyielding zealot commander of the holy priorate. Completely immune to incendiary warfare.'},
+    combatStats: const CombatStats(attack: 52, health: 420, maxHealth: 420, speed: 1.3, movement: 3.6, distance: 1.5, defense: 6, cost: 0, trait: CombatTrait.fireImmune),
+  );
+  static NPC createTemplarPyreKnight() => createSamurai().copyWith(
+    id: _generateId('templar_pyre_knight'),
+    name: 'Templar Pyre Knight',
+    role: 'Melee Squad',
+    metadata: const {'faction': 'Knights Templar', 'cardType': 'templar_pyre_knight', 'description': 'Wields heavy greatswords forged in sacred flames. Each strike ignites the target with persistent fire damage.'},
+    combatStats: const CombatStats(attack: 65, health: 180, maxHealth: 180, speed: 1.2, movement: 4.5, distance: 1.5, cost: 3, unitCount: 2, trait: CombatTrait.fireAttack),
+  );
+  static NPC createGreekFireFlask() => createPoisonGas().copyWith(
+    id: _generateId('greek_fire_flask'),
+    name: 'Greek Fire Flask',
+    role: 'Support',
+    metadata: const {'faction': 'Knights Templar', 'cardType': 'greek_fire_flask', 'description': 'Hurls a volatile incendiary flask that engulfs a wide radius in unquenchable, spreading flames.'},
+    combatStats: const CombatStats(attack: 40, health: 0, maxHealth: 0, speed: 1.0, movement: 0.0, distance: 15.0, cost: 3, unitType: UnitType.support, trait: CombatTrait.fireAttack),
+  );
+
+  // --- 4. GNOMES OF ZURICH ---
+  static NPC createBankerRothschild() => createAlphonse().copyWith(
+    id: 'banker_rothschild',
+    name: 'High Banker Rothschild',
+    role: 'Commander',
+    metadata: const {'faction': 'Gnomes of Zurich', 'cardType': 'banker_rothschild', 'description': 'Director of the subterranean financial syndicates. Directs elite headhunters to neutralize rival leadership.'},
+    combatStats: const CombatStats(attack: 40, health: 400, maxHealth: 400, speed: 1.1, movement: 3.8, distance: 10.0, cost: 0),
+  );
+  static NPC createVaultAssassin() => createSniper().copyWith(
+    id: _generateId('vault_assassin'),
+    name: 'Vault Assassin',
+    role: 'Ranged Squad',
+    metadata: const {'faction': 'Gnomes of Zurich', 'cardType': 'vault_assassin', 'description': 'Contracted sharpshooter sworn to the syndicate. Ignores ordinary troops and towers to eliminate rival commanders exclusively.'},
+    combatStats: const CombatStats(attack: 85, health: 90, maxHealth: 90, speed: 1.8, movement: 4.8, distance: 16.0, cost: 3, unitCount: 1, targetingRule: TargetingRule.enemyCharacterOnly),
+  );
+  static NPC createZurichDebtCollector() => createThugs().copyWith(
+    id: _generateId('zurich_debt_collector'),
+    name: 'Zurich Debt Collector',
+    role: 'Melee Squad',
+    metadata: const {'faction': 'Gnomes of Zurich', 'cardType': 'zurich_debt_collector', 'description': 'Ruthless syndicate enforcer. Does something special when vanquished: yields an extra 50 CHF bounty upon death.'},
+    combatStats: const CombatStats(attack: 35, health: 130, maxHealth: 130, speed: 1.1, movement: 5.0, distance: 1.5, cost: 2, unitCount: 3, deathknell: DeathknellEffect.dropFunds),
+  );
+
+  // --- 5. CARBONARI ---
+  static NPC createAltaVendita() => createAlphonse().copyWith(
+    id: 'alta_vendita',
+    name: 'Grand Master Alta Vendita',
+    role: 'Commander',
+    metadata: const {'faction': 'Carbonari', 'cardType': 'alta_vendita', 'description': 'Charcoal-burning revolutionary agitator. Commands volatile arsonists and self-sacrificing insurgents.'},
+    combatStats: const CombatStats(attack: 48, health: 410, maxHealth: 410, speed: 1.3, movement: 4.0, distance: 1.5, cost: 0, trait: CombatTrait.fireAttack),
+  );
+  static NPC createCarbonariArsonist() => createCannoneer().copyWith(
+    id: _generateId('carbonari_arsonist'),
+    name: 'Carbonari Arsonist',
+    role: 'Ranged Squad',
+    metadata: const {'faction': 'Carbonari', 'cardType': 'carbonari_arsonist', 'description': 'Hurls flaming charcoal pitch-bombs over enemy frontlines, inflicting severe fire damage over time.'},
+    combatStats: const CombatStats(attack: 55, health: 110, maxHealth: 110, speed: 1.6, movement: 4.0, distance: 12.0, cost: 3, unitCount: 2, trait: CombatTrait.fireAttack),
+  );
+  static NPC createRevolutionaryMartyr() => createDeserters().copyWith(
+    id: _generateId('revolutionary_martyr'),
+    name: 'Revolutionary Martyr',
+    role: 'Melee Squad',
+    metadata: const {'faction': 'Carbonari', 'cardType': 'revolutionary_martyr', 'description': 'Fanatic revolutionary carrying concealed explosives. Explodes in a devastating shrapnel blast upon death.'},
+    combatStats: const CombatStats(attack: 25, health: 80, maxHealth: 80, speed: 1.2, movement: 5.5, distance: 1.5, cost: 2, unitCount: 3, deathknell: DeathknellEffect.explosion),
+  );
+
+  // --- 6. GOLDEN DAWN ---
+  static NPC createAleisterCrowley() => createAlphonse().copyWith(
+    id: 'aleister_crowley',
+    name: 'Imperator Crowley',
+    role: 'Commander',
+    metadata: const {'faction': 'Golden Dawn', 'cardType': 'aleister_crowley', 'description': 'Master of the Hermetic Order. Manipulates astral currents to subvert the free will of enemy forces.'},
+    combatStats: const CombatStats(attack: 42, health: 390, maxHealth: 390, speed: 1.3, movement: 3.6, distance: 14.0, cost: 0, trait: CombatTrait.magicImmune),
+  );
+  static NPC createHermeticMesmerist() => createWarlock().copyWith(
+    id: _generateId('hermetic_mesmerist'),
+    name: 'Hermetic Mesmerist',
+    role: 'Caster Squad',
+    metadata: const {'faction': 'Golden Dawn', 'cardType': 'hermetic_mesmerist', 'description': 'Occult hypnotist. Beguiles an enemy squad member under your command for a brief duration upon summoning.'},
+    combatStats: const CombatStats(attack: 30, health: 100, maxHealth: 100, speed: 1.5, movement: 3.8, distance: 10.0, cost: 3, unitCount: 1, deathknell: DeathknellEffect.mindControl),
+  );
+  static NPC createAstralHypnosis() => createVampiricTotem().copyWith(
+    id: _generateId('astral_hypnosis'),
+    name: 'Astral Hypnosis',
+    role: 'Support',
+    metadata: const {'faction': 'Golden Dawn', 'cardType': 'astral_hypnosis', 'description': 'An overwhelming hypnotic pendulum overlay that seizes total control of the strongest enemy unit for 12 seconds.'},
+    combatStats: const CombatStats(attack: 0, health: 0, maxHealth: 0, speed: 1.0, movement: 0.0, distance: 0.0, cost: 3, unitType: UnitType.support, deathknell: DeathknellEffect.mindControl),
+  );
+
+  // --- 7. FENIAN BROTHERHOOD ---
+  static NPC createJamesStephens() => createAlphonse().copyWith(
+    id: 'james_stephens',
+    name: 'Head Centre Stephens',
+    role: 'Commander',
+    metadata: const {'faction': 'Fenian Brotherhood', 'cardType': 'james_stephens', 'description': 'Insurgent guerilla commander. Directs clandestine night raiders and rapid cell reinforcements.'},
+    combatStats: const CombatStats(attack: 50, health: 410, maxHealth: 410, speed: 1.1, movement: 4.4, distance: 1.5, cost: 0),
+  );
+  static NPC createFenianNightRaider() => createCommandos().copyWith(
+    id: _generateId('fenian_night_raider'),
+    name: 'Fenian Night Raider',
+    role: 'Melee Squad',
+    metadata: const {'faction': 'Fenian Brotherhood', 'cardType': 'fenian_night_raider', 'description': 'Clandestine skirmisher armed with venom-tipped dirks that inflict debilitating poison DOT.'},
+    combatStats: const CombatStats(attack: 45, health: 140, maxHealth: 140, speed: 1.0, movement: 5.2, distance: 1.5, cost: 2, unitCount: 3, trait: CombatTrait.poisonAttack),
+  );
+  static NPC createInsurgentCell() => createGoons().copyWith(
+    id: _generateId('insurgent_cell'),
+    name: 'Insurgent Cell',
+    role: 'Melee Squad',
+    metadata: const {'faction': 'Fenian Brotherhood', 'cardType': 'insurgent_cell', 'description': 'Rapid insurgent deployment. Spawns additional guerilla fighters directly into the fray upon summoning.'},
+    combatStats: const CombatStats(attack: 30, health: 110, maxHealth: 110, speed: 1.2, movement: 4.8, distance: 1.5, cost: 3, unitCount: 4, battlehorn: BattlehornEffect.charge),
+  );
+
+  // --- 8. CHEVALIERS DE LA FOI ---
+  static NPC createFerdinandDeBertier() => createAlphonse().copyWith(
+    id: 'ferdinand_de_bertier',
+    name: 'Ferdinand de Bertier',
+    role: 'Commander',
+    metadata: const {'faction': 'Chevaliers de la foi', 'cardType': 'ferdinand_de_bertier', 'description': 'Ultra-royalist grand banneret. Commands impenetrable armored cavalry and inspirational standard bearers.'},
+    combatStats: const CombatStats(attack: 55, health: 460, maxHealth: 460, speed: 1.4, movement: 3.8, distance: 1.5, defense: 6, cost: 0, trait: CombatTrait.fireImmune),
+  );
+  static NPC createRoyalistCuirassier() => createCavalry().copyWith(
+    id: _generateId('royalist_cuirassier'),
+    name: 'Royalist Cuirassier',
+    role: 'Vehicle/Cavalry',
+    metadata: const {'faction': 'Chevaliers de la foi', 'cardType': 'royalist_cuirassier', 'description': 'Heavily armored royalist shock cavalry. Completely immune to poison and resistant to fire.'},
+    combatStats: const CombatStats(attack: 75, health: 320, maxHealth: 320, speed: 1.3, movement: 6.5, distance: 1.5, defense: 4, cost: 4, unitType: UnitType.vehicle, trait: CombatTrait.poisonImmune),
+  );
+  static NPC createRoyalistStandardBearer() => createFootman().copyWith(
+    id: _generateId('royalist_standard_bearer'),
+    name: 'Royalist Standard Bearer',
+    role: 'Support Squad',
+    metadata: const {'faction': 'Chevaliers de la foi', 'cardType': 'royalist_standard_bearer', 'description': 'Raises the fleur-de-lis standard upon summoning, instantly granting +30% attack speed to nearby friendly units.'},
+    combatStats: const CombatStats(attack: 20, health: 150, maxHealth: 150, speed: 1.5, movement: 4.0, distance: 1.5, cost: 2, unitCount: 1, battlehorn: BattlehornEffect.rallyAttackSpeed),
+  );
+
+  // --- 9. ANCIENT ORDER OF FORESTERS ---
+  static NPC createChiefRangerRobin() => createAlphonse().copyWith(
+    id: 'chief_ranger_robin',
+    name: 'Chief Ranger Robin',
+    role: 'Commander',
+    metadata: const {'faction': 'Ancient Order of Foresters', 'cardType': 'chief_ranger_robin', 'description': 'Grand Druid of the Foresters. Unleashes venomous arrows and directs fierce beasts of the deep woods.'},
+    combatStats: const CombatStats(attack: 46, health: 420, maxHealth: 420, speed: 1.1, movement: 4.2, distance: 15.0, cost: 0, trait: CombatTrait.poisonAttack),
+  );
+  static NPC createForesterHerbalist() => createWitch().copyWith(
+    id: _generateId('forester_herbalist'),
+    name: 'Forester Herbalist',
+    role: 'Ranged Support',
+    metadata: const {'faction': 'Ancient Order of Foresters', 'cardType': 'forester_herbalist', 'description': 'Woodland herbalist hurling toxic spore vials at enemies while soothing allied forces.'},
+    combatStats: const CombatStats(attack: 35, health: 110, maxHealth: 110, speed: 1.4, movement: 4.2, distance: 12.0, cost: 2, unitCount: 2, trait: CombatTrait.poisonAttack),
+  );
+  static NPC createForesterBeastmaster() => createWildBear().copyWith(
+    id: _generateId('forester_beastmaster'),
+    name: 'Forester Beastmaster',
+    role: 'Beast Squad',
+    metadata: const {'faction': 'Ancient Order of Foresters', 'cardType': 'forester_beastmaster', 'description': 'Rugged warden accompanied by ferocious deep-woods grizzly bears.'},
+    combatStats: const CombatStats(attack: 80, health: 350, maxHealth: 350, speed: 1.5, movement: 5.0, distance: 1.5, cost: 4, unitCount: 1, battlehorn: BattlehornEffect.charge),
+  );
 }
 

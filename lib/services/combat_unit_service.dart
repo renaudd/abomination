@@ -163,6 +163,61 @@ class CombatUnitService {
         return CombatUnitFactory.createDivineShield();
       case 'napalm_strike':
         return CombatUnitFactory.createNapalmStrike();
+      // Secret Society Faction Commanders & Cards
+      case 'hiram_abiff':
+        return CombatUnitFactory.createHiramAbiff();
+      case 'masonic_sapper':
+        return CombatUnitFactory.createMasonicSapper();
+      case 'sacred_geometry':
+        return CombatUnitFactory.createSacredGeometry();
+      case 'christian_rosenkreuz':
+        return CombatUnitFactory.createChristianRosenkreuz();
+      case 'homunculus_behemoth':
+        return CombatUnitFactory.createHomunculusBehemoth();
+      case 'elixir_of_vitality':
+        return CombatUnitFactory.createElixirOfVitality();
+      case 'jacques_de_molay':
+        return CombatUnitFactory.createJacquesDeMolay();
+      case 'templar_pyre_knight':
+        return CombatUnitFactory.createTemplarPyreKnight();
+      case 'greek_fire_flask':
+        return CombatUnitFactory.createGreekFireFlask();
+      case 'banker_rothschild':
+        return CombatUnitFactory.createBankerRothschild();
+      case 'vault_assassin':
+        return CombatUnitFactory.createVaultAssassin();
+      case 'zurich_debt_collector':
+        return CombatUnitFactory.createZurichDebtCollector();
+      case 'alta_vendita':
+        return CombatUnitFactory.createAltaVendita();
+      case 'carbonari_arsonist':
+        return CombatUnitFactory.createCarbonariArsonist();
+      case 'revolutionary_martyr':
+        return CombatUnitFactory.createRevolutionaryMartyr();
+      case 'aleister_crowley':
+        return CombatUnitFactory.createAleisterCrowley();
+      case 'hermetic_mesmerist':
+        return CombatUnitFactory.createHermeticMesmerist();
+      case 'astral_hypnosis':
+        return CombatUnitFactory.createAstralHypnosis();
+      case 'james_stephens':
+        return CombatUnitFactory.createJamesStephens();
+      case 'fenian_night_raider':
+        return CombatUnitFactory.createFenianNightRaider();
+      case 'insurgent_cell':
+        return CombatUnitFactory.createInsurgentCell();
+      case 'ferdinand_de_bertier':
+        return CombatUnitFactory.createFerdinandDeBertier();
+      case 'royalist_cuirassier':
+        return CombatUnitFactory.createRoyalistCuirassier();
+      case 'royalist_standard_bearer':
+        return CombatUnitFactory.createRoyalistStandardBearer();
+      case 'chief_ranger_robin':
+        return CombatUnitFactory.createChiefRangerRobin();
+      case 'forester_herbalist':
+        return CombatUnitFactory.createForesterHerbalist();
+      case 'forester_beastmaster':
+        return CombatUnitFactory.createForesterBeastmaster();
       default:
         return CombatUnitFactory.createVillagerMob();
     }

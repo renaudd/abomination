@@ -122,6 +122,16 @@ class CharacterBlobRenderer extends StatelessWidget {
               _buildDivineShieldIcon(size)
             else if (npc.name.toLowerCase().contains('napalm'))
               _buildNapalmStrikeIcon(size)
+            else if (npc.name.toLowerCase().contains('geometry') || npc.name.toLowerCase().contains('trowel'))
+              _buildDivineShieldIcon(size)
+            else if (npc.name.toLowerCase().contains('elixir') || npc.name.toLowerCase().contains('vitality'))
+              _buildHealingCauldronIcon(size)
+            else if (npc.name.toLowerCase().contains('greek fire') || npc.name.toLowerCase().contains('grail'))
+              _buildNapalmStrikeIcon(size)
+            else if (npc.name.toLowerCase().contains('hypnosis') || npc.name.toLowerCase().contains('pendulum'))
+              _buildVampiricTotemIcon(size)
+            else if (npc.name.toLowerCase().contains('cuirassier'))
+              _buildCavalry(size)
             else ...[
               // Shadow
               Positioned(

@@ -3023,72 +3023,6 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }
 
   // POP-UPS & CONTEXT MENUS
-  void _showRepairDialog(
-    BuildContext context,
-    SurvivalService service,
-    String towerId,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF2E1A0A),
-          contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          title: Text(
-            'RECONSTRUCT TOWER',
-            style: GoogleFonts.playfairDisplay(
-              color: const Color(0xFFE5D5B0),
-              fontSize: 15,
-            ),
-          ),
-          content: Text(
-            'Tower was destroyed in battle. Choose repair strategy:',
-            style: GoogleFonts.oldStandardTt(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (service.repairTower(towerId, 'wood', 50, 0)) {
-                  Navigator.pop(context);
-                }
-              },
-              child: Text(
-                'WOOD (50 Wood)',
-                style: GoogleFonts.oswald(color: Colors.brown),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                if (service.repairTower(towerId, 'cash', 0, 180)) {
-                  Navigator.pop(context);
-                }
-              },
-              child: Text(
-                'CONTRACT (180 CHF)',
-                style: GoogleFonts.oswald(color: Colors.amber),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                if (service.repairTower(towerId, 'labor', 0, 0)) {
-                  Navigator.pop(context);
-                }
-              },
-              child: Text(
-                'MANUAL LABOR (2 workers)',
-                style: GoogleFonts.oswald(color: Colors.blue),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showTowerDetailsDialog(
     BuildContext context,
     SurvivalProgress progress,
@@ -3591,110 +3525,6 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildUpgradeActionRow({
-    required String label,
-    required String stat,
-    required int currentLvl,
-    required int maxLvl,
-    required int cost,
-    required bool unlocked,
-    String? unlockReason,
-    required SurvivalProgress progress,
-    required SurvivalService service,
-    required VoidCallback onSuccess,
-  }) {
-    final completed = currentLvl >= (maxLvl == 0 ? 1 : 5);
-    final canAfford = progress.cash >= cost;
-    final enabled = unlocked && canAfford && !completed;
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        border: Border.all(
-          color: completed
-              ? Colors.green.withValues(alpha: 0.3)
-              : (unlocked
-                    ? const Color(0xFFC4B89B).withValues(alpha: 0.15)
-                    : Colors.white10),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.playfairDisplay(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                completed ? 'MAX' : 'Lvl ${currentLvl + 1}',
-                style: GoogleFonts.oswald(
-                  color: completed ? Colors.green : const Color(0xFFC4B89B),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          if (!completed) ...[
-            if (!unlocked && unlockReason != null)
-              Text(
-                unlockReason,
-                style: GoogleFonts.oldStandardTt(
-                  color: Colors.redAccent.withValues(alpha: 0.8),
-                  fontSize: 9,
-                  fontStyle: FontStyle.italic,
-                ),
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                height: 28,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: enabled
-                        ? const Color(0xFF2E1A0A)
-                        : Colors.transparent,
-                    side: BorderSide(
-                      color: enabled ? const Color(0xFFD4AF37) : Colors.white10,
-                    ),
-                    shape: const RoundedRectangleBorder(),
-                    padding: EdgeInsets.zero,
-                  ),
-                  onPressed: enabled
-                      ? () {
-                          if (service.upgradeTower(stat, cost)) {
-                            onSuccess();
-                          }
-                        }
-                      : null,
-                  child: Text(
-                    'UPGRADE FOR $cost CHF',
-                    style: GoogleFonts.oswald(
-                      color: enabled ? const Color(0xFFE5D5B0) : Colors.white24,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-
   bool _isAdvancedPlot(String plotKey) {
     return plotKey == 'plot_a' || plotKey == 'plot_b';
   }
@@ -10014,17 +9844,49 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       CombatUnitFactory.createPikemen(),
       CombatUnitFactory.createMarksmen(),
       if (turn >= 1) CombatUnitFactory.createBats(),
-      if (turn >= 2) CombatUnitFactory.createBrewers(),
-      if (turn >= 3) CombatUnitFactory.createFleshGolem(),
-      if (turn >= 4) CombatUnitFactory.createArmoredCar(),
-      if (turn >= 5) CombatUnitFactory.createWitch(),
-      if (turn >= 6) CombatUnitFactory.createWerewolf(),
-      if (turn >= 7) CombatUnitFactory.createHag(),
-      if (turn >= 8) CombatUnitFactory.createWarlock(),
+      if (turn >= 2) ...[
+        CombatUnitFactory.createBrewers(),
+        CombatUnitFactory.createZurichDebtCollector(),
+      ],
+      if (turn >= 3) ...[
+        CombatUnitFactory.createFleshGolem(),
+        CombatUnitFactory.createMasonicSapper(),
+        CombatUnitFactory.createRoyalistStandardBearer(),
+      ],
+      if (turn >= 4) ...[
+        CombatUnitFactory.createArmoredCar(),
+        CombatUnitFactory.createFenianNightRaider(),
+        CombatUnitFactory.createSacredGeometry(),
+      ],
+      if (turn >= 5) ...[
+        CombatUnitFactory.createWitch(),
+        CombatUnitFactory.createForesterHerbalist(),
+        CombatUnitFactory.createElixirOfVitality(),
+      ],
+      if (turn >= 6) ...[
+        CombatUnitFactory.createWerewolf(),
+        CombatUnitFactory.createTemplarPyreKnight(),
+        CombatUnitFactory.createGreekFireFlask(),
+      ],
+      if (turn >= 7) ...[
+        CombatUnitFactory.createHag(),
+        CombatUnitFactory.createCarbonariArsonist(),
+        CombatUnitFactory.createRevolutionaryMartyr(),
+      ],
+      if (turn >= 8) ...[
+        CombatUnitFactory.createWarlock(),
+        CombatUnitFactory.createHermeticMesmerist(),
+        CombatUnitFactory.createAstralHypnosis(),
+      ],
       if (turn >= 9) ...[
         CombatUnitFactory.createStampede(),
         CombatUnitFactory.createChimera(),
         CombatUnitFactory.createGatlingGun(),
+        CombatUnitFactory.createVaultAssassin(),
+        CombatUnitFactory.createHomunculusBehemoth(),
+        CombatUnitFactory.createRoyalistCuirassier(),
+        CombatUnitFactory.createInsurgentCell(),
+        CombatUnitFactory.createForesterBeastmaster(),
       ],
     ];
 

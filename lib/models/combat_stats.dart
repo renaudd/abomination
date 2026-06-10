@@ -31,19 +31,27 @@ enum CombatTrait {
   none,
   magicImmune,
   fireVulnerable,
+  fireResistant,
+  fireImmune,
+  poisonImmune,
   constantHeal,
+  poisonAttack,
+  fireAttack,
 }
 
 enum DeathknellEffect {
   none,
   explosion,
   mindControl,
+  dropFunds,
 }
 
 enum BattlehornEffect {
   none,
   charge,
   heal,
+  speedBuff,
+  rallyAttackSpeed,
 }
 
 @immutable
