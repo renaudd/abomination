@@ -2059,9 +2059,16 @@ class CombatManager extends ChangeNotifier {
           executeSpecial(c.npc.id);
         }
       }
-    }
-    if (c.npc.isPlayer) {
-      c.specialCharge2 = min(1.0, c.specialCharge2 + dt / 25.0);
+    final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+    if (specials.length >= 2) {
+      final secAbility = specials[1];
+      final chargeInc = dt / (secAbility.chargeTime ?? 15.0);
+      c.specialCharge2 = min(1.0, c.specialCharge2 + chargeInc);
+      if (c.specialCharge2 >= 1.0 && (c.side == CombatSide.enemy || (isSurvivalMode && !c.npc.isPlayer))) {
+        if (canExecuteSpecial2(c.npc.id)) {
+          executeSpecial2(c.npc.id);
+        }
+      }
     }
 
     if (c.chargeDurationRemaining > 0.0) {
@@ -3364,27 +3371,30 @@ class CombatManager extends ChangeNotifier {
     target.freezeTimer = duration;
   }
 
-  bool canExecuteSpecial(String combatantId) {
-    final c = _combatants.firstWhere(
-      (c) => c.npc.id == combatantId,
-      orElse: () => _combatants.first,
-    );
-    if (c.isDead || c.npc.specialCharge < 1.0) return false;
-
-    final special = c.npc.abilities.firstWhere(
-      (a) => a.type == AbilityType.special,
-      orElse: () => const Ability(
-        id: 'none',
-        name: 'None',
-        type: AbilityType.trait,
-        description: 'No ability',
-      ),
-    );
-    if (special.id == 'none') return false;
-
-    switch (special.id) {
+  bool _canExecuteAbility(Combatant c, Ability ability) {
+    switch (ability.id) {
+      case 'freeze_all':
+      case 'whirlwind_melee':
+      case 'vampiric_drain':
+      case 'tight_slow':
+      case 'mind_control_nearest':
+      case 'quake_push':
+      case 'attack_debuff':
+      case 'push_back':
+      case 'captain_strike':
+      case 'slinger_cloud':
+      case 'digger_bury':
+      case 'hound_leap':
+      case 'golem_slam':
+      case 'corpse_arc':
+      case 'freeze_line':
+      case 'ap_steal':
+      case 'undead_rot':
+      case 'magical_howl':
+      case 'dragon_breath':
+        return _combatants.any((other) => other.side != c.side && !other.isDead);
       case 'execute_low_health':
-        final threshold = (special.effectData['threshold'] as num).toDouble();
+        final threshold = (ability.effectData['threshold'] as num?)?.toDouble() ?? 0.4;
         const range = 12.0; // Melee execution range
         return _combatants.any(
           (other) =>
@@ -3402,7 +3412,7 @@ class CombatManager extends ChangeNotifier {
       case 'master_command':
       case 'captain_rally':
       case 'monk_chant':
-        final range = (special.effectData['range'] as num).toDouble();
+        final range = (ability.effectData['range'] as num?)?.toDouble() ?? 30.0;
         return _combatants.any(
           (other) =>
               other.side == c.side &&
@@ -3410,66 +3420,6 @@ class CombatManager extends ChangeNotifier {
               !other.isDead &&
               (other.x - c.x).abs() <= range,
         );
-      case 'push_back':
-      case 'captain_strike':
-      case 'slinger_cloud':
-      case 'digger_bury':
-      case 'hound_leap':
-      case 'golem_slam':
-      case 'corpse_arc':
-        final range = (c.npc.combatStats?.distance ?? 1.0) * 3.28;
-        return _combatants.any(
-          (other) =>
-              other.side != c.side &&
-              !other.isDead &&
-              (other.x - c.x).abs() <= range,
-        );
-      case 'freeze_line':
-      case 'ap_steal':
-        // These are always valid if there are ANY enemies
-        return _combatants.any(
-          (other) => other.side != c.side && !other.isDead,
-        );
-      case 'undead_rot':
-        return _combatants.any(
-          (other) =>
-              other.side != c.side &&
-              !other.isDead &&
-              (sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) -
-                      c.npc.combatStats!.radius -
-                      other.npc.combatStats!.radius) <=
-                  25.0,
-        );
-      case 'magical_howl':
-        return _combatants.any(
-          (other) =>
-              other.side != c.side &&
-              !other.isDead &&
-              (sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) -
-                      c.npc.combatStats!.radius -
-                      other.npc.combatStats!.radius) <=
-                  20.0,
-        );
-      case 'dragon_breath':
-        return _combatants.any(
-          (other) => other.side != c.side && !other.isDead && (other.x - c.x).abs() <= 30.0,
-        );
-      case 'witch_charge_heal':
-        return _combatants.any(
-          (other) =>
-              other.side == c.side &&
-              other != c &&
-              !other.isDead &&
-              sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= 9.0,
-        );
-      case 'freeze_all':
-      case 'whirlwind_melee':
-      case 'vampiric_drain':
-      case 'tight_slow':
-      case 'mind_control_nearest':
-      case 'quake_push':
-      case 'attack_debuff':
-        return _combatants.any((other) => other.side != c.side && !other.isDead);
       case 'sacrifice_resummon':
         return _combatants.any((other) => other.side == c.side && other != c && !other.isDead && !other.npc.isPlayer && (other.npc.combatStats!.health / other.npc.combatStats!.maxHealth) < 0.5);
       case 'aoe_invulnerability':
@@ -3477,6 +3427,7 @@ class CombatManager extends ChangeNotifier {
       case 'attack_buff':
       case 'aoe_heal':
       case 'health_transmute':
+      case 'witch_charge_heal':
         return _combatants.any((other) => other.side == c.side && other != c && !other.isDead);
       case 'self_invulnerability':
         return !c.isInvulnerable;
@@ -3485,52 +3436,42 @@ class CombatManager extends ChangeNotifier {
     }
   }
 
+  bool canExecuteSpecial(String combatantId) {
+    final c = _combatants.firstWhereOrNull((c) => c.npc.id == combatantId);
+    if (c == null || c.isDead || c.npc.specialCharge < 1.0) return false;
+    final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+    if (specials.isEmpty) return false;
+    return _canExecuteAbility(c, specials[0]);
+  }
+
   void executeSpecial(String combatantId) {
     if (!canExecuteSpecial(combatantId)) return;
-    
-    final c = _combatants.firstWhere(
-      (c) => c.npc.id == combatantId,
-      orElse: () => _combatants.first,
-    );
-
-    final special = c.npc.abilities.firstWhere(
-      (a) => a.type == AbilityType.special,
-    );
-    _applyAbilityEffect(c, special);
-
-    c.npc = c.npc.copyWith(specialCharge: 0.0);
-    notifyListeners();
+    final c = _combatants.firstWhere((c) => c.npc.id == combatantId);
+    final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+    if (specials.isNotEmpty) {
+      _applyAbilityEffect(c, specials[0]);
+      c.npc = c.npc.copyWith(specialCharge: 0.0);
+      notifyListeners();
+    }
   }
 
   bool canExecuteSpecial2(String combatantId) {
     final c = _combatants.firstWhereOrNull((c) => c.npc.id == combatantId);
-    if (c == null || c.specialCharge2 < 1.0 || c.isDead) return false;
-    return _combatants.any((other) => other.side != c.side && !other.isDead);
+    if (c == null || c.isDead || c.specialCharge2 < 1.0) return false;
+    final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+    if (specials.length < 2) return false;
+    return _canExecuteAbility(c, specials[1]);
   }
 
   void executeSpecial2(String combatantId) {
     if (!canExecuteSpecial2(combatantId)) return;
-
     final c = _combatants.firstWhere((c) => c.npc.id == combatantId);
-    final enemies = _combatants.where((other) => other.side != c.side && !other.isDead).toList();
-    if (enemies.isNotEmpty) {
-      enemies.sort((a, b) {
-        final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
-        final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
-        return distA.compareTo(distB);
-      });
-      final target = enemies.first;
-      
-      _applyDamage(c, target, 150.0);
-      _applyFreeze(target, 4.0); // 4s stun
-      
-      _addLog('${c.npc.name} cast Lightning Strike on ${target.npc.name}!', side: c.side);
-      _addFloatingMessage(target, 'STUNNED', Colors.yellowAccent);
-      _addFloatingMessage(target, '-150', Colors.red);
+    final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+    if (specials.length >= 2) {
+      _applyAbilityEffect(c, specials[1]);
+      c.specialCharge2 = 0.0;
+      notifyListeners();
     }
-
-    c.specialCharge2 = 0.0;
-    notifyListeners();
   }
 
   void setPlayerTarget(String enemyId) {
