@@ -2118,6 +2118,10 @@ class CombatUnitFactory {
     role: 'Commander',
     metadata: const {'faction': 'Freemasons', 'cardType': 'hiram_abiff', 'description': 'Grand Architect of the Masonic Order. Fortifies nearby structures with unyielding sacred geometry.'},
     combatStats: const CombatStats(attack: 45, health: 450, maxHealth: 450, speed: 1.4, movement: 3.5, distance: 1.5, defense: 5, cost: 0, trait: CombatTrait.constantHeal),
+    abilities: const [
+      Ability(id: 'aoe_invulnerability', name: 'Sacred Dome', type: AbilityType.special, chargeTime: 12.0, description: 'Makes friendly units within a significant radius immune to all damage for 4.5s'),
+      Ability(id: 'quake_push', name: 'Masonic Quake', type: AbilityType.trait, description: 'Damages and pushes back closest opposing troops'),
+    ],
   );
   static NPC createMasonicSapper() => createHalberdiers().copyWith(
     id: _generateId('masonic_sapper'),
@@ -2139,8 +2143,12 @@ class CombatUnitFactory {
     id: 'christian_rosenkreuz',
     name: 'Magus Rosenkreuz',
     role: 'Commander',
-    metadata: const {'faction': 'Rosicrucians', 'cardType': 'christian_rosenkreuz', 'description': 'Legendary mystic and occult alchemist. Wields esoteric toxin attacks that corrupt the enemy\'s life force.'},
+    metadata: const {'faction': 'Rosicrucians', 'cardType': 'christian_rosenkreuz', 'description': 'Legendary mystic and occult alchemist. Wields alchemical healing mists and vitality transmutation.'},
     combatStats: const CombatStats(attack: 38, health: 380, maxHealth: 380, speed: 1.2, movement: 3.8, distance: 12.0, cost: 0, trait: CombatTrait.poisonAttack),
+    abilities: const [
+      Ability(id: 'aoe_heal', name: 'Alchemical Mist', type: AbilityType.special, chargeTime: 10.0, description: 'Heals all friendly units within a significant radius'),
+      Ability(id: 'health_transmute', name: 'Vitality Transmutation', type: AbilityType.trait, description: 'Significantly increases health and maximum health of nearest friendly troop'),
+    ],
   );
   static NPC createHomunculusBehemoth() => createFleshGolem().copyWith(
     id: _generateId('homunculus_behemoth'),
@@ -2162,8 +2170,12 @@ class CombatUnitFactory {
     id: 'jacques_de_molay',
     name: 'Grand Prior Jacques',
     role: 'Commander',
-    metadata: const {'faction': 'Knights Templar', 'cardType': 'jacques_de_molay', 'description': 'Unyielding zealot commander of the holy priorate. Completely immune to incendiary warfare.'},
+    metadata: const {'faction': 'Knights Templar', 'cardType': 'jacques_de_molay', 'description': 'Unyielding zealot commander of the holy priorate. Wields holy pyre whirlwind cuts.'},
     combatStats: const CombatStats(attack: 52, health: 420, maxHealth: 420, speed: 1.3, movement: 3.6, distance: 1.5, defense: 6, cost: 0, trait: CombatTrait.fireImmune),
+    abilities: const [
+      Ability(id: 'whirlwind_melee', name: 'Holy Pyre Whirlwind', type: AbilityType.special, chargeTime: 10.0, description: 'Whirlwind melee attack hitting all nearby enemies in a tight circle with high damage'),
+      Ability(id: 'attack_buff', name: 'Crusader Zeal', type: AbilityType.trait, description: 'Increases melee attack strength of all friendly units for a short period'),
+    ],
   );
   static NPC createTemplarPyreKnight() => createSamurai().copyWith(
     id: _generateId('templar_pyre_knight'),
@@ -2185,8 +2197,12 @@ class CombatUnitFactory {
     id: 'banker_rothschild',
     name: 'High Banker Rothschild',
     role: 'Commander',
-    metadata: const {'faction': 'Gnomes of Zurich', 'cardType': 'banker_rothschild', 'description': 'Director of the subterranean financial syndicates. Directs elite headhunters to neutralize rival leadership.'},
+    metadata: const {'faction': 'Gnomes of Zurich', 'cardType': 'banker_rothschild', 'description': 'Director of subterranean financial syndicates. Eliminates low-health troops to reinvest and resummon fresh squads.'},
     combatStats: const CombatStats(attack: 40, health: 400, maxHealth: 400, speed: 1.1, movement: 3.8, distance: 10.0, cost: 0),
+    abilities: const [
+      Ability(id: 'sacrifice_resummon', name: 'Asset Liquidation', type: AbilityType.special, chargeTime: 15.0, description: 'Eliminates a friendly troop with low health (<50%) and resummons its full squad card'),
+      Ability(id: 'self_invulnerability', name: 'Golden Shield', type: AbilityType.trait, description: 'Makes the leader immune to all damage for 4.5s'),
+    ],
   );
   static NPC createVaultAssassin() => createSniper().copyWith(
     id: _generateId('vault_assassin'),
@@ -2208,8 +2224,12 @@ class CombatUnitFactory {
     id: 'alta_vendita',
     name: 'Grand Master Alta Vendita',
     role: 'Commander',
-    metadata: const {'faction': 'Carbonari', 'cardType': 'alta_vendita', 'description': 'Charcoal-burning revolutionary agitator. Commands volatile arsonists and self-sacrificing insurgents.'},
+    metadata: const {'faction': 'Carbonari', 'cardType': 'alta_vendita', 'description': 'Charcoal-burning revolutionary agitator. Commands pitch siphoning and long-range ballistics.'},
     combatStats: const CombatStats(attack: 48, health: 410, maxHealth: 410, speed: 1.3, movement: 4.0, distance: 1.5, cost: 0, trait: CombatTrait.fireAttack),
+    abilities: const [
+      Ability(id: 'vampiric_drain', name: 'Pitch Siphon', type: AbilityType.special, chargeTime: 12.0, description: 'Harms all enemy units inside moderate tear-gas radius and heals leader by damage inflicted'),
+      Ability(id: 'range_buff', name: 'Long-Range Ballistics', type: AbilityType.trait, description: 'Increases shooting range of all friendly ranged troops for a short period'),
+    ],
   );
   static NPC createCarbonariArsonist() => createCannoneer().copyWith(
     id: _generateId('carbonari_arsonist'),
@@ -2231,8 +2251,12 @@ class CombatUnitFactory {
     id: 'aleister_crowley',
     name: 'Imperator Crowley',
     role: 'Commander',
-    metadata: const {'faction': 'Golden Dawn', 'cardType': 'aleister_crowley', 'description': 'Master of the Hermetic Order. Manipulates astral currents to subvert the free will of enemy forces.'},
+    metadata: const {'faction': 'Golden Dawn', 'cardType': 'aleister_crowley', 'description': 'Master of the Hermetic Order. Seizes cognitive control of rival troops and subverts enemy willpower.'},
     combatStats: const CombatStats(attack: 42, health: 390, maxHealth: 390, speed: 1.3, movement: 3.6, distance: 14.0, cost: 0, trait: CombatTrait.magicImmune),
+    abilities: const [
+      Ability(id: 'mind_control_nearest', name: 'Esoteric Mesmerism', type: AbilityType.special, chargeTime: 14.0, description: 'Seizes control of nearest enemy unit for 4.5s'),
+      Ability(id: 'attack_debuff', name: 'Willpower Drain', type: AbilityType.trait, description: 'Significantly decreases strength of all enemy unit attacks for 2.3s'),
+    ],
   );
   static NPC createHermeticMesmerist() => createWarlock().copyWith(
     id: _generateId('hermetic_mesmerist'),
@@ -2254,8 +2278,12 @@ class CombatUnitFactory {
     id: 'james_stephens',
     name: 'Head Centre Stephens',
     role: 'Commander',
-    metadata: const {'faction': 'Fenian Brotherhood', 'cardType': 'james_stephens', 'description': 'Insurgent guerilla commander. Directs clandestine night raiders and rapid cell reinforcements.'},
+    metadata: const {'faction': 'Fenian Brotherhood', 'cardType': 'james_stephens', 'description': 'Insurgent guerilla commander. Deploys binding guerilla caltrops and midnight stun volleys.'},
     combatStats: const CombatStats(attack: 50, health: 410, maxHealth: 410, speed: 1.1, movement: 4.4, distance: 1.5, cost: 0),
+    abilities: const [
+      Ability(id: 'tight_slow', name: 'Guerilla Caltrops', type: AbilityType.special, chargeTime: 10.0, description: 'Slows all enemies in a tight circle around leader for 9 seconds'),
+      Ability(id: 'freeze_all', name: 'Midnight Stun', type: AbilityType.trait, description: 'Freezes all enemy units on the battlefield for 2.3s'),
+    ],
   );
   static NPC createFenianNightRaider() => createCommandos().copyWith(
     id: _generateId('fenian_night_raider'),
@@ -2277,8 +2305,12 @@ class CombatUnitFactory {
     id: 'ferdinand_de_bertier',
     name: 'Ferdinand de Bertier',
     role: 'Commander',
-    metadata: const {'faction': 'Chevaliers de la foi', 'cardType': 'ferdinand_de_bertier', 'description': 'Ultra-royalist grand banneret. Commands impenetrable armored cavalry and inspirational standard bearers.'},
+    metadata: const {'faction': 'Chevaliers de la foi', 'cardType': 'ferdinand_de_bertier', 'description': 'Ultra-royalist grand banneret. Commands divine providence invulnerability and royalist melee buffs.'},
     combatStats: const CombatStats(attack: 55, health: 460, maxHealth: 460, speed: 1.4, movement: 3.8, distance: 1.5, defense: 6, cost: 0, trait: CombatTrait.fireImmune),
+    abilities: const [
+      Ability(id: 'aoe_invulnerability', name: 'Divine Providence', type: AbilityType.special, chargeTime: 14.0, description: 'Grants invulnerability aura to nearby allies for 4.5s'),
+      Ability(id: 'attack_buff', name: 'Royalist Banner', type: AbilityType.trait, description: 'Increases melee attack strength of nearby friendly units'),
+    ],
   );
   static NPC createRoyalistCuirassier() => createCavalry().copyWith(
     id: _generateId('royalist_cuirassier'),
@@ -2300,8 +2332,12 @@ class CombatUnitFactory {
     id: 'chief_ranger_robin',
     name: 'Chief Ranger Robin',
     role: 'Commander',
-    metadata: const {'faction': 'Ancient Order of Foresters', 'cardType': 'chief_ranger_robin', 'description': 'Grand Druid of the Foresters. Unleashes venomous arrows and directs fierce beasts of the deep woods.'},
+    metadata: const {'faction': 'Ancient Order of Foresters', 'cardType': 'chief_ranger_robin', 'description': 'Grand Druid of the Foresters. Unleashes longbow range volleys and thicket repulsion.'},
     combatStats: const CombatStats(attack: 46, health: 420, maxHealth: 420, speed: 1.1, movement: 4.2, distance: 15.0, cost: 0, trait: CombatTrait.poisonAttack),
+    abilities: const [
+      Ability(id: 'range_buff', name: 'Longbow Volley', type: AbilityType.special, chargeTime: 12.0, description: 'Increases shooting range of all friendly ranged troops'),
+      Ability(id: 'quake_push', name: 'Thicket Repulsion', type: AbilityType.trait, description: 'Damages and pushes back closest opposing troops'),
+    ],
   );
   static NPC createForesterHerbalist() => createWitch().copyWith(
     id: _generateId('forester_herbalist'),

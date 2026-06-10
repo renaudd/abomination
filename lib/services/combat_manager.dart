@@ -111,6 +111,18 @@ class Combatant {
   double attackSpeedBuffMultiplier = 1.0;
   double attackSpeedBuffDurationRemaining = 0.0;
 
+  bool isInvulnerable = false;
+  double invulnerableDurationRemaining = 0.0;
+
+  double rangeBuffMultiplier = 1.0;
+  double rangeBuffDurationRemaining = 0.0;
+
+  double attackBuffMultiplier = 1.0;
+  double attackBuffDurationRemaining = 0.0;
+
+  double damageDebuffMultiplier = 1.0;
+  double damageDebuffDurationRemaining = 0.0;
+
   Combatant({
     required this.npc,
     required this.side,
@@ -1894,6 +1906,23 @@ class CombatManager extends ChangeNotifier {
         c.attackSpeedBuffDurationRemaining -= dt;
         if (c.attackSpeedBuffDurationRemaining <= 0) c.attackSpeedBuffMultiplier = 1.0;
       }
+
+      if (c.isInvulnerable) {
+        c.invulnerableDurationRemaining -= dt;
+        if (c.invulnerableDurationRemaining <= 0) c.isInvulnerable = false;
+      }
+      if (c.rangeBuffDurationRemaining > 0) {
+        c.rangeBuffDurationRemaining -= dt;
+        if (c.rangeBuffDurationRemaining <= 0) c.rangeBuffMultiplier = 1.0;
+      }
+      if (c.attackBuffDurationRemaining > 0) {
+        c.attackBuffDurationRemaining -= dt;
+        if (c.attackBuffDurationRemaining <= 0) c.attackBuffMultiplier = 1.0;
+      }
+      if (c.damageDebuffDurationRemaining > 0) {
+        c.damageDebuffDurationRemaining -= dt;
+        if (c.damageDebuffDurationRemaining <= 0) c.damageDebuffMultiplier = 1.0;
+      }
     }
 
     // A-1b. Standard Deployment Timer ticking
@@ -2726,22 +2755,18 @@ class CombatManager extends ChangeNotifier {
 
     // Damage calculation
     double damage;
+    final double buffMult = attacker.attackBuffMultiplier * attacker.damageDebuffMultiplier;
     if (attacker.npc.name.contains('Cannoneer')) {
-      final isTowerOrVehicle =
-          target.isTower || targetStats.unitType == UnitType.vehicle;
-      damage = isTowerOrVehicle ? 115.0 : 75.0;
-    } else if (stats.damageFormula != null &&
-        stats.damageFormula!.contains('-')) {
+      final isTowerOrVehicle = target.isTower || targetStats.unitType == UnitType.vehicle;
+      damage = (isTowerOrVehicle ? 115.0 : 75.0) * buffMult;
+    } else if (stats.damageFormula != null && stats.damageFormula!.contains('-')) {
       final parts = stats.damageFormula!.split('-');
       final minDmg = double.tryParse(parts[0]) ?? stats.attack;
       final maxDmg = double.tryParse(parts[1]) ?? stats.attack * 1.5;
       damage = minDmg + Random().nextDouble() * (maxDmg - minDmg);
-      damage = max(1.0, damage - targetStats.defense);
+      damage = max(1.0, (damage * buffMult) - targetStats.defense);
     } else {
-      damage = max(
-        1.0,
-        (stats.attack - targetStats.defense) * 1.5,
-      );
+      damage = max(1.0, ((stats.attack * buffMult) - targetStats.defense) * 1.5);
     }
 
     if (targetStats.swarmSize > 0) {
@@ -3156,14 +3181,178 @@ class CombatManager extends ChangeNotifier {
 
       case 'ap_steal':
         final amount = (ability.effectData['steal_ap'] as num).toDouble();
-        // In this simplified model, AP is global for the player.
-        // If we want to simulate enemy AP, we could decrease it there,
-        // but for now we just give it to the player.
         _actionPoints = min(maxAP, _actionPoints + amount);
-        _addLog(
-          '${c.npc.name} stole ${amount.toStringAsFixed(1)} Action Points!',
-          side: c.side,
-        );
+        _addLog('${c.npc.name} stole ${amount.toStringAsFixed(1)} Action Points!', side: c.side);
+        break;
+
+      case 'freeze_all': // 1) freezing all enemy units for a very short period of time (~2.3 seconds)
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        for (final t in enemies) {
+          _applyFreeze(t, 2.3);
+          _addFloatingMessage(t, 'FROZEN', Colors.lightBlueAccent);
+        }
+        _addLog('${c.npc.name} cast Esoteric Stun on all enemies!', side: c.side);
+        break;
+
+      case 'sacrifice_resummon': // 2) eliminating a friendly troop with low (<50% total) health and resummoning that troop's model card
+        final allies = _combatants.where((other) => other.side == c.side && other != c && !other.isDead && !other.npc.isPlayer).toList();
+        if (allies.isNotEmpty) {
+          final eligible = allies.where((a) => (a.npc.combatStats!.health / a.npc.combatStats!.maxHealth) < 0.5).toList();
+          if (eligible.isNotEmpty) {
+            final target = eligible.first;
+            final card = target.npc;
+            _onCombatantDeath(target, c);
+            spawnUnit(card, c.side, x: c.x, y: c.y);
+            _addFloatingMessage(c, 'SACRIFICE REBIRTH', Colors.yellowAccent);
+            _addLog('${c.npc.name} sacrificed ${target.npc.name} to resummon a full squad!', side: c.side);
+          }
+        }
+        break;
+
+      case 'aoe_invulnerability': // 3) making all friendly units within a significant radius immune to all damage for a short period
+        final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
+        for (final t in allies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 30.0) {
+            t.isInvulnerable = true;
+            t.invulnerableDurationRemaining = 4.5;
+            _addFloatingMessage(t, 'DIVINE SHIELD', Colors.yellowAccent);
+          }
+        }
+        _addLog('${c.npc.name} cast Divine Protection!', side: c.side);
+        break;
+
+      case 'whirlwind_melee': // 4) a whirlwind melee attack that hits all enemies in a tight circle around the player with high damage.
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        for (final t in enemies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 15.0) {
+            _applyDamage(c, t, 120.0);
+            _addFloatingMessage(t, 'WHIRLWIND', Colors.deepOrangeAccent);
+          }
+        }
+        _addLog('${c.npc.name} executed a lethal Whirlwind Melee!', side: c.side);
+        break;
+
+      case 'range_buff': // 5) increase the range of all friendly ranged units for a short period.
+        final allies = _combatants.where((other) => other.side == c.side && !other.isDead && (other.npc.combatStats?.distance ?? 1.0) > 2.0);
+        for (final t in allies) {
+          t.rangeBuffMultiplier = 1.5;
+          t.rangeBuffDurationRemaining = 8.0;
+          _addFloatingMessage(t, '+RANGE', Colors.cyanAccent);
+        }
+        _addLog('${c.npc.name} boosted ally shooting range!', side: c.side);
+        break;
+
+      case 'attack_buff': // 6) increase the melee attack strength of all friendly units for a short period.
+        final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
+        for (final t in allies) {
+          t.attackBuffMultiplier = 1.5;
+          t.attackBuffDurationRemaining = 8.0;
+          _addFloatingMessage(t, '+ATTACK', Colors.redAccent);
+        }
+        _addLog('${c.npc.name} rallied ally melee strength!', side: c.side);
+        break;
+
+      case 'aoe_heal': // 7) heal all units within a significant radius.
+        final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
+        for (final t in allies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 35.0) {
+            final stats = t.npc.combatStats!;
+            t.npc = t.npc.copyWith(combatStats: stats.copyWith(health: min(stats.maxHealth, stats.health + 80.0)));
+            _addFloatingMessage(t, '+80', Colors.greenAccent);
+          }
+        }
+        _addLog('${c.npc.name} released a healing aura!', side: c.side);
+        break;
+
+      case 'vampiric_drain': // 8) harm all enemy units within a moderate (tear gas grenade-sized) circle around the leader and heal the leader by the amount of damage inflicted.
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        double totalDrain = 0.0;
+        for (final t in enemies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 18.0) {
+            _applyDamage(c, t, 60.0);
+            totalDrain += 60.0;
+            _addFloatingMessage(t, 'DRAINED', Colors.purple);
+          }
+        }
+        if (totalDrain > 0) {
+          final stats = c.npc.combatStats!;
+          c.npc = c.npc.copyWith(combatStats: stats.copyWith(health: min(stats.maxHealth, stats.health + totalDrain)));
+          _addFloatingMessage(c, '+${totalDrain.toInt()} HP', Colors.greenAccent);
+        }
+        _addLog('${c.npc.name} siphoned enemy life force!', side: c.side);
+        break;
+
+      case 'tight_slow': // 9) slow all enemies in a tight circle around the leader for a moderate length of time (~9 seconds).
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        for (final t in enemies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 15.0) {
+            t.gasSlowTimer = 9.0;
+            _addFloatingMessage(t, 'SLOWED', Colors.amberAccent);
+          }
+        }
+        _addLog('${c.npc.name} deployed binding caltrops!', side: c.side);
+        break;
+
+      case 'self_invulnerability': // 10) make the leader immune to all damage for a short length of time (~4.5 seconds).
+        c.isInvulnerable = true;
+        c.invulnerableDurationRemaining = 4.5;
+        _addFloatingMessage(c, 'IMMUNE', Colors.amber);
+        _addLog('${c.npc.name} became invulnerable!', side: c.side);
+        break;
+
+      case 'mind_control_nearest': // 11) take control of the nearest enemy unit for a short length of time (~4.5 seconds).
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead && !other.isTower && !other.isAiLeader).toList();
+        if (enemies.isNotEmpty) {
+          enemies.sort((a, b) => sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2)).compareTo(sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2))));
+          final t = enemies.first;
+          t.isMindControlled = true;
+          t.originalSide = t.side;
+          t.side = c.side;
+          t.mindControlDurationRemaining = 4.5;
+          _addFloatingMessage(t, 'HYPNOTIZED', Colors.pinkAccent);
+          _addLog('${c.npc.name} seized control of ${t.npc.name}!', side: c.side);
+        }
+        break;
+
+      case 'quake_push': // 12) damage and push back all of the closest enemy troops.
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead).toList();
+        for (final t in enemies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 20.0) {
+            final dir = t.x > c.x ? 1.0 : -1.0;
+            t.x += dir * 18.0;
+            _applyDamage(c, t, 50.0);
+            _addFloatingMessage(t, 'REPELLED', Colors.orangeAccent);
+          }
+        }
+        _addLog('${c.npc.name} repelled nearby troops!', side: c.side);
+        break;
+
+      case 'health_transmute': // 13) Increase the health and maximum health of the nearest friendly troop by a significant amount.
+        final allies = _combatants.where((other) => other.side == c.side && other != c && !other.isDead).toList();
+        if (allies.isNotEmpty) {
+          allies.sort((a, b) => sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2)).compareTo(sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2))));
+          final t = allies.first;
+          final stats = t.npc.combatStats!;
+          t.npc = t.npc.copyWith(combatStats: stats.copyWith(maxHealth: stats.maxHealth + 150.0, health: stats.health + 150.0));
+          _addFloatingMessage(t, '+150 MAX HP', Colors.green);
+          _addLog('${c.npc.name} fortified ${t.npc.name}!', side: c.side);
+        }
+        break;
+
+      case 'attack_debuff': // 14) significantly decrease the strength of all enemy unit attacks for a very short length of time (2.3 seconds).
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        for (final t in enemies) {
+          t.damageDebuffMultiplier = 0.5;
+          t.damageDebuffDurationRemaining = 2.3;
+          _addFloatingMessage(t, 'WEAKENED', Colors.grey);
+        }
+        _addLog('${c.npc.name} dampened enemy attack power!', side: c.side);
         break;
     }
   }
@@ -3273,6 +3462,24 @@ class CombatManager extends ChangeNotifier {
               !other.isDead &&
               sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= 9.0,
         );
+      case 'freeze_all':
+      case 'whirlwind_melee':
+      case 'vampiric_drain':
+      case 'tight_slow':
+      case 'mind_control_nearest':
+      case 'quake_push':
+      case 'attack_debuff':
+        return _combatants.any((other) => other.side != c.side && !other.isDead);
+      case 'sacrifice_resummon':
+        return _combatants.any((other) => other.side == c.side && other != c && !other.isDead && !other.npc.isPlayer && (other.npc.combatStats!.health / other.npc.combatStats!.maxHealth) < 0.5);
+      case 'aoe_invulnerability':
+      case 'range_buff':
+      case 'attack_buff':
+      case 'aoe_heal':
+      case 'health_transmute':
+        return _combatants.any((other) => other.side == c.side && other != c && !other.isDead);
+      case 'self_invulnerability':
+        return !c.isInvulnerable;
       default:
         return true;
     }
@@ -3373,10 +3580,14 @@ class CombatManager extends ChangeNotifier {
   }
 
   void applyDirectDamage(Combatant target, double damage, String attackerId) {
-    if (target.isDead || target.isNonPhysicalSupport) return;
+    if (target.isDead || target.isNonPhysicalSupport || target.isInvulnerable) {
+      if (target.isInvulnerable && !target.isDead) _addFloatingMessage(target, 'BLOCKED', Colors.yellowAccent);
+      return;
+    }
     final attacker = _combatants.firstWhereOrNull((c) => c.npc.id == attackerId);
     final targetStats = target.npc.combatStats!;
-    final actualDamage = max(1.0, damage - targetStats.defense);
+    final double dmgVal = damage * (attacker?.attackBuffMultiplier ?? 1.0) * (attacker?.damageDebuffMultiplier ?? 1.0);
+    final actualDamage = max(1.0, dmgVal - targetStats.defense);
 
     target.npc = target.npc.copyWith(
       combatStats: targetStats.copyWith(
@@ -3404,9 +3615,13 @@ class CombatManager extends ChangeNotifier {
 
 
   void _applyDamage(Combatant attacker, Combatant target, double damage) {
-    if (target.isDead || target.isNonPhysicalSupport) return;
+    if (target.isDead || target.isNonPhysicalSupport || target.isInvulnerable) {
+      if (target.isInvulnerable && !target.isDead) _addFloatingMessage(target, 'BLOCKED', Colors.yellowAccent);
+      return;
+    }
     final tStats = target.npc.combatStats!;
-    final actualDamage = max(1.0, damage - tStats.defense);
+    final double dmgVal = damage * attacker.attackBuffMultiplier * attacker.damageDebuffMultiplier;
+    final actualDamage = max(1.0, dmgVal - tStats.defense);
 
     final newHealth = max(0.0, tStats.health - actualDamage);
     target.npc = target.npc.copyWith(
