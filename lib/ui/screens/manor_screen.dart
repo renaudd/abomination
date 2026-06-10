@@ -1632,17 +1632,31 @@ class _ManorScreenState extends State<ManorScreen> {
           final activityId = parts[1];
           final itemId = parts[2];
           final item = state.inventory.firstWhereOrNull((i) => i.id == itemId);
-          final itemName = item?.name ?? "Alchemical Artifact";
+          final itemName = item?.name ?? itemId;
           if (activityId == 'generic_research') {
             label = "RESEARCH ${itemName.toUpperCase()}";
-          } else if (activityId == 'small_dissection') {
+          } else if (activityId.contains('dissection')) {
             label = "DISSECT ${itemName.toUpperCase()}";
+          } else if (activityId.contains('vivisection')) {
+            label = "VIVISECT ${itemName.toUpperCase()}";
+          } else if (activityId == 'archive_forbidden_scrolls') {
+            label = "ARCHIVE FORBIDDEN SCROLLS";
+          } else if (activityId == 'catalog_specimen_notes') {
+            label = "CATALOG SPECIMEN NOTES";
           } else {
-            label = "STUDY ${itemName.toUpperCase()}";
+            label = "${activityId.replaceAll('_', ' ').toUpperCase()} (${itemName.toUpperCase()})";
           }
         } else if (parts.length == 2) {
           final activityId = parts[1];
-          label = "RESEARCH ${activityId.toUpperCase().replaceAll('_', ' ')}";
+          if (activityId.contains('vivisection')) {
+            label = "PERFORM VIVISECTION";
+          } else if (activityId == 'archive_forbidden_scrolls') {
+            label = "ARCHIVE FORBIDDEN SCROLLS";
+          } else if (activityId == 'catalog_specimen_notes') {
+            label = "CATALOG SPECIMEN NOTES";
+          } else {
+            label = "RESEARCH ${activityId.toUpperCase().replaceAll('_', ' ')}";
+          }
         } else {
           label = "RESEARCH ${topic.toUpperCase().replaceAll('_', ' ')}";
         }

@@ -596,6 +596,328 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         'desc': 'Chemical riot control canister.\n\n'
                 '• Tactical Specs: Synthesized in Alchemical Labs. Creates a dense, blinding 15-ft vapor cloud on impact; enemy combatants caught inside suffer a 50% reduction to attack speed and movement velocity.'
       },
+
+      // ASSIGNABLE TASKS & ACTIONS (Exhaustively detailed descriptions of how all assignable actions work mechanically)
+      {
+        'title': 'Archive Forbidden Scrolls',
+        'category': 'Assignable Task',
+        'desc': 'Systematic consolidation of occult literature.\n\n'
+                '• Assignment Location: Enqueued and assigned within The Library interface.\n'
+                '• Driving Attributes: Intellect, Willpower.\n'
+                '• Activity Duration: Typical procedure requires precisely 60 minutes.\n'
+                '• Required Resources: Precisely 1 Unreviewed Document or Loose Esoteric Scroll from inventory.\n'
+                '• Mechanical Outcome: Consolidates esoteric loose scrolls into bound master tomes, generating precisely +10 Research Points in Philosophy & Esoteric Lore and improving library academic standing by +15 points.'
+      },
+      {
+        'title': 'Catalog Specimen Notes',
+        'category': 'Assignable Task',
+        'desc': 'Systematic indexing of anatomical cross-references.\n\n'
+                '• Assignment Location: Enqueued and assigned within The Library or Laboratory interface.\n'
+                '• Driving Attributes: Precision, Intellect.\n'
+                '• Activity Duration: Typical procedure requires precisely 45 minutes.\n'
+                '• Required Resources: Precisely 1 Loose Specimen Record or Rough Anatomy Notes from inventory.\n'
+                '• Mechanical Outcome: Systematically organizes biological observations, converting raw records into precisely +8 Small Creature Anatomy points and +5 Zoology points.'
+      },
+      {
+        'title': 'Fundamental Research',
+        'category': 'Assignable Task',
+        'desc': 'Theoretical reading and primary literature review.\n\n'
+                '• Assignment Location: Assigned within The Study or formal Library interface.\n'
+                '• Driving Attributes: Intellect.\n'
+                '• Activity Duration: Baseline procedure requires precisely 15 minutes.\n'
+                '• Required Resources: Hired thinkers utilize available library seating (No consumable reagents required).\n'
+                '• Mechanical Outcome: Generates a continuous flow of Universal Research Points, accelerating Discovery unlock thresholds and raising personal academic qualification.'
+      },
+      {
+        'title': 'Small Specimen Dissection',
+        'category': 'Assignable Task',
+        'desc': 'Careful post-mortem anatomical extraction.\n\n'
+                '• Assignment Location: Assigned within The Laboratory or Operating Room interface.\n'
+                '• Driving Attributes: Precision, Anatomy.\n'
+                '• Activity Duration: Typical procedure requires precisely 20 minutes.\n'
+                '• Required Resources: Precisely 1 Deceased Small Specimen (Rat, Bat, Chicken, or Fox).\n'
+                '• Mechanical Outcome: Conducts detailed post-mortem dissection. Yields 1-15 pages of Life Science knowledge (+3 Small Creature Anatomy points) and basic organic biological reagents (Meat, Bones).'
+      },
+      {
+        'title': 'Large Specimen Dissection',
+        'category': 'Assignable Task',
+        'desc': 'Intensive post-mortem biological processing.\n\n'
+                '• Assignment Location: Assigned within The Laboratory or Operating Room interface.\n'
+                '• Driving Attributes: Precision, Strength.\n'
+                '• Activity Duration: Typical procedure requires precisely 90 minutes.\n'
+                '• Required Resources: Precisely 1 Large Specimen Carcass (Cattle, Bear, Leviathan, Behemoth).\n'
+                '• Mechanical Outcome: Conducts heavy biological extraction. Yields precisely +15 Universal Anatomy points and massive bundles of Industrial Meat and Bone Meal reagents.'
+      },
+      {
+        'title': 'Small Specimen Vivisection',
+        'category': 'Assignable Task',
+        'desc': 'In-vivo biological exploration of vital organic functions.\n\n'
+                '• Assignment Location: Assigned within The Laboratory interface.\n'
+                '• Driving Attributes: Willpower, Precision.\n'
+                '• Activity Duration: Typical procedure requires precisely 45 minutes.\n'
+                '• Required Resources: Precisely 1 Live Small Specimen (Rat, Bat, or Chicken) from inventory.\n'
+                '• Mechanical Outcome: In-vivo surgical investigation of biological galvanism. Highly corrupting (+0.2 Moral Guilt to the operating character). Awards precisely +5 Small Creature Anatomy, +5 Alchemy, and +5 Zoology points. Performing two small vivisections fulfills crucial First Construct reanimation experimental milestones.'
+      },
+      {
+        'title': 'Large Specimen Vivisection',
+        'category': 'Assignable Task',
+        'desc': 'Profoundly harrowing biological and structural experimentation.\n\n'
+                '• Assignment Location: Assigned within The Laboratory interface.\n'
+                '• Driving Attributes: Willpower, Precision, Strength.\n'
+                '• Activity Duration: Typical procedure requires precisely 150 minutes.\n'
+                '• Required Resources: Precisely 1 Live Large Specimen from inventory.\n'
+                '• Mechanical Outcome: Deep exploration of organic limits. Inflicts +0.5 Moral Guilt upon the operator, but produces tremendous Life Science breakthroughs (+25 Universal Anatomy, +25 Zoology) and synthetic bio-mechanical muscle fibers.'
+      },
+      {
+        'title': 'Cognitive Puzzle Study',
+        'category': 'Assignable Task',
+        'desc': 'Non-invasive behavioral labyrinth trials.\n\n'
+                '• Assignment Location: Enqueued and assigned within The Laboratory or Study interface.\n'
+                '• Driving Attributes: Intellect, Charisma.\n'
+                '• Activity Duration: Extended study requires precisely 16 hours (960 minutes).\n'
+                '• Required Resources: Precisely 5 Live Specimens and 1 Caloric Meal ration.\n'
+                '• Mechanical Outcome: Conducts complex psychological maze solving. Advances fundamental cognitive psychology documents and yields advanced behavioral Labyrinth blueprints.'
+      },
+      {
+        'title': 'Deprivation Study',
+        'category': 'Assignable Task',
+        'desc': 'Sustained environmental and caloric withholding trials.\n\n'
+                '• Assignment Location: Enqueued and assigned within The Laboratory interface.\n'
+                '• Driving Attributes: Willpower, Intellect.\n'
+                '• Activity Duration: Prolonged trial requires precisely 40 hours (2400 minutes).\n'
+                '• Required Resources: Precisely 5 Live Specimens from inventory.\n'
+                '• Mechanical Outcome: Tests biological survival mechanisms under severe deprivation. Inflicts +0.4 Moral Guilt and carries high subject mortality, but yields foundational Zoology notes required for synthetic muscle weaving.'
+      },
+      {
+        'title': 'General Clinical Trial',
+        'category': 'Assignable Task',
+        'desc': 'Extended pharmacological and immunological testing.\n\n'
+                '• Assignment Location: Assigned within The Operating Room interface.\n'
+                '• Driving Attributes: Medicine, Precision.\n'
+                '• Activity Duration: Grand clinical trial requires precisely 120 hours (7200 minutes).\n'
+                '• Required Resources: Precisely 10 Live Specimens, 1 Botanical Herb Reagent, and 5 Meal rations.\n'
+                '• Mechanical Outcome: Exhaustive medical study. Unlocks premium pharmaceutical formulas, active disease immunity traits, and establishes undisputed regional medical authority.'
+      },
+      {
+        'title': 'Behavioral Optimization (Lobotomy)',
+        'category': 'Assignable Task',
+        'desc': 'Precise neurological response dampening.\n\n'
+                '• Assignment Location: Triggered and assigned within The Laboratory interface.\n'
+                '• Driving Attributes: Medicine, Willpower.\n'
+                '• Activity Duration: Typical surgical operation requires precisely 180 minutes.\n'
+                '• Required Resources: Precisely 1 Resident Staff Occupant present on estate.\n'
+                '• Mechanical Outcome: Dampens volatile emotional sub-routines. Halves the subject\'s psychological stress sensitivity and doubles physical manual labor compliance, but decreases independent creative invention capabilities.'
+      },
+      {
+        'title': 'Reanimation Procedure',
+        'category': 'Assignable Task',
+        'desc': 'Galvanic stirring of the vital organic spark.\n\n'
+                '• Assignment Location: Selected and initiated within The Laboratory experimental options.\n'
+                '• Driving Attributes: Alchemy, Anatomy.\n'
+                '• Activity Duration: Galvanic procedure requires precisely 240 minutes (4 hours).\n'
+                '• Required Resources: Precisely 1 Deceased or Prepared Resident Subject and 100 Volts stored Galvanic Charge.\n'
+                '• Mechanical Outcome: The pinnacle of life science. Applies concentrated galvanic voltage to dead organic tissue to achieve genuine living reanimation. Successfully completing this procedure transforms the subject into an immortal Construct entity, fulfilling Step 4 of The First Construct mission.'
+      },
+      {
+        'title': 'Biological Transmutation',
+        'category': 'Assignable Task',
+        'desc': 'Weaving synthetic artificial muscle fibers directly into an organic host.\n\n'
+                '• Assignment Location: Selected and initiated within The Laboratory experimental options.\n'
+                '• Driving Attributes: Alchemy, Medicine.\n'
+                '• Activity Duration: Intensive procedure requires precisely 300 minutes (5 hours).\n'
+                '• Required Resources: Precisely 1 Resident Subject and Advanced Bio-Mechanical Reagents.\n'
+                '• Mechanical Outcome: Permanently alters the biological foundation of the host, increasing physical Melee Strength by +25 and granting +150 Maximum HP.'
+      },
+      {
+        'title': 'Prepare Sustenance Meals',
+        'category': 'Assignable Task',
+        'desc': 'Culinary transformation of raw agricultural harvests into edible rations.\n\n'
+                '• Assignment Location: Assigned within The Kitchen & Scullery interface.\n'
+                '• Driving Attributes: Dexterity, Speed.\n'
+                '• Activity Duration: Typical dietary recipe requires precisely 30 to 60 minutes.\n'
+                '• Required Resources: Raw Foodstuffs (Potatoes, Wheat Flour, Raw Fish, Fresh Game).\n'
+                '• Mechanical Outcome: Fulfills estate dining contracts. Yields precisely 3 edible daily meals per raw Food harvest unit processed, fully preventing resident starvation and restoring +5 Satisfaction per meal eaten.'
+      },
+      {
+        'title': 'Butcher Animal Carcasses',
+        'category': 'Assignable Task',
+        'desc': 'Quartering and processing raw livestock and game carcasses.\n\n'
+                '• Assignment Location: Assigned within The Kitchen & Scullery interface.\n'
+                '• Driving Attributes: Strength, Precision.\n'
+                '• Activity Duration: Typical quartering requires precisely 45 minutes.\n'
+                '• Required Resources: Precisely 1 Cattle Carcass or Large Game Carcass.\n'
+                '• Mechanical Outcome: Professionally dresses raw livestock. Converts 1 heavy carcass into precisely 25 Prime Food harvest units and 5 Industrial Bone Reagents.'
+      },
+      {
+        'title': 'Clean Dirty Dishes',
+        'category': 'Assignable Task',
+        'desc': 'Scullery washing of accumulated dining dinnerware.\n\n'
+                '• Assignment Location: Assigned within The Kitchen & Scullery interface.\n'
+                '• Driving Attributes: Speed, Dexterity.\n'
+                '• Activity Duration: Typical scullery wash requires precisely 15 minutes.\n'
+                '• Required Resources: Accumulated Dirty Dishes and clean water.\n'
+                '• Mechanical Outcome: Restores scullery hygiene, completely eliminating room pests and foul odors.'
+      },
+      {
+        'title': 'Clean Staging Chamber',
+        'category': 'Assignable Task',
+        'desc': 'Manual sweeping of accumulated grime and chemical soot.\n\n'
+                '• Assignment Location: Assigned across any restored Manor Wing, Laboratory, or Tenement chamber.\n'
+                '• Driving Attributes: Speed, Willpower.\n'
+                '• Activity Duration: Typical chamber sweep requires precisely 30 minutes.\n'
+                '• Required Resources: Standard cleaning bro brooms and scrub brushes.\n'
+                '• Mechanical Outcome: Purges chemical dust and dirt, reducing chamber dirtiness level below 0.05 and eliminating resident respiratory illness risks.'
+      },
+      {
+        'title': 'Collect Fresh Eggs',
+        'category': 'Assignable Task',
+        'desc': 'Gathering fresh eggs from poultry pens.\n\n'
+                '• Assignment Location: Assigned within The Chicken Coop interface.\n'
+                '• Driving Attributes: Dexterity.\n'
+                '• Activity Duration: Typical gathering round requires precisely 20 minutes.\n'
+                '• Required Resources: Active, fed laying hens present in coop boxes.\n'
+                '• Mechanical Outcome: Harvests freshly laid organic eggs from straw nests, transferring them directly to the Manor Kitchen storage for morning breakfast rations.'
+      },
+      {
+        'title': 'Guard Chicken Coop',
+        'category': 'Assignable Task',
+        'desc': 'Nighttime sentry watch over poultry pens.\n\n'
+                '• Assignment Location: Assigned within The Chicken Coop interface.\n'
+                '• Driving Attributes: Strength, Perception.\n'
+                '• Activity Duration: Full sentry shift requires precisely 120 minutes (2 hours).\n'
+                '• Required Resources: Watchman lantern and stout oak cudgel.\n'
+                '• Mechanical Outcome: Secures perimeter fences against devastating nocturnal fox raids and poacher thefts.'
+      },
+      {
+        'title': 'Till Agricultural Soil',
+        'category': 'Assignable Task',
+        'desc': 'Breaking and turning compact field turf into fertile planting furrows.\n\n'
+                '• Assignment Location: Assigned within The Arable Field interface.\n'
+                '• Driving Attributes: Strength, Endurance.\n'
+                '• Activity Duration: Heavy plowing requires precisely 60 minutes per acre.\n'
+                '• Required Resources: Heavy iron plow and draft harness.\n'
+                '• Mechanical Outcome: Prepares compact turf fields into loamy, tilled furrows perfectly ready for seasonal agricultural seed sowing.'
+      },
+      {
+        'title': 'Plant Seasonal Crops',
+        'category': 'Assignable Task',
+        'desc': 'Sowing agricultural seed bags into tilled planting furrows.\n\n'
+                '• Assignment Location: Assigned within The Arable Field interface.\n'
+                '• Driving Attributes: Dexterity.\n'
+                '• Activity Duration: Typical sowing requires precisely 45 minutes.\n'
+                '• Required Resources: Precisely 1 Seed Bag (Potatoes, Wheat, or Barley) and tilled soil.\n'
+                '• Mechanical Outcome: Sows seeds into open furrows, initiating the multi-day biological agricultural growth cycle.'
+      },
+      {
+        'title': 'Water Arable Crops',
+        'category': 'Assignable Task',
+        'desc': 'Irrigating seasonal crops to accelerate biological maturation.\n\n'
+                '• Assignment Location: Assigned within The Arable Field, Garden, or Greenhouse interface.\n'
+                '• Driving Attributes: Endurance, Speed.\n'
+                '• Activity Duration: Typical irrigation round requires precisely 30 minutes.\n'
+                '• Required Resources: Filled watering cans or active estate irrigation wells.\n'
+                '• Mechanical Outcome: Replenishes loamy soil moisture, accelerating daily biological crop maturation velocity by +20%.'
+      },
+      {
+        'title': 'Fertilize Arable Soil',
+        'category': 'Assignable Task',
+        'desc': 'Enriching nutrient density in planted furrows.\n\n'
+                '• Assignment Location: Assigned within The Arable Field interface.\n'
+                '• Driving Attributes: Strength, Alchemy.\n'
+                '• Activity Duration: Soil enrichment requires precisely 40 minutes.\n'
+                '• Required Resources: Precisely 1 Bone Meal Reagent or High-Grade Compost bundle.\n'
+                '• Mechanical Outcome: Deeply fortifies root nutrition, permanently increasing eventual final bushel harvest extraction yields by +35%.'
+      },
+      {
+        'title': 'Care For Field Crops',
+        'category': 'Assignable Task',
+        'desc': 'Pruning blighted leaves and weeding invasive thickets.\n\n'
+                '• Assignment Location: Assigned within The Arable Field, Garden, or Greenhouse interface.\n'
+                '• Driving Attributes: Precision, Dexterity.\n'
+                '• Activity Duration: Agricultural tending requires precisely 45 minutes.\n'
+                '• Required Resources: Weeding hooks and botanical pruning shears.\n'
+                '• Mechanical Outcome: Removes blighted foliage, reducing botanical crop failure probability to virtually zero.'
+      },
+      {
+        'title': 'Harvest Mature Crops',
+        'category': 'Assignable Task',
+        'desc': 'Extracting fully ripened agricultural produce from fertile fields.\n\n'
+                '• Assignment Location: Assigned within The Arable Field, Garden, or Greenhouse interface.\n'
+                '• Driving Attributes: Strength, Dexterity.\n'
+                '• Activity Duration: Full harvest round requires precisely 60 minutes.\n'
+                '• Required Resources: Agricultural harvest sickles and gathering baskets.\n'
+                '• Mechanical Outcome: Extracts fully mature produce, transporting Raw Food bushels and seed parcels directly into Manor granary and kitchen storage.'
+      },
+      {
+        'title': 'Harvest Restorative Grain',
+        'category': 'Assignable Task',
+        'desc': 'Thrashing and winnowing stored sheaves in the granary.\n\n'
+                '• Assignment Location: Assigned within The Granary interface.\n'
+                '• Driving Attributes: Speed, Strength.\n'
+                '• Activity Duration: Thrashing round requires precisely 45 minutes.\n'
+                '• Required Resources: Harvested grain sheaves and thrashing flails.\n'
+                '• Mechanical Outcome: Winnows raw cereal chaff to produce refined Wheat Flour bags and premium brewing grains.'
+      },
+      {
+        'title': 'Mash and Brew Restorative Ale',
+        'category': 'Assignable Task',
+        'desc': 'Fermenting aromatic malts into pub ale casks.\n\n'
+                '• Assignment Location: Assigned within The Subterranean Brewery interface.\n'
+                '• Driving Attributes: Alchemy, Strength.\n'
+                '• Activity Duration: Multi-stage fermentation requires precisely 90 minutes.\n'
+                '• Required Resources: Precisely 5 Raw Barley bushels, clean well water, and brewing hops.\n'
+                '• Mechanical Outcome: Casks rich pub ales, restoring precisely +25 Universal Manor Morale per cask consumed by the residential staff.'
+      },
+      {
+        'title': 'Distill High-Proof Spirits',
+        'category': 'Assignable Task',
+        'desc': 'Subterranean distillation of highly concentrated alcohol.\n\n'
+                '• Assignment Location: Assigned within The Subterranean Distillery interface.\n'
+                '• Driving Attributes: Alchemy, Precision.\n'
+                '• Activity Duration: Full distillation requires precisely 120 minutes (2 hours).\n'
+                '• Required Resources: Precisely 5 Potato root tubers or Wheat grain bushels plus active yeast.\n'
+                '• Mechanical Outcome: Distills potent spirits (Kirschwasser, Absinthe). Used as highly effective surgical anesthesia or sold on the local Glarus black market for 45 CHF profit.'
+      },
+      {
+        'title': 'Process Raw Timber',
+        'category': 'Assignable Task',
+        'desc': 'Sawing raw forestry timber logs into building planks.\n\n'
+                '• Assignment Location: Assigned within The Carpenter\'s Workshop interface.\n'
+                '• Driving Attributes: Strength, Endurance.\n'
+                '• Activity Duration: Heavy timber processing requires precisely 60 minutes.\n'
+                '• Required Resources: Precisely 1 Felled Forestry Timber Log.\n'
+                '• Mechanical Outcome: Mills heavy timber logs into precisely 5 Refined Wood Planks used for architectural room restoration and custom weapon stock turning.'
+      },
+      {
+        'title': 'Industrial Blacksmithing',
+        'category': 'Assignable Task',
+        'desc': 'Smelting and hammer-forging iron ore into solid metal ingots.\n\n'
+                '• Assignment Location: Assigned within The Carpenter\'s Workshop interface.\n'
+                '• Driving Attributes: Strength, Crafting.\n'
+                '• Activity Duration: Furnace smelting requires precisely 90 minutes.\n'
+                '• Required Resources: Precisely 2 Raw Iron Ore lumps.\n'
+                '• Mechanical Outcome: Forges raw ore into precisely 1 Refined Iron Ingot used for outfitting military armories, crafting analytical laboratory equipment, and assembling steam golems.'
+      },
+      {
+        'title': 'Mechanical Manufacturing',
+        'category': 'Assignable Task',
+        'desc': 'Precision assembly of specialized mechanical devices.\n\n'
+                '• Assignment Location: Assigned within The Carpenter\'s Workshop interface.\n'
+                '• Driving Attributes: Precision, Crafting.\n'
+                '• Activity Duration: Intricate assembly requires precisely 120 minutes (2 hours).\n'
+                '• Required Resources: Refined Iron Ingots, Wood Planks, and complex reagents.\n'
+                '• Mechanical Outcome: Manufactures advanced specialized items (Galvanic Batteries, Precision Microscopes) according to unlocked schematic blueprints.'
+      },
+      {
+        'title': 'Engineering Invention',
+        'category': 'Assignable Task',
+        'desc': 'Iterative engineering design and prototype drafting.\n\n'
+                '• Assignment Location: Assigned within The Carpenter\'s Workshop interface.\n'
+                '• Driving Attributes: Intellect, Crafting.\n'
+                '• Activity Duration: Master prototype drafting requires precisely 180 minutes (3 hours).\n'
+                '• Required Resources: Precisely 2 Academic Research Notes and blank architectural parchment drafts.\n'
+                '• Mechanical Outcome: Solves complex engineering bottlenecks, yielding cutting-edge technological schematic diagrams (Automated Steam Turrets, Subterranean Excavators).'
+      },
     ];
 
     // Filter and sort

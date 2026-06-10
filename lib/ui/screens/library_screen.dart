@@ -238,11 +238,11 @@ class LibraryScreen extends StatelessWidget {
           ),
           OutlinedButton(
             onPressed: () {
-              // Add to the same unified queue
+              // Add to the unified queue with exact matching ID
               state.addScienceActivityToQueue(
                 type == TaskType.archiveResearch
-                    ? 'library_archive'
-                    : 'library_transcribe',
+                    ? 'archive_forbidden_scrolls'
+                    : 'catalog_specimen_notes',
               );
             },
             style: OutlinedButton.styleFrom(
@@ -279,8 +279,8 @@ class LibraryScreen extends StatelessWidget {
     return Column(
       children: List.generate(queue.length, (index) {
         final queueId = queue[index];
-        final isArchive = queueId == 'library_archive';
-        final isTranscribe = queueId == 'library_transcribe';
+        final isArchive = queueId.contains('archive');
+        final isTranscribe = queueId.contains('transcribe') || queueId.contains('catalog');
 
         if (!isArchive && !isTranscribe) return const SizedBox.shrink();
 
@@ -300,7 +300,7 @@ class LibraryScreen extends StatelessWidget {
               size: 16,
             ),
             title: Text(
-              (isArchive ? 'ARCHIVE RESEARCH' : 'TRANSCRIBE NOTES')
+              (isArchive ? 'ARCHIVE FORBIDDEN SCROLLS' : 'CATALOG SPECIMEN NOTES')
                   .toUpperCase(),
               style: GoogleFonts.playfairDisplay(
                 color: const Color(0xFFE5D5B0),

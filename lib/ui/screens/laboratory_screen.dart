@@ -49,10 +49,10 @@ class LaboratoryScreen extends StatelessWidget {
       body: Consumer<GameState>(
         builder: (context, state, child) {
           final occupants = state.npcs
-              .where((n) => n.currentRoomId == room.id)
+              .where((n) => n.isResident || (n.currentRoomId != null && state.rooms.any((r) => r.id == n.currentRoomId)))
               .toList();
           final activeExperiments = state.activeExperiments
-              .where((e) => occupants.any((o) => o.id == e.subjectId))
+              .where((e) => state.npcs.any((o) => o.id == e.subjectId))
               .toList();
 
           return Container(
@@ -401,7 +401,11 @@ class LaboratoryScreen extends StatelessWidget {
         ),
       ),
       subtitle: Text(
-        isLocked ? "INSUFFICIENT SCIENTIFIC KNOWLEDGE" : desc,
+        isLocked
+            ? (type == ExperimentType.reanimation
+                ? "INSUFFICIENT SCIENTIFIC KNOWLEDGE (Requires 10 Research Points in Small Creature Anatomy or Alchemy. Perform Vivisections in the Laboratory to develop knowledge)"
+                : "INSUFFICIENT SCIENTIFIC KNOWLEDGE (Requires unlocking Discoveries in the Library/Laboratory)")
+            : desc,
         style: GoogleFonts.oldStandardTt(
           color: isLocked ? Colors.white10 : Colors.white54,
           fontSize: 12,

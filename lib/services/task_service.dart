@@ -946,7 +946,7 @@ class TaskService {
       case TaskType.puzzleStudy:
         return "Conduct cognitive puzzle study";
       case TaskType.vivisection:
-        return "Perform vivisection study";
+        return "Perform vivisection procedure";
       case TaskType.breedingAttempt:
         return "Manage breeding attempt";
       case TaskType.surgicalOperation:

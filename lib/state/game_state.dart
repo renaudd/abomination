@@ -5335,7 +5335,7 @@ class GameState extends ChangeNotifier {
 
       bool met = false;
       if (discovery.id == 'basic_reanimation') {
-        met = (_researchPoints['Small Creature Anatomy'] ?? 0) >= 10.0;
+        met = (_researchPoints['Small Creature Anatomy'] ?? 0) >= 10.0 || (_researchPoints['Anatomy'] ?? 0) >= 10.0 || (_researchPoints['Alchemy'] ?? 0) >= 10.0;
       } else if (discovery.id == 'freezing_tech') {
         met = (_researchPoints['Alchemy'] ?? 0) >= 30.0; // Gated behind Alchemy
       } else if (discovery.id == 'artificial_muscle') {
@@ -8119,30 +8119,18 @@ class GameState extends ChangeNotifier {
 
     // Science Research Points
     if (task.type == TaskType.dissect || task.type == TaskType.vivisection) {
-      // Check if subject was a small creature (rat, bat, chicken, fox)
-      // This is slightly simplified since the task targetId points to the NPC/Entity ID
-      final target = _npcs.firstWhereOrNull((n) => n.id == task.targetId);
-      if (target != null) {
-        double points = 0;
-        final sType = target.specimenType.toLowerCase();
-        if (sType.contains('rat') ||
-            sType.contains('bat') ||
-            sType.contains('chicken')) {
-          points = 2.0;
-        } else if (sType.contains('fox')) {
-          points = 5.0;
-        }
+      final double points = task.type == TaskType.vivisection ? 5.0 : 2.5;
+      _researchPoints['Small Creature Anatomy'] = (_researchPoints['Small Creature Anatomy'] ?? 0) + points;
+      _researchPoints['Anatomy'] = (_researchPoints['Anatomy'] ?? 0) + points;
+      _researchPoints['Alchemy'] = (_researchPoints['Alchemy'] ?? 0) + points;
+      _researchPoints['Zoology'] = (_researchPoints['Zoology'] ?? 0) + points;
 
-        if (points > 0) {
-          _researchPoints['Small Creature Anatomy'] =
-              (_researchPoints['Small Creature Anatomy'] ?? 0) + points;
-          _announcementHistory.insert(
-            0,
-            "[${_currentDate.formattedTime}] RESEARCH: Gained ${points.toInt()} points in Small Creature Anatomy.",
-          );
-          _checkDiscoveries();
-        }
-      }
+      final String actionTitle = task.type == TaskType.vivisection ? "Vivisection" : "Dissection";
+      _announcementHistory.insert(
+        0,
+        "[${_currentDate.formattedTime}] RESEARCH: $actionTitle completed. Gained +${points.toInt()} points in Small Creature Anatomy & Alchemy.",
+      );
+      _checkDiscoveries();
     }
 
     // Character status synchronization
