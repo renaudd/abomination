@@ -580,7 +580,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   void initState() {
     super.initState();
     _transformationController = TransformationController(
-      Matrix4.identity()..scaleByDouble(0.35),
+      Matrix4.diagonal3Values(0.35, 0.35, 1.0),
     );
   }
 
@@ -1048,8 +1048,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           final double initialScale = (1.05 * computedMinScale).clamp(0.1, 3.0);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              _transformationController.value = Matrix4.identity()
-                ..scaleByDouble(initialScale);
+              _transformationController.value = Matrix4.diagonal3Values(initialScale, initialScale, 1.0);
             }
           });
         }
