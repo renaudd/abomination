@@ -18,7 +18,8 @@ import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 
 class OptionsDialog extends StatelessWidget {
-  const OptionsDialog({super.key});
+  final bool isSurvivalMode;
+  const OptionsDialog({super.key, this.isSurvivalMode = false});
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +67,7 @@ class OptionsDialog extends StatelessWidget {
             const Divider(color: Colors.white10, height: 24),
             Expanded(
               child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -100,90 +102,93 @@ class OptionsDialog extends StatelessWidget {
                     _buildKeyAssignmentRow('Select Hand Card 3', '3'),
                     _buildKeyAssignmentRow('Select Hand Card 4', '4'),
                     _buildKeyAssignmentRow('Select Hand Card 5', '5'),
-                    const SizedBox(height: 12),
-                    _subSectionTitle('DESKTOP HOTKEYS'),
-                    _buildKeyAssignmentRow('Pause', '0'),
-                    _buildKeyAssignmentRow('Slow Speed', '1'),
-                    _buildKeyAssignmentRow('Normal Speed', '2'),
-                    _buildKeyAssignmentRow('Fast Speed', '3'),
-                    _buildKeyAssignmentRow('Lightning Speed', '4'),
-                    _buildKeyAssignmentRow('Manor View', 'U'),
-                    _buildKeyAssignmentRow('Manor Holdings', 'I'),
-                    _buildKeyAssignmentRow('Chronicle Records', 'O'),
-                    _buildKeyAssignmentRow('Survey Estate Map', 'P'),
-                    const SizedBox(height: 12),
-                    _subSectionTitle('DIALOGUE & NARRATIVE HOTKEYS'),
-                    _buildKeyAssignmentRow('Dialogue Option 1', '1'),
-                    _buildKeyAssignmentRow('Dialogue Option 2', '2'),
-                    _buildKeyAssignmentRow('Dialogue Option 3', '3'),
-                    _buildKeyAssignmentRow('Dialogue Option 4', '4'),
-                    _buildKeyAssignmentRow('Dialogue Option 5', '5'),
-                    _buildKeyAssignmentRow('Dialogue Option 6', '6'),
-                    _buildKeyAssignmentRow('Dialogue Option 7', '7'),
-                    _buildKeyAssignmentRow('Next Dialogue / Scene', '9'),
-                    _buildKeyAssignmentRow('Back Dialogue / Scene', '8'),
-                    const Divider(color: Colors.white10, height: 32),
 
-                    // 2. Emergency Behavior Section
-                    _sectionTitle('2. WHEN AN EMERGENCY OCCURS'),
-                    const SizedBox(height: 8),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Reduce game speed to Slow',
-                      value: 'slow',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Pause the game',
-                      value: 'pause',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Reduce game speed to Normal',
-                      value: 'normal',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Do nothing',
-                      value: 'nothing',
-                      groupValue: state.emergencyBehavior,
-                      onChanged: (val) => state.setEmergencyBehavior(val!),
-                    ),
-                    const Divider(color: Colors.white10, height: 32),
+                    if (!isSurvivalMode) ...[
+                      const SizedBox(height: 12),
+                      _subSectionTitle('DESKTOP HOTKEYS'),
+                      _buildKeyAssignmentRow('Pause', '0'),
+                      _buildKeyAssignmentRow('Slow Speed', '1'),
+                      _buildKeyAssignmentRow('Normal Speed', '2'),
+                      _buildKeyAssignmentRow('Fast Speed', '3'),
+                      _buildKeyAssignmentRow('Lightning Speed', '4'),
+                      _buildKeyAssignmentRow('Manor View', 'U'),
+                      _buildKeyAssignmentRow('Manor Holdings', 'I'),
+                      _buildKeyAssignmentRow('Chronicle Records', 'O'),
+                      _buildKeyAssignmentRow('Survey Estate Map', 'P'),
+                      const SizedBox(height: 12),
+                      _subSectionTitle('DIALOGUE & NARRATIVE HOTKEYS'),
+                      _buildKeyAssignmentRow('Dialogue Option 1', '1'),
+                      _buildKeyAssignmentRow('Dialogue Option 2', '2'),
+                      _buildKeyAssignmentRow('Dialogue Option 3', '3'),
+                      _buildKeyAssignmentRow('Dialogue Option 4', '4'),
+                      _buildKeyAssignmentRow('Dialogue Option 5', '5'),
+                      _buildKeyAssignmentRow('Dialogue Option 6', '6'),
+                      _buildKeyAssignmentRow('Dialogue Option 7', '7'),
+                      _buildKeyAssignmentRow('Next Dialogue / Scene', '9'),
+                      _buildKeyAssignmentRow('Back Dialogue / Scene', '8'),
+                      const Divider(color: Colors.white10, height: 32),
 
-                    // 3. Sleep Acceleration Section
-                    _sectionTitle('3. WHEN ALL RESIDENTS ARE ASLEEP'),
-                    const SizedBox(height: 8),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Accelerate game speed to Lightning',
-                      value: 'lightning',
-                      groupValue: state.residentsAsleepBehavior,
-                      onChanged: (val) =>
-                          state.setResidentsAsleepBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Accelerate game speed to Fast',
-                      value: 'fast',
-                      groupValue: state.residentsAsleepBehavior,
-                      onChanged: (val) =>
-                          state.setResidentsAsleepBehavior(val!),
-                    ),
-                    _buildRadioOption<String>(
-                      context: context,
-                      title: 'Do nothing',
-                      value: 'nothing',
-                      groupValue: state.residentsAsleepBehavior,
-                      onChanged: (val) =>
-                          state.setResidentsAsleepBehavior(val!),
-                    ),
+                      // 2. Emergency Behavior Section
+                      _sectionTitle('2. WHEN AN EMERGENCY OCCURS'),
+                      const SizedBox(height: 8),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Reduce game speed to Slow',
+                        value: 'slow',
+                        groupValue: state.emergencyBehavior,
+                        onChanged: (val) => state.setEmergencyBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Pause the game',
+                        value: 'pause',
+                        groupValue: state.emergencyBehavior,
+                        onChanged: (val) => state.setEmergencyBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Reduce game speed to Normal',
+                        value: 'normal',
+                        groupValue: state.emergencyBehavior,
+                        onChanged: (val) => state.setEmergencyBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Do nothing',
+                        value: 'nothing',
+                        groupValue: state.emergencyBehavior,
+                        onChanged: (val) => state.setEmergencyBehavior(val!),
+                      ),
+                      const Divider(color: Colors.white10, height: 32),
+
+                      // 3. Sleep Acceleration Section
+                      _sectionTitle('3. WHEN ALL RESIDENTS ARE ASLEEP'),
+                      const SizedBox(height: 8),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Accelerate game speed to Lightning',
+                        value: 'lightning',
+                        groupValue: state.residentsAsleepBehavior,
+                        onChanged: (val) =>
+                            state.setResidentsAsleepBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Accelerate game speed to Fast',
+                        value: 'fast',
+                        groupValue: state.residentsAsleepBehavior,
+                        onChanged: (val) =>
+                            state.setResidentsAsleepBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Do nothing',
+                        value: 'nothing',
+                        groupValue: state.residentsAsleepBehavior,
+                        onChanged: (val) =>
+                            state.setResidentsAsleepBehavior(val!),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -65,8 +65,11 @@ class AboutScreen extends StatelessWidget {
                   color: const Color(0xFF241D17),
                   border: Border(bottom: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.3))),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 12,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,26 +94,27 @@ class AboutScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2E251F),
                             foregroundColor: const Color(0xFFE5D5B0),
                             side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.4)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           ),
                           icon: const Icon(Icons.privacy_tip_outlined, size: 16, color: Color(0xFFD4AF37)),
                           label: const Text('Privacy Policy', style: TextStyle(fontSize: 12)),
                           onPressed: () => _showPrivacyPolicy(context),
                         ),
-                        const SizedBox(width: 12),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2E251F),
                             foregroundColor: const Color(0xFFE5D5B0),
                             side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.4)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           ),
                           icon: const Icon(Icons.library_books_outlined, size: 16, color: Color(0xFFD4AF37)),
                           label: const Text('Third Party Notices', style: TextStyle(fontSize: 12)),
@@ -262,36 +266,58 @@ class AboutScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1D1712),
         shape: RoundedRectangleBorder(side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.4), width: 1.5), borderRadius: BorderRadius.circular(6)),
         title: Text(
-          'OPEN SOURCE COMPONENTS',
-          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
+          'OPEN SOURCE COMPONENTS & TRANSITIVE LICENSES',
+          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1.5),
         ),
         content: SizedBox(
-          width: 520,
-          height: 380,
+          width: 600,
+          height: 440,
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Abomination incorporates the following open-source software components under their respective licenses:',
+                  'Abomination incorporates the following open-source software components, including all direct and transitive dependencies, under their unabridged license documentation:',
                   style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 16),
                 _licenseBlock(
-                  'Flutter SDK & Dart Engine',
-                  'Copyright 2014 The Flutter Authors. All rights reserved.\nLicensed under the BSD 3-Clause License.',
+                  'Flutter SDK, Dart Virtual Machine & Core Libraries',
+                  'Direct Component: flutter, dart\nTransitive SDK Dependencies: collection, vector_math_64, characters, meta, path\n\n'
+                  'Copyright 2014 The Flutter Authors. Copyright 2012 The Dart Project Authors. All rights reserved.\n\n'
+                  'Redistribution and use in source and binary forms, with or or without modification, are permitted provided that the following conditions are met:\n'
+                  '1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n'
+                  '2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n'
+                  '3. Neither the name of Google LLC nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.\n\n'
+                  'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.',
                 ),
                 _licenseBlock(
-                  'Google Fonts (Playfair Display, Oswald, Old Standard TT)',
-                  'Licensed under the SIL Open Font License, Version 1.1.',
+                  'Google Fonts (Playfair Display, Oswald, Old Standard TT, Inter, Roboto)',
+                  'Direct Component: google_fonts\nTransitive Font Asset Dependencies: OFL.txt font definition bundles\n\n'
+                  'SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n\n'
+                  'PREAMBLE: The goals of the Open Font License (OFL) are to stimulate worldwide development of collaborative font projects, to support the font creation efforts of academic and linguistic communities, and to provide a free and open framework in which fonts may be shared and improved in partnership with others.\n\n'
+                  'PERMISSION & CONDITIONS: Permission is hereby granted, free of charge, to any person obtaining a copy of the Font Software, to use, study, copy, merge, embed, modify, redistribute, and sell modified and unmodified copies of the Font Software, subject to the following conditions:\n'
+                  '1) Neither the Font Software nor any of its individual components, in Original or Modified Versions, may be sold by itself.\n'
+                  '2) Original or Modified Versions of the Font Software may be bundled, redistributed and/or sold with any software, provided that each copy contains the above copyright notice and this license.\n'
+                  '3) No Modified Version of the Font Software may use the Reserved Font Name(s) unless explicit written permission is granted.\n'
+                  '4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font Software shall not be used to promote, endorse or advertise any Modified Version.',
                 ),
                 _licenseBlock(
                   'Provider (State Management Engine)',
-                  'Copyright 2019 Remi Rousselet\nLicensed under the MIT License.',
+                  'Direct Component: provider\nTransitive Dependencies: nested\n\n'
+                  'Copyright 2019 Remi Rousselet\n\n'
+                  'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\n'
+                  'The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\n'
+                  'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.',
                 ),
                 _licenseBlock(
-                  'Material Design Icons',
-                  'Copyright Google LLC\nLicensed under the Apache License, Version 2.0.',
+                  'Material Design Icons & Symbols',
+                  'Direct Component: material_design_icons\n\n'
+                  'Copyright Google LLC\n\n'
+                  'Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.\n'
+                  'You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0\n\n'
+                  'Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.',
                 ),
               ],
             ),
@@ -309,17 +335,17 @@ class AboutScreen extends StatelessWidget {
 
   Widget _licenseBlock(String name, String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(name, style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white10)),
-            child: Text(text, style: const TextStyle(color: Colors.white60, fontSize: 12, fontFamily: 'monospace')),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white10)),
+            child: SelectableText(text, style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace', height: 1.4)),
           ),
         ],
       ),

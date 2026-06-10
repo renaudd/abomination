@@ -5126,7 +5126,7 @@ void _showCombatMenuDialog(BuildContext context) {
               const SizedBox(height: 12),
               _buildMenuButton(
                 context,
-                'HELP / GLOSSARY',
+                'HELP',
                 onPressed: () {
                   Navigator.of(context).pop();
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));

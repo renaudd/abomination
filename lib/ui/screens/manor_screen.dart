@@ -397,7 +397,7 @@ class _ManorScreenState extends State<ManorScreen> {
                 PopupMenuItem<String>(
                   value: 'help',
                   child: Text(
-                    'Help / Glossary',
+                    'Help',
                     style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
                   ),
                 ),

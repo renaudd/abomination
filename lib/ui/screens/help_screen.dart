@@ -38,6 +38,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+    // Mobile-optimized compact 2-tab layout
     _tabController = TabController(length: 2, vsync: this);
 
     _allCombatCards = [
@@ -134,33 +135,42 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF15100B),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1D1712),
-        title: Text(
-          'ABOMINATION HELP & GLOSSARY',
-          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 4),
-        ),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFFE5D5B0)),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFFD4AF37),
-          indicatorWeight: 3.0,
-          labelColor: const Color(0xFFD4AF37),
-          unselectedLabelColor: const Color(0xFFC4B89B).withValues(alpha: 0.6),
-          labelStyle: GoogleFonts.oswald(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-          tabs: const [
-            Tab(icon: Icon(Icons.shield_outlined), text: 'COMBAT MANUAL & SPECS'),
-            Tab(icon: Icon(Icons.menu_book_outlined), text: 'ENCYCLOPEDIC GLOSSARY'),
-          ],
+      // Ultra-compact mobile-optimized top bar: leading back button + embedded slim tab bar (omitting redundant screen title entirely)
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(48.0),
+        child: AppBar(
+          backgroundColor: const Color(0xFF1D1712),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFFD4AF37), size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          titleSpacing: 0,
+          title: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            physics: const BouncingScrollPhysics(),
+            indicatorColor: const Color(0xFFD4AF37),
+            indicatorWeight: 2.5,
+            labelColor: const Color(0xFFD4AF37),
+            unselectedLabelColor: const Color(0xFFC4B89B).withValues(alpha: 0.6),
+            labelStyle: GoogleFonts.oswald(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+            tabs: const [
+              Tab(iconMargin: EdgeInsets.zero, child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.shield_outlined, size: 16), SizedBox(width: 6), Text('COMBAT MANUAL & SPECS')])),
+              Tab(iconMargin: EdgeInsets.zero, child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.menu_book_outlined, size: 16), SizedBox(width: 6), Text('ENCYCLOPEDIC GLOSSARY')])),
+            ],
+          ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildCombatManualTab(),
-          _buildGlossaryTab(),
-        ],
+      body: SafeArea(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildCombatManualTab(),
+            _buildGlossaryTab(),
+          ],
+        ),
       ),
     );
   }
@@ -168,77 +178,67 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   Widget _buildCombatManualTab() {
     return Column(
       children: [
-        // Broad Strokes Banner
+        // Mobile-optimized compact overview banner
         Container(
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(color: const Color(0xFF1E1813), border: Border(bottom: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)))),
           child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             collapsedIconColor: const Color(0xFFD4AF37),
             iconColor: const Color(0xFFD4AF37),
             title: Text(
               'HOW COMBAT WORKS (BROAD STROKES OVERVIEW)',
-              style: GoogleFonts.playfairDisplay(color: const Color(0xFFD4AF37), fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 2),
+              style: GoogleFonts.playfairDisplay(color: const Color(0xFFD4AF37), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.5),
             ),
-            subtitle: Text('Autonomous Multi-Lane Locomotion, Elemental Dynamics & AP Economics', style: GoogleFonts.oldStandardTt(color: Colors.white60, fontSize: 13, fontStyle: FontStyle.italic)),
+            subtitle: Text('Tap to expand lanes, Action Points (AP) & elemental warfare rules', style: GoogleFonts.oldStandardTt(color: Colors.white60, fontSize: 12, fontStyle: FontStyle.italic)),
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _manualPoint(
-                      'The Battlefield Expanse',
-                      'Combat takes place across an edge-to-edge arena separated by three horizontal lanes (Top, Center, Bottom). Your Commander stands at the rear left base, while the enemy Hero commands the rear right base. Scenery obstacles and defensive walls separate the staging turf from the primary lane channels.',
-                    ),
-                    _manualPoint(
-                      'Action Point (AP) Economics',
-                      'Your Action Point pool regenerates continuously during live engagements at a standard rate of +1.5 AP per second (scaling up to 10.0 AP max). Deploying infantry squads, armored vehicles, or alchemical support totems deducts their AP cost instantly from your reserves.',
-                    ),
-                    _manualPoint(
-                      'Autonomous Locomotion & AI Channeling',
-                      'Once summoned onto the staging turf, units autonomously seek vertical alignment within the nearest open lane channel. Upon entering the lane, they march straight toward the enemy base. Tapping the minimap or clicking an enemy target allows you to manually issue waypoint overrides to your Commander.',
-                    ),
-                    _manualPoint(
-                      'Esoteric Elemental Warfare',
-                      'Advanced combat relies heavily on elemental interactions:\n'
-                      '• Incendiary Fire: Greek Fire ordnance and Templar Pyre blades ignite targets with lingering fire damage over time (DOT); burning targets have a chance to spread flames to nearby units.\n'
-                      '• Debilitating Toxin: Poison Gas and Fenian dirks inflict internal poison stacking DOT that bypasses ordinary physical armor.\n'
-                      '• Total Willpower Subversion: Golden Dawn Mesmerists and Hypnotic pendulums subvert rival willpower, temporarily seizing control of enemy combatants and turning them against their own squad.',
-                    ),
-                  ],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _manualPoint(
+                    'The Battlefield Expanse & Channeling',
+                    'Combat occurs across an edge-to-edge arena split into three horizontal lanes (Top, Center, Bottom). Your Commander commands the rear left base while the enemy Hero commands the rear right. Summoned squads autonomously march down lane centers straight toward the opposing fortress.',
+                  ),
+                  _manualPoint(
+                    'Action Point (AP) Economics',
+                    'Your Action Point pool regenerates continuously during live engagements at +1.5 AP per second up to a maximum pool of 10.0 AP. Deploying tactical unit cards instantly deducts their AP cost from your active reserves.',
+                  ),
+                  _manualPoint(
+                    'Esoteric Elemental Dynamics',
+                    '• Greek Fire: Incendiary canisters and Templar Pyre blades ignite targets with persistent fire damage over time (DOT); flames have a probability coefficient to spread across frontlines.\n'
+                    '• Toxin Spores: Poison Gas and Fenian dirks inflict internal poison stacking DOT that entirely bypasses standard physical armor plates.\n'
+                    '• Willpower Subversion: Golden Dawn Mesmerists and Hypnotic pendulums seize control of rival cognitive willpower, temporarily flipping enemy troop allegiance to fight for your squad.',
+                  ),
+                ],
               ),
             ],
           ),
         ),
 
-        // Sortable Spreadsheet Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        // Mobile-Optimized Spreadsheet Header Banner
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: const Color(0xFF15100B),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'TACTICAL COMBAT CARDS SPREADSHEET (${_allCombatCards.length} UNITS)',
-                style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                'TACTICAL SPREADSHEET (${_allCombatCards.length} UNITS)',
+                style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.0),
               ),
               Text(
-                'Tap any column header to sort • Tap any row to inspect specs modal',
-                style: GoogleFonts.oldStandardTt(color: const Color(0xFFD4AF37), fontSize: 12, fontStyle: FontStyle.italic),
+                'Tap headers to sort • Tap rows for specs modal',
+                style: GoogleFonts.oldStandardTt(color: const Color(0xFFD4AF37), fontSize: 11, fontStyle: FontStyle.italic),
               ),
             ],
           ),
         ),
 
-        // Spreadsheet Table
+        // Mobile-Optimized Highly Compact Spreadsheet Table
         Expanded(
           child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF120C08),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
-            ),
+            margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            decoration: BoxDecoration(color: const Color(0xFF120C08), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3))),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -247,6 +247,12 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                 child: DataTable(
                   sortColumnIndex: _sortColumnIndex,
                   sortAscending: _sortAscending,
+                  // Mobile-optimized tight vertical row cushioning
+                  dataRowMinHeight: 30,
+                  dataRowMaxHeight: 34,
+                  headingRowHeight: 32,
+                  columnSpacing: 14,
+                  horizontalMargin: 10,
                   headingRowColor: WidgetStateProperty.all(const Color(0xFF241C15)),
                   dataRowColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
                     if (states.contains(WidgetState.hovered)) return const Color(0xFF2E241C);
@@ -269,23 +275,24 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                       onSelectChanged: (_) => CombatCardDetailModal.show(context, _extractBaseCardKey(npc)),
                       cells: [
                         DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              width: 32,
-                              height: 32,
-                              margin: const EdgeInsets.only(right: 10),
+                              width: 24,
+                              height: 24,
+                              margin: const EdgeInsets.only(right: 8),
                               decoration: const BoxDecoration(color: Color(0xFF2A221C), shape: BoxShape.circle),
-                              child: ClipOval(child: Center(child: CharacterBlobRenderer(npc: npc, size: 24, isCombat: true))),
+                              child: ClipOval(child: Center(child: CharacterBlobRenderer(npc: npc, size: 18, isCombat: true))),
                             ),
-                            Text(npc.name, style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(npc.name, style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontWeight: FontWeight.bold, fontSize: 12)),
                           ],
                         )),
-                        DataCell(Text(npc.metadata.containsKey('faction') ? npc.metadata['faction']! : npc.role, style: const TextStyle(color: Colors.white70, fontSize: 12))),
-                        DataCell(Text('${stats.cost} AP', style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold, fontSize: 12))),
-                        DataCell(Text('${stats.health} HP', style: const TextStyle(color: Colors.greenAccent, fontSize: 12))),
-                        DataCell(Text(stats.attack > 0 ? '${stats.attack}' : '-', style: const TextStyle(color: Colors.white, fontSize: 12))),
-                        DataCell(Text(stats.attack > 0 ? dps.toStringAsFixed(1) : '-', style: const TextStyle(color: Colors.orangeAccent, fontSize: 12))),
-                        DataCell(Text('${stats.movement} ft/s', style: const TextStyle(color: Colors.cyanAccent, fontSize: 12))),
+                        DataCell(Text(npc.metadata.containsKey('faction') ? npc.metadata['faction']! : npc.role, style: const TextStyle(color: Colors.white70, fontSize: 11))),
+                        DataCell(Text('${stats.cost} AP', style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold, fontSize: 11))),
+                        DataCell(Text('${stats.health} HP', style: const TextStyle(color: Colors.greenAccent, fontSize: 11))),
+                        DataCell(Text(stats.attack > 0 ? '${stats.attack}' : '-', style: const TextStyle(color: Colors.white, fontSize: 11))),
+                        DataCell(Text(stats.attack > 0 ? dps.toStringAsFixed(1) : '-', style: const TextStyle(color: Colors.orangeAccent, fontSize: 11))),
+                        DataCell(Text('${stats.movement} ft/s', style: const TextStyle(color: Colors.cyanAccent, fontSize: 11))),
                       ],
                     );
                   }).toList(),
@@ -300,7 +307,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
   DataColumn _dataColumn(String label, int index, {bool isNumeric = false}) {
     return DataColumn(
-      label: Text(label, style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 12, fontWeight: FontWeight.bold)),
+      label: Text(label, style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 11, fontWeight: FontWeight.bold)),
       numeric: isNumeric,
       onSort: (colIndex, ascending) {
         setState(() {
@@ -314,13 +321,13 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
   Widget _manualPoint(String title, String desc) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(desc, style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 14, height: 1.4)),
+          Text(title, style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(desc, style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 12, height: 1.3)),
         ],
       ),
     );
@@ -328,58 +335,267 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
   Widget _buildGlossaryTab() {
     final List<Map<String, dynamic>> glossaryArticles = [
+      // ROOMS & WINGS (Exhaustively detailed with precise construction costs, plot locations, and exact production outputs)
+      {
+        'title': 'Alchemical Laboratory',
+        'category': 'Room / Wing',
+        'desc': 'Advanced chemical and occult research wing.\n\n'
+                '• Construction Cost: Precisely 450 CHF cash reserves plus 25 Wood timber planks and 15 Iron metal ingots. Requires formal Library archive as a structural prerequisite.\n'
+                '• Plot Location: Can be converted from any vacant unassigned ground-floor or basement East/West Wing chamber inside the primary Manor Fortress.\n'
+                '• Production Outputs: Staffed by hermetic scholars and chemists to synthesize Elixir of Vitality (100 CHF, 10 Herbs; restores 100% squad HP instantly), craft volatile Greek Fire Flask incendiary canisters (85 CHF, 10 Iron), synthesize Tear Gas riot canisters (60 CHF, 5 Herbs), and perform forbidden flesh golem anatomical stitching (Flesh Golem squad card: 200 CHF, 40 Food harvests).'
+      },
+      {
+        'title': 'Armory',
+        'category': 'Room / Wing',
+        'desc': 'Tactical military outfitting and ordnance staging chamber.\n\n'
+                '• Construction Cost: Precisely 350 CHF cash reserves plus 30 Wood planks and 20 Iron metal ingots.\n'
+                '• Plot Location: Can be converted from any vacant West Wing ground-floor staging chamber.\n'
+                '• Production Outputs: Outfits raw recruit squads with heavy iron breastplates (+20 HP) prior to Arena proving ground deployments and conducts metallurgical weapon honing (+15% physical melee and firearm DPS coefficient per armory upgrade tier).'
+      },
+      {
+        'title': 'Brewery',
+        'category': 'Room / Wing',
+        'desc': 'Subterranean distillation hall and working-class pub wing.\n\n'
+                '• Construction Cost: Precisely 280 CHF cash reserves plus 40 Wood timber planks.\n'
+                '• Plot Location: Can be erected inside any subterranean basement brick vault under the Manor.\n'
+                '• Production Outputs: Transforms raw agricultural Barley grain harvests into Restorative Ale casks (Cost: 5 Barley per cask; instantly restores +25 Manor morale) and unlocks the recruitment of fearless pub brawler mercenary squads (Recruitment Cost: 25 CHF, 2 Ale casks).'
+      },
+      {
+        'title': 'Kitchen & Scullery',
+        'category': 'Room / Wing',
+        'desc': 'Culinary food processing and dietary contract fulfillment wing.\n\n'
+                '• Construction Cost: Baseline scullery facility costs precisely 150 CHF plus 20 Wood planks.\n'
+                '• Plot Location: Erected inside the Manor ground-floor service wing adjacent to dining rooms.\n'
+                '• Production Outputs: Staffed by scullions and master chefs to transform raw agricultural harvests (Potatoes, Wheat, Raw Fish, Game Poultry) into standard daily resident sustenance meals (Yields precisely 3 daily caloric meals per raw Food harvest unit) and lavish aristocratic banquet dishes.'
+      },
+      {
+        'title': 'Library',
+        'category': 'Room / Wing',
+        'desc': 'Scholarly reading room and esoteric archive wing.\n\n'
+                '• Construction Cost: Precisely 300 CHF cash reserves plus 50 Wood timber planks for shelving.\n'
+                '• Plot Location: Converted inside formal East Wing quiet holding chambers.\n'
+                '• Production Outputs: Staffed by hired thinkers to generate a continuous flow of +2.5 Academic Research Points per minute, unlocking Heidelberg philosophy university doctrines and deep secret society priorate charters.'
+      },
+      {
+        'title': 'Sleeping Quarters',
+        'category': 'Room / Wing',
+        'desc': 'Residential staff dormitory wings.\n\n'
+                '• Construction Cost: Precisely 100 CHF cash reserves plus 15 Wood planks per bedstead tier.\n'
+                '• Plot Location: Built inside the upper floor dormitory gallery wings.\n'
+                '• Production Outputs: Provides formal lodging for hired resident staff; upgrading bedsteads increases total maximum estate population capacity by +4 formal staff members per level.'
+      },
+
       // CROPS
-      {'title': 'Barley', 'category': 'Crop', 'desc': 'Hardy winter cereal grain. Plant during Autumn or Winter months; requires 3 days until full maturity. Yields raw grain used in the Brewery hall to ferment restorative ales and feed livestock.'},
-      {'title': 'Potatoes', 'category': 'Crop', 'desc': 'Versatile subterranean root crop. Plant in Spring; requires precisely 2 days until harvest. Produces exceptionally high caloric food yields per acre, forming the primary dietary basis for formal working residents.'},
-      {'title': 'Wheat', 'category': 'Crop', 'desc': 'Golden summer agricultural grain. Plant in Spring or Summer; requires 4 days until harvest. Ground in scullery mills into refined white flour essential for baking lavish pastries and boosting resident prestige.'},
+      {
+        'title': 'Barley',
+        'category': 'Crop',
+        'desc': 'Hardy winter cereal grain.\n\n'
+                '• Planting & Maturity: Sow tillable plots during Autumn or Winter months; requires precisely 3 days (72 hours) until full agricultural harvest maturity.\n'
+                '• Yields & Usage: Yields precisely 12 Raw Barley bushels per acre. Transported directly to the Brewery hall to mash and ferment restorative ales or fed to scullery livestock.'
+      },
+      {
+        'title': 'Potatoes',
+        'category': 'Crop',
+        'desc': 'Versatile subterranean root tuber.\n\n'
+                '• Planting & Maturity: Plant inside loamy soil fields during Spring months; requires precisely 2 days (48 hours) until full harvest extraction.\n'
+                '• Yields & Usage: Yields precisely 20 Raw Food caloric units per acre. Forms the essential low-cost dietary staple required every morning at 06:00 to keep basic manor laborers alive and desertion-free.'
+      },
+      {
+        'title': 'Wheat',
+        'category': 'Crop',
+        'desc': 'Golden summer agricultural cereal grain.\n\n'
+                '• Planting & Maturity: Plant in exposed sunlit fields during Spring or Summer months; requires precisely 4 days (96 hours) until harvest reaping.\n'
+                '• Yields & Usage: Yields precisely 15 Raw Wheat sheaves per acre. Ground inside scullery windmills into refined white flour, fulfilling advanced pastry baking recipes and elevating global manor prestige.'
+      },
 
       // DISHES
-      {'title': 'Bouillabaisse', 'category': 'Dish / Culinary', 'desc': 'Luxurious Mediterranean seafood stew. Prerequisite: Coastal Trade Wharf wing. Resource Cost: 2 Raw Fish, 1 Vegetable harvest, 1 Herb vial. Produces 4 lavish meals. Maximizes Coven morale and arcane focus.'},
-      {'title': 'Coq au Vin', 'category': 'Dish / Culinary', 'desc': 'Aristocratic braised poultry. Resource Cost: 2 Poultry meat, 1 Wine vintage, 2 Vegetables. Produces 6 premium meals. Significantly elevates manor dining reputation and fulfills high-tier resident dietary contracts.'},
-      {'title': 'Hearty Stew', 'category': 'Dish / Culinary', 'desc': 'Standard working-class broth. Resource Cost: 1 Raw Meat, 1 Potato, 1 Vegetable. Produces 3 nutritious meals. Fulfills baseline daily caloric expenditure without requiring advanced kitchen scullery additions.'},
-      {'title': 'Roast Pheasant', 'category': 'Dish / Culinary', 'desc': 'Deep-woods game bird roast. Resource Cost: 2 Game Fowl meat, 1 Wild Herb. Produces 4 lavish meals. Highly favored by Foresters, Beastmasters, and marksmen infantry.'},
+      {
+        'title': 'Bouillabaisse',
+        'category': 'Dish / Culinary',
+        'desc': 'Luxurious Mediterranean seafood saffron stew.\n\n'
+                '• Prerequisites: Requires active Kitchen Scullery Level 2 plus Coastal Trade Wharf access.\n'
+                '• Resource Costs: precisely 2 Raw Fish harvests, 1 Vegetable unit, 1 Saffron Herb vial.\n'
+                '• Dietary Impact: Serves precisely 4 lavish high-tier meals. Consuming this dish maximizes local resident morale and grants a +25% cognitive focus coefficient to Alchemical Lab researchers.'
+      },
+      {
+        'title': 'Coq au Vin',
+        'category': 'Dish / Culinary',
+        'desc': 'Aristocratic braised poultry and mushroom reduction.\n\n'
+                '• Resource Costs: Precisely 2 Poultry meat units, 1 Red Wine vintage bottle, 2 Vegetables.\n'
+                '• Dietary Impact: Serves precisely 6 premium meals. Significantly elevates manor dining reputation (+15 sovereign prestige) and satisfies elite resident contractual food mandates.'
+      },
+      {
+        'title': 'Hearty Stew',
+        'category': 'Dish / Culinary',
+        'desc': 'Standard working-class meat broth.\n\n'
+                '• Resource Costs: Precisely 1 Raw Meat unit, 1 Potato tuber, 1 Raw Vegetable harvest.\n'
+                '• Dietary Impact: Serves precisely 3 nutritious working meals. Satisfies daily baseline resident caloric expenditure without requiring advanced scullery kitchen conversions.'
+      },
+      {
+        'title': 'Roast Pheasant',
+        'category': 'Dish / Culinary',
+        'desc': 'Deep-woods wild game bird roast.\n\n'
+                '• Resource Costs: Precisely 2 Wild Game Fowl meat units, 1 Wild Woodland Herb vial.\n'
+                '• Dietary Impact: Serves precisely 4 lavish meals. Exceptionally favored by hired Foresters, Beastmasters, and marksmen squads, permanently increasing their battlefield movement speed by +5%.'
+      },
 
       // RESOURCES
-      {'title': 'Cash (CHF)', 'category': 'Resource', 'desc': 'Swiss Francs, the fundamental sovereign currency of the underground economy. Acquired via banking syndicate dividends, debt collector death bounties, tournament victory purses, and surplus agricultural exports.'},
-      {'title': 'Food', 'category': 'Resource', 'desc': 'Edible caloric units required every morning at 06:00 to feed manor residents and maintain troop stamina. Harvested from tillable soil fields, garden conservatories, and fishing wharves.'},
-      {'title': 'Iron', 'category': 'Resource', 'desc': 'Heavy unrefined metal ingots smelted from subterranean ore veins. Essential for armoring Dragoon cavalry, forging Templar pyre blades, and fortifying structural castle gate barricades.'},
-      {'title': 'Wood', 'category': 'Resource', 'desc': 'Sturdy timber planks sawn from lumber wharves. Required for constructing formal room conversions, erecting wooden tanks, and crafting staff sling pole arms.'},
-
-      // ROOMS
-      {'title': 'Alchemical Laboratory', 'category': 'Room / Wing', 'desc': 'Advanced experimental chamber. Staffed by hermetic scholars and chemists to synthesize restorative elixirs of vitality, volatile Greek Fire canisters, and animate flesh golem constructs.'},
-      {'title': 'Armory', 'category': 'Room / Wing', 'desc': 'Tactical staging warehouse. Upgrades baseline squad melee and firearm damage coefficients while outfitting raw recruits with heavy armor plates prior to Arena tournaments.'},
-      {'title': 'Brewery', 'category': 'Room / Wing', 'desc': 'Subterranean fermentation hall hall hall. Transforms raw barley harvests into intoxicating spirits, elevating estate morale and unlocking the recruitment of fearless pub brawlers.'},
-      {'title': 'Kitchen & Scullery', 'category': 'Room / Wing', 'desc': 'Culinary preparation hub. Staffed by scullions and head cooks to process raw agricultural harvests into sophisticated resident meals.'},
-      {'title': 'Library', 'category': 'Room / Wing', 'desc': 'Scholarly archive. Generates continuous academic research points, unlocking advanced philosophical university doctrines and deep secret society charters.'},
-      {'title': 'Sleeping Quarters', 'category': 'Room / Wing', 'desc': 'Formal residential dormitory wings. Houses your hired staff; expanding and upgrading bedsteads increases total maximum estate population capacity.'},
+      {
+        'title': 'Cash (CHF)',
+        'category': 'Resource',
+        'desc': 'Sovereign Swiss Francs, the fundamental economic reserve currency.\n\n'
+                '• Acquisition Methods: Accumulated via Zurich banking syndicate interest dividends, underground debt collector bounties, Arena tournament victory purses (up to 1,500 CHF in Tier 5 runs), and surplus agricultural grain exports.\n'
+                '• Primary Expenditure: Essential for weekly resident staff payrolls, purchasing heavy iron ordnance, and financing structural room conversions.'
+      },
+      {
+        'title': 'Food',
+        'category': 'Resource',
+        'desc': 'Edible caloric sustenance units.\n\n'
+                '• Acquisition Methods: Harvested from tillable soil crop fields, garden conservatories, and fishing trade wharves.\n'
+                '• Primary Expenditure: Automatically consumed every morning at precisely 06:00 (1 meal per active resident). Failure to maintain sufficient food stocks causes resident starvation desertions and troop desertions.'
+      },
+      {
+        'title': 'Iron',
+        'category': 'Resource',
+        'desc': 'Heavy unrefined metallic ingots.\n\n'
+                '• Acquisition Methods: Smelted from subterranean estate ore veins or purchased from visiting industrial iron merchants (Standard Rate: 12 CHF per ingot).\n'
+                '• Primary Expenditure: Required for vehicle plating (Armored Cars, Tanks), forging Templar flaming greatswords, and armory reinforcement tiers.'
+      },
+      {
+        'title': 'Wood',
+        'category': 'Resource',
+        'desc': 'Sturdy timber lumber planks.\n\n'
+                '• Acquisition Methods: Sawn from estate lumber mills or purchased from regional timber wharves (Standard Rate: 5 CHF per plank).\n'
+                '• Primary Expenditure: Required for room conversions, erecting wooden tanks (Cost: 40 Wood), and building perimeter palisade barricades.'
+      },
 
       // SECRET SOCIETIES
-      {'title': 'Ancient Order of Foresters', 'category': 'Secret Society', 'desc': 'Woodland druidic brotherhood commanded by Chief Ranger Robin. Specializes in botanical toxin spore warfare and deploying ferocious deep-woods grizzly bears.'},
-      {'title': 'Carbonari', 'category': 'Secret Society', 'desc': 'Charcoal-burning revolutionary network directed by Grand Master Alta Vendita. Specializes in long-range pitch arson and deploying self-sacrificing shrapnel blast martyrs.'},
-      {'title': 'Chevaliers de la foi', 'category': 'Secret Society', 'desc': 'Ultra-royalist Catholic bannerets commanded by Ferdinand de Bertier. Specializes in impenetrable shock Cuirassier cavalry and attack-speed boosting standard bearers.'},
-      {'title': 'Fenian Brotherhood', 'category': 'Secret Society', 'desc': 'Irish republican insurgent brotherhood commanded by Head Centre Stephens. Specializes in rapid guerilla cell reinforcements and venom-tipped dirk raiders.'},
-      {'title': 'Freemasons', 'category': 'Secret Society', 'desc': 'Esoteric architectural order commanded by Grand Master Hiram. Specializes in unyielding sacred geometry movement buffs and tower-demolishing sapper squads.'},
-      {'title': 'Gnomes of Zurich', 'category': 'Secret Society', 'desc': 'Subterranean financial syndicate commanded by Banker Rothschild. Specializes in wealth-yielding debt collectors and precision headhunter assassins.'},
-      {'title': 'Golden Dawn', 'category': 'Secret Society', 'desc': 'Hermetic occult order commanded by Imperator Crowley. Specializes in astral hypnosis overlays that subvert rival free will and flip enemy troop allegiance.'},
-      {'title': 'Knights Templar', 'category': 'Secret Society', 'desc': 'Holy military priorate commanded by Jacques de Molay. Specializes in unquenchable spreading Greek Fire canisters and flaming pyre blades.'},
-      {'title': 'Rosicrucians', 'category': 'Secret Society', 'desc': 'Mystical alchemical brotherhood commanded by Magus Rosenkreuz. Specializes in vitalizing alchemical mists and lumbering 800-HP homunculus flesh behemoths.'},
+      {
+        'title': 'Ancient Order of Foresters',
+        'category': 'Secret Society',
+        'desc': 'Woodland druidic priorate commanded by Chief Ranger Robin.\n\n'
+                '• Tactical Specialty: Specializes in botanical toxin spore warfare, rapid wilderness mobility (+15% forest speed), and summoning 450-HP ferocious grizzly bears onto frontline turf.'
+      },
+      {
+        'title': 'Carbonari',
+        'category': 'Secret Society',
+        'desc': 'Charcoal-burning revolutionary priorate directed by Grand Master Alta Vendita.\n\n'
+                '• Tactical Specialty: Specializes in long-range pitch arson, stacking incendiary ground fire, and deploying self-sacrificing shrapnel blast martyrs that inflict 300 true area damage upon death.'
+      },
+      {
+        'title': 'Chevaliers de la foi',
+        'category': 'Secret Society',
+        'desc': 'Ultra-royalist Catholic banneret network commanded by Ferdinand de Bertier.\n\n'
+                '• Tactical Specialty: Specializes in impenetrable heavy Cuirassier shock cavalry wearing heavy iron breastplates and deploying inspirational standard bearers that boost nearby attack speed by +25%.'
+      },
+      {
+        'title': 'Fenian Brotherhood',
+        'category': 'Secret Society',
+        'desc': 'Irish republican insurgent brotherhood commanded by Head Centre Stephens.\n\n'
+                '• Tactical Specialty: Specializes in rapid guerilla cell spawn refills (+50% deployment speed) and venom-dirk raiders inflicting unhealable internal poison DOT.'
+      },
+      {
+        'title': 'Freemasons',
+        'category': 'Secret Society',
+        'desc': 'Esoteric architectural priorate commanded by Grand Master Hiram Abiff.\n\n'
+                '• Tactical Specialty: Specializes in unyielding sacred geometry tactical movement velocity auras (+40% speed) and stone-grey sapper demolition squads that target enemy defense towers exclusively.'
+      },
+      {
+        'title': 'Gnomes of Zurich',
+        'category': 'Secret Society',
+        'desc': 'Subterranean banking syndicate commanded by Banker Rothschild.\n\n'
+                '• Tactical Specialty: Specializes in compounding financial dividends, deploying wealth-yielding debt collector squads (+15 CHF per kill), and dispatching precision vault assassins.'
+      },
+      {
+        'title': 'Golden Dawn',
+        'category': 'Secret Society',
+        'desc': 'Hermetic occult magical priorate commanded by Imperator Aleister Crowley.\n\n'
+                '• Tactical Specialty: Specializes in esoteric cognitive manipulation, deploying Mesmerist occultists and Hypnotic pendulums that subvert rival free will and flip enemy unit allegiance.'
+      },
+      {
+        'title': 'Knights Templar',
+        'category': 'Secret Society',
+        'desc': 'Holy military priorate commanded by Jacques de Molay.\n\n'
+                '• Tactical Specialty: Specializes in unquenchable spreading Greek Fire canisters, fire-immune Pyre Knights, and heavy greatsword execution volleys.'
+      },
+      {
+        'title': 'Rosicrucians',
+        'category': 'Secret Society',
+        'desc': 'Mystical alchemical brotherhood commanded by Magus Christian Rosenkreuz.\n\n'
+                '• Tactical Specialty: Specializes in vitalizing alchemical healing mists and deploying colossal, lumbering 800-HP homunculus flesh behemoths.'
+      },
 
       // SCHOOLS
-      {'title': 'Bologna School of Law', 'category': 'Graduate School', 'desc': 'Ancient jurisprudence academy. Enrolling scholars here resolves periodic estate tax audits, mitigates legal liability during underground conflicts, and secures banking charters.'},
-      {'title': 'Heidelberg School of Philosophy', 'category': 'Graduate School', 'desc': 'Romantic German university faculty. Enrolling thinkers here significantly accelerates global research generation points and elevates sovereign manor reputation.'},
-      {'title': 'Paris Faculty of Medicine', 'category': 'Graduate School', 'desc': 'Anatomical surgery institute. Enrolling physicians here unlocks advanced flesh golem stitching and accelerates passive resident wound recovery coefficients.'},
+      {
+        'title': 'Bologna School of Law',
+        'category': 'Graduate School',
+        'desc': 'Ancient jurisprudence academy.\n\n'
+                '• Enrollment Benefits: Enrolling scholars here automates the dismissal of periodic municipal tax audits, entirely eliminates legal liability during subterranean syndicate disputes, and secures preferential interest rates (5% bonus yield) on cash deposits.'
+      },
+      {
+        'title': 'Heidelberg School of Philosophy',
+        'category': 'Graduate School',
+        'desc': 'Romantic German university faculty.\n\n'
+                '• Enrollment Benefits: Enrolling thinkers here grants a permanent +25% coefficient to global library research generation points and elevates sovereign manor reputation across European courts.'
+      },
+      {
+        'title': 'Paris Faculty of Medicine',
+        'category': 'Graduate School',
+        'desc': 'Anatomical surgery institute.\n\n'
+                '• Enrollment Benefits: Enrolling physicians here unlocks advanced flesh golem anatomical stitching in the Alchemical Lab and significantly accelerates passive resident wound recovery coefficients (+50% healing rate).'
+      },
 
       // LOCATIONS
-      {'title': 'Arena Hub (Proving Grounds)', 'category': 'Location', 'desc': 'The subterranean tactical Colosseum. Visit to engage in multi-lane Tournament ladders, custom Skirmish simulations, or endless Survival turf defense against invading hordes.'},
-      {'title': 'Hamlet (Village Pub)', 'category': 'Location', 'desc': 'The neighboring rural community settlement. Visit to recruit mercenary brawlers, hire seasonal agricultural hands, or purchase round-of-drinks to gather local intelligence.'},
-      {'title': 'Manor Estate Ground', 'category': 'Location', 'desc': 'Your primary sovereign fortress. Manage tillable soil fields, direct kitchen staff, construct advanced research wings, and fortify perimeter defenses.'},
-      {'title': 'World Map Expanse', 'category': 'Location', 'desc': 'The grand strategic orientation expanse. Dispatch Aravt armies and companion squads across hex coordinates to secure vital trade wharves and resource nodes.'},
+      {
+        'title': 'Arena Hub (Proving Grounds)',
+        'category': 'Location',
+        'desc': 'The subterranean tactical Colosseum.\n\n'
+                '• Activities: Visit to enter multi-lane Tournament ladders for massive gold purses, playtest custom deck combinations in Skirmish Simulator mode, or engage endless Survival turf defense against invading monster hordes.'
+      },
+      {
+        'title': 'Hamlet (Village Settlement)',
+        'category': 'Location',
+        'desc': 'The neighboring rural community pub.\n\n'
+                '• Activities: Visit to hire mercenary goon brawlers, recruit seasonal agricultural harvest hands (Cost: 15 CHF/day), or purchase rounds of drinks at the tavern to collect regional rumor intelligence.'
+      },
+      {
+        'title': 'Manor Estate Ground',
+        'category': 'Location',
+        'desc': 'Your primary sovereign headquarters.\n\n'
+                '• Activities: Manage tillable soil fields, assign kitchen cooking contracts, construct formal West Wing research chambers, and upgrade perimeter barricade gate defenses.'
+      },
+      {
+        'title': 'World Map Expanse',
+        'category': 'Location',
+        'desc': 'The grand strategic orientation expanse.\n\n'
+                '• Activities: Dispatch Aravt armies and companion squads across hex coordinates to secure vital regional trade wharves and resource wharves.'
+      },
 
       // WEAPONS
-      {'title': 'Greek Fire Flask', 'category': 'Weapon / Ordnance', 'desc': 'Volatile antique incendiary ordnance that ignites targets with persistent fire DOT and spreads across frontline trenches.'},
-      {'title': 'Heavy Cavalry Sabre', 'category': 'Weapon / Ordnance', 'desc': 'Curved steel blade offering superior armor-piercing melee DPS on mounted shock Dragoon charges.'},
-      {'title': 'Musket & Bayonet', 'category': 'Weapon / Ordnance', 'desc': 'Standard period infantry firearm delivering lethal round-ball volleys at distance and engaging frontlines with fixed steel spear points.'},
-      {'title': 'Tear Gas Canister', 'category': 'Weapon / Ordnance', 'desc': 'Chemical riot control canister that unleashes a blinding, unbreathable vapor cloud, halving rival attack speed.'},
+      {
+        'title': 'Greek Fire Flask',
+        'category': 'Weapon / Ordnance',
+        'desc': 'Volatile antique incendiary ordnance.\n\n'
+                '• Tactical Specs: Fired at intermediate distance (15 ft range). Ignites frontline targets with an unquenchable fire DOT (15 dmg/sec for 6 seconds) that has a 35% probability coefficient to spread to neighboring units.'
+      },
+      {
+        'title': 'Heavy Cavalry Sabre',
+        'category': 'Weapon / Ordnance',
+        'desc': 'Curved steel mounted shock blade.\n\n'
+                '• Tactical Specs: Wielded by Royalist Cuirassiers and mounted Dragoons. Delivers superior armor-piercing physical melee cuts (45 dmg per strike) on high-velocity shock charges.'
+      },
+      {
+        'title': 'Musket & Bayonet',
+        'category': 'Weapon / Ordnance',
+        'desc': 'Standard period infantry firearm.\n\n'
+                '• Tactical Specs: Firing lead ball volleys at range (25 ft range; 28 dmg per shot) and engaging close-quarters frontline trenches with fixed steel bayonet points (32 melee dmg).'
+      },
+      {
+        'title': 'Tear Gas Canister',
+        'category': 'Weapon / Ordnance',
+        'desc': 'Chemical riot control canister.\n\n'
+                '• Tactical Specs: Synthesized in Alchemical Labs. Creates a dense, blinding 15-ft vapor cloud on impact; enemy combatants caught inside suffer a 50% reduction to attack speed and movement velocity.'
+      },
     ];
 
     // Filter and sort
@@ -395,25 +611,25 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
     return Column(
       children: [
-        // Search Bar
+        // Mobile-Optimized Search Bar
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(color: const Color(0xFF1E1813), border: Border(bottom: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)))),
           child: TextField(
-            style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 15),
+            style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Search glossary across components, resources, crops, dishes, societies...',
+              hintText: 'Search glossary across rooms, build costs, crops, dishes, societies...',
               hintStyle: GoogleFonts.oldStandardTt(color: Colors.white38, fontStyle: FontStyle.italic),
-              prefixIcon: const Icon(Icons.search, color: Color(0xFFD4AF37)),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFFD4AF37), size: 20),
               suffixIcon: _glossarySearchQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, color: Color(0xFFC4B89B)),
+                      icon: const Icon(Icons.clear, color: Color(0xFFC4B89B), size: 18),
                       onPressed: () => setState(() => _glossarySearchQuery = ''),
                     )
                   : null,
               filled: true,
               fillColor: const Color(0xFF120C08),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: Color(0xFFC4B89B))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.3))),
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: Color(0xFFD4AF37))),
@@ -422,48 +638,52 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
           ),
         ),
 
-        // Article Count Banner
+        // Mobile-Optimized Article Count Banner
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           color: const Color(0xFF15100B),
           child: Text(
             'SHOWING ${filtered.length} ENCYCLOPEDIC ARTICLES (ALPHABETIZED)',
-            style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+            style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.0),
           ),
         ),
 
-        // Articles List
+        // Mobile-Optimized Articles List
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             physics: const BouncingScrollPhysics(),
             itemCount: filtered.length,
             itemBuilder: (context, index) {
               final art = filtered[index];
               return Container(
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1C1611),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 6, offset: const Offset(0, 3))],
                 ),
                 child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
                   collapsedIconColor: const Color(0xFFD4AF37),
                   iconColor: const Color(0xFFD4AF37),
                   initiallyExpanded: _glossarySearchQuery.isNotEmpty || index < 2,
                   title: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        art['title'].toUpperCase(),
-                        style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                      Expanded(
+                        child: Text(
+                          art['title'].toUpperCase(),
+                          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                        ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        margin: const EdgeInsets.only(left: 8),
                         decoration: BoxDecoration(color: const Color(0xFF2A221C), borderRadius: BorderRadius.circular(2), border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5))),
-                        child: Text(art['category'].toUpperCase(), style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold)),
+                        child: Text(art['category'].toUpperCase(), style: GoogleFonts.oswald(color: const Color(0xFFD4AF37), fontSize: 9, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -474,7 +694,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                       decoration: BoxDecoration(color: const Color(0xFF15100B), border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05)))),
                       child: Text(
                         art['desc'],
-                        style: GoogleFonts.oldStandardTt(color: const Color(0xFFD7CCC8), fontSize: 15, height: 1.5),
+                        style: GoogleFonts.oldStandardTt(color: const Color(0xFFD7CCC8), fontSize: 14, height: 1.45),
                       ),
                     ),
                   ],

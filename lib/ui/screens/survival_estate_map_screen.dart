@@ -3977,12 +3977,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildMenuOptionBtn('HELP / GLOSSARY', () {
+                      _buildMenuOptionBtn('HELP', () {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));
                       }),
                       const SizedBox(height: 8),
                       _buildMenuOptionBtn('GAME OPTIONS', () {
-                        showDialog(context: context, builder: (context) => const OptionsDialog());
+                        showDialog(context: context, builder: (context) => const OptionsDialog(isSurvivalMode: true));
                       }),
                       const SizedBox(height: 8),
                       if (isElementary) ...[
