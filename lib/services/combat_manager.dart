@@ -2329,7 +2329,12 @@ class CombatManager extends ChangeNotifier {
               myLaneY = ly;
             }
           }
-          ty = myLaneY;
+          if ((c.y - myLaneY).abs() > 4.0) {
+            tx = c.x;
+            ty = myLaneY; // Seek vertical lane center exclusively to avoid wall!
+          } else {
+            ty = myLaneY;
+          }
         }
 
         final dx = tx - c.x;
@@ -2388,8 +2393,13 @@ class CombatManager extends ChangeNotifier {
                 myLaneY = ly;
               }
             }
-            tx = target.x;
-            ty = myLaneY; // Align within our safe lane to bypass wall!
+            if ((c.y - myLaneY).abs() > 4.0) {
+              tx = c.x;
+              ty = myLaneY; // Navigate straight vertically to channel entrance first!
+            } else {
+              tx = target.x;
+              ty = myLaneY; // Safely inside channel! Advance straight toward target X!
+            }
           }
 
           final dx = tx - c.x;
@@ -2440,18 +2450,17 @@ class CombatManager extends ChangeNotifier {
           }
         }
 
-        // 1. Seek channel alignment Y first
+        // Two-phase channel navigation: seek vertical alignment Y first, advance horizontally X only when aligned!
         double dy = nearestLaneY - c.y;
-        if (dy.abs() > 2.0) {
+        if (dy.abs() > 4.0) {
           c.moveDirY = dy > 0.0 ? 1.0 : -1.0;
           c.y += c.moveDirY * stats.movement * dt * 1.5 * 2.25;
+          c.moveDirX = 0.0; // Strictly prevent advancing horizontally into barrier walls!
         } else {
           c.moveDirY = 0.0;
+          c.moveDirX = c.side == CombatSide.player ? 1.0 : -1.0;
+          c.x += c.moveDirX * stats.movement * dt * 1.5 * 2.25;
         }
-
-        // 2. Proceed down channel
-        c.moveDirX = c.side == CombatSide.player ? 1.0 : -1.0;
-        c.x += c.moveDirX * stats.movement * dt * 1.5 * 2.25;
       }
       
       enforceUnitBoundaries(c);
