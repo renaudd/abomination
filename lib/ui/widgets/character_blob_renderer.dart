@@ -3193,7 +3193,7 @@ class CharacterBlobRenderer extends StatelessWidget {
       isIdle: isIdle,
       delayFactor: 0.15,
       child: Transform.scale(
-        scale: 0.68,
+        scale: 0.58,
         child: SizedBox(
           width: size,
           height: size,
@@ -3202,7 +3202,7 @@ class CharacterBlobRenderer extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Positioned(
-              right: -size * 0.15,
+              right: size * 0.04,
               child: Container(
                 width: size * 0.2,
                 height: size * 0.4,
@@ -3213,11 +3213,11 @@ class CharacterBlobRenderer extends StatelessWidget {
               ),
             ),
             Container(
-              width: size * 0.9,
-              height: size * 0.5,
+              width: size * 0.75,
+              height: size * 0.45,
               decoration: BoxDecoration(
                 color: const Color(0xFFD7CCC8),
-                borderRadius: BorderRadius.all(Radius.elliptical(45, 25)),
+                borderRadius: const BorderRadius.all(Radius.elliptical(45, 25)),
                 border: Border.all(color: const Color(0xFF5D4037), width: 2),
                 boxShadow: const [
                   BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 4)),
@@ -3257,7 +3257,7 @@ class CharacterBlobRenderer extends StatelessWidget {
       isIdle: isIdle,
       delayFactor: 0.1,
       child: Transform.scale(
-        scale: 0.68,
+        scale: 0.58,
         child: SizedBox(
           width: size,
           height: size,
@@ -3266,7 +3266,7 @@ class CharacterBlobRenderer extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Positioned(
-              left: -size * 0.15,
+              left: size * 0.04,
               child: Transform.rotate(
                 angle: -0.4,
                 child: Container(
@@ -3280,7 +3280,7 @@ class CharacterBlobRenderer extends StatelessWidget {
               ),
             ),
             Positioned(
-              right: -size * 0.15,
+              right: size * 0.04,
               child: Transform.rotate(
                 angle: 0.4,
                 child: Container(
@@ -3326,7 +3326,7 @@ class CharacterBlobRenderer extends StatelessWidget {
 
   Widget _buildMinotaur(double size) {
     return Transform.scale(
-      scale: 0.68,
+      scale: 0.58,
       child: SizedBox(
         width: size,
         height: size,
@@ -3335,7 +3335,7 @@ class CharacterBlobRenderer extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: size * 0.7,
+            width: size * 0.65,
             height: size * 0.75,
             decoration: BoxDecoration(
               color: const Color(0xFF3E2723),
@@ -3344,8 +3344,8 @@ class CharacterBlobRenderer extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: -size * 0.1,
-            left: size * 0.05,
+            top: -size * 0.05,
+            left: size * 0.08,
             child: Transform.rotate(
               angle: -0.6,
               child: Container(
@@ -3359,8 +3359,8 @@ class CharacterBlobRenderer extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: -size * 0.1,
-            right: size * 0.05,
+            top: -size * 0.05,
+            right: size * 0.08,
             child: Transform.rotate(
               angle: 0.6,
               child: Container(
@@ -3392,7 +3392,7 @@ class CharacterBlobRenderer extends StatelessWidget {
             ),
           ),
           Positioned(
-            right: -size * 0.1,
+            right: size * 0.05,
             child: Container(width: 6, height: size * 0.85, color: const Color(0xFF757575)),
           ),
         ],
