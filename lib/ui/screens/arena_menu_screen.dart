@@ -944,6 +944,15 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
       CombatUnitFactory.createBossGearbox().copyWith(id: 'boss_gearbox', isPlayer: true),
       CombatUnitFactory.createBossElizabeth().copyWith(id: 'boss_elizabeth', isPlayer: true),
       CombatUnitFactory.createBossThorne().copyWith(id: 'boss_thorne', isPlayer: true),
+      CombatUnitFactory.createMasonicMaster().copyWith(id: 'masonic_master', isPlayer: true),
+      CombatUnitFactory.createChristianRosenkreuz().copyWith(id: 'christian_rosenkreuz', isPlayer: true),
+      CombatUnitFactory.createJacquesDeMolay().copyWith(id: 'jacques_de_molay', isPlayer: true),
+      CombatUnitFactory.createGnomeHighBanker().copyWith(id: 'gnome_high_banker', isPlayer: true),
+      CombatUnitFactory.createCarbonariGrandMaster().copyWith(id: 'carbonari_grand_master', isPlayer: true),
+      CombatUnitFactory.createGoldenDawnMagus().copyWith(id: 'golden_dawn_magus', isPlayer: true),
+      CombatUnitFactory.createFenianChiefCenter().copyWith(id: 'fenian_chief_center', isPlayer: true),
+      CombatUnitFactory.createChevalierGrandMaitre().copyWith(id: 'chevalier_grand_maitre', isPlayer: true),
+      CombatUnitFactory.createForesterHighChiefRanger().copyWith(id: 'forester_high_chief_ranger', isPlayer: true),
     ];
 
     int currentIndex = 0;

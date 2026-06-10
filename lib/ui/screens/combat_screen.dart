@@ -5895,6 +5895,32 @@ class _OpponentDeckInspectorScreenState
     extends State<_OpponentDeckInspectorScreen> {
   bool _showLeader = false;
   bool _showCardDetails = false;
+  late List<NPC> _uniqueOpponentDeck;
+
+  String _extractBaseCardKey(NPC npc) {
+    if (npc.metadata != null && npc.metadata!.containsKey('cardType')) {
+      return npc.metadata!['cardType']!;
+    }
+    return npc.name.toLowerCase().replaceAll(' ', '_');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _uniqueOpponentDeck = [];
+    final seenKeys = <String>{};
+    for (final npc in widget.opponentDeck) {
+      final nLower = npc.name.toLowerCase();
+      if (nLower.contains('recruit') || nLower.contains('follower') || nLower.contains('cycle') || nLower.contains('refill')) {
+        continue;
+      }
+      final key = _extractBaseCardKey(npc);
+      if (!seenKeys.contains(key)) {
+        seenKeys.add(key);
+        _uniqueOpponentDeck.add(npc);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -5942,7 +5968,7 @@ class _OpponentDeckInspectorScreenState
                       ),
                       onPressed: () => setState(() => _showLeader = false),
                       child: Text(
-                        'OPPONENT DECK (${widget.opponentDeck.length})',
+                        'OPPONENT DECK (${_uniqueOpponentDeck.length})',
                         style: GoogleFonts.playfairDisplay(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
@@ -6013,7 +6039,7 @@ class _OpponentDeckInspectorScreenState
             Expanded(
               child: _showLeader
                   ? _buildFullOpponentLeaderView(widget.opponentLeader)
-                  : widget.opponentDeck.isEmpty
+                  : _uniqueOpponentDeck.isEmpty
                   ? Center(
                       child: Text(
                         'No normal unit cards identified in opponent deck.',
@@ -6027,9 +6053,9 @@ class _OpponentDeckInspectorScreenState
                   : Center(
                       child: SizedBox(
                         width: cellWidth * 6 + 5 * 12.0,
-                        height: totalGridHeight,
                         child: GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 32),
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 6,
@@ -6040,7 +6066,7 @@ class _OpponentDeckInspectorScreenState
                           itemCount: 12,
                           itemBuilder: (context, index) {
                             final isOccupied =
-                                index < widget.opponentDeck.length;
+                                index < _uniqueOpponentDeck.length;
                             if (!isOccupied) {
                               return Container(
                                 decoration: BoxDecoration(
@@ -6076,11 +6102,11 @@ class _OpponentDeckInspectorScreenState
                                 ),
                               );
                             }
-                            final npc = widget.opponentDeck[index];
+                            final npc = _uniqueOpponentDeck[index];
                             return GestureDetector(
                               onTap: () => CombatCardDetailModal.show(
                                 context,
-                                npc.id,
+                                _extractBaseCardKey(npc),
                               ),
                               child: Container(
                                 decoration: BoxDecoration(

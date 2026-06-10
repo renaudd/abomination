@@ -63,7 +63,7 @@ class CharacterBlobRenderer extends StatelessWidget {
               _buildBat(size)
             else if (npc.specimenType == 'Rat' ||
                 npc.specimenType == 'FlyingRat')
-              _buildAnimal(npc.specimenType, size)
+              _buildAnimal(npc.specimenType, size, isUndead: npc.name.toLowerCase().contains('undead'))
             else if (npc.specimenType == 'Hound')
               _buildHound(size)
             else if (npc.specimenType == 'Fox')
@@ -394,7 +394,7 @@ class CharacterBlobRenderer extends StatelessWidget {
 
         return Transform.translate(
           offset: Offset(offsetX, offsetY),
-          child: _buildAnimal(npc.specimenType, size * 0.5),
+          child: _buildAnimal(npc.specimenType, size * 0.5, isUndead: npc.name.toLowerCase().contains('undead')),
         );
       }),
     );
@@ -531,9 +531,9 @@ class CharacterBlobRenderer extends StatelessWidget {
     return Colors.black;
   }
 
-  Widget _buildAnimal(String type, double size) {
+  Widget _buildAnimal(String type, double size, {bool isUndead = false}) {
     if (type == 'Bat') return _buildBat(size);
-    if (type == 'Rat') return _buildRat(size);
+    if (type == 'Rat') return _buildRat(size, isUndead: isUndead);
     if (type == 'FlyingRat') return _buildFlyingRat(size);
     // Fallback blob
     return Container(
@@ -546,14 +546,16 @@ class CharacterBlobRenderer extends StatelessWidget {
     );
   }
 
-  Widget _buildRat(double size) {
+  Widget _buildRat(double size, {bool isUndead = false}) {
+    final bColor = isUndead ? const Color(0xFF6A1B9A) : const Color(0xFF4E342E);
+    final accColor = isUndead ? const Color(0xFFC6FF00) : const Color(0xFFF8BBD0);
     return _BobbingAnimation(
       isWalking: isWalking,
       isIdle: isIdle,
       delayFactor: 0.0,
       child: CustomPaint(
         size: Size(size * 1.2, size * 0.8),
-        painter: _RatPainter(bodyColor: const Color(0xFF4E342E)),
+        painter: _RatPainter(bodyColor: bColor, accentColor: accColor),
       ),
     );
   }
@@ -4547,7 +4549,8 @@ class _HealingWavesPainter extends CustomPainter {
 
 class _RatPainter extends CustomPainter {
   final Color bodyColor;
-  _RatPainter({required this.bodyColor});
+  final Color accentColor;
+  _RatPainter({required this.bodyColor, this.accentColor = const Color(0xFFF8BBD0)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -4576,14 +4579,14 @@ class _RatPainter extends CustomPainter {
           ..close();
     canvas.drawPath(path, paint);
 
-    // Pinkish Ear
-    final earPaint = Paint()..color = const Color(0xFFF8BBD0);
+    // Ear
+    final earPaint = Paint()..color = accentColor;
     canvas.drawCircle(
       Offset(size.width * 0.32, size.height * 0.38),
       size.width * 0.1,
       earPaint,
     );
-    final innerEar = Paint()..color = const Color(0xFFF06292);
+    final innerEar = Paint()..color = accentColor == const Color(0xFFF8BBD0) ? const Color(0xFFF06292) : accentColor.withValues(alpha: 0.8);
     canvas.drawCircle(
       Offset(size.width * 0.32, size.height * 0.38),
       size.width * 0.06,
@@ -4624,7 +4627,7 @@ class _RatPainter extends CustomPainter {
     // Elegant Wavy Tail
     final tailPaint =
         Paint()
-          ..color = const Color(0xFFF8BBD0)
+          ..color = accentColor
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
           ..strokeWidth = size.width * 0.05;
