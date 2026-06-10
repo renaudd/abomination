@@ -5898,8 +5898,8 @@ class _OpponentDeckInspectorScreenState
   late List<NPC> _uniqueOpponentDeck;
 
   String _extractBaseCardKey(NPC npc) {
-    if (npc.metadata != null && npc.metadata!.containsKey('cardType')) {
-      return npc.metadata!['cardType']!;
+    if (npc.metadata.containsKey('cardType')) {
+      return npc.metadata['cardType']!;
     }
     return npc.name.toLowerCase().replaceAll(' ', '_');
   }
