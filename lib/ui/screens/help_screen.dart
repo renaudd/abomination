@@ -85,8 +85,8 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
   void _sortCards() {
     _allCombatCards.sort((a, b) {
-      final sA = a.combatStats ?? const CombatStats(attack: 0, health: 1);
-      final sB = b.combatStats ?? const CombatStats(attack: 0, health: 1);
+      final sA = a.combatStats ?? const CombatStats(attack: 0, health: 1, maxHealth: 1, speed: 1.0, movement: 0.0, distance: 0.0, cost: 0);
+      final sB = b.combatStats ?? const CombatStats(attack: 0, health: 1, maxHealth: 1, speed: 1.0, movement: 0.0, distance: 0.0, cost: 0);
       int cmp = 0;
       switch (_sortColumnIndex) {
         case 0:
@@ -263,7 +263,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                     _dataColumn('SPEED', 6, isNumeric: true),
                   ],
                   rows: _allCombatCards.map((npc) {
-                    final stats = npc.combatStats ?? const CombatStats(attack: 0, health: 1);
+                    final stats = npc.combatStats ?? const CombatStats(attack: 0, health: 1, maxHealth: 1, speed: 1.0, movement: 0.0, distance: 0.0, cost: 0);
                     final double dps = stats.attack / (stats.speed > 0 ? stats.speed : 1.0);
                     return DataRow(
                       onSelectChanged: (_) => CombatCardDetailModal.show(context, _extractBaseCardKey(npc)),
@@ -403,7 +403,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
             style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 15),
             decoration: InputDecoration(
               hintText: 'Search glossary across components, resources, crops, dishes, societies...',
-              hintStyle: GoogleFonts.oldStandardTt(color: Colors.white40, fontStyle: FontStyle.italic),
+              hintStyle: GoogleFonts.oldStandardTt(color: Colors.white38, fontStyle: FontStyle.italic),
               prefixIcon: const Icon(Icons.search, color: Color(0xFFD4AF37)),
               suffixIcon: _glossarySearchQuery.isNotEmpty
                   ? IconButton(

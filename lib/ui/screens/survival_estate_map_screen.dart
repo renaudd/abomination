@@ -580,7 +580,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   void initState() {
     super.initState();
     _transformationController = TransformationController(
-      Matrix4.identity()..scale(0.35),
+      Matrix4.identity()..scaleByDouble(0.35),
     );
   }
 
@@ -1049,7 +1049,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               _transformationController.value = Matrix4.identity()
-                ..scale(initialScale);
+                ..scaleByDouble(initialScale);
             }
           });
         }
@@ -2543,6 +2543,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   }).toList();
                   final aiUnits = _generateDiverseSurvivalOpponentDeck(progress.currentTurn);
 
+                  if (!mounted) return;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -4051,6 +4052,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   'LOAD $slot',
                                   () async {
                                     await service.manualLoadFromSlot(slot);
+                                    if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(

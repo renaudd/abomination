@@ -386,7 +386,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
         child: Text(
           label,
           style: GoogleFonts.playfairDisplay(
-            color: const Color(0xFFC4B89B).withOpacity(0.5),
+            color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
             fontSize: 10,
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
@@ -428,9 +428,9 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
           backgroundColor: const Color(0xFF2C251E),
           foregroundColor: const Color(0xFFE5D5B0),
           shape: RoundedRectangleBorder(
-            side: BorderSide(color: const Color(0xFFC4B89B).withOpacity(0.3)),
+            side: BorderSide(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
           ),
-          disabledForegroundColor: const Color(0xFFC4B89B).withOpacity(0.15),
+          disabledForegroundColor: const Color(0xFFC4B89B).withValues(alpha: 0.15),
           disabledBackgroundColor: Colors.transparent,
         ),
         child: Text(
@@ -464,7 +464,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
         child: Text(
           "NO SUPPLIES AVAILABLE",
           style: GoogleFonts.oldStandardTt(
-            color: const Color(0xFFC4B89B).withOpacity(0.5),
+            color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
             fontSize: 12,
           ),
         ),
@@ -485,7 +485,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
           ],
         ),
         const SizedBox(height: 4),
-        Divider(color: const Color(0xFFC4B89B).withOpacity(0.2), height: 1),
+        Divider(color: const Color(0xFFC4B89B).withValues(alpha: 0.2), height: 1),
         const SizedBox(height: 8),
 
         // List
@@ -531,7 +531,7 @@ class _PrepareJourneyDialogState extends State<PrepareJourneyDialog> {
                         decoration: BoxDecoration(
                           color: Colors.black26,
                           border: Border.all(
-                            color: const Color(0xFFC4B89B).withOpacity(0.3),
+                            color: const Color(0xFFC4B89B).withValues(alpha: 0.3),
                           ),
                         ),
                         child: TextField(

@@ -189,7 +189,7 @@ class AboutScreen extends StatelessWidget {
   Widget _sectionHeading(String title) {
     return Container(
       padding: const EdgeInsets.only(bottom: 4),
-      decoration: const Border(bottom: BorderSide(color: Color(0xFFD4AF37), width: 1.5)),
+      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFD4AF37), width: 1.5))),
       child: Text(
         title,
         style: GoogleFonts.playfairDisplay(

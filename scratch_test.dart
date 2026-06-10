@@ -2,6 +2,7 @@ import 'package:abomination/state/game_state.dart';
 import 'package:abomination/services/task_service.dart';
 import 'package:abomination/models/game_item.dart';
 import 'package:abomination/models/npc_intent.dart';
+import 'package:flutter/foundation.dart';
 
 void main() {
   final gameState = GameState();
@@ -39,9 +40,9 @@ void main() {
   gameState.completeTaskManually(gameState.npcs.first.id, cookTask);
 
   final updatedKitchen = gameState.rooms.firstWhere((r) => r.id == 'kitchen');
-  print("KITCHEN INVENTORY:");
+  debugPrint("KITCHEN INVENTORY:");
   for (var item in updatedKitchen.inventory) {
-    print("- ${item.type}: ${item.quantity}");
+    debugPrint("- ${item.type}: ${item.quantity}");
   }
-  print("MEALS RESOURCE: ${gameState.resources['meals']}");
+  debugPrint("MEALS RESOURCE: ${gameState.resources['meals']}");
 }

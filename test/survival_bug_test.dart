@@ -69,7 +69,7 @@ void main() {
 
     // Check if the building was added to the service
     final hasMill = service.progress!.buildings.any((b) => b.id == 'plot_d' && b.type == SurvivalBuildingType.lumberMill);
-    print('Lumber Mill constructed in service: $hasMill');
+    debugPrint('Lumber Mill constructed in service: $hasMill');
     
     // In the main estate map, it should now render the built Lumber Mill button
     expect(find.text('LUMBER MILL'), findsOneWidget);
