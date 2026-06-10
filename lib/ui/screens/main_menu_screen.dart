@@ -20,6 +20,7 @@ import '../../services/save_service.dart';
 import 'introduction_screen.dart';
 import 'manor_screen.dart';
 import 'arena_menu_screen.dart';
+import 'about_screen.dart';
 import '../widgets/save_load_dialogs.dart';
 import '../widgets/options_dialog.dart';
 
@@ -71,7 +72,7 @@ class MainMenuScreen extends StatelessWidget {
                 Text(
                   'ABOMINATION',
                   style: GoogleFonts.playfairDisplay(
-                    fontSize: 36, // Slightly smaller to fit longer text
+                    fontSize: 36,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 8,
                     color: const Color(0xFFE5D5B0),
@@ -166,6 +167,17 @@ class MainMenuScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ArenaMenuScreen(),
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 12),
+
+                _buildMenuButton(context, 'ABOUT', () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AboutScreen(),
                     ),
                   );
                 }),

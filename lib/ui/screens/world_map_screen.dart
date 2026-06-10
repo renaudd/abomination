@@ -31,6 +31,7 @@ import '../widgets/save_load_dialogs.dart';
 import '../../services/save_service.dart';
 import '../widgets/options_dialog.dart';
 import '../widgets/cheat_codes_dialog.dart';
+import 'help_screen.dart';
 class WorldMapScreen extends StatefulWidget {
   const WorldMapScreen({super.key});
 
@@ -150,6 +151,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 );
               } else if (value == 'options') {
                 _showOptionsDialog(context);
+              } else if (value == 'help') {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));
               } else if (value == 'cheat_codes') {
                 _showCheatCodesDialog(context, state);
               } else if (value == 'quit') {
@@ -185,9 +188,14 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 value: 'options',
                 child: Text(
                   'Options',
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFE5D5B0),
-                  ),
+                  style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'help',
+                child: Text(
+                  'Help / Glossary',
+                  style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
                 ),
               ),
               if (state.cheatCodesEnabled)

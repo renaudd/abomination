@@ -47,6 +47,7 @@ import 'records_screen.dart';
 import 'main_menu_screen.dart';
 import '../widgets/options_dialog.dart';
 import '../widgets/cheat_codes_dialog.dart';
+import 'help_screen.dart';
 import '../../models/active_business.dart';
 import '../widgets/flaubert_event_dialog.dart';
 import '../widgets/dental_event_dialog.dart';
@@ -353,6 +354,8 @@ class _ManorScreenState extends State<ManorScreen> {
                   );
                 } else if (value == 'options') {
                   _showOptionsDialog(context);
+                } else if (value == 'help') {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));
                 } else if (value == 'cheat_codes') {
                   _showCheatCodesDialog(context, state);
                 } else if (value == 'quit') {
@@ -388,9 +391,14 @@ class _ManorScreenState extends State<ManorScreen> {
                   value: 'options',
                   child: Text(
                     'Options',
-                    style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFE5D5B0),
-                    ),
+                    style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'help',
+                  child: Text(
+                    'Help / Glossary',
+                    style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
                   ),
                 ),
                 if (state.cheatCodesEnabled)

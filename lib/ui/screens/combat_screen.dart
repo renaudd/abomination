@@ -36,6 +36,7 @@ import '../widgets/options_dialog.dart';
 import '../../services/combat_unit_service.dart';
 import 'survival_estate_map_screen.dart';
 import 'main_menu_screen.dart';
+import 'help_screen.dart';
 
 class CombatScreen extends StatefulWidget {
   final List<NPC>? customPlayerDeck;
@@ -5120,6 +5121,15 @@ void _showCombatMenuDialog(BuildContext context) {
                   } else {
                     screenState?._showNotification('FLEE ATTEMPT FAILED! THE ENEMY PURSUES!', Colors.red.shade900);
                   }
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMenuButton(
+                context,
+                'HELP / GLOSSARY',
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));
                 },
               ),
               const SizedBox(height: 12),

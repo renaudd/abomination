@@ -27,7 +27,8 @@ import '../../services/arena_save_service.dart';
 import '../widgets/character_blob_renderer.dart';
 import 'combat_screen.dart';
 import 'game_over_screen.dart';
-
+import 'help_screen.dart';
+import '../widgets/options_dialog.dart';
 class WeaponUpgradeSpec {
   final String name;
   final int cost;
@@ -3976,24 +3977,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildMenuOptionBtn('OPTIONS & CONTROLS', () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            backgroundColor: const Color(0xFF2E1A0A),
-                            title: const Text('GAME CONTROLS'),
-                            content: const Text(
-                              'Assign squad workers to Farms, Lumber Mills, and Mines to produce critical food, wood and iron.\n\n'
-                              'Assign squads to Training Yard to increase their combat tiers. Ensure you have enough food to feed basic/elite units each turn, otherwise they starve and desert!',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
+                      _buildMenuOptionBtn('HELP / GLOSSARY', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));
+                      }),
+                      const SizedBox(height: 8),
+                      _buildMenuOptionBtn('GAME OPTIONS', () {
+                        showDialog(context: context, builder: (context) => const OptionsDialog());
                       }),
                       const SizedBox(height: 8),
                       if (isElementary) ...[
