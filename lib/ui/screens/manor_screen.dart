@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
@@ -534,28 +535,32 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               left: 16,
               child: _buildAbstractedTheaterCard(context, state),
             ),
-          if (_selectedRoomForDetails != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildRoomDetailsPanel(context, state, _selectedRoomForDetails!),
+          if (_selectedRoomForDetails != null) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedRoomForDetails = null),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.65),
+                ),
+              ),
             ),
+            Positioned.fill(
+              child: SafeArea(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                    child: _buildRoomDetailsPanel(context, state, _selectedRoomForDetails!),
+                  ),
+                ),
+              ),
+            ),
+          ],
           Positioned.fill(
             child: SafeArea(
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeInOut,
-                alignment: (state.gilesTutorialStep == GilesTutorialStep.enterKitchen || state.gilesTutorialStep == GilesTutorialStep.directAssign)
-                    ? Alignment.topCenter
-                    : Alignment.bottomCenter,
+              child: Align(
+                alignment: Alignment.bottomLeft,
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    top: (state.gilesTutorialStep == GilesTutorialStep.enterKitchen || state.gilesTutorialStep == GilesTutorialStep.directAssign) ? 70.0 : 16.0,
-                    bottom: 16.0,
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.all(16.0),
                   child: const GilesTutorialOverlay(),
                 ),
               ),
@@ -740,24 +745,26 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     }).toList();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF241F1A).withValues(alpha: 0.98),
-        border: const Border(
-          top: BorderSide(
-            color: Color(0xFFD4AF37), // Master Gold
-            width: 2.5,
-          ),
+        color: const Color(0xFF241F1A),
+        border: Border.all(
+          color: const Color(0xFFD4AF37).withValues(alpha: 0.6), // Master Gold / Bronze
+          width: 1.5,
         ),
+        borderRadius: BorderRadius.circular(2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.9),
-            blurRadius: 20,
-            spreadRadius: 4,
+            color: Colors.black.withValues(alpha: 0.85),
+            blurRadius: 24,
+            spreadRadius: 8,
           ),
         ],
       ),
-      constraints: const BoxConstraints(maxHeight: 400),
+      constraints: BoxConstraints(
+        maxWidth: min(480, MediaQuery.of(context).size.width * 0.92),
+        maxHeight: min(500, MediaQuery.of(context).size.height * 0.82),
+      ),
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
