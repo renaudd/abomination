@@ -44,6 +44,7 @@ import '../models/contract.dart';
 import '../models/manor_venture.dart';
 import '../models/active_business.dart';
 import '../models/graduate_school_state.dart';
+import '../models/visitor_quest.dart';
 
 import '../services/task_service.dart';
 import '../services/social_service.dart';
@@ -135,6 +136,7 @@ class GameState extends ChangeNotifier {
 
   final List<Chicken> _chickens = [];
   final Map<String, String> _lastProductionText = {};
+  final Map<String, int> _npcDialogueCooldown = {};
   
   ManorVenture _manorVenture = ManorVenture.standard;
   ManorVenture get manorVenture => _manorVenture;
@@ -665,25 +667,28 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void acceptVisitorQuest(String guestName) {
-    final id = 'quest_clean_study_${DateTime.now().millisecondsSinceEpoch}';
-    _objectives.add(
-      Objective(
-        id: id,
-        title: "Warm Hospitality for $guestName",
-        description:
-            "Restore or keep the Study completely clean in honor of $guestName.",
-        type: ObjectiveType.tutorial,
-        isCompleted: false,
-        requirements: {
-          'rooms_cleaned': ['study'],
-        },
-      ),
-    );
-    _lastAnnouncement = "QUEST ACCEPTED: WARM HOSPITALITY FOR $guestName";
+  VisitorQuest getVisitorQuestForNpc(NPC guest) {
+    final quests = VisitorQuestCatalog.allQuests;
+    final hash = guest.name.hashCode.abs();
+    return quests[hash % quests.length];
+  }
+
+  void acceptVisitorQuest(VisitorQuest quest, String guestName) {
+    if (!_objectives.any((o) => o.id == quest.objective.id)) {
+      _objectives.add(quest.objective);
+    }
+    if (quest.agreement != null) {
+      final customizedAgreement = quest.agreement!.copyWith(
+        npcId: guestName,
+      );
+      if (!_contracts.any((c) => c.id == customizedAgreement.id)) {
+        _contracts.add(customizedAgreement);
+      }
+    }
+    _lastAnnouncement = "${guestName.toUpperCase()}: ${quest.acceptMessage}";
     _announcementHistory.insert(
       0,
-      "[${_currentDate.formattedTime}] QUEST: Restore or clean the Study room.",
+      "[${_currentDate.formattedTime}] QUEST: ${quest.objective.title}",
     );
     notifyListeners();
   }
@@ -5850,12 +5855,12 @@ class GameState extends ChangeNotifier {
         if (profs.isNotEmpty) {
           final pName = profs[random.nextInt(profs.length)];
           if (random.nextBool()) {
-            return "My masterwork in [$pName] is proceeding magnificently.";
+            return "My masterwork in $pName is proceeding magnificently.";
           }
         }
         final statOptions = ['strength', 'endurance', 'dexterity', 'perception', 'intellect'];
         final chosenStat = statOptions[random.nextInt(statOptions.length)];
-        return "Through strict Victorian discipline, I think I've increased my [$chosenStat].";
+        return "Through strict Victorian discipline, I think I've increased my $chosenStat.";
 
       case 2: // C) Occasionally make useful observations
         final obsPool = [];
@@ -5870,21 +5875,21 @@ class GameState extends ChangeNotifier {
         if (dryCrops.isNotEmpty) {
           final fieldLetters = ['A', 'B', 'C', 'D'];
           final fieldLetter = fieldLetters[random.nextInt(fieldLetters.length)];
-          obsPool.add("Field [$fieldLetter] is looking remarkably dry. It requires immediate care.");
+          obsPool.add("Field $fieldLetter is looking remarkably dry. It requires immediate care.");
         }
 
         final coop = _rooms.firstWhereOrNull((r) => r.type == RoomType.chickenCoop);
         if (coop != null) {
           final eggs = coop.inventory.where((i) => i.type == 'eggs' || i.name.toLowerCase().contains('egg')).fold(0, (a, b) => a + b.quantity);
-          if (eggs >= 6) obsPool.add("There's a massive bunch of eggs gathered in the Chicken Coop.");
+          if (eggs >= 10) obsPool.add("There's a massive bunch of eggs gathered in the Chicken Coop.");
         }
 
         final study = _rooms.firstWhereOrNull((r) => r.type == RoomType.study);
         if (study != null) {
           final rats = study.inventory.where((i) => i.id.contains('rat') || i.name.toLowerCase().contains('rat')).fold(0, (a, b) => a + b.quantity);
           if (rats > 0) {
-            obsPool.add("You know you've got a bunch of [rats] nesting in your Study, right?");
-            obsPool.add("By the way, I left a few [rats] scurrying in the Study for your experiments.");
+            obsPool.add("You know you've got a bunch of rats nesting in your Study, right?");
+            obsPool.add("By the way, I left a few rats scurrying in the Study for your experiments.");
           }
         }
         
@@ -6018,15 +6023,29 @@ class GameState extends ChangeNotifier {
       // 2 & 3. Ephemeral Speech Bubbles and Rich Victorian Observations
       currentNpc = _npcs[i];
       if (currentNpc.isResident) {
+        int cooldown = _npcDialogueCooldown[currentNpc.id] ?? 0;
+        if (cooldown > 0) {
+          cooldown--;
+          _npcDialogueCooldown[currentNpc.id] = cooldown;
+        }
+
         String? activeThought = currentNpc.currentThought;
-        // 88% chance to clear active thoughts every minute so speech bubbles are rare
-        if (activeThought != null && random.nextDouble() < 0.88) {
+        // Let active thoughts stay up for exactly 30 game minutes (or 3 real seconds at lightning speed) so the player can actually read them!
+        if (activeThought != null && random.nextDouble() < 0.10) {
           activeThought = null;
         }
-        // Every ~120 minutes (or 1.5% chance per min when idle), generate an observation
-        if (activeThought == null && random.nextDouble() < 0.015) {
+
+        if (activeThought == null && cooldown <= 0) {
           activeThought = _generateRichVictorianObservation(currentNpc);
+          
+          int targetCooldown = 120;
+          if (_speed == GameSpeed.lightning) targetCooldown = 480;
+          else if (_speed == GameSpeed.fast) targetCooldown = 240;
+          else targetCooldown = 120;
+          
+          _npcDialogueCooldown[currentNpc.id] = targetCooldown;
         }
+
         if (activeThought != currentNpc.currentThought) {
           _npcs[i] = currentNpc.copyWith(currentThought: activeThought);
         }

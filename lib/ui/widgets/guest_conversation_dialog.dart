@@ -17,6 +17,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import '../../models/active_business.dart';
+import '../../models/npc.dart';
+import '../../models/visitor_quest.dart';
 import 'visiting_merchant_trade_dialog.dart';
 
 class GuestConversationDialog extends StatelessWidget {
@@ -144,25 +146,20 @@ class GuestConversationDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Option 2: Quest Opportunity
-                  _dialogOption(
-                    context: context,
-                    title: "DISCUSS LOCAL PROJECTS (QUEST)",
-                    description: "Ask if they have any tasks or need assistance. Accept a quest to keep the Study restored and fully clean.",
-                    icon: Icons.assignment,
-                    onTap: () {
-                      state.acceptVisitorQuest(guest.name);
-                      state.clearGuestConversation();
-                      Navigator.pop(context);
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Quest accepted: Keep Glarus Study restored and tidy."),
-                          backgroundColor: Color(0xFF241F1A),
-                        ),
-                      );
-                    },
-                  ),
+                  // Option 2: Custom Quest / Venture Opportunity (Request 4)
+                  (() {
+                    final quest = state.getVisitorQuestForNpc(guest);
+                    return _dialogOption(
+                      context: context,
+                      title: quest.title,
+                      description: '"${quest.teaserQuote}"',
+                      icon: Icons.assignment,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showVisitorQuestProposalDetailsDialog(context, state, quest, guest);
+                      },
+                    );
+                  })(),
                   const SizedBox(height: 12),
 
                   // Option 3: Social Debate / Spirits
@@ -270,6 +267,166 @@ class GuestConversationDialog extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showVisitorQuestProposalDetailsDialog(BuildContext context, GameState state, VisitorQuest quest, NPC guest) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1E1A15),
+          shape: const RoundedRectangleBorder(),
+          child: Container(
+            width: 550,
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      quest.title.toUpperCase(),
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 18),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(color: Colors.white10, height: 24),
+                Text(
+                  "PROPOSED BY ${guest.name.toUpperCase()} (${guest.role.toUpperCase()}):",
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Text(
+                    '"${quest.detailedDialog}"',
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 13,
+                      height: 1.5,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  "ESTATE OBJECTIVE & RECORD OBLIGATION:",
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "• Objective: ${quest.objective.title} — ${quest.objective.description}",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                if (quest.agreement != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    "• Formal Agreement: ${quest.agreement!.description}",
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFC4B89B).withValues(alpha: 0.8),
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        side: const BorderSide(color: Colors.redAccent, width: 1),
+                      ),
+                      onPressed: () {
+                        // Request 4B: Denying incurs negative social standing with visitor
+                        state.adjustNpcSatisfaction(guest.id, -15);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(quest.denyMessage),
+                            backgroundColor: const Color(0xFF241F1A),
+                          ),
+                        );
+                        state.clearGuestConversation();
+                        Navigator.pop(context); // close details
+                      },
+                      child: Text(
+                        "DECLINE PROPOSAL",
+                        style: GoogleFonts.playfairDisplay(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC4B89B),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: const RoundedRectangleBorder(),
+                      ),
+                      onPressed: () {
+                        // Request 4C: Accepting adds objective and manor record agreement
+                        state.acceptVisitorQuest(quest, guest.name);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(quest.acceptMessage),
+                            backgroundColor: const Color(0xFF241F1A),
+                          ),
+                        );
+                        state.clearGuestConversation();
+                        Navigator.pop(context); // close details
+                      },
+                      child: Text(
+                        "ACCEPT & SIGN AGREEMENT",
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFF1E1A15),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
