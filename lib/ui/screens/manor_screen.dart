@@ -43,6 +43,7 @@ import 'game_over_screen.dart';
 import 'records_screen.dart';
 import 'main_menu_screen.dart';
 import '../widgets/options_dialog.dart';
+import '../widgets/fireworks_overlay.dart';
 import '../widgets/cheat_codes_dialog.dart';
 import 'help_screen.dart';
 import '../../models/active_business.dart';
@@ -236,11 +237,16 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           builder: (context) => Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(maxWidth: 400),
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                const Positioned.fill(child: FireworksOverlay()),
+                Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
                 color: const Color(0xFF1A1612),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFC4B89B), width: 2),
@@ -313,7 +319,9 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                 ],
               ),
             ),
-          ),
+          ],
+        ),
+      ),
         );
       });
     }
@@ -2430,7 +2438,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                       ),
                     ),
                     subtitle: Text(
-                      "Outfit this secluded room for experimentation.\nCost: 1000 CHF, 50 Wood.",
+                      "Outfit this secluded room for experimentation.\nCost: 1000 CHF, 100 Wood.",
                       style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
                     ),
                   ),

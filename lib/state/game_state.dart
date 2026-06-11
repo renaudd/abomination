@@ -125,6 +125,7 @@ class GameState extends ChangeNotifier {
   final List<Dish> _pantry = [];
   final List<String> _cookingQueue = [];
   final List<String> _researchQueue = [];
+  final List<String> _laboratoryQueue = [];
   int _unreadObjectiveCount = 0;
   bool _pendingCombatEncounter = false;
   double _playerDistanceSinceEncounter = 0.0;
@@ -816,6 +817,7 @@ class GameState extends ChangeNotifier {
     'knownRecipes': _knownRecipes.toList(),
     'discoveries': _discoveries.map((d) => d.toJson()).toList(),
     'researchQueue': _researchQueue,
+    'laboratoryQueue': _laboratoryQueue,
     'unreadObjectiveCount': _unreadObjectiveCount,
     'chickens': _chickens.map((c) => c.toJson()).toList(),
     'crops': _crops.map((c) => c.toJson()).toList(),
@@ -985,6 +987,11 @@ class GameState extends ChangeNotifier {
 
     _researchQueue.clear();
     _researchQueue.addAll(List<String>.from(json['researchQueue']));
+
+    _laboratoryQueue.clear();
+    if (json['laboratoryQueue'] != null) {
+      _laboratoryQueue.addAll(List<String>.from(json['laboratoryQueue']));
+    }
 
     _researchPoints.clear();
     final resPoints = json['researchPoints'] as Map<String, dynamic>? ?? {};
@@ -1396,6 +1403,22 @@ class GameState extends ChangeNotifier {
   }
 
   List<String> get researchQueue => List.unmodifiable(_researchQueue);
+  List<String> get laboratoryQueue => List.unmodifiable(_laboratoryQueue);
+
+  bool isLaboratoryActivity(String activityId) {
+    return activityId.contains('dissection') ||
+           activityId.contains('vivisection') ||
+           activityId.contains('deprivation') ||
+           activityId.contains('clinical_trial') ||
+           activityId.contains('transmutation') ||
+           activityId.contains('behavioral_optimization') ||
+           activityId.contains('lobotomy') ||
+           activityId.startsWith('reanimation') ||
+           activityId == 'small_dissection' ||
+           activityId == 'large_dissection' ||
+           activityId == 'small_vivisection' ||
+           activityId == 'large_vivisection';
+  }
 
   String? getFirstUnassignedRecipe() {
     for (var rId in _cookingQueue) {
@@ -1782,12 +1805,13 @@ class GameState extends ChangeNotifier {
       setReservation(itemId, true);
     }
 
-    if (!_researchQueue.contains(entry)) {
-      _researchQueue.add(entry);
+    final targetQueue = isLaboratoryActivity(itemId) ? _laboratoryQueue : _researchQueue;
+    if (!targetQueue.contains(entry)) {
+      targetQueue.add(entry);
       final item = inventory.firstWhereOrNull((i) => i.id == itemId);
       _announcementHistory.insert(
         0,
-        "[${_currentDate.formattedTime}] Enqueued ${item?.name.toUpperCase() ?? itemId.toUpperCase()} for research.",
+        "[${_currentDate.formattedTime}] Enqueued ${item?.name.toUpperCase() ?? itemId.toUpperCase()} for examination.",
       );
       notifyListeners();
     }
@@ -1805,13 +1829,14 @@ class GameState extends ChangeNotifier {
       }
     }
 
-    if (!_researchQueue.contains(entry)) {
-      _researchQueue.add(entry);
+    final targetQueue = isLaboratoryActivity(activityId) ? _laboratoryQueue : _researchQueue;
+    if (!targetQueue.contains(entry)) {
+      targetQueue.add(entry);
       final activity = ScienceService.getActivityById(activityId);
       if (activity != null) {
         _announcementHistory.insert(
           0,
-          "[${_currentDate.formattedTime}] Enqueued ${activity.name.toUpperCase()} for study.",
+          "[${_currentDate.formattedTime}] Enqueued ${activity.name.toUpperCase()} for execution.",
         );
       }
       notifyListeners();
@@ -1852,7 +1877,6 @@ class GameState extends ChangeNotifier {
       final entry = _researchQueue.removeAt(index);
       if (entry.contains(':')) {
         final parts = entry.split(':');
-        // If it starts with 'activity:' or 'recipe:', IDs are in parts[2]
         if (parts[0] == 'activity' || parts[0] == 'recipe') {
           if (parts.length > 2) {
             final ids = parts[2].split(',');
@@ -1861,11 +1885,31 @@ class GameState extends ChangeNotifier {
             }
           }
         } else {
-          // Fallback legacy format or other type: Parts[1] is ID
           setReservation(parts[1], false);
         }
       } else {
-        // Simple item ID
+        setReservation(entry, false);
+      }
+      notifyListeners();
+    }
+  }
+
+  void removeLaboratoryFromQueue(int index) {
+    if (index >= 0 && index < _laboratoryQueue.length) {
+      final entry = _laboratoryQueue.removeAt(index);
+      if (entry.contains(':')) {
+        final parts = entry.split(':');
+        if (parts[0] == 'activity' || parts[0] == 'recipe') {
+          if (parts.length > 2) {
+            final ids = parts[2].split(',');
+            for (var id in ids) {
+              setReservation(id, false);
+            }
+          }
+        } else {
+          setReservation(parts[1], false);
+        }
+      } else {
         setReservation(entry, false);
       }
       notifyListeners();
@@ -4976,7 +5020,7 @@ class GameState extends ChangeNotifier {
     }
 
     const costFunds = 1000.0;
-    const costWood = 50.0;
+    const costWood = 100.0;
     if ((resources['funds'] ?? 0) >= costFunds &&
         (resources['wood'] ?? 0) >= costWood) {
       updateResource('funds', -(costFunds));
@@ -4990,7 +5034,7 @@ class GameState extends ChangeNotifier {
       notifyListeners();
     } else {
       _lastAnnouncement =
-          "Insufficient resources for Laboratory conversion (Need 1000 Funds, 50 Wood).";
+          "Insufficient resources for Laboratory conversion (Need 1000 Funds, 100 Wood).";
       notifyListeners();
     }
   }
@@ -5390,7 +5434,7 @@ class GameState extends ChangeNotifier {
         id: 'build_laboratory',
         title: 'Secluded Research',
         description:
-            'Establish a Laboratory in the Attic or Basement to begin advanced experiments (50 Wood, 1000 Funds).',
+            'Establish a Laboratory in the Attic or Basement to begin advanced experiments (100 Wood, 1000 Funds).',
         type: ObjectiveType.science,
         requirements: {'room_type_exists': 'laboratory'},
       ),
@@ -9924,6 +9968,57 @@ class GameState extends ChangeNotifier {
           }
         }
       }
+    } else if (targetId == 'laboratory') {
+      if (type == TaskType.experiment || type == TaskType.research || type == TaskType.dissect || type == TaskType.vivisection) {
+        if (_laboratoryQueue.isNotEmpty) {
+          int targetIndex = 0;
+          for (int i = 0; i < _laboratoryQueue.length; i++) {
+            final qId = _laboratoryQueue[i];
+            final rId = qId.startsWith('activity:') ? qId.replaceFirst('activity:', '') : qId;
+            bool active = _taskService.activeTasks.any(
+              (t) => (t.type == TaskType.research || t.type == TaskType.study || t.type == TaskType.experiment || t.type == TaskType.dissect || t.type == TaskType.vivisection || t.type == TaskType.clinicalTrial) && (t.recipeId == rId || t.recipeId == qId),
+            );
+            bool enqueued = _npcs.any(
+              (n) => n.intentQueue.any(
+                (intent) => (intent.action == TaskType.research || intent.action == TaskType.study || intent.action == TaskType.experiment || intent.action == TaskType.dissect || intent.action == TaskType.vivisection || intent.action == TaskType.clinicalTrial) && (intent.recipeId == rId || intent.recipeId == qId),
+              ),
+            );
+            if (!active && !enqueued) {
+              targetIndex = i;
+              break;
+            }
+          }
+          popLaboratoryIndex = targetIndex;
+          final qId = _laboratoryQueue[targetIndex];
+          shouldPopLaboratory = true;
+          assignedRecipeId = qId;
+
+          if (qId.startsWith('activity:')) {
+            final rawActivityId = qId.replaceFirst('activity:', '');
+            final cleanActivityId = rawActivityId.split(':').first;
+            final activity = ScienceService.getActivityById(cleanActivityId);
+            if (activity != null) {
+              assignedType = activity.type;
+              assignedRecipeId = rawActivityId;
+              duration = activity.baseDurationMinutes;
+              _consumeScienceIngredients(activity.ingredients);
+            }
+          } else {
+            assignedType = TaskType.experiment;
+            assignedRecipeId = qId;
+            duration = 60;
+          }
+        } else {
+          final room = _rooms.firstWhere((r) => r.id == targetId);
+          if (room.isRestored && room.dirtiness > 0.1) {
+            assignedType = TaskType.cleanRoom;
+          } else {
+            _lastAnnouncement = "${npc.name} found nothing to experiment on and the ${room.name} is in disrepair.";
+            if (!silent) notifyListeners();
+            return false;
+          }
+        }
+      }
     } else if (targetId == 'library' &&
         (type == TaskType.archiveResearch ||
             type == TaskType.transcribeNotes)) {
@@ -10069,6 +10164,9 @@ class GameState extends ChangeNotifier {
 
     if (shouldPopResearch && _researchQueue.isNotEmpty) {
       _researchQueue.removeAt(popResearchIndex);
+    }
+    if (shouldPopLaboratory && _laboratoryQueue.isNotEmpty) {
+      _laboratoryQueue.removeAt(popLaboratoryIndex);
     }
     if (shouldPopCooking && _cookingQueue.isNotEmpty) {
       _cookingQueue.removeAt(popCookingIndex);
@@ -13065,6 +13163,8 @@ class GameState extends ChangeNotifier {
 
         _researchQueue.remove(activity.id);
         _researchQueue.remove('activity:${activity.id}');
+        _laboratoryQueue.remove(activity.id);
+        _laboratoryQueue.remove('activity:${activity.id}');
 
         // PERSIST worker before triggers
         final taskKey = activity.type.name;
@@ -13083,6 +13183,44 @@ class GameState extends ChangeNotifier {
             );
           }
           worker = _npcs[npcIndex];
+        }
+
+        // Master Scientific Milestone Progression Network
+        if (activity.type == TaskType.dissect) {
+          _dissectionsPerformed++;
+          if (_dissectionsPerformed == 1) {
+            _unlockedLabActivities.add('small_vivisection');
+            _unlockedLabActivities.add('large_vivisection');
+            _triggerMobileFireworksNotification("VIVISECTION UNLOCKED", "By dissecting deceased tissue, you have discovered how to perform biological vivisection on living subjects!");
+          }
+        } else if (activity.type == TaskType.vivisection) {
+          _vivisectionsPerformed++;
+          if (_vivisectionsPerformed == 3) {
+            _unlockedLabActivities.add('deprivation_study');
+            _triggerMobileFireworksNotification("DEPRIVATION STUDY UNLOCKED", "Your profound vivisection studies have revealed how to conduct rigorous sensory and nutritional deprivation experiments!");
+          }
+        } else if (activity.type == TaskType.puzzleStudy) {
+          _puzzleStudiesPerformed++;
+          if (_puzzleStudiesPerformed == 2 && !_unlockedLabActivities.contains('behavioral_optimization')) {
+            _unlockedLabActivities.add('behavioral_optimization');
+            _triggerMobileFireworksNotification("BEHAVIORAL OPTIMIZATION UNLOCKED", "Your extensive cognitive puzzle studies enable master behavioral optimization experiments!");
+          }
+        } else if (activity.type == TaskType.experiment || activity.type == TaskType.operation) {
+          _labExperimentsPerformed++;
+          if (_labExperimentsPerformed == 5 && !_unlockedLabActivities.contains('transmutation')) {
+            _unlockedLabActivities.add('transmutation');
+            _triggerMobileFireworksNotification("BIOLOGICAL TRANSMUTATION UNLOCKED", "Your consistent galvanic experiments unlock the profound secrets of biological Transmutation!");
+          }
+        }
+        
+        // Knowledge Unlocks Check
+        if (getKnowledgeLevel('Zoology') >= 15 && !_unlockedLabActivities.contains('puzzle_study')) {
+          _unlockedLabActivities.add('puzzle_study');
+          _triggerMobileFireworksNotification("COGNITIVE PUZZLE STUDY UNLOCKED", "Your advanced Zoology knowledge (Level 15+) enables complex cognitive puzzle experiments!");
+        }
+        if (getKnowledgeLevel('Medicine') >= 20 && !_unlockedLabActivities.contains('clinical_trial')) {
+          _unlockedLabActivities.add('clinical_trial');
+          _triggerMobileFireworksNotification("GENERAL CLINICAL TRIAL UNLOCKED", "Your masterful Medicine knowledge (Level 20+) enables sweeping general clinical trials!");
         }
       } else {
         _announcementHistory.insert(

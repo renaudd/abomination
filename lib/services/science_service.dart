@@ -44,7 +44,7 @@ class ScienceService {
         name: 'Fundamental Research',
         type: TaskType.research,
         ingredients: {'research_notes': 1},
-        baseDurationMinutes: 15, // Adjusted per item if possible
+        baseDurationMinutes: 45, // Adjusted per item if possible
         discipline: 'General',
         outcomeDescription:
             'Produces research notes and advances personal knowledge.',
@@ -54,7 +54,7 @@ class ScienceService {
         name: 'Small Specimen Dissection',
         type: TaskType.dissect,
         ingredients: {'specimen': 1},
-        baseDurationMinutes: 20,
+        baseDurationMinutes: 60,
         discipline: 'Anatomy',
         outcomeDescription:
             'Produces 1-15 pages of life science knowledge and poor quality meat.',
@@ -64,7 +64,7 @@ class ScienceService {
         name: 'Large Specimen Dissection',
         type: TaskType.dissect,
         ingredients: {'large_specimen': 1},
-        baseDurationMinutes: 90,
+        baseDurationMinutes: 270,
         discipline: 'Anatomy',
         outcomeDescription:
             'Produces significant life science knowledge and meat.',
@@ -74,7 +74,7 @@ class ScienceService {
         name: 'Small Specimen Vivisection',
         type: TaskType.vivisection,
         ingredients: {'specimen': 1},
-        baseDurationMinutes: 45,
+        baseDurationMinutes: 135,
         discipline: 'Anatomy',
         moralCost: 0.2,
         outcomeDescription:
@@ -85,7 +85,7 @@ class ScienceService {
         name: 'Large Specimen Vivisection',
         type: TaskType.vivisection,
         ingredients: {'large_specimen': 1},
-        baseDurationMinutes: 150,
+        baseDurationMinutes: 450,
         discipline: 'Anatomy',
         moralCost: 0.5,
         outcomeDescription:

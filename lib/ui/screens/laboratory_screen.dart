@@ -22,6 +22,7 @@ import '../../models/room.dart';
 import '../../services/science_service.dart';
 import '../../services/task_service.dart';
 import '../../models/game_item.dart';
+import '../widgets/fireworks_overlay.dart';
 
 class LaboratoryScreen extends StatelessWidget {
   final Room room;
@@ -38,10 +39,15 @@ class LaboratoryScreen extends StatelessWidget {
           builder: (context) => Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(maxWidth: 400),
-              padding: const EdgeInsets.all(24),
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                const Positioned.fill(child: FireworksOverlay()),
+                Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: const Color(0xFF1A1612),
                 borderRadius: BorderRadius.circular(16),
@@ -115,7 +121,9 @@ class LaboratoryScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ),
+          ],
+        ),
+      ),
         );
       });
     }
@@ -308,6 +316,10 @@ class LaboratoryScreen extends StatelessWidget {
                           _buildSectionTitle('LABORATORY PROCEDURES & EXPERIMENTS'),
                           const SizedBox(height: 16),
                           _buildScienceActivities(context, state),
+                          const SizedBox(height: 32),
+                          _buildSectionTitle('PROCEDURES QUEUE'),
+                          const SizedBox(height: 16),
+                          _buildLaboratoryQueue(context, state),
                         ],
                       ),
                     ),
@@ -394,6 +406,80 @@ class LaboratoryScreen extends StatelessWidget {
     if (type == 'specimen') return 'BIOLOGICAL SPECIMEN';
     if (type == 'large_specimen') return 'LARGE SPECIMEN';
     return type.replaceAll('_', ' ').toUpperCase();
+  }
+
+  Widget _buildLaboratoryQueue(BuildContext context, GameState state) {
+    if (state.laboratoryQueue.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white10),
+          color: Colors.black.withValues(alpha: 0.2),
+        ),
+        child: Center(
+          child: Text(
+            'QUEUE IS EMPTY',
+            style: GoogleFonts.playfairDisplay(
+              color: Colors.white12,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: state.laboratoryQueue.map((queueId) {
+        final index = state.laboratoryQueue.indexOf(queueId);
+        final parts = queueId.split(':');
+        final category = parts[0];
+        final activityId = parts.length > 1 ? parts[1] : null;
+        final isActivity = category == 'activity';
+
+        String title = queueId.toUpperCase();
+        String subtitle = 'ENQUEUED PROCEDURE';
+
+        if (isActivity && activityId != null) {
+          final cleanActivityId = activityId.split(':').first;
+          final activity = ScienceService.getActivityById(cleanActivityId);
+          if (activity != null) {
+            title = activity.name.toUpperCase();
+            subtitle = 'Base Duration: ${activity.baseDurationMinutes ~/ 60}H ${activity.baseDurationMinutes % 60}M';
+          }
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+            color: Colors.black.withValues(alpha: 0.3),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            title: Text(
+              title,
+              style: GoogleFonts.playfairDisplay(
+                color: const Color(0xFFE5D5B0),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            subtitle: Text(
+              subtitle,
+              style: GoogleFonts.oldStandardTt(
+                color: Colors.white38,
+                fontSize: 10,
+              ),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.cancel, color: Colors.redAccent, size: 18),
+              onPressed: () => state.removeLaboratoryFromQueue(index),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildScienceActivities(BuildContext context, GameState state) {
