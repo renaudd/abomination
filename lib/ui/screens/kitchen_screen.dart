@@ -187,7 +187,8 @@ class KitchenScreen extends StatelessWidget {
                 ),
               ],
             ),
-            if (state.gilesTutorialStep != GilesTutorialStep.inactive)
+          ),
+          if (state.gilesTutorialStep != GilesTutorialStep.inactive)
               const Positioned.fill(
                 child: SafeArea(
                   child: Align(
@@ -395,8 +396,6 @@ class KitchenScreen extends StatelessWidget {
                     letterSpacing: 1,
                   ),
                 ),
-              ),
-            ),
               ),
             ),
           ],
