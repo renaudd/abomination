@@ -68,6 +68,20 @@ enum LifeObjective { women, money, fame, science }
 
 enum GilesTrait { sage, endsMeet, silent, shuffle }
 
+enum GilesTutorialStep {
+  inactive,
+  intro,
+  selectKitchen,
+  enterKitchen,
+  commencePrep,
+  assignResident,
+  playClock,
+  selectCoop,
+  directAssign,
+  inspectResident,
+  summary,
+}
+
 enum ButlerDisposition { stern, kind, neutral }
 
 class GameState extends ChangeNotifier {
@@ -443,6 +457,21 @@ class GameState extends ChangeNotifier {
   
   void dismissChapter2Modal() {
     _showChapter2Modal = false;
+    notifyListeners();
+  }
+
+  GilesTutorialStep _gilesTutorialStep = GilesTutorialStep.inactive;
+  GilesTutorialStep get gilesTutorialStep => _gilesTutorialStep;
+
+  void advanceGilesTutorial(GilesTutorialStep nextStep) {
+    if (_gilesTutorialStep != GilesTutorialStep.inactive) {
+      _gilesTutorialStep = nextStep;
+      notifyListeners();
+    }
+  }
+
+  void dismissGilesTutorial() {
+    _gilesTutorialStep = GilesTutorialStep.inactive;
     notifyListeners();
   }
 
@@ -1633,6 +1662,9 @@ class GameState extends ChangeNotifier {
       setReservation(targetId, true);
     }
     _cookingQueue.add(entry);
+    if (_gilesTutorialStep == GilesTutorialStep.commencePrep) {
+      advanceGilesTutorial(GilesTutorialStep.assignResident);
+    }
     notifyListeners();
   }
 
@@ -2003,6 +2035,11 @@ class GameState extends ChangeNotifier {
     _playerAge = age;
     _gilesTrait = gilesTrait;
     _mainObjective = objective;
+    if (gilesTrait == GilesTrait.sage) {
+      _gilesTutorialStep = GilesTutorialStep.intro;
+    } else {
+      _gilesTutorialStep = GilesTutorialStep.inactive;
+    }
     _completedTaskTypes.clear();
     _speed = GameSpeed.paused;
 
@@ -9857,6 +9894,9 @@ class GameState extends ChangeNotifier {
 
   void setSpeed(GameSpeed newSpeed) {
     _speed = newSpeed;
+    if (_gilesTutorialStep == GilesTutorialStep.playClock && newSpeed != GameSpeed.paused) {
+      advanceGilesTutorial(GilesTutorialStep.selectCoop);
+    }
     notifyListeners();
   }
 
@@ -11018,6 +11058,12 @@ class GameState extends ChangeNotifier {
     // 2. Add to Room task queue for visibility
     List<EnqueuedTask> newRoomQueue = List.from(room.taskQueue);
     final taskDesc = "${npc.name}: ${getTaskDescriptionForType(type)}";
+    
+    if (_gilesTutorialStep == GilesTutorialStep.assignResident && targetId == 'kitchen') {
+      advanceGilesTutorial(GilesTutorialStep.playClock);
+    } else if (_gilesTutorialStep == GilesTutorialStep.directAssign && targetId == 'chicken_coop') {
+      advanceGilesTutorial(GilesTutorialStep.inspectResident);
+    }
     newRoomQueue.add(
       EnqueuedTask(npcId: npcId, intentId: intentId, description: taskDesc),
     );

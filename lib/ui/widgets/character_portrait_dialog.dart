@@ -53,6 +53,12 @@ class CharacterPortraitDialog extends StatelessWidget {
         final mood = _getMoodDescription(liveNpc);
         final moodColor = _getMoodColor(liveNpc);
 
+        if (state.gilesTutorialStep == GilesTutorialStep.inspectResident) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            state.advanceGilesTutorial(GilesTutorialStep.summary);
+          });
+        }
+
         return GestureDetector(
           onTap: () => Navigator.pop(context),
           behavior: HitTestBehavior.opaque,

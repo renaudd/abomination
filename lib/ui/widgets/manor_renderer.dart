@@ -32,6 +32,7 @@ class ManorRenderer extends StatelessWidget {
   final List<NPC> npcs;
   final List<ManorCrisis> crises;
   final List<ConstructionProject> activeConstruction;
+  final ScrollController? scrollController;
   final Function(Room) onRoomTap;
 
   const ManorRenderer({
@@ -40,6 +41,7 @@ class ManorRenderer extends StatelessWidget {
     required this.npcs,
     required this.crises,
     required this.activeConstruction,
+    this.scrollController,
     required this.onRoomTap,
   });
 
@@ -68,6 +70,7 @@ class ManorRenderer extends StatelessWidget {
         final actualHeight = baseHeight * scale;
 
         return SingleChildScrollView(
+          controller: scrollController,
           child: Container(
             width: constraints.maxWidth,
             height: actualHeight,

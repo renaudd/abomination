@@ -1,0 +1,201 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../state/game_state.dart';
+import 'character_blob_renderer.dart';
+
+class GilesTutorialOverlay extends StatelessWidget {
+  const GilesTutorialOverlay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<GameState>(
+      builder: (context, state, child) {
+        final step = state.gilesTutorialStep;
+        if (step == GilesTutorialStep.inactive) {
+          return const SizedBox.shrink();
+        }
+
+        final gilesNpc = state.npcs.firstWhere(
+          (n) => n.role == 'Butler',
+          orElse: () => state.npcs.isNotEmpty ? state.npcs.first : throw Exception("No characters found"),
+        );
+
+        String dialogueText = "";
+        String actionLabel = "SKIP STEP";
+        VoidCallback? onAction;
+
+        switch (step) {
+          case GilesTutorialStep.intro:
+            dialogueText = "Ah, Master ${state.playerLastName}. Welcome to your ancestral domain. Let me explain how our estate Wing rooms operate.";
+            actionLabel = "NEXT";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.selectKitchen);
+            break;
+          case GilesTutorialStep.selectKitchen:
+            dialogueText = "i) First, select the Kitchen by tapping on it in the estate layout above.";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.enterKitchen);
+            break;
+          case GilesTutorialStep.enterKitchen:
+            dialogueText = "ii) Now, enter the Kitchen by pressing the ENTER button in the room details panel.";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.commencePrep);
+            break;
+          case GilesTutorialStep.commencePrep:
+            dialogueText = "iii) In the Scullery, commence preparation of a Faba & Green Bean Stew by enqueuing it in the preparation ledger.";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.assignResident);
+            break;
+          case GilesTutorialStep.assignResident:
+            dialogueText = "iv) Now, return to the Manor View and drag a resident onto the Kitchen to assign the task. (You should probably let me do it, Master ${state.playerLastName}.)";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.playClock);
+            break;
+          case GilesTutorialStep.playClock:
+            dialogueText = "v) Click on the timestamp or time controls in the top right corner of the screen, and press the Play button to start the game clock.";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.selectCoop);
+            break;
+          case GilesTutorialStep.selectCoop:
+            dialogueText = "vi) Excellent. Time marches forward. Now, select the chicken coop in the estate layout.";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.directAssign);
+            break;
+          case GilesTutorialStep.directAssign:
+            dialogueText = "vii) You can also assign tasks to residents directly from the Manor interface below. You should have me restore the chicken coop. It's dangerous work.";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.inspectResident);
+            break;
+          case GilesTutorialStep.inspectResident:
+            dialogueText = "viii) You can see what tasks each resident has assigned to them by clicking on the Resident chip within the Manor interface.";
+            onAction = () => state.advanceGilesTutorial(GilesTutorialStep.summary);
+            break;
+          case GilesTutorialStep.summary:
+            dialogueText = "ix) You can give each resident a long to-do list. Residents will only perform assigned work during work hours. If no work is assigned, residents will find tasks to keep occupied, but I know how much you care about efficiency and productivity.";
+            actionLabel = "UNDERSTOOD, GILES";
+            onAction = () => state.dismissGilesTutorial();
+            break;
+          case GilesTutorialStep.inactive:
+            break;
+        }
+
+        return Container(
+          margin: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(maxWidth: 500),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1A15).withValues(alpha: 0.95),
+            border: Border.all(color: const Color(0xFFD4AF37), width: 2), // Muted Gold
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.8),
+                blurRadius: 15,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Giles Portrait
+                Container(
+                  width: 90,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    border: const Border(right: BorderSide(color: Color(0xFFD4AF37), width: 1)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFC4B89B)),
+                          color: Colors.black,
+                        ),
+                        child: Center(
+                          child: CharacterBlobRenderer(
+                            npc: gilesNpc,
+                            size: 45,
+                            isIdle: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "GILES",
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFD4AF37),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Dialogue Box
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          dialogueText,
+                          style: GoogleFonts.oldStandardTt(
+                            color: const Color(0xFFE5D5B0),
+                            fontSize: 15,
+                            height: 1.5,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (onAction != null)
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFD4AF37),
+                                  foregroundColor: Colors.black,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                                  visualDensity: VisualDensity.compact,
+                                  shape: const RoundedRectangleBorder(),
+                                ),
+                                onPressed: onAction,
+                                child: Text(
+                                  actionLabel,
+                                  style: GoogleFonts.oldStandardTt(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

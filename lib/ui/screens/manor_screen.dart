@@ -53,6 +53,7 @@ import '../widgets/flaubert_event_dialog.dart';
 import '../widgets/dental_event_dialog.dart';
 import '../widgets/restaurant_tycoon_dialog.dart';
 import '../widgets/chapter2_announcement_dialog.dart';
+import '../widgets/giles_tutorial_overlay.dart';
 
 class ManorScreen extends StatefulWidget {
   const ManorScreen({super.key});
@@ -67,6 +68,7 @@ class _ManorScreenState extends State<ManorScreen> {
   bool _isShowingGuestConversation = false;
   bool _timeControlsExpanded = false;
   bool _isFirstVisit = true;
+  final ScrollController _manorScrollController = ScrollController();
 
   @override
   void initState() {
@@ -222,6 +224,23 @@ class _ManorScreenState extends State<ManorScreen> {
     }
   }
 
+  bool _tutorialCameraGuided = false;
+
+  void _checkTutorialCamera(GameState state) {
+    if (state.gilesTutorialStep == GilesTutorialStep.intro && !_tutorialCameraGuided && ModalRoute.of(context)?.isCurrent == true) {
+      _tutorialCameraGuided = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_manorScrollController.hasClients) {
+          _manorScrollController.animateTo(
+            350.0,
+            duration: const Duration(seconds: 3),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = Provider.of<GameState>(context);
@@ -232,6 +251,7 @@ class _ManorScreenState extends State<ManorScreen> {
     _checkDentalEvent(state);
     _checkRestaurantTycoonEvent(state);
     _checkChapter2Modal(state);
+    _checkTutorialCamera(state);
 
     if (state.isGameOver) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -451,12 +471,6 @@ class _ManorScreenState extends State<ManorScreen> {
           ),
           body: Stack(
         children: [
-          if (_hudExpanded)
-            Positioned(
-              bottom: 16,
-              left: 16,
-              child: _buildAbstractedTheaterCard(context, state),
-            ),
           Container(
             color: const Color(0xFF0A0C0E),
             child: Column(
@@ -486,13 +500,33 @@ class _ManorScreenState extends State<ManorScreen> {
                         npcs: state.npcs,
                         crises: state.crises,
                         activeConstruction: state.activeConstruction,
-                        onRoomTap: (room) => _showRoomDetails(context, room),
+                        scrollController: _manorScrollController,
+                        onRoomTap: (room) {
+                          if (state.gilesTutorialStep == GilesTutorialStep.selectKitchen && room.id == 'kitchen') {
+                            state.advanceGilesTutorial(GilesTutorialStep.enterKitchen);
+                          } else if (state.gilesTutorialStep == GilesTutorialStep.selectCoop && room.id == 'chicken_coop') {
+                            state.advanceGilesTutorial(GilesTutorialStep.directAssign);
+                          }
+                          _showRoomDetails(context, room);
+                        },
                       );
                     },
                   ),
                 ),
               ],
             ),
+          ),
+          if (_hudExpanded && state.gilesTutorialStep == GilesTutorialStep.inactive)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: _buildAbstractedTheaterCard(context, state),
+            ),
+          Positioned(
+            left: 16,
+            bottom: 16,
+            right: 16,
+            child: const GilesTutorialOverlay(),
           ),
           if (_timeControlsExpanded)
             Positioned(
