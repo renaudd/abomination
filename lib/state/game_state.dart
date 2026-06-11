@@ -157,6 +157,38 @@ class GameState extends ChangeNotifier {
   List<String> _unlockedCombatCards = [];
   List<String> get unlockedCombatCards => _unlockedCombatCards;
 
+  int _dissectionsPerformed = 0;
+  int get dissectionsPerformed => _dissectionsPerformed;
+
+  int _vivisectionsPerformed = 0;
+  int get vivisectionsPerformed => _vivisectionsPerformed;
+
+  int _puzzleStudiesPerformed = 0;
+  int get puzzleStudiesPerformed => _puzzleStudiesPerformed;
+
+  int _labExperimentsPerformed = 0;
+  int get labExperimentsPerformed => _labExperimentsPerformed;
+
+  Set<String> _unlockedLabActivities = {'small_dissection', 'large_dissection'};
+  Set<String> get unlockedLabActivities => _unlockedLabActivities;
+
+  Map<String, String>? _pendingMobileNotification;
+  Map<String, String>? get pendingMobileNotification => _pendingMobileNotification;
+
+  void clearPendingMobileNotification() {
+    _pendingMobileNotification = null;
+    notifyListeners();
+  }
+
+  void _triggerMobileFireworksNotification(String title, String message) {
+    if (_pendingMobileNotification != null) return;
+    _pendingMobileNotification = {
+      'title': title,
+      'message': message,
+    };
+    notifyListeners();
+  }
+
   void incrementVeterinaryExperience() {
     _veterinaryExperience++;
     notifyListeners();
@@ -724,6 +756,11 @@ class GameState extends ChangeNotifier {
   LifeObjective _mainObjective = LifeObjective.science;
 
   Map<String, dynamic> toJson() => {
+    'dissectionsPerformed': _dissectionsPerformed,
+    'vivisectionsPerformed': _vivisectionsPerformed,
+    'puzzleStudiesPerformed': _puzzleStudiesPerformed,
+    'labExperimentsPerformed': _labExperimentsPerformed,
+    'unlockedLabActivities': _unlockedLabActivities.toList(),
     'trainedBatsCount': _trainedBatsCount,
     'unlockedCombatCards': _unlockedCombatCards,
     'currentDate': _currentDate.toJson(),
@@ -835,6 +872,11 @@ class GameState extends ChangeNotifier {
     _foodDropTriggerTime = json['foodDropTriggerTime'] as int?;
     _lastMerchantSpawnMinutes = json['lastMerchantSpawnMinutes'] as int? ?? 0;
     _trainedBatsCount = json['trainedBatsCount'] as int? ?? 0;
+    _dissectionsPerformed = json['dissectionsPerformed'] as int? ?? 0;
+    _vivisectionsPerformed = json['vivisectionsPerformed'] as int? ?? 0;
+    _puzzleStudiesPerformed = json['puzzleStudiesPerformed'] as int? ?? 0;
+    _labExperimentsPerformed = json['labExperimentsPerformed'] as int? ?? 0;
+    _unlockedLabActivities = Set<String>.from(json['unlockedLabActivities'] as List? ?? ['small_dissection', 'large_dissection']);
     _unlockedCombatCards = List<String>.from(json['unlockedCombatCards'] as List? ?? []);
 
     _npcs.clear();
@@ -5490,12 +5532,16 @@ class GameState extends ChangeNotifier {
             ),
           );
         } else if (objective.id == 'first_construct_3') {
+          if (!_unlockedLabActivities.contains('reanimation_procedure')) {
+            _unlockedLabActivities.add('reanimation_procedure');
+            _triggerMobileFireworksNotification("GALVANIC REANIMATION UNLOCKED", "You have discovered the master principles of galvanic life! You can now perform Reanimation procedures in the Laboratory.");
+          }
           _objectives.add(
             Objective(
               id: 'first_construct_4',
               title: 'The First Construct - Step 4',
               description:
-                  'Perform a Reanimation experiment on a subject in the Laboratory. Restore the Laboratory, move a character there, select them in the Laboratory view, and start the REANIMATION procedure.',
+                  'Perform a Reanimation experiment on a subject in the Laboratory. Move a character there, open the Laboratory view, and start the GALVANIC REANIMATION procedure.',
               type: ObjectiveType.science,
               requirements: {'experiment_performed': 'reanimation'},
             ),
@@ -8529,9 +8575,14 @@ class GameState extends ChangeNotifier {
       _checkDiscoveries();
     }
 
-    if (task.type == TaskType.experiment || task.type == TaskType.research || task.type == TaskType.study) {
+    if (task.type == TaskType.experiment || task.type == TaskType.operation || task.type == TaskType.research || task.type == TaskType.study) {
       final matchId = task.recipeId ?? task.targetName ?? '';
-      if (matchId == 'reanimation_rat' || matchId.contains('RAT')) {
+      final firstReservedId = task.reservedEntityIds.firstOrNull;
+      final bool isRat = matchId == 'reanimation_rat' || matchId.contains('RAT') || (matchId == 'reanimation_procedure' && firstReservedId == 'specimen_rat');
+      final bool isBat = matchId == 'reanimation_bat' || matchId.contains('BAT') || (matchId == 'reanimation_procedure' && firstReservedId == 'specimen_bat');
+      final bool isHuman = matchId.startsWith('reanimation_human') || matchId.contains('HUMAN') || (matchId == 'reanimation_procedure' && !isRat && !isBat);
+
+      if (isRat) {
         _reanimatedRatsCount++;
         _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Rat subject ($_reanimatedRatsCount/4).");
         if (_reanimatedRatsCount == 4) {
@@ -8545,9 +8596,9 @@ class GameState extends ChangeNotifier {
           }
         }
         if (!_performedExperiments.contains('reanimation')) _performedExperiments.add('reanimation');
-        _researchQueue.removeWhere((q) => q == 'reanimation_rat' || q == 'activity:reanimation_rat');
+        _researchQueue.removeWhere((q) => q == 'reanimation_rat' || q == 'activity:reanimation_rat' || q == 'activity:reanimation_procedure');
         _checkObjectives();
-      } else if (matchId == 'reanimation_bat' || matchId.contains('BAT')) {
+      } else if (isBat) {
         _reanimatedBatsCount++;
         _announcementHistory.insert(0, "[${_currentDate.formattedTime}] REANIMATION: Galvanic life stirred inside Bat subject ($_reanimatedBatsCount/4).");
         if (_reanimatedBatsCount == 4) {
@@ -8561,12 +8612,12 @@ class GameState extends ChangeNotifier {
           }
         }
         if (!_performedExperiments.contains('reanimation')) _performedExperiments.add('reanimation');
-        _researchQueue.removeWhere((q) => q == 'reanimation_bat' || q == 'activity:reanimation_bat');
+        _researchQueue.removeWhere((q) => q == 'reanimation_bat' || q == 'activity:reanimation_bat' || q == 'activity:reanimation_procedure');
         _checkObjectives();
-      } else if (matchId.startsWith('reanimation_human') || matchId.contains('HUMAN')) {
+      } else if (isHuman) {
         _reanimatedHumanCount++;
         final parts = matchId.split(':');
-        final targetHumanId = parts.length > 1 ? parts[1] : task.reservedEntityIds.firstOrNull;
+        final targetHumanId = parts.length > 1 ? parts[1] : firstReservedId;
         final humanIndex = _npcs.indexWhere((n) => n.id == targetHumanId);
         if (humanIndex != -1) {
           final humanNpc = _npcs[humanIndex];
@@ -8607,7 +8658,7 @@ class GameState extends ChangeNotifier {
           }
         }
         if (!_performedExperiments.contains('reanimation')) _performedExperiments.add('reanimation');
-        _researchQueue.removeWhere((q) => q.contains('reanimation_human'));
+        _researchQueue.removeWhere((q) => q.contains('reanimation_human') || q == 'activity:reanimation_procedure');
         _checkObjectives();
       }
     }
@@ -8757,6 +8808,44 @@ class GameState extends ChangeNotifier {
           _announcementHistory.insert(0, "[${_currentDate.formattedTime}] RANCHING: Four trained bats have been successfully organized into a dedicated Bats combat unit card available in your deck!");
         }
       }
+    }
+
+    // Laboratory Scientific Progression Network
+    if (task.type == TaskType.dissect) {
+      _dissectionsPerformed++;
+      if (_dissectionsPerformed == 1) {
+        _unlockedLabActivities.add('small_vivisection');
+        _unlockedLabActivities.add('large_vivisection');
+        _triggerMobileFireworksNotification("VIVISECTION UNLOCKED", "By dissecting deceased tissue, you have discovered how to perform biological vivisection on living subjects!");
+      }
+    } else if (task.type == TaskType.vivisection) {
+      _vivisectionsPerformed++;
+      if (_vivisectionsPerformed == 3) {
+        _unlockedLabActivities.add('deprivation_study');
+        _triggerMobileFireworksNotification("DEPRIVATION STUDY UNLOCKED", "Your profound vivisection studies have revealed how to conduct rigorous sensory and nutritional deprivation experiments!");
+      }
+    } else if (task.type == TaskType.puzzleStudy) {
+      _puzzleStudiesPerformed++;
+      if (_puzzleStudiesPerformed == 2 && !_unlockedLabActivities.contains('behavioral_optimization')) {
+        _unlockedLabActivities.add('behavioral_optimization');
+        _triggerMobileFireworksNotification("BEHAVIORAL OPTIMIZATION UNLOCKED", "Your extensive cognitive puzzle studies enable master behavioral optimization experiments!");
+      }
+    } else if (task.type == TaskType.experiment || task.type == TaskType.operation) {
+      _labExperimentsPerformed++;
+      if (_labExperimentsPerformed == 5 && !_unlockedLabActivities.contains('transmutation')) {
+        _unlockedLabActivities.add('transmutation');
+        _triggerMobileFireworksNotification("BIOLOGICAL TRANSMUTATION UNLOCKED", "Your consistent galvanic experiments unlock the profound secrets of biological Transmutation!");
+      }
+    }
+    
+    // Knowledge Unlocks Check
+    if (getKnowledgeLevel('Zoology') >= 15 && !_unlockedLabActivities.contains('puzzle_study')) {
+      _unlockedLabActivities.add('puzzle_study');
+      _triggerMobileFireworksNotification("COGNITIVE PUZZLE STUDY UNLOCKED", "Your advanced Zoology knowledge (Level 15+) enables complex cognitive puzzle experiments!");
+    }
+    if (getKnowledgeLevel('Medicine') >= 20 && !_unlockedLabActivities.contains('clinical_trial')) {
+      _unlockedLabActivities.add('clinical_trial');
+      _triggerMobileFireworksNotification("GENERAL CLINICAL TRIAL UNLOCKED", "Your masterful Medicine knowledge (Level 20+) enables sweeping general clinical trials!");
     }
 
     final finalLogMessage = "${result.message}$xpLogSuffix";

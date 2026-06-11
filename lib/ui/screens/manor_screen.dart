@@ -227,6 +227,99 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     }
   }
 
+  void _checkMobileNotificationModal(GameState state) {
+    if (state.pendingMobileNotification != null && ModalRoute.of(context)?.isCurrent == true) {
+      final notif = state.pendingMobileNotification!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 400),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1612),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFC4B89B), width: 2),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFFE5D5B0).withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 48),
+                  const SizedBox(height: 12),
+                  Text(
+                    "VICTORIAN SCIENTIFIC BREAKTHROUGH",
+                    style: GoogleFonts.oswald(
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 12,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    notif['title'] ?? '',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.playfairDisplay(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
+                    child: Text(
+                      notif['message'] ?? '',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.oldStandardTt(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E1A0A),
+                        side: const BorderSide(color: Color(0xFFE5D5B0)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () {
+                        state.clearPendingMobileNotification();
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        "EXCELLENT",
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      });
+    }
+  }
+
   bool _tutorialCameraGuided = false;
 
   void _checkTutorialCamera(GameState state) {
@@ -261,6 +354,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     _checkDentalEvent(state);
     _checkRestaurantTycoonEvent(state);
     _checkChapter2Modal(state);
+    _checkMobileNotificationModal(state);
     _checkTutorialCamera(state);
 
     if (state.isGameOver) {

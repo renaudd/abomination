@@ -123,6 +123,36 @@ class ScienceService {
         outcomeDescription:
             'Produces notes in the medicine discipline and zoology.',
       ),
+      ScienceActivity(
+        id: 'behavioral_optimization',
+        name: 'Behavioral Optimization',
+        type: TaskType.experiment,
+        ingredients: {'specimen': 10, 'meals': 5},
+        baseDurationMinutes: 1440,
+        discipline: 'Psychology',
+        moralCost: 0.3,
+        outcomeDescription: 'Optimizes neural pathways and instills profound behavioral loyalty.',
+      ),
+      ScienceActivity(
+        id: 'transmutation',
+        name: 'Biological Transmutation',
+        type: TaskType.experiment,
+        ingredients: {'specimen': 15, 'herb_reagent': 3},
+        baseDurationMinutes: 2880,
+        discipline: 'Chemistry',
+        moralCost: 0.6,
+        outcomeDescription: 'Transmutes biological properties to forge advanced Victorian chimerical adaptations.',
+      ),
+      ScienceActivity(
+        id: 'reanimation_procedure',
+        name: 'Galvanic Reanimation',
+        type: TaskType.operation,
+        ingredients: {'specimen': 1},
+        baseDurationMinutes: 120,
+        discipline: 'Alchemy',
+        moralCost: 0.5,
+        outcomeDescription: 'Applies concentrated galvanic voltage to dead organic tissue to achieve genuine living reanimation.',
+      ),
     ];
   }
 

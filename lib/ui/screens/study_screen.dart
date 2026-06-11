@@ -466,7 +466,11 @@ class StudyScreen extends StatelessWidget {
   }
 
   Widget _buildScienceActivities(BuildContext context, GameState state) {
-    final activities = ScienceService.getAvailableActivities();
+    // 1. Move dissection, vivisection, puzzle, deprivation, clinical trials entirely to Laboratory.
+    // Study exclusively retains Fundamental Research.
+    final activities = ScienceService.getAvailableActivities()
+        .where((a) => a.id == 'generic_research')
+        .toList();
 
     return Column(
       children: activities.map<Widget>((activity) {
