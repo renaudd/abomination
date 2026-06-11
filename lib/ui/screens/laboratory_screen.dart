@@ -21,6 +21,9 @@ import '../../models/experiment.dart';
 import '../../models/room.dart';
 import '../../models/schedule.dart';
 import '../../models/diet.dart';
+import '../../services/science_service.dart';
+import '../../services/task_service.dart';
+import '../../models/game_item.dart';
 
 class LaboratoryScreen extends StatelessWidget {
   final Room room;
@@ -525,10 +528,10 @@ class LaboratoryScreen extends StatelessWidget {
     if (specimenRequirements.isEmpty) {
       state.addScienceActivityToQueue(activity.id);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${activity.name.toUpperCase()} COMMENCED'),
-          backgroundColor: const Color(0xFFC4B89B),
-          duration: const Duration(seconds: 1.5),
+        const SnackBar(
+          content: Text('PROCEDURE COMMENCED'),
+          backgroundColor: Color(0xFFC4B89B),
+          duration: Duration(milliseconds: 1500),
         ),
       );
       return;
@@ -630,7 +633,7 @@ class LaboratoryScreen extends StatelessWidget {
                                             ),
                                           ),
                                           Text(
-                                            'Type: ${subj.specimenType.toUpperCase()} | Vitality: ${subj.health.round()}',
+                                            'Type: ${subj.specimenType.toUpperCase()} | Vitality: ${subj.combatStats?.health.round() ?? 100}',
                                             style: GoogleFonts.oldStandardTt(
                                               color: Colors.white54,
                                               fontSize: 10,
@@ -668,10 +671,10 @@ class LaboratoryScreen extends StatelessWidget {
                             reservedEntityIds: selectedIds,
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${activity.name.toUpperCase()} COMMENCED'),
-                              backgroundColor: const Color(0xFFC4B89B),
-                              duration: const Duration(seconds: 1.5),
+                            const SnackBar(
+                              content: Text('PROCEDURE COMMENCED'),
+                              backgroundColor: Color(0xFFC4B89B),
+                              duration: Duration(milliseconds: 1500),
                             ),
                           );
                         }

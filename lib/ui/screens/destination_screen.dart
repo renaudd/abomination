@@ -134,7 +134,7 @@ class _DestinationScreenState extends State<DestinationScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Exchanged revolutionary notes! Received 500 Gold & Alchemical Reagents.')),
                                     );
-                                    state.adjustCash(500);
+                                    state.updateResource('funds', 500);
                                   },
                                 ),
                                 const SizedBox(height: 16),

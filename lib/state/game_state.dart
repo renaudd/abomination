@@ -5860,13 +5860,13 @@ class GameState extends ChangeNotifier {
       case 2: // C) Occasionally make useful observations
         final obsPool = [];
         
-        final totalFood = _resources.entries.where((e) => e.key.contains('meal') || e.key.contains('food') || e.key.contains('stew')).fold(0, (a, b) => a + b.value);
+        final totalFood = resources.entries.where((e) => e.key.contains('meal') || e.key.contains('food') || e.key.contains('stew')).fold(0.0, (a, b) => a + b.value);
         if (totalFood < 10) obsPool.add("We're running remarkably low on prepared food.");
         
-        final totalIng = _resources.entries.where((e) => e.key == 'flour' || e.key == 'eggs' || e.key == 'cheese' || e.key == 'tomato' || e.key == 'meat').fold(0, (a, b) => a + b.value);
+        final totalIng = resources.entries.where((e) => e.key == 'flour' || e.key == 'eggs' || e.key == 'cheese' || e.key == 'tomato' || e.key == 'meat').fold(0.0, (a, b) => a + b.value);
         if (totalIng < 15) obsPool.add("We're running low on basic ingredients in the pantry.");
 
-        final dryCrops = _crops.where((c) => c.waterLevel < 0.3).toList();
+        final dryCrops = _crops.where((c) => c.moistureLevel < 0.3).toList();
         if (dryCrops.isNotEmpty) {
           final fieldLetters = ['A', 'B', 'C', 'D'];
           final fieldLetter = fieldLetters[random.nextInt(fieldLetters.length)];

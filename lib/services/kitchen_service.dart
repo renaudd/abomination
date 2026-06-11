@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math';
 import '../models/game_item.dart';
 import '../models/npc.dart';
 import 'recipe_catalogue.dart';

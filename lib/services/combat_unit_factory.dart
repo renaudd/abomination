@@ -2430,7 +2430,6 @@ class CombatUnitFactory {
         name: 'Bulwark Taunt',
         type: AbilityType.special,
         chargeTime: 18.0,
-        range: 30.0,
         description: 'Give self a big temporary health boost (+100 HP) and cause all nearby enemies to target self for 4.5 seconds.',
       ),
     ],

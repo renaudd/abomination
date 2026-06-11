@@ -24,7 +24,6 @@ import '../../services/science_service.dart';
 import '../../services/kitchen_service.dart';
 import '../../services/save_service.dart';
 import '../../models/game_item.dart';
-import '../../models/npc.dart';
 import '../widgets/manor_renderer.dart';
 import '../widgets/character_portrait_dialog.dart';
 import '../widgets/room_ledger.dart';
@@ -836,10 +835,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
       (r) => r.id == room.id,
       orElse: () => room,
     );
-    final roomQueue = state.getRoomTaskQueue(liveRoom.id);
-    final activeTasksInRoom = state.activeTasks
-        .where((t) => t.targetId == liveRoom.id)
-        .toList();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),

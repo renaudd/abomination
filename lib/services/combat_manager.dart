@@ -2596,13 +2596,20 @@ class CombatManager extends ChangeNotifier {
     }
 
     if (target == null && c.tauntLockDurationRemaining <= 0.0) {
-      targets.sort((a, b) {
-        final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
-        final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
-        return distA.compareTo(distB);
-      });
-      target = targets.first;
-      c.targetId = target.npc.id;
+      if (targets.isNotEmpty) {
+        targets.sort((a, b) {
+          final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
+          final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
+          return distA.compareTo(distB);
+        });
+        target = targets.first;
+        c.targetId = target.npc.id;
+      }
+    }
+
+    if (target == null) {
+      enforceUnitBoundaries(c);
+      return;
     }
 
     final distToTarget = sqrt(pow(target.x - c.x, 2) + pow(target.y - c.y, 2));
@@ -2915,7 +2922,7 @@ class CombatManager extends ChangeNotifier {
         );
         _addFloatingMessage(c, '+150 HP BULWARK', Colors.greenAccent);
 
-        final reach = ability.range ?? 30.0;
+        final double reach = 30.0;
         for (final enemy in _combatants.where((other) => other.side != c.side && !other.isDead && !other.isTower)) {
           final dist = sqrt(pow(enemy.x - c.x, 2) + pow(enemy.y - c.y, 2));
           if (dist <= reach) {
