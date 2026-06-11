@@ -145,8 +145,35 @@ class GameState extends ChangeNotifier {
   List<ActiveBusiness> get activeBusinesses =>
       List.unmodifiable(_activeBusinesses);
 
-  bool _playerHasGraduateDegree = false;
-  bool get playerHasGraduateDegree => _playerHasGraduateDegree;
+  final Set<AcademicSchoolType> _conferredGraduateDegrees = {};
+  Set<AcademicSchoolType> get conferredGraduateDegrees => Set.unmodifiable(_conferredGraduateDegrees);
+
+  bool get playerHasGraduateDegree => _conferredGraduateDegrees.isNotEmpty;
+
+  bool hasGraduateDegree(AcademicSchoolType type) => _conferredGraduateDegrees.contains(type);
+
+  bool hasRequiredDegreeForBusiness(BusinessType business) {
+    if (business == BusinessType.lawPractice) return hasGraduateDegree(AcademicSchoolType.law);
+    if (business == BusinessType.medicalPractice) return hasGraduateDegree(AcademicSchoolType.medicine);
+    if (business == BusinessType.opiateLab) return hasGraduateDegree(AcademicSchoolType.pharmacy);
+    return true;
+  }
+
+  String getRequiredDegreeNameForBusiness(BusinessType business) {
+    if (business == BusinessType.lawPractice) return "Faculty of Law Degree";
+    if (business == BusinessType.medicalPractice) return "Medical Faculty Degree";
+    if (business == BusinessType.opiateLab) return "Pharmacy School Degree";
+    return "Graduate Degree";
+  }
+
+  void toggleGraduateDegree(AcademicSchoolType type, bool conferred) {
+    if (conferred) {
+      _conferredGraduateDegrees.add(type);
+    } else {
+      _conferredGraduateDegrees.remove(type);
+    }
+    notifyListeners();
+  }
 
   String? _playerAcademicSpecialization;
   String? get playerAcademicSpecialization => _playerAcademicSpecialization;
@@ -822,7 +849,8 @@ class GameState extends ChangeNotifier {
     'foodDropTriggerTime': _foodDropTriggerTime,
     'lastMerchantSpawnMinutes': _lastMerchantSpawnMinutes,
     'activeBusinesses': _activeBusinesses.map((b) => b.toJson()).toList(),
-    'playerHasGraduateDegree': _playerHasGraduateDegree,
+    'conferredGraduateDegrees': _conferredGraduateDegrees.map((d) => d.index).toList(),
+    'playerHasGraduateDegree': playerHasGraduateDegree,
     'playerAcademicSpecialization': _playerAcademicSpecialization,
     'veterinaryExperience': _veterinaryExperience,
     'activeDentalLoan': _activeDentalLoan,
@@ -974,8 +1002,15 @@ class GameState extends ChangeNotifier {
             .toList(),
       );
     }
-    _playerHasGraduateDegree =
-        json['playerHasGraduateDegree'] as bool? ?? false;
+    _conferredGraduateDegrees.clear();
+    final degList = json['conferredGraduateDegrees'] as List?;
+    if (degList != null) {
+      _conferredGraduateDegrees.addAll(degList.map((idx) => AcademicSchoolType.values[idx as int]));
+    } else if (json['playerHasGraduateDegree'] as bool? ?? false) {
+      _conferredGraduateDegrees.add(AcademicSchoolType.law);
+      _conferredGraduateDegrees.add(AcademicSchoolType.medicine);
+      _conferredGraduateDegrees.add(AcademicSchoolType.pharmacy);
+    }
     _playerAcademicSpecialization =
         json['playerAcademicSpecialization'] as String?;
     _veterinaryExperience = json['veterinaryExperience'] as int? ?? 0;
@@ -14398,7 +14433,13 @@ class GameState extends ChangeNotifier {
     final playerIdx = _npcs.indexWhere((n) => n.id == 'player');
     if (playerIdx == -1) return;
 
-    _playerHasGraduateDegree = true;
+    if (_graduateSchool != null) {
+      _conferredGraduateDegrees.add(_graduateSchool!.type);
+    } else {
+      _conferredGraduateDegrees.add(AcademicSchoolType.law);
+      _conferredGraduateDegrees.add(AcademicSchoolType.medicine);
+      _conferredGraduateDegrees.add(AcademicSchoolType.pharmacy);
+    }
     _playerAcademicSpecialization = _graduateSchool?.specialization;
 
     _npcs[playerIdx] = _npcs[playerIdx].copyWith(

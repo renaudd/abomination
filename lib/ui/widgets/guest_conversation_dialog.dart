@@ -482,7 +482,8 @@ class GuestConversationDialog extends StatelessWidget {
                 const Divider(color: Colors.white10, height: 24),
                 ...options.map((type) {
                   final bool requiresDegree = type == BusinessType.lawPractice || type == BusinessType.medicalPractice || type == BusinessType.opiateLab;
-                  final bool locked = requiresDegree && !state.playerHasGraduateDegree;
+                  final bool locked = requiresDegree && !state.hasRequiredDegreeForBusiness(type);
+                  final String degreeName = state.getRequiredDegreeNameForBusiness(type).toUpperCase();
 
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(vertical: 4),
@@ -497,8 +498,8 @@ class GuestConversationDialog extends StatelessWidget {
                     subtitle: Text(
                       requiresDegree 
                           ? (locked 
-                              ? "LOCKED: ALPHONSE LACKS GRADUATE DEGREE. STUDY AT GRADUATE SCHOOL."
-                              : "GRADUATE DEGREE ATTAINED (UNLOCKED)")
+                              ? "LOCKED: ALPHONSE LACKS $degreeName. STUDY AT GRADUATE SCHOOL."
+                              : "$degreeName ATTAINED (UNLOCKED)")
                           : "STANDARD ASSIGNMENTS SYSTEM INITIATED.",
                       style: GoogleFonts.oldStandardTt(
                         color: locked ? Colors.redAccent : Colors.white38,

@@ -274,20 +274,48 @@ class CheatCodesDialog extends StatelessWidget {
                   const Divider(color: Colors.white10),
                   const SizedBox(height: 16),
 
-                  // Degree Degree cheat
+                  // Specific Graduate Degrees Conferred cheat switches
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "GRADUATE DEGREE CONFERRED:",
+                        "LAW DEGREE CONFERRED:",
                         style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 10),
                       ),
                       Switch(
-                        value: state.playerHasGraduateDegree,
+                        value: state.hasGraduateDegree(AcademicSchoolType.law),
                         activeThumbColor: const Color(0xFFC4B89B),
-                        onChanged: (val) {
-                          state.completeGraduation();
-                        },
+                        onChanged: (val) => state.toggleGraduateDegree(AcademicSchoolType.law, val),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "MEDICAL DEGREE CONFERRED:",
+                        style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 10),
+                      ),
+                      Switch(
+                        value: state.hasGraduateDegree(AcademicSchoolType.medicine),
+                        activeThumbColor: const Color(0xFFC4B89B),
+                        onChanged: (val) => state.toggleGraduateDegree(AcademicSchoolType.medicine, val),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "PHARMACEUTICAL DEGREE CONFERRED:",
+                        style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 10),
+                      ),
+                      Switch(
+                        value: state.hasGraduateDegree(AcademicSchoolType.pharmacy),
+                        activeThumbColor: const Color(0xFFC4B89B),
+                        onChanged: (val) => state.toggleGraduateDegree(AcademicSchoolType.pharmacy, val),
                       ),
                     ],
                   ),
