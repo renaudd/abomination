@@ -546,9 +546,18 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
             ),
             Positioned.fill(
               child: SafeArea(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                child: TweenAnimationBuilder<Offset>(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutQuart,
+                  tween: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero),
+                  builder: (context, offset, child) {
+                    return FractionalTranslation(
+                      translation: offset,
+                      child: child,
+                    );
+                  },
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
                     child: _buildRoomDetailsPanel(context, state, _selectedRoomForDetails!),
                   ),
                 ),
@@ -557,8 +566,12 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           ],
           Positioned.fill(
             child: SafeArea(
-              child: Align(
-                alignment: Alignment.bottomLeft,
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutQuart,
+                alignment: (_selectedRoomForDetails != null || state.gilesTutorialStep == GilesTutorialStep.enterKitchen || state.gilesTutorialStep == GilesTutorialStep.directAssign)
+                    ? Alignment.topCenter
+                    : Alignment.bottomLeft,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: const GilesTutorialOverlay(),
@@ -745,25 +758,26 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     }).toList();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
       decoration: BoxDecoration(
         color: const Color(0xFF241F1A),
         border: Border.all(
           color: const Color(0xFFD4AF37).withValues(alpha: 0.6), // Master Gold / Bronze
           width: 1.5,
         ),
-        borderRadius: BorderRadius.circular(2),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.85),
-            blurRadius: 24,
+            color: Colors.black.withValues(alpha: 0.95),
+            blurRadius: 32,
             spreadRadius: 8,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       constraints: BoxConstraints(
-        maxWidth: min(480, MediaQuery.of(context).size.width * 0.92),
-        maxHeight: min(500, MediaQuery.of(context).size.height * 0.82),
+        maxWidth: min(560, MediaQuery.of(context).size.width * 0.94),
+        maxHeight: min(480, MediaQuery.of(context).size.height * 0.78),
       ),
       child: SafeArea(
         top: false,
