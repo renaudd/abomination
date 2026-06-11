@@ -2151,6 +2151,12 @@ class CombatManager extends ChangeNotifier {
     }
     c.laneIndex = currentLaneIdx;
 
+    // Enforce Wing Tower Prioritization Rule: The central keep/main tower cannot be targeted until at least one wing tower is destroyed!
+    final bool anyWingStanding = _combatants.any((o) => o.isTower && o.side != c.side && !o.isDead && (o.laneIndex == 0 || o.laneIndex == 2));
+    if (anyWingStanding) {
+      targets = targets.where((t) => !(t.isTower && t.laneIndex == 1)).toList();
+    }
+
     // Channel engagement prioritization
     List<Combatant> prioritizedTargets = [];
     final enemyTowers = _combatants.where((other) => other.isTower && other.side != c.side && !other.isDead).toList();
@@ -2378,8 +2384,8 @@ class CombatManager extends ChangeNotifier {
         final dy = ty - c.y;
         final len = sqrt(dx * dx + dy * dy);
 
-        double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
-        double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+        double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+        double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
 
         bool inWall = _isPointInWall(nextX, nextY);
 
@@ -2387,13 +2393,13 @@ class CombatManager extends ChangeNotifier {
           c.x = nextX;
           c.y = nextY;
         } else {
-          double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+          double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
           bool tryXObstructed = _isPointInWall(tryX, c.y);
           if (!tryXObstructed) {
             c.x = tryX;
           }
 
-          double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+          double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
           bool tryYObstructed = _isPointInWall(c.x, tryY);
           if (!tryYObstructed) {
             c.y = tryY;
@@ -2443,8 +2449,8 @@ class CombatManager extends ChangeNotifier {
           final dy = ty - c.y;
           final len = sqrt(dx * dx + dy * dy);
           
-          double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
-          double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+          double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+          double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
 
           bool inWall = _isPointInWall(nextX, nextY);
 
@@ -2453,13 +2459,13 @@ class CombatManager extends ChangeNotifier {
             c.y = nextY;
           } else {
             // Slide
-            double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+            double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
             bool tryXObstructed = _isPointInWall(tryX, c.y);
             if (!tryXObstructed) {
               c.x = tryX;
             }
 
-            double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0 * 2.25;
+            double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
             bool tryYObstructed = _isPointInWall(c.x, tryY);
             if (!tryYObstructed) {
               c.y = tryY;
@@ -2491,12 +2497,12 @@ class CombatManager extends ChangeNotifier {
         double dy = nearestLaneY - c.y;
         if (dy.abs() > 4.0) {
           c.moveDirY = dy > 0.0 ? 1.0 : -1.0;
-          c.y += c.moveDirY * stats.movement * dt * 1.5 * 2.25;
+          c.y += c.moveDirY * stats.movement * dt * 24.0 * 2.25;
           c.moveDirX = 0.0; // Strictly prevent advancing horizontally into barrier walls!
         } else {
           c.moveDirY = 0.0;
           c.moveDirX = c.side == CombatSide.player ? 1.0 : -1.0;
-          c.x += c.moveDirX * stats.movement * dt * 1.5 * 2.25;
+          c.x += c.moveDirX * stats.movement * dt * 24.0 * 2.25;
         }
       }
       
@@ -2517,8 +2523,12 @@ class CombatManager extends ChangeNotifier {
           final len = sqrt(dx * dx + dy * dy);
           
           if (len > 1.0) {
-            c.x += (dx / len) * stats.movement * dt * 6.0;
-            c.y += (dy / len) * stats.movement * dt * 6.0;
+            final double mdx = dx / len;
+            final double mdy = dy / len;
+            c.moveDirX = mdx;
+            c.moveDirY = mdy;
+            c.x += mdx * stats.movement * dt * 24.0;
+            c.y += mdy * stats.movement * dt * 24.0;
             enforceUnitBoundaries(c);
           }
           return;
@@ -2536,36 +2546,16 @@ class CombatManager extends ChangeNotifier {
         }
       }
 
-      // 1. Seek channel Y alignment first
+      // Two-phase channel navigation: seek vertical alignment Y first, advance horizontally X only when aligned!
       double dy = nearestLaneY - c.y;
-      if (dy.abs() > 2.0) {
+      if (dy.abs() > 4.0) {
         c.moveDirY = dy > 0.0 ? 1.0 : -1.0;
-        c.y += c.moveDirY * stats.movement * dt * 1.125;
+        c.y += c.moveDirY * stats.movement * dt * 24.0;
+        c.moveDirX = 0.0; // Strictly prevent advancing horizontally into barrier walls!
       } else {
         c.moveDirY = 0.0;
-      }
-
-      // 2. Proceed down channel towards opponent base
-      final moveSpeed = stats.movement * dt * 1.125;
-      double nextX = c.x;
-      if (c.side == CombatSide.player) {
-        c.moveDirX = 1.0;
-        nextX += moveSpeed;
-      } else {
-        c.moveDirX = -1.0;
-        nextX -= moveSpeed;
-      }
-
-      bool inWall = _isPointInWall(nextX, c.y);
-      if (!inWall) {
-        c.x = nextX;
-      } else {
-        // Slide towards closest channel center Y dynamically
-        final targetY = c.y < _map.height / 2 ? _map.laneCenters.first : _map.laneCenters.last;
-        final sdy = targetY - c.y;
-        if (sdy.abs() > 0.1) {
-          c.y += (sdy > 0 ? 1.0 : -1.0) * stats.movement * dt * 1.125;
-        }
+        c.moveDirX = c.side == CombatSide.player ? 1.0 : -1.0;
+        c.x += c.moveDirX * stats.movement * dt * 24.0;
       }
 
       enforceUnitBoundaries(c);
@@ -2642,16 +2632,29 @@ class CombatManager extends ChangeNotifier {
             myLaneY = ly;
           }
         }
-        tx = target.x;
-        ty = myLaneY; // Align within our safe lane to bypass wall!
+        if ((c.y - myLaneY).abs() > 4.0) {
+          tx = c.x;
+          ty = myLaneY; // Phase 1: Seek strict vertical lane alignment first to bypass barrier corners!
+        } else {
+          tx = target.x;
+          ty = myLaneY; // Phase 2: Safely inside channel! Advance straight toward target X!
+        }
       }
 
       final dx = tx - c.x;
       final dy = ty - c.y;
       final len = sqrt(dx * dx + dy * dy);
       
-      double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0;
-      double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0;
+      if (len > 0.0) {
+        c.moveDirX = dx / len;
+        c.moveDirY = dy / len;
+      } else {
+        c.moveDirX = 0.0;
+        c.moveDirY = 0.0;
+      }
+      
+      double nextX = c.x + c.moveDirX * stats.movement * dt * 24.0;
+      double nextY = c.y + c.moveDirY * stats.movement * dt * 24.0;
 
       bool inWall = _isPointInWall(nextX, nextY);
 
@@ -2659,14 +2662,14 @@ class CombatManager extends ChangeNotifier {
         c.x = nextX;
         c.y = nextY;
       } else {
-        // Slide
-        double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 6.0;
+        // Slide along collision boundaries
+        double tryX = c.x + c.moveDirX * stats.movement * dt * 24.0;
         bool tryXObstructed = _isPointInWall(tryX, c.y);
         if (!tryXObstructed) {
           c.x = tryX;
         }
 
-        double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 6.0;
+        double tryY = c.y + c.moveDirY * stats.movement * dt * 24.0;
         bool tryYObstructed = _isPointInWall(c.x, tryY);
         if (!tryYObstructed) {
           c.y = tryY;
