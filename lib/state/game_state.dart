@@ -6039,9 +6039,13 @@ class GameState extends ChangeNotifier {
           activeThought = _generateRichVictorianObservation(currentNpc);
           
           int targetCooldown = 120;
-          if (_speed == GameSpeed.lightning) targetCooldown = 480;
-          else if (_speed == GameSpeed.fast) targetCooldown = 240;
-          else targetCooldown = 120;
+          if (_speed == GameSpeed.lightning) {
+            targetCooldown = 480;
+          } else if (_speed == GameSpeed.fast) {
+            targetCooldown = 240;
+          } else {
+            targetCooldown = 120;
+          }
           
           _npcDialogueCooldown[currentNpc.id] = targetCooldown;
         }

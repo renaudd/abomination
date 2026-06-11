@@ -19,8 +19,6 @@ import '../../state/game_state.dart';
 import '../../models/npc.dart';
 import '../../models/experiment.dart';
 import '../../models/room.dart';
-import '../../models/schedule.dart';
-import '../../models/diet.dart';
 import '../../services/science_service.dart';
 import '../../services/task_service.dart';
 import '../../models/game_item.dart';
