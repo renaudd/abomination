@@ -62,7 +62,8 @@ class GilesTutorialOverlay extends StatelessWidget {
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.playClock);
             break;
           case GilesTutorialStep.playClock:
-            dialogueText = "v) Click on the timestamp or time controls in the top right corner of the screen, and press the Play button to start the game clock.";
+            dialogueText =
+                "v) Click on the timestamp or time controls in the top right corner of the screen, and press the to start the game clock.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.selectCoop);
             break;
           case GilesTutorialStep.selectCoop:
@@ -87,8 +88,8 @@ class GilesTutorialOverlay extends StatelessWidget {
         }
 
         return Container(
-          margin: const EdgeInsets.all(16),
-          constraints: const BoxConstraints(maxWidth: 500),
+          margin: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(maxWidth: 550),
           decoration: BoxDecoration(
             color: const Color(0xFF1E1A15).withValues(alpha: 0.95),
             border: Border.all(color: const Color(0xFFD4AF37), width: 2), // Muted Gold
@@ -106,8 +107,8 @@ class GilesTutorialOverlay extends StatelessWidget {
               children: [
                 // Giles Portrait
                 Container(
-                  width: 90,
-                  padding: const EdgeInsets.all(12),
+                  width: 80,
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.black38,
                     border: const Border(right: BorderSide(color: Color(0xFFD4AF37), width: 1)),
@@ -116,8 +117,8 @@ class GilesTutorialOverlay extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 60,
-                        height: 60,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: const Color(0xFFC4B89B)),
@@ -126,19 +127,19 @@ class GilesTutorialOverlay extends StatelessWidget {
                         child: Center(
                           child: CharacterBlobRenderer(
                             npc: gilesNpc,
-                            size: 45,
+                            size: 40,
                             isIdle: true,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         "GILES",
                         style: GoogleFonts.playfairDisplay(
                           color: const Color(0xFFD4AF37),
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ],
@@ -148,7 +149,7 @@ class GilesTutorialOverlay extends StatelessWidget {
                 // Dialogue Box
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -157,8 +158,8 @@ class GilesTutorialOverlay extends StatelessWidget {
                           dialogueText,
                           style: GoogleFonts.oldStandardTt(
                             color: const Color(0xFFE5D5B0),
-                            fontSize: 15,
-                            height: 1.5,
+                            fontSize: 14,
+                            height: 1.4,
                             fontStyle: FontStyle.italic,
                           ),
                         ),

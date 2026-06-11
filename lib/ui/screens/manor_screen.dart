@@ -62,13 +62,17 @@ class ManorScreen extends StatefulWidget {
   State<ManorScreen> createState() => _ManorScreenState();
 }
 
-class _ManorScreenState extends State<ManorScreen> {
+class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin {
   bool _hudExpanded = true;
   bool _isNavigatingToCombat = false;
   bool _isShowingGuestConversation = false;
   bool _timeControlsExpanded = false;
   bool _isFirstVisit = true;
   final ScrollController _manorScrollController = ScrollController();
+  late final AnimationController _timeFlashController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  )..repeat(reverse: true);
 
   @override
   void initState() {
@@ -239,6 +243,13 @@ class _ManorScreenState extends State<ManorScreen> {
         }
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _timeFlashController.dispose();
+    _manorScrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -522,11 +533,25 @@ class _ManorScreenState extends State<ManorScreen> {
               left: 16,
               child: _buildAbstractedTheaterCard(context, state),
             ),
-          Positioned(
-            left: 16,
-            bottom: 16,
-            right: 16,
-            child: const GilesTutorialOverlay(),
+          Positioned.fill(
+            child: SafeArea(
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOut,
+                alignment: (state.gilesTutorialStep == GilesTutorialStep.enterKitchen || state.gilesTutorialStep == GilesTutorialStep.directAssign)
+                    ? Alignment.topCenter
+                    : Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    top: (state.gilesTutorialStep == GilesTutorialStep.enterKitchen || state.gilesTutorialStep == GilesTutorialStep.directAssign) ? 70.0 : 16.0,
+                    bottom: 16.0,
+                    left: 16.0,
+                    right: 16.0,
+                  ),
+                  child: const GilesTutorialOverlay(),
+                ),
+              ),
+            ),
           ),
           if (_timeControlsExpanded)
             Positioned(
@@ -2569,67 +2594,74 @@ class _ManorScreenState extends State<ManorScreen> {
   Widget _buildClockWidget(BuildContext context) {
     return Consumer<GameState>(
       builder: (context, state, child) {
-        Widget buildClock(Color bgColor) {
-          return InkWell(
-            onTap: () {
-              setState(() {
-                _timeControlsExpanded = !_timeControlsExpanded;
-                _isFirstVisit = false;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: _isFirstVisit
-                  ? BoxDecoration(
-                      border: Border.all(color: const Color(0xFFE5D5B0)),
-                      color: bgColor,
-                    )
-                  : null,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    state.currentDate.formattedDate.toUpperCase(),
-                    style: GoogleFonts.playfairDisplay(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      letterSpacing: 1.2,
-                      color: const Color(0xFFE5D5B0),
-                    ),
+        final isStep5 = state.gilesTutorialStep == GilesTutorialStep.playClock;
+        
+        return AnimatedBuilder(
+          animation: _timeFlashController,
+          builder: (context, child) {
+            final flashAlpha = isStep5 ? (_timeFlashController.value * 0.8 + 0.2) : 0.0;
+            
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  _timeControlsExpanded = !_timeControlsExpanded;
+                  _isFirstVisit = false;
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isStep5
+                      ? const Color(0xFFD4AF37).withValues(alpha: flashAlpha * 0.4)
+                      : (_isFirstVisit ? const Color(0xFFD4AF37).withValues(alpha: 0.15) : Colors.transparent),
+                  border: Border.all(
+                    color: isStep5
+                        ? const Color(0xFFFFF099).withValues(alpha: flashAlpha)
+                        : (_isFirstVisit ? const Color(0xFFD4AF37) : Colors.white12),
+                    width: isStep5 ? 2.5 : 1.0,
                   ),
-                  Text(
-                    state.currentDate.formattedTime,
-                    style: GoogleFonts.oswald(
-                      color: const Color(0xFFC4B89B),
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: isStep5
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFD4AF37).withValues(alpha: flashAlpha * 0.6),
+                            blurRadius: 12,
+                            spreadRadius: 2,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      state.currentDate.formattedDate.toUpperCase(),
+                      style: GoogleFonts.playfairDisplay(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1.2,
+                        color: isStep5 ? const Color(0xFFFFF099) : const Color(0xFFE5D5B0),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      "${state.currentDate.formattedTime} - ${state.speed.name.toUpperCase()}",
+                      style: GoogleFonts.oswald(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.5,
+                        color: isStep5 ? Colors.white : const Color(0xFFC4B89B),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        }
-
-        if (_isFirstVisit) {
-          return TweenAnimationBuilder<Color?>(
-            tween: ColorTween(
-              begin: Colors.black.withValues(alpha: 0.3),
-              end: const Color(0xFFC4B89B).withValues(alpha: 0.4),
-            ),
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeInOut,
-            builder: (context, color, child) {
-              return buildClock(color ?? Colors.black.withValues(alpha: 0.3));
-            },
-            onEnd: () {
-              if (_isFirstVisit) setState(() {});
-            },
-          );
-        }
-
-        return buildClock(Colors.black.withValues(alpha: 0.3));
+            );
+          },
+        );
       },
     );
   }
