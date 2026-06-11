@@ -9886,6 +9886,8 @@ class GameState extends ChangeNotifier {
 
     bool shouldPopResearch = false;
     int popResearchIndex = 0;
+    bool shouldPopLaboratory = false;
+    int popLaboratoryIndex = 0;
     bool shouldPopCooking = false;
     int popCookingIndex = 0;
 
