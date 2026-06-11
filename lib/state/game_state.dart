@@ -1178,8 +1178,8 @@ class GameState extends ChangeNotifier {
       }
 
       // 3. The chickens in the chicken coop
-      for (var chicken in _chickens.where((c) => c.health > 0)) {
-        targets.add({'id': chicken.id, 'name': 'Chicken (${chicken.name})', 'type': 'chicken', 'vitality': chicken.health.round()});
+      for (var chicken in _chickens.where((c) => c.hunger < 100)) {
+        targets.add({'id': chicken.id, 'name': 'Chicken (${chicken.breed.name})', 'type': 'chicken', 'vitality': (100 - chicken.hunger).round()});
       }
     }
 
@@ -2302,7 +2302,8 @@ class GameState extends ChangeNotifier {
     _rooms.add(
       Room(
         id: 'butler_quarters',
-        name: "Butler",
+        name: "Butler's Quarters",
+        shortName: "Butler",
         type: RoomType.butlerQuarters,
         isRestored: true,
         floor: Floor.ground, // Placed on ground per ManorLayout
@@ -2319,6 +2320,7 @@ class GameState extends ChangeNotifier {
       Room(
         id: 'master_bedroom',
         name: 'Master Bedroom',
+        shortName: 'Master',
         type: RoomType.bedroom,
         isRestored: true,
         floor: Floor.second,
@@ -2333,6 +2335,7 @@ class GameState extends ChangeNotifier {
       Room(
         id: 'bedroom_2',
         name: 'Junior Bedroom',
+        shortName: 'Junior',
         type: RoomType.bedroom,
         isRestored: true,
         floor: Floor.second,
@@ -2346,7 +2349,8 @@ class GameState extends ChangeNotifier {
     _rooms.add(
       Room(
         id: 'bedroom_3',
-        name: 'Guest Room',
+        name: 'Guest Bedroom',
+        shortName: 'Guest',
         type: RoomType.bedroom,
         isRestored: true,
         floor: Floor.second,
@@ -4895,9 +4899,13 @@ class GameState extends ChangeNotifier {
     final r = _rooms[index];
 
     RoomType revertedType = RoomType.attic;
-    if (r.floor == Floor.basement) revertedType = RoomType.basement;
-    else if (r.floor == Floor.attic) revertedType = RoomType.attic;
-    else revertedType = RoomType.unused;
+    if (r.floor == Floor.basement) {
+      revertedType = RoomType.basement;
+    } else if (r.floor == Floor.attic) {
+      revertedType = RoomType.attic;
+    } else {
+      revertedType = RoomType.unused;
+    }
 
     activeTasks.removeWhere((t) => t.targetId == roomId);
     

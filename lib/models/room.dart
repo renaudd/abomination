@@ -161,6 +161,7 @@ class EnqueuedTask {
 class Room {
   final String id;
   final String name;
+  final String? shortName;
   final RoomType type;
   final bool isRestored;
   final String description;
@@ -204,14 +205,18 @@ class Room {
     this.restorationProgress = 0.0,
     this.isUnderConstruction = false,
     this.constructionTarget,
+    this.shortName,
     this.metadata = const {},
   });
+
+  String get displayShortName => shortName ?? name;
 
   factory Room.initial(
     String id,
     String name,
     RoomType type,
     Floor floor, {
+    String? shortName,
     bool isRestored = true,
     String description = "",
     double width = 1.0,
@@ -225,6 +230,7 @@ class Room {
     return Room(
       id: id,
       name: name,
+      shortName: shortName,
       type: type,
       isRestored: isRestored,
       description: description,
@@ -253,6 +259,7 @@ class Room {
   Room copyWith({
     String? id,
     String? name,
+    String? shortName,
     RoomType? type,
     bool? isRestored,
     String? description,
@@ -278,6 +285,7 @@ class Room {
     return Room(
       id: id ?? this.id,
       name: name ?? this.name,
+      shortName: shortName ?? this.shortName,
       type: type ?? this.type,
       isRestored: isRestored ?? this.isRestored,
       description: description ?? this.description,
@@ -307,6 +315,7 @@ class Room {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'shortName': shortName,
     'type': type.index,
     'isRestored': isRestored,
     'description': description,
@@ -332,6 +341,7 @@ class Room {
   factory Room.fromJson(Map<String, dynamic> json) => Room(
     id: json['id'] as String,
     name: json['name'] as String,
+    shortName: json['shortName'] as String?,
     type: RoomType.values[json['type'] as int],
     isRestored: json['isRestored'] as bool? ?? false,
     description: json['description'] as String,

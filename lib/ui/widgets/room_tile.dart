@@ -130,7 +130,7 @@ class RoomTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        room.name.toUpperCase(),
+                        room.displayShortName.toUpperCase(),
                         style: GoogleFonts.outfit(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
