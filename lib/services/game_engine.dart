@@ -55,7 +55,7 @@ class GameEngine {
         threshold = 1;
         minutesPerTick = 1;
         break;
-      case GameSpeed.superFast:
+      case GameSpeed.lightning:
         // 180 mins/sec = 3 mins every frame at 60Hz
         threshold = 1;
         minutesPerTick = 3;

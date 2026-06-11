@@ -603,7 +603,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                         _speedIcon(context, state, GameSpeed.slow, Icons.play_arrow_outlined, 'SLOW'),
                         _speedIcon(context, state, GameSpeed.normal, Icons.play_arrow, 'NORMAL'),
                         _speedIcon(context, state, GameSpeed.fast, Icons.fast_forward, 'FAST'),
-                        _speedIcon(context, state, GameSpeed.superFast, Icons.bolt, 'LIGHTNING'),
+                        _speedIcon(context, state, GameSpeed.lightning, Icons.bolt, 'LIGHTNING'),
                       ],
                     ),
                   );

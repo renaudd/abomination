@@ -60,7 +60,7 @@ import '../services/combat_unit_factory.dart';
 import '../util/manor_layout.dart';
 import '../models/encounter_data.dart';
 
-enum GameSpeed { paused, slow, normal, fast, superFast }
+enum GameSpeed { paused, slow, normal, fast, lightning }
 
 enum DeathCause { disease, trainCrash, murderSuicide, misunderstanding }
 
@@ -8548,21 +8548,42 @@ class GameState extends ChangeNotifier {
       }
     }
 
-    // 2. Attribute XP (10x scaled, e.g. 60 mins -> 3 xp Dexterity)
-    final taskMeta = TaskService.getMetadata(task.type);
-    final List<String> gainedStats = [];
-    int? gainedStatXp;
-    if (taskMeta.relevantAttributes.isNotEmpty) {
-      gainedStatXp = (duration / 20.0).floor();
-      if (gainedStatXp < 1) gainedStatXp = 0;
-      if (gainedStatXp > 0) {
-        for (var stat in taskMeta.relevantAttributes) {
-          final cleanStat = stat.toLowerCase();
-          gainedStats.add(cleanStat);
-          _addStatExperience(npcIndex, cleanStat, gainedStatXp.toDouble());
-        }
-      }
+  bool _doesTaskDevelopCoreAttributes(TaskType type) {
+    switch (type) {
+      case TaskType.restoreRoom:
+      case TaskType.construction:
+      case TaskType.mining:
+      case TaskType.excavate:
+      case TaskType.dissect:
+      case TaskType.vivisection:
+      case TaskType.surgery:
+      case TaskType.research:
+      case TaskType.puzzleStudy:
+      case TaskType.deprivationStudy:
+      case TaskType.combatTraining:
+      case TaskType.patrol:
+        return true;
+      default:
+        return false;
     }
+  }
+
+  // 2. Attribute XP (10x scaled, e.g. 200 mins -> 10-15 xp Strength)
+  final taskMeta = TaskService.getMetadata(task.type);
+  final List<String> gainedStats = [];
+  int? gainedStatXp;
+  if (taskMeta.relevantAttributes.isNotEmpty && _doesTaskDevelopCoreAttributes(task.type)) {
+    int baseStatXp = (duration / 20.0).floor();
+    if (baseStatXp >= 1) {
+      final random = Random();
+      final chosenStat = taskMeta.relevantAttributes[random.nextInt(taskMeta.relevantAttributes.length)].toLowerCase();
+      
+      int extra = random.nextInt((baseStatXp * 0.5).floor() + 1);
+      gainedStatXp = baseStatXp + extra;
+      gainedStats.add(chosenStat);
+      _addStatExperience(npcIndex, chosenStat, gainedStatXp.toDouble());
+    }
+  }
 
     // Build Gained Integer XP Summary String
     List<String> xpLogParts = [];

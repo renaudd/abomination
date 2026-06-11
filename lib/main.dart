@@ -127,7 +127,7 @@ class _AbominationAppState extends State<AbominationApp> {
                 } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3) {
                   state.setSpeed(GameSpeed.fast);
                 } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4) {
-                  state.setSpeed(GameSpeed.superFast);
+                  state.setSpeed(GameSpeed.lightning);
                 }
               }
 

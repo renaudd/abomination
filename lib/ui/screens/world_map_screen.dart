@@ -466,7 +466,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         _speedIcon(context, state, GameSpeed.slow, Icons.play_arrow_outlined, 'SLOW'),
                         _speedIcon(context, state, GameSpeed.normal, Icons.play_arrow, 'NORMAL'),
                         _speedIcon(context, state, GameSpeed.fast, Icons.fast_forward, 'FAST'),
-                        _speedIcon(context, state, GameSpeed.superFast, Icons.bolt, 'LIGHTNING'),
+                        _speedIcon(context, state, GameSpeed.lightning, Icons.bolt, 'LIGHTNING'),
                       ],
                     ),
                   );
@@ -558,7 +558,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         return const Duration(milliseconds: 80);
       case GameSpeed.fast:
         return const Duration(milliseconds: 16);
-      case GameSpeed.superFast:
+      case GameSpeed.lightning:
         return const Duration(milliseconds: 16);
       case GameSpeed.paused:
         return Duration.zero;

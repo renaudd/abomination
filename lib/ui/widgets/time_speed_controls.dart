@@ -36,7 +36,7 @@ class TimeSpeedControls extends StatelessWidget {
             ),
             _speedButton(context, state, GameSpeed.normal, Icons.play_arrow),
             _speedButton(context, state, GameSpeed.fast, Icons.fast_forward),
-            _speedButton(context, state, GameSpeed.superFast, Icons.bolt),
+            _speedButton(context, state, GameSpeed.lightning, Icons.bolt),
           ],
         );
       },
