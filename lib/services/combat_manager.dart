@@ -2151,12 +2151,6 @@ class CombatManager extends ChangeNotifier {
     }
     c.laneIndex = currentLaneIdx;
 
-    // Enforce Wing Tower Prioritization Rule: The central keep/main tower cannot be targeted until at least one wing tower is destroyed!
-    final bool anyWingStanding = _combatants.any((o) => o.isTower && o.side != c.side && !o.isDead && (o.laneIndex == 0 || o.laneIndex == 2));
-    if (anyWingStanding) {
-      targets = targets.where((t) => !(t.isTower && t.laneIndex == 1)).toList();
-    }
-
     // Channel engagement prioritization
     List<Combatant> prioritizedTargets = [];
     final enemyTowers = _combatants.where((other) => other.isTower && other.side != c.side && !other.isDead).toList();
@@ -2164,6 +2158,11 @@ class CombatManager extends ChangeNotifier {
 
     if (lastTower != null) {
       prioritizedTargets.add(lastTower);
+    } else if (_map.laneCenters.length == 2) {
+      // On a two-lane battlefield, forces simply engage the closest reachable targets
+      // rather than using rigid lane-lock rules, so they never disregard closer towers that are firing on them
+      // to advance directly on the central (furthest) Keep.
+      prioritizedTargets = targets;
     } else {
       for (final t in targets) {
         final double dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
@@ -2180,19 +2179,6 @@ class CombatManager extends ChangeNotifier {
               if (dist <= 45.0 && dx <= 25.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
                 prioritizedTargets.add(t);
               }
-            }
-            // Far lane (laneDiff == 2) is blocked from direct targeting
-          } else if (_map.laneCenters.length == 2) {
-            // 2-lane map rules: neighboring lane crossover if close (dist <= 40.0) and clear LOS,
-            // or a leader standing near vertical center (within 20ft) and close horizontally (dx <= 35.0)
-            final double centerY = _map.height / 2;
-            final bool isLeader = t.npc.isPlayer || t.isAiLeader;
-            final bool leaderNearCenter = isLeader && (t.y - centerY).abs() <= 20.0;
-
-            if (leaderNearCenter && dx <= 35.0) {
-              prioritizedTargets.add(t);
-            } else if (dist <= 40.0 && !isPathObstructed(c.x, c.y, t.x, t.y)) {
-              prioritizedTargets.add(t);
             }
           }
         }
