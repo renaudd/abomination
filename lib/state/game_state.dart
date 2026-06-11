@@ -8535,6 +8535,53 @@ class GameState extends ChangeNotifier {
           : newInventory,
     );
 
+    // Grant Experience for task completion
+    final int duration = task.totalMinutes > 0 ? task.totalMinutes : 60;
+
+    // 1. Proficiency XP
+    final proficiencyName = TaskService.getProficiency(task.type);
+    double? gainedProfXp;
+    if (proficiencyName != null) {
+      gainedProfXp = (duration / 50.0);
+      _addProficiencyExperience(npcIndex, proficiencyName, gainedProfXp);
+    }
+
+    // 2. Attribute XP
+    final taskMeta = TaskService.getMetadata(task.type);
+    final List<String> gainedStats = [];
+    double? gainedStatXpDisplay;
+    if (taskMeta.relevantAttributes.isNotEmpty) {
+      final baseStatXp = duration / 200.0;
+      gainedStatXpDisplay = baseStatXp * 10.0;
+      for (var stat in taskMeta.relevantAttributes) {
+        final cleanStat = stat.toLowerCase();
+        gainedStats.add(cleanStat);
+        _addStatExperience(npcIndex, cleanStat, baseStatXp);
+      }
+    }
+
+    // Build Gained XP Summary String
+    List<String> xpLogParts = [];
+    if (gainedProfXp != null && gainedProfXp > 0) {
+      xpLogParts.add("+${gainedProfXp.toStringAsFixed(1)} XP ${proficiencyName!.toUpperCase()}");
+    }
+    if (gainedStatXpDisplay != null && gainedStatXpDisplay > 0 && gainedStats.isNotEmpty) {
+      final statNames = gainedStats.map((s) => s.toUpperCase()).join(', ');
+      xpLogParts.add("+${gainedStatXpDisplay.toStringAsFixed(1)} XP ATTRIBUTES ($statNames)");
+    }
+
+    String xpLogSuffix = "";
+    if (xpLogParts.isNotEmpty) {
+      xpLogSuffix = " [GAINED: ${xpLogParts.join(' | ')}]";
+    }
+
+    final finalLogMessage = "${result.message}$xpLogSuffix";
+    if (_lastAnnouncement == result.message) {
+      _lastAnnouncement = finalLogMessage;
+    } else if (xpLogParts.isNotEmpty) {
+      _lastAnnouncement = "$_lastAnnouncement$xpLogSuffix";
+    }
+
     // Filter silence for foxes
     final isFoxWaiting =
         worker.specimenType.toLowerCase() == 'fox' &&
@@ -8542,7 +8589,7 @@ class GameState extends ChangeNotifier {
     if (!isFoxWaiting) {
       _announcementHistory.insert(
         0,
-        "[${_currentDate.formattedTime}] ${result.message}",
+        "[${_currentDate.formattedTime}] $finalLogMessage",
       );
       if (_announcementHistory.length > 50) _announcementHistory.removeLast();
     }
@@ -13246,6 +13293,10 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  double getRequiredStatXP(int currentLevel) {
+    return getRequiredXP(currentLevel) * 10.0;
+  }
+
   void _addStatExperience(int npcIndex, String stat, double amount) {
     if (npcIndex < 0 || npcIndex >= _npcs.length) return;
     var npc = _npcs[npcIndex];
@@ -13253,9 +13304,9 @@ class GameState extends ChangeNotifier {
     if (currentLevel >= 10) return;
 
     final statExperience = Map<String, double>.from(npc.statExperience);
-    double xp = (statExperience[stat] ?? 0.0) + amount;
+    double xp = (statExperience[stat] ?? 0.0) + (amount * 10.0);
 
-    double required = getRequiredXP(currentLevel);
+    double required = getRequiredStatXP(currentLevel);
     if (xp >= required) {
       xp -= required;
       final newStats = Map<String, int>.from(npc.stats);
