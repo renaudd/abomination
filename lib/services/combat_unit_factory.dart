@@ -2402,5 +2402,38 @@ class CombatUnitFactory {
     metadata: const {'faction': 'Ancient Order of Foresters', 'cardType': 'forester_beastmaster', 'description': 'Rugged warden accompanied by ferocious deep-woods grizzly bears.'},
     combatStats: const CombatStats(attack: 80, health: 350, maxHealth: 350, speed: 1.5, movement: 5.0, distance: 1.5, cost: 4, unitCount: 1, battlehorn: BattlehornEffect.charge),
   );
+
+  static NPC createLordGarrick() => createAlphonse().copyWith(
+    id: 'lord_garrick',
+    name: 'Lord Garrick',
+    role: 'Master Tank',
+    metadata: const {
+      'faction': 'Army',
+      'cardType': 'lord_garrick',
+      'description': 'Unbreakable vanguard commander. Implements Bulwark Taunt to grant self a huge health boost while locking all nearby enemies to target self for 4.5 seconds.',
+    },
+    combatStats: const CombatStats(
+      attack: 42,
+      health: 550,
+      maxHealth: 550,
+      speed: 1.2,
+      movement: 3.5,
+      distance: 2.0,
+      defense: 6,
+      cost: 0,
+      unitType: UnitType.squad,
+      unitCount: 1,
+    ),
+    abilities: const [
+      Ability(
+        id: 'leader_tank_taunt',
+        name: 'Bulwark Taunt',
+        type: AbilityType.special,
+        chargeTime: 18.0,
+        range: 30.0,
+        description: 'Give self a big temporary health boost (+100 HP) and cause all nearby enemies to target self for 4.5 seconds.',
+      ),
+    ],
+  );
 }
 

@@ -321,6 +321,33 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         ),
                       ),
 
+                      // Carbonari Faction Hideout (Unlocked by Pasta Carbonara)
+                      if (context.watch<GameState>().knownRecipes.contains('pasta_carbonara'))
+                        Positioned(
+                          top: 220,
+                          left: 480,
+                          child: Consumer<GameState>(
+                            builder: (context, state, child) {
+                              final someoneThere = state.npcs.any(
+                                (n) =>
+                                    n.worldDestinationId == 'carbonari' &&
+                                    n.worldTravelProgress >= 1.0,
+                              );
+                              return LocationTile(
+                                name: 'CARBONARI LODGE',
+                                icon: Icons.local_fire_department,
+                                description: someoneThere
+                                    ? 'Representative consulting with the revolutionary Carbonari.'
+                                    : 'Special Faction missions and revolutionary alchemical networks.',
+                                isCurrent: someoneThere,
+                                onTap: () =>
+                                    _showPrepareJourney(context, 'carbonari'),
+                              );
+                            },
+                          ),
+                        ),
+
+
                       Positioned(
                         bottom: 264,
                         left: 770,

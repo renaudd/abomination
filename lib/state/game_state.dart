@@ -59,6 +59,7 @@ import '../services/experimentation_service.dart';
 import '../services/combat_unit_factory.dart';
 import '../util/manor_layout.dart';
 import '../models/encounter_data.dart';
+import '../services/arena_save_service.dart';
 
 enum GameSpeed { paused, slow, normal, fast, lightning }
 
@@ -150,6 +151,11 @@ class GameState extends ChangeNotifier {
 
   int _veterinaryExperience = 0;
   int get veterinaryExperience => _veterinaryExperience;
+
+  int _trainedBatsCount = 0;
+  int get trainedBatsCount => _trainedBatsCount;
+  List<String> _unlockedCombatCards = [];
+  List<String> get unlockedCombatCards => _unlockedCombatCards;
 
   void incrementVeterinaryExperience() {
     _veterinaryExperience++;
@@ -718,6 +724,8 @@ class GameState extends ChangeNotifier {
   LifeObjective _mainObjective = LifeObjective.science;
 
   Map<String, dynamic> toJson() => {
+    'trainedBatsCount': _trainedBatsCount,
+    'unlockedCombatCards': _unlockedCombatCards,
     'currentDate': _currentDate.toJson(),
     'speed': _speed.index,
     'npcs': _npcs.map((n) => n.toJson()).toList(),
@@ -826,6 +834,8 @@ class GameState extends ChangeNotifier {
     _hasFoodDropTriggered = json['hasFoodDropTriggered'] as bool? ?? false;
     _foodDropTriggerTime = json['foodDropTriggerTime'] as int?;
     _lastMerchantSpawnMinutes = json['lastMerchantSpawnMinutes'] as int? ?? 0;
+    _trainedBatsCount = json['trainedBatsCount'] as int? ?? 0;
+    _unlockedCombatCards = List<String>.from(json['unlockedCombatCards'] as List? ?? []);
 
     _npcs.clear();
     _npcs.addAll((json['npcs'] as List).map((n) => NPC.fromJson(n)).toList());
@@ -1268,7 +1278,13 @@ class GameState extends ChangeNotifier {
   List<ManorCrisis> get crises => List.unmodifiable(_crises);
   List<Crop> get crops => List.unmodifiable(_crops);
   List<Plant> get gardenPlants => List.unmodifiable(_gardenPlants);
-  GameSpeed get speed => _speed;
+  GameSpeed get speed {
+    if (_speed != GameSpeed.paused && areAllResidentsAsleep()) {
+      if (_residentsAsleepBehavior == 'lightning') return GameSpeed.lightning;
+      if (_residentsAsleepBehavior == 'fast') return GameSpeed.fast;
+    }
+    return _speed;
+  }
 
   String get combatControlMode => _combatControlMode;
   String get emergencyBehavior => _emergencyBehavior;
@@ -4407,7 +4423,17 @@ class GameState extends ChangeNotifier {
 
     // Fox visits: each fox visits approximately once every 30 days
     // 1 day = 1440 mins. 30 days = 43200 mins.
-    final prob = foxCount / 43200.0;
+    final coop = _rooms.firstWhereOrNull((r) => r.type == RoomType.chickenCoop);
+    int coopEggs = 0;
+    if (coop != null) {
+      coopEggs = coop.inventory.where((i) => i.type == 'eggs' || i.name.toLowerCase().contains('egg')).fold(0, (a, b) => a + b.quantity);
+    }
+
+    double prob = foxCount / 43200.0;
+    if (coopEggs > 9) {
+      prob += 0.035; // High number of eggs acts as delicious fox bait!
+    }
+
     if (Random().nextDouble() < prob) {
       _triggerFoxRaid();
     }
@@ -4427,7 +4453,7 @@ class GameState extends ChangeNotifier {
 
       // Effectiveness check (Endurance and Hunger impact)
       final endurance = n.stats['endurance'] ?? 5;
-      bool isEffective = endurance > 20 && n.hunger < 80;
+      bool isEffective = endurance >= 1 && n.hunger < 80;
 
       return (isScheduled || hasManualTask) && isEffective;
     }).toList();
@@ -4437,13 +4463,22 @@ class GameState extends ChangeNotifier {
         .firstOrNull;
 
     if (guards.isNotEmpty) {
-      // Success! Capturing or killing a fox
-      if (foxEntry != null && Random().nextDouble() < 0.5) {
+      // Success! Capturing or killing a fox (High chance 90%)
+      if (foxEntry != null && Random().nextDouble() < 0.90) {
         final foxIndex = _npcs.indexOf(foxEntry);
         _handleNpcDeath(foxIndex);
         _announcementHistory.insert(
           0,
-          "[${_currentDate.formattedTime}] DEFENSE: A fox was driven off and recovered for parts.",
+          "[${_currentDate.formattedTime}] DEFENSE: A wild fox was intercepted by your guard and successfully recovered as a specimen!",
+        );
+        addItemToRoom(
+          'chicken_coop',
+          GameItem.create(
+            name: 'Fox Specimen',
+            type: 'fox_specimen',
+            category: ItemCategory.specimen,
+            quantity: 1,
+          ),
         );
       }
     } else {
@@ -5740,6 +5775,81 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  String? _generateRichVictorianObservation(NPC npc) {
+    final random = Random();
+    final cat = random.nextInt(3);
+    
+    switch (cat) {
+      case 0: // A) How they're feeling
+        if (npc.energy < 30) return "I feel utterly exhausted... I must rest soon.";
+        if (npc.hunger > 70) return "My stomach is growling. A rich Victorian meal would be delightful.";
+        if (npc.cleanliness < 40) return "I feel quite grimy. A proper wash is in order.";
+        if (npc.satisfaction < 30) return "This constant toil feels utterly grim and thankless.";
+        
+        final otherRes = _npcs.where((n) => n.isResident && n.id != npc.id).toList();
+        if (otherRes.isNotEmpty) {
+          final target = otherRes[random.nextInt(otherRes.length)];
+          final rel = npc.relationships[target.id];
+          if (rel != null) {
+            if (rel.respect > 50) return "${target.name} has been remarkably steadfast and dutiful lately.";
+            if (rel.admiration > 50) return "I find myself admiring ${target.name}'s quiet dedication.";
+            if (rel.fear > 50) return "There is something utterly unsettling about ${target.name}'s presence...";
+          }
+          return "Having ${target.name} share these manor halls brings a curious solace.";
+        }
+        return "I feel exceptionally focused and hale today, ready for the trials ahead.";
+
+      case 1: // B) What they've been up to
+        final profs = npc.proficiencies.keys.toList();
+        if (profs.isNotEmpty) {
+          final pName = profs[random.nextInt(profs.length)];
+          if (random.nextBool()) {
+            return "My masterwork in [$pName] is proceeding magnificently.";
+          }
+        }
+        final statOptions = ['strength', 'endurance', 'dexterity', 'perception', 'intellect'];
+        final chosenStat = statOptions[random.nextInt(statOptions.length)];
+        return "Through strict Victorian discipline, I think I've increased my [$chosenStat].";
+
+      case 2: // C) Occasionally make useful observations
+        final obsPool = [];
+        
+        final totalFood = _resources.entries.where((e) => e.key.contains('meal') || e.key.contains('food') || e.key.contains('stew')).fold(0, (a, b) => a + b.value);
+        if (totalFood < 10) obsPool.add("We're running remarkably low on prepared food.");
+        
+        final totalIng = _resources.entries.where((e) => e.key == 'flour' || e.key == 'eggs' || e.key == 'cheese' || e.key == 'tomato' || e.key == 'meat').fold(0, (a, b) => a + b.value);
+        if (totalIng < 15) obsPool.add("We're running low on basic ingredients in the pantry.");
+
+        final dryCrops = _crops.where((c) => c.waterLevel < 0.3).toList();
+        if (dryCrops.isNotEmpty) {
+          final fieldLetters = ['A', 'B', 'C', 'D'];
+          final fieldLetter = fieldLetters[random.nextInt(fieldLetters.length)];
+          obsPool.add("Field [$fieldLetter] is looking remarkably dry. It requires immediate care.");
+        }
+
+        final coop = _rooms.firstWhereOrNull((r) => r.type == RoomType.chickenCoop);
+        if (coop != null) {
+          final eggs = coop.inventory.where((i) => i.type == 'eggs' || i.name.toLowerCase().contains('egg')).fold(0, (a, b) => a + b.quantity);
+          if (eggs >= 6) obsPool.add("There's a massive bunch of eggs gathered in the Chicken Coop.");
+        }
+
+        final study = _rooms.firstWhereOrNull((r) => r.type == RoomType.study);
+        if (study != null) {
+          final rats = study.inventory.where((i) => i.id.contains('rat') || i.name.toLowerCase().contains('rat')).fold(0, (a, b) => a + b.quantity);
+          if (rats > 0) {
+            obsPool.add("You know you've got a bunch of [rats] nesting in your Study, right?");
+            obsPool.add("By the way, I left a few [rats] scurrying in the Study for your experiments.");
+          }
+        }
+        
+        if (obsPool.isNotEmpty) {
+          return obsPool[random.nextInt(obsPool.length)] as String;
+        }
+        return "The structural foundations of this East Wing hum with an unsettling resonance.";
+    }
+    return null;
+  }
+
   void _updateNpcs() {
     final Set<String> claimedWorkstations = {};
     // Pre-populate with currently active tasks AND enqueued high-priority intents
@@ -5781,6 +5891,8 @@ class GameState extends ChangeNotifier {
       }
       return a.compareTo(b); // Arrival order fallback
     });
+
+    final random = Random();
 
     for (var i in sortedIndices) {
       final initialNpc = _npcs[i];
@@ -5854,6 +5966,23 @@ class GameState extends ChangeNotifier {
           );
         } else {
           _npcs[i] = _npcs[i].copyWith(minutesStaying: newMinutes);
+        }
+      }
+
+      // 2 & 3. Ephemeral Speech Bubbles and Rich Victorian Observations
+      currentNpc = _npcs[i];
+      if (currentNpc.isResident) {
+        String? activeThought = currentNpc.currentThought;
+        // 88% chance to clear active thoughts every minute so speech bubbles are rare
+        if (activeThought != null && random.nextDouble() < 0.88) {
+          activeThought = null;
+        }
+        // Every ~120 minutes (or 1.5% chance per min when idle), generate an observation
+        if (activeThought == null && random.nextDouble() < 0.015) {
+          activeThought = _generateRichVictorianObservation(currentNpc);
+        }
+        if (activeThought != currentNpc.currentThought) {
+          _npcs[i] = currentNpc.copyWith(currentThought: activeThought);
         }
       }
     }
@@ -8602,6 +8731,32 @@ class GameState extends ChangeNotifier {
     String xpLogSuffix = "";
     if (xpLogParts.isNotEmpty) {
       xpLogSuffix = " [GAINED: ${xpLogParts.join(' | ')}]";
+    }
+
+    // 6. Automatic Ranching Troop Creation
+    if (proficiencyName == 'Ranching' || task.type == TaskType.trainCreature || task.type == TaskType.interactAnimals) {
+      bool hasRanchingTrainer = _npcs.any((n) => (n.metadata['proficiency_level_Ranching'] as int? ?? 0) >= 2);
+      if (hasRanchingTrainer) {
+        _trainedBatsCount++;
+        if (_trainedBatsCount >= 4) {
+          _trainedBatsCount -= 4;
+          _unlockedCombatCards.add('wild_bats');
+          
+          ArenaSaveService.loadProgress(1).then((progress) {
+            if (progress != null) {
+              if (progress.campaign != null && !progress.campaign!.playerDeckIds.contains('wild_bats')) {
+                progress.campaign!.playerDeckIds.add('wild_bats');
+              }
+              if (progress.survival != null && !progress.survival!.playerDeckIds.contains('wild_bats')) {
+                progress.survival!.playerDeckIds.add('wild_bats');
+              }
+              ArenaSaveService.saveProgress(progress);
+            }
+          });
+
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] RANCHING: Four trained bats have been successfully organized into a dedicated Bats combat unit card available in your deck!");
+        }
+      }
     }
 
     final finalLogMessage = "${result.message}$xpLogSuffix";

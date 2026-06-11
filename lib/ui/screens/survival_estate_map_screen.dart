@@ -6321,9 +6321,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             final type = hire['type'] as String;
                             final cost = hire['cost'] as int;
                             final npc = CombatUnitService.createUnit(type);
+                            final bool isAlreadyOwned = progress.playerDeckIds.contains(type);
                             final canAfford =
                                 progress.cash >= cost &&
                                 progress.playerDeckIds.length < 12;
+                            final canRecruit = canAfford && !isAlreadyOwned;
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 6),
@@ -6370,11 +6372,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   OutlinedButton(
                                     style: OutlinedButton.styleFrom(
                                       side: BorderSide(
-                                        color: canAfford
+                                        color: canRecruit
                                             ? const Color(0xFFC4B89B)
                                             : Colors.white10,
                                       ),
-                                      backgroundColor: canAfford
+                                      backgroundColor: canRecruit
                                           ? const Color(0xFF2E1A0A)
                                           : Colors.transparent,
                                       padding: const EdgeInsets.symmetric(
@@ -6382,7 +6384,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                         vertical: 6,
                                       ),
                                     ),
-                                    onPressed: canAfford
+                                    onPressed: canRecruit
                                         ? () {
                                             if (service.buyCombatCard(
                                               type,
@@ -6393,9 +6395,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                           }
                                         : null,
                                     child: Text(
-                                      'RECRUIT',
+                                      isAlreadyOwned ? 'OWNED' : 'RECRUIT',
                                       style: GoogleFonts.playfairDisplay(
-                                        color: canAfford
+                                        color: canRecruit
                                             ? const Color(0xFFE5D5B0)
                                             : Colors.white24,
                                         fontSize: 10.5,
@@ -6404,6 +6406,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     ),
                                   ),
                                 ],
+
                               ),
                             );
                           }),

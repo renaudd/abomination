@@ -38,6 +38,8 @@ class CombatUnitService {
     switch (type) {
       case 'alphonse':
         return CombatUnitFactory.createAlphonse();
+      case 'lord_garrick':
+        return CombatUnitFactory.createLordGarrick();
       case 'giles':
         return CombatUnitFactory.createFlaubert();
       case 'cannoneer':
@@ -78,6 +80,8 @@ class CombatUnitService {
         return CombatUnitFactory.createSniper();
       case 'wild_foxes':
         return CombatUnitFactory.createWildFoxes();
+      case 'wild_bats':
+        return CombatUnitFactory.createBatsUnit();
       case 'wild_wolves':
         return CombatUnitFactory.createWildWolves();
       case 'wild_bear':

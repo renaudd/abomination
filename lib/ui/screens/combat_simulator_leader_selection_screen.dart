@@ -64,6 +64,7 @@ class _CombatSimulatorLeaderSelectionScreenState
       CombatUnitFactory.createJamesStephens().copyWith(id: 'james_stephens', isPlayer: true),
       CombatUnitFactory.createFerdinandDeBertier().copyWith(id: 'ferdinand_de_bertier', isPlayer: true),
       CombatUnitFactory.createChiefRangerRobin().copyWith(id: 'chief_ranger_robin', isPlayer: true),
+      CombatUnitFactory.createLordGarrick().copyWith(id: 'lord_garrick', isPlayer: true),
     ];
     _opponentLeaders = [
       CombatUnitFactory.createAlphonse().copyWith(id: 'enemy_hero', isPlayer: false),
@@ -80,6 +81,7 @@ class _CombatSimulatorLeaderSelectionScreenState
       CombatUnitFactory.createJamesStephens().copyWith(id: 'james_stephens', isPlayer: false),
       CombatUnitFactory.createFerdinandDeBertier().copyWith(id: 'ferdinand_de_bertier', isPlayer: false),
       CombatUnitFactory.createChiefRangerRobin().copyWith(id: 'chief_ranger_robin', isPlayer: false),
+      CombatUnitFactory.createLordGarrick().copyWith(id: 'lord_garrick', isPlayer: false),
     ];
   }
 

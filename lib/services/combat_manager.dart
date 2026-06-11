@@ -62,6 +62,7 @@ class Combatant {
   double attackCooldown = 0.0;
   double freezeTimer = 0.0;
   String? targetId;
+  double tauntLockDurationRemaining = 0.0;
   String?
   specialActionId; // For ongoing special state (e.g. Giles moving to execute)
   String?
@@ -2571,6 +2572,10 @@ class CombatManager extends ChangeNotifier {
       return;
     }
 
+    if (c.tauntLockDurationRemaining > 0.0) {
+      c.tauntLockDurationRemaining = max(0.0, c.tauntLockDurationRemaining - dt);
+    }
+
     // Targeting Logic for normal units:
     Combatant? target;
     if (c.targetId != null) {
@@ -2584,13 +2589,13 @@ class CombatManager extends ChangeNotifier {
         final myRadius = stats.radius;
         final targetRadius = target.npc.combatStats?.radius ?? 1.0;
 
-        if (dist - myRadius - targetRadius > rangeInFeet) {
+        if ((dist - myRadius - targetRadius > rangeInFeet) && c.tauntLockDurationRemaining <= 0.0) {
           target = null; // Forces re-targeting below
         }
       }
     }
 
-    if (target == null) {
+    if (target == null && c.tauntLockDurationRemaining <= 0.0) {
       targets.sort((a, b) {
         final distA = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
         final distB = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
@@ -2898,6 +2903,28 @@ class CombatManager extends ChangeNotifier {
           ),
         );
         _addLog('${c.npc.name} accuracy boosted!', side: c.side);
+        break;
+
+      case 'leader_tank_taunt':
+        final currentStats = c.npc.combatStats!;
+        c.npc = c.npc.copyWith(
+          combatStats: currentStats.copyWith(
+            health: currentStats.health + 150.0,
+            maxHealth: currentStats.maxHealth + 150.0,
+          ),
+        );
+        _addFloatingMessage(c, '+150 HP BULWARK', Colors.greenAccent);
+
+        final reach = ability.range ?? 30.0;
+        for (final enemy in _combatants.where((other) => other.side != c.side && !other.isDead && !other.isTower)) {
+          final dist = sqrt(pow(enemy.x - c.x, 2) + pow(enemy.y - c.y, 2));
+          if (dist <= reach) {
+            enemy.targetId = c.npc.id;
+            enemy.tauntLockDurationRemaining = 4.5;
+            _addFloatingMessage(enemy, 'TAUNTED!', Colors.redAccent);
+          }
+        }
+        _addLog('${c.npc.name} uses Master Bulwark Taunt! All nearby enemies locked to target self for 4.5 seconds!', side: c.side);
         break;
 
       case 'witch_charge_heal':

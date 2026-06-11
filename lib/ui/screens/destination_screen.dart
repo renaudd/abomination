@@ -124,29 +124,54 @@ class _DestinationScreenState extends State<DestinationScreen> {
                     Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildActionButton(
-                            context,
-                            'SCAVENGE AREA',
-                            Icons.search,
-                            () {
-                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Scavenging takes time and effort...')),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          _buildActionButton(
-                            context,
-                            'REST BY CAMPFIRE',
-                            Icons.fireplace,
-                            () {
-                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Resting recovers a bit of energy.')),
-                              );
-                            },
-                          ),
-                        ],
+                        children: widget.destinationId == 'carbonari'
+                            ? [
+                                _buildActionButton(
+                                  context,
+                                  'REVOLUTIONARY ALCHEMICAL EXCHANGE',
+                                  Icons.science,
+                                  () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Exchanged revolutionary notes! Received 500 Gold & Alchemical Reagents.')),
+                                    );
+                                    state.adjustCash(500);
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildActionButton(
+                                  context,
+                                  'CARBONARI SMUGGLING RUN',
+                                  Icons.directions_boat,
+                                  () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Completed revolutionary smuggling run for the Carbonari. Gained Faction Standing!')),
+                                    );
+                                  },
+                                ),
+                              ]
+                            : [
+                                _buildActionButton(
+                                  context,
+                                  'SCAVENGE AREA',
+                                  Icons.search,
+                                  () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Scavenging takes time and effort...')),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildActionButton(
+                                  context,
+                                  'REST BY CAMPFIRE',
+                                  Icons.fireplace,
+                                  () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Resting recovers a bit of energy.')),
+                                    );
+                                  },
+                                ),
+                              ],
                       ),
                     ),
 
@@ -235,6 +260,8 @@ class _DestinationScreenState extends State<DestinationScreen> {
         return Icons.forest;
       case 'river':
         return Icons.water;
+      case 'carbonari':
+        return Icons.local_fire_department;
       default:
         return Icons.explore;
     }
@@ -248,6 +275,8 @@ class _DestinationScreenState extends State<DestinationScreen> {
         return 'A dense, ancient forest where the sunlight struggles to reach the mossy floor. Ideal for gathering timber and searching for specimens.';
       case 'river':
         return 'The icy waters of the Linth river flow rapidly towards the valley. A good place for fresh water and clay.';
+      case 'carbonari':
+        return 'A secret alpine hunting lodge serving as a covert meeting site for the revolutionary Carbonari faction.';
       default:
         return 'A remote location on the estate grounds.';
     }
