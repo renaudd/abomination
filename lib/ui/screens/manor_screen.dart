@@ -770,6 +770,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         ),
       ),
       constraints: BoxConstraints(
+        maxWidth: 640,
         maxHeight: MediaQuery.of(context).size.height * 0.8,
       ),
       child: SafeArea(
