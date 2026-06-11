@@ -354,7 +354,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         _sceneText("Giles was always really good at..."),
         const SizedBox(height: 12),
         _optionButton(
-          "GIVING SAGE ADVICE.",
+          "GIVING SAGE ADVICE. (Tutorial Mode)",
           () => _selectGiles(GilesTrait.sage),
           isSelected: _gilesTrait == GilesTrait.sage,
           index: 0,

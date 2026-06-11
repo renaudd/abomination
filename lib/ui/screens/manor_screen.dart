@@ -533,6 +533,13 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               left: 16,
               child: _buildAbstractedTheaterCard(context, state),
             ),
+          if (_selectedRoomForDetails != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildRoomDetailsPanel(context, state, _selectedRoomForDetails!),
+            ),
           Positioned.fill(
             child: SafeArea(
               child: AnimatedAlign(
@@ -707,874 +714,719 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
   }
 
   void _showRoomDetails(BuildContext context, Room room) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF241F1A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+    setState(() {
+      _selectedRoomForDetails = room;
+    });
+  }
+
+  Widget _buildRoomDetailsPanel(BuildContext context, GameState state, Room room) {
+    final liveRoom = state.rooms.firstWhere(
+      (r) => r.id == room.id,
+      orElse: () => room,
+    );
+    final roomQueue = state.getRoomTaskQueue(liveRoom.id);
+    final activeTasksInRoom = state.activeTasks
+        .where((t) => t.targetId == liveRoom.id)
+        .toList();
+
+    final displayQueue = roomQueue.where((q) {
+      for (var active in activeTasksInRoom) {
+        if (q.intentId == active.intentId || q.intentId == active.id) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF241F1A).withValues(alpha: 0.98),
+        border: const Border(
+          top: BorderSide(
+            color: Color(0xFFD4AF37), // Master Gold
+            width: 2.5,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.9),
+            blurRadius: 20,
+            spreadRadius: 4,
+          ),
+        ],
       ),
-      builder: (context) {
-        return Consumer<GameState>(
-          builder: (context, state, child) {
-            final liveRoom = state.rooms.firstWhere(
-              (r) => r.id == room.id,
-              orElse: () => room,
-            );
-            final roomQueue = state.getRoomTaskQueue(liveRoom.id);
-            final activeTasksInRoom = state.activeTasks
-                .where((t) => t.targetId == liveRoom.id)
-                .toList();
-
-            final displayQueue = roomQueue.where((q) {
-              for (var active in activeTasksInRoom) {
-                if (q.intentId == active.intentId || q.intentId == active.id) {
-                  return false;
-                }
-              }
-              return true;
-            }).toList();
-
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-                  ),
-                ),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+      constraints: const BoxConstraints(maxHeight: 400),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
                       liveRoom.name.toUpperCase(),
                       style: GoogleFonts.outfit(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
                         color: const Color(0xFFE5D5B0),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      liveRoom.isRestored
-                          ? 'RESTORED AND FUNCTIONAL.'
-                          : 'THIS ROOM IS IN DISREPAIR AND REQUIRES RESTORATION.',
-                      style: GoogleFonts.oldStandardTt(
-                        fontSize: 11,
-                        color: const Color(0xFFC4B89B),
-                        letterSpacing: 1.2,
-                      ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Color(0xFFD4AF37), size: 20),
+                    onPressed: () => setState(() => _selectedRoomForDetails = null),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                liveRoom.isRestored
+                    ? 'RESTORED AND FUNCTIONAL.'
+                    : 'THIS ROOM IS IN DISREPAIR AND REQUIRES RESTORATION.',
+                style: GoogleFonts.oldStandardTt(
+                  fontSize: 11,
+                  color: const Color(0xFFC4B89B),
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...state.activeTasks.where((t) => t.targetId == liveRoom.id).map((
+                activeTask,
+              ) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(
+                        0xFFC4B89B,
+                      ).withValues(alpha: 0.3),
+                      width: 1.5,
                     ),
-                    const SizedBox(height: 10),
-                    ...state.activeTasks.where((t) => t.targetId == liveRoom.id).map((
-                      activeTask,
-                    ) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(
-                              0xFFC4B89B,
-                            ).withValues(alpha: 0.3),
-                            width: 1.5,
+                    color: Colors.black.withValues(alpha: 0.3),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.hourglass_bottom,
+                        color: Color(0xFFE5D5B0),
+                        size: 14,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "${state.npcs.firstWhereOrNull((n) => n.id == activeTask.npcId)?.name.toUpperCase() ?? "WORKER"} IS CURRENTLY ${state.getTaskDescription(activeTask).toUpperCase()}",
+                          style: GoogleFonts.oldStandardTt(
+                            color: const Color(0xFFE5D5B0),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
                           ),
-                          color: Colors.black.withValues(alpha: 0.3),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.hourglass_bottom,
-                              color: Color(0xFFE5D5B0),
-                              size: 14,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                "${state.npcs.firstWhereOrNull((n) => n.id == activeTask.npcId)?.name.toUpperCase() ?? "WORKER"} IS CURRENTLY ${state.getTaskDescription(activeTask).toUpperCase()}",
-                                style: GoogleFonts.oldStandardTt(
-                                  color: const Color(0xFFE5D5B0),
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              activeTask.type == TaskType.rest
-                                  ? "UNTIL WAKEFUL"
-                                  : "${(activeTask.minutesRemaining ~/ 60)}H ${activeTask.minutesRemaining % 60}M",
-                              style: GoogleFonts.oswald(
-                                color: const Color(0xFFC4B89B),
-                                fontSize: 10.5,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: () => state.cancelTask(activeTask.id),
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.redAccent,
-                                  size: 16,
-                                ),
-                                tooltip: 'CANCEL TASK',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    const SizedBox(height: 6),
-                    Text(
-                      liveRoom.description,
-                      style: GoogleFonts.oldStandardTt(
-                        fontSize: 12,
-                        color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
-                        height: 1.3,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Guest Greeting Section
-                    if (liveRoom.type == RoomType.entryway) ...[
-                      ...() {
-                        final entrywayGuests = state.npcs.where((n) => !n.isResident && n.currentRoomId == 'entryway').toList();
-                        if (entrywayGuests.isEmpty) return <Widget>[];
-                        return [
-                          Text(
-                            'VISITORS AT THE DOOR',
-                            style: GoogleFonts.playfairDisplay(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFFC4B89B),
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          ...entrywayGuests.map((guest) {
-                            final isGreeted = guest.metadata['isGreeted'] == true;
-                            final isMerchant = guest.metadata['guestType'] == 'merchant';
-                            
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-                                ),
-                                color: Colors.black26,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "${guest.name.toUpperCase()} (${guest.role.toUpperCase()})",
-                                        style: GoogleFonts.oldStandardTt(
-                                          color: const Color(0xFFE5D5B0),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        isGreeted ? "WELCOMED" : "AWAITING RECEPTION",
-                                        style: GoogleFonts.oswald(
-                                          color: isGreeted ? Colors.green : const Color(0xFFC4B89B),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  if (!isGreeted)
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: OutlinedButton(
-                                        onPressed: () => _showCharacterSelectionForGreeting(context, state, guest),
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Color(0xFFC4B89B)),
-                                        ),
-                                        child: Text(
-                                          "SELECT RESIDENT TO RECEIVE",
-                                          style: GoogleFonts.playfairDisplay(
-                                            color: const Color(0xFFE5D5B0),
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  else if (isMerchant)
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) => VisitingMerchantTradeDialog(merchant: guest),
-                                          );
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Colors.green),
-                                        ),
-                                        child: Text(
-                                          "OPEN TRADE WINDOW",
-                                          style: GoogleFonts.playfairDisplay(
-                                            color: Colors.green,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            );
-                          }),
-                          const SizedBox(height: 24),
-                        ];
-                      }(),
-                    ],
-                    if (liveRoom.type == RoomType.unused && state.activeBusinesses.any((b) => b.type == BusinessType.theater && b.status == 'active')) ...[
-                      _buildTheaterCreativeRoomSection(context, state),
-                    ],
-                    const SizedBox(height: 10),
-                    if (displayQueue.isNotEmpty) ...[
+                      const SizedBox(width: 8),
                       Text(
-                        'ENQUEUED TASKS',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                        activeTask.type == TaskType.rest
+                            ? "UNTIL WAKEFUL"
+                            : "${(activeTask.minutesRemaining ~/ 60)}H ${activeTask.minutesRemaining % 60}M",
+                        style: GoogleFonts.oswald(
                           color: const Color(0xFFC4B89B),
-                          letterSpacing: 1.5,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      ...displayQueue.map(
-                        (task) => Padding(
-                          padding: const EdgeInsets.only(bottom: 3.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  "• ${task.description.toUpperCase()}",
-                                  style: GoogleFonts.oldStandardTt(
-                                    fontSize: 11,
-                                    color: const Color(
-                                      0xFFE5D5B0,
-                                    ).withValues(alpha: 0.6),
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(right: 24.0),
-                                child: IconButton(
-                                  onPressed: () => state.cancelEnqueuedIntent(
-                                    task.npcId,
-                                    task.intentId,
-                                  ),
-                                  icon: const Icon(
-                                    Icons.close,
-                                    color: Colors.redAccent,
-                                    size: 16,
-                                  ),
-                                  tooltip: 'CANCEL TASK',
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ),
-                            ],
-                          ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => state.cancelTask(activeTask.id),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.redAccent,
+                          size: 16,
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // PROGRESSIVE EXCAVATION & RESOURCE BLOCKS UI
-                    if (liveRoom.name == 'Excavation Node' && !liveRoom.isRestored) ...[
-                      () {
-                        final nodeInfo = ManorLayout.grid[liveRoom.id];
-                        final depth = nodeInfo?.$2.abs() ?? 1;
-
-                        String requiredTool = "Simple Shovel";
-                        String toolType = "simple_shovel";
-                        if (depth == 2) { requiredTool = "Iron Pickaxe"; toolType = "iron_pickaxe"; }
-                        else if (depth == 3) { requiredTool = "Steel Pickaxe"; toolType = "steel_pickaxe"; }
-                        else if (depth == 4) { requiredTool = "Pneumatic Drill"; toolType = "pneumatic_drill"; }
-
-                        String requiredExpertise = "None";
-                        int requiredLevel = 0;
-                        if (depth == 2) { requiredExpertise = "Adept Mining (Lvl 2)"; requiredLevel = 2; }
-                        else if (depth == 3) { requiredExpertise = "Professional Mining (Lvl 5)"; requiredLevel = 5; }
-                        else if (depth == 4) { requiredExpertise = "Expert Mining (Lvl 8)"; requiredLevel = 8; }
-
-                        Map<String, int> costMap = {
-                          'funds': 2000,
-                          'wood': 500,
-                          'bricks': 200,
-                        };
-                        if (depth == 2) {
-                          costMap = {'funds': 4000, 'wood': 1000, 'bricks': 500, 'iron_ore': 100};
-                        } else if (depth == 3) {
-                          costMap = {'funds': 8000, 'wood': 2000, 'bricks': 1000, 'iron_ore': 300};
-                        } else if (depth == 4) {
-                          costMap = {'funds': 16000, 'wood': 4000, 'bricks': 2000, 'iron_ore': 500};
-                        }
-
-                        final isAccessible = state.isRoomAccessibleForExcavation(liveRoom.id);
-                        final hasTool = state.hasItemInManor(toolType);
-                        final activeMiner = state.npcs.firstWhereOrNull((n) => n.isResident && (n.metadata['proficiency_level_Mining'] as int? ?? 0) >= requiredLevel);
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 24),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.black26,
-                            border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "EXCAVATION REQUIREMENTS (DEPTH LEVEL $depth)",
-                                style: GoogleFonts.playfairDisplay(
-                                  color: const Color(0xFFE5D5B0),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("REQUIRED TOOL:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
-                                  Text(
-                                    requiredTool.toUpperCase(),
-                                    style: GoogleFonts.oldStandardTt(
-                                      color: hasTool ? Colors.green : Colors.redAccent,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("EXPERTISE:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
-                                  Text(
-                                    requiredExpertise.toUpperCase(),
-                                    style: GoogleFonts.oldStandardTt(
-                                      color: activeMiner != null ? Colors.green : Colors.redAccent,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("ACCESSIBILITY:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
-                                  Text(
-                                    isAccessible ? "READY TO EXCAVATE" : "LOCKED / UNREACHABLE",
-                                    style: GoogleFonts.oldStandardTt(
-                                      color: isAccessible ? Colors.green : Colors.redAccent,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text("RESOURCES COST:", style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 11, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 6),
-                              ...costMap.entries.map((e) {
-                                final has = state.resources[e.key] ?? 0;
-                                final meet = has >= e.value;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 4.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(e.key.toUpperCase().replaceAll('_', ' '), style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10)),
-                                      Text(
-                                        "${has.round()} / ${e.value}",
-                                        style: GoogleFonts.oswald(
-                                          color: meet ? const Color(0xFFC4B89B) : Colors.redAccent,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
-                        );
-                      }(),
-                    ],
-
-                    if (liveRoom.metadata['isResourceBlocked'] == true) ...[
-                      () {
-                        final resType = liveRoom.metadata['resourceType'] as String? ?? 'ore';
-                        final amount = liveRoom.metadata['resourceAmount'] as int? ?? 0;
-                        
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 24),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.black26,
-                            border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "RESOURCE BLOCKAGE ENCOUNTERED",
-                                style: GoogleFonts.playfairDisplay(
-                                  color: const Color(0xFFE5D5B0),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "This chamber is blocked by a rich vein of ${resType.toUpperCase()} containing $amount units. To clear the blockage, you must establish a specialized Mine.",
-                                style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 11, height: 1.4),
-                              ),
-                              const SizedBox(height: 16),
-                              if (liveRoom.isUnderConstruction)
-                                _buildExpandButton(
-                                  context,
-                                  'CANCEL MINE CONSTRUCTION',
-                                  'Halt current construction project.',
-                                  Icons.cancel,
-                                  () => state.cancelRoomConversion(liveRoom.id),
-                                )
-                              else
-                                _buildExpandButton(
-                                  context,
-                                  'ESTABLISH ${resType.toUpperCase()} MINE',
-                                  'Cost: ${state.getMineConstructionCost(resType, ManorLayout.grid[liveRoom.id]?.$2.abs().toInt() ?? 2)['funds'].toInt()} CHF, ${state.getMineConstructionCost(resType, ManorLayout.grid[liveRoom.id]?.$2.abs().toInt() ?? 2)['wood'].toInt()} Wood. Commences mine construction.',
-                                  Icons.construction,
-                                  () => state.convertRoomToMine(liveRoom.id),
-                                ),
-                            ],
-                          ),
-                        );
-                      }(),
-                    ],
-
-                    if (liveRoom.id == 'basement_e' && liveRoom.isRestored && liveRoom.type == RoomType.unused && liveRoom.metadata['isResourceBlocked'] != true) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: liveRoom.isUnderConstruction
-                            ? _buildExpandButton(
-                                context,
-                                'CANCEL RIG CONSTRUCTION',
-                                'Halt current oil well construction.',
-                                Icons.cancel,
-                                () => state.cancelRoomConversion(liveRoom.id),
-                              )
-                            : Column(
-                                children: [
-                                  _buildExpandButton(
-                                    context,
-                                    'ESTABLISH OIL WELL',
-                                    'Establish a pumping rig to extract crude oil from the manor\'s reserves.\nCost: 1500 CHF, 300 Wood.',
-                                    Icons.oil_barrel,
-                                    () => state.convertRoomToOilWell(liveRoom.id),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-                              ),
+                        tooltip: 'CANCEL TASK',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 6),
+              Text(
+                liveRoom.description,
+                style: GoogleFonts.oldStandardTt(
+                  fontSize: 12,
+                  color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 10),
 
-                    if (liveRoom.type == RoomType.oilWell && liveRoom.isRestored) ...[
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 24),
+              // Guest Greeting Section
+              if (liveRoom.type == RoomType.entryway) ...[
+                ...() {
+                  final entrywayGuests = state.npcs.where((n) => !n.isResident && n.currentRoomId == 'entryway').toList();
+                  if (entrywayGuests.isEmpty) return <Widget>[];
+                  return [
+                    Text(
+                      'VISITORS AT THE DOOR',
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFC4B89B),
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...entrywayGuests.map((guest) {
+                      final isGreeted = guest.metadata['isGreeted'] == true;
+                      final isMerchant = guest.metadata['guestType'] == 'merchant';
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
+                          ),
                           color: Colors.black26,
-                          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              "MANOR OIL RESERVES",
-                              style: GoogleFonts.playfairDisplay(
-                                color: const Color(0xFFE5D5B0),
-                                fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("TOTAL REMAINING:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
                                 Text(
-                                  "${state.manorOilReserve.round()} / ${state.manorOilReserveMax.round()} BARRELS",
-                                  style: GoogleFonts.oswald(
-                                    color: const Color(0xFFC4B89B),
-                                    fontSize: 12,
+                                  "${guest.name.toUpperCase()} (${guest.role.toUpperCase()})",
+                                  style: GoogleFonts.playfairDisplay(
+                                    color: const Color(0xFFE5D5B0),
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                                if (isMerchant)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFD4AF37).withValues(alpha: 0.2),
+                                      border: Border.all(color: const Color(0xFFD4AF37)),
+                                    ),
+                                    child: Text(
+                                      "MERCHANT",
+                                      style: GoogleFonts.oswald(
+                                        color: const Color(0xFFFFF099),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 6),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text("PUMPING EFFICIENCY:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
-                                Text(
-                                  "${(state.getOilPumpingEfficiency() * 100).round()}%",
-                                  style: GoogleFonts.oswald(
-                                    color: state.getOilPumpingEfficiency() > 0.5 ? Colors.green : Colors.amber,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildExpandButton(
-                              context,
-                              'DECOMMISSION OIL WELL',
-                              'Safely dismantle the pumping rig and restore the chamber for normal basement use.',
-                              Icons.delete_forever,
-                              () => state.decommissionOilWell(liveRoom.id),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    if (liveRoom.type == RoomType.mine && liveRoom.isRestored) ...[
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 24),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
                             Text(
-                              "ORE DEPOSIT STATUS",
-                              style: GoogleFonts.playfairDisplay(
-                                color: const Color(0xFFE5D5B0),
+                              isMerchant
+                                  ? "A wandering merchant has arrived bearing rare alchemical goods and exotic ingredients."
+                                  : (isGreeted ? "This guest has been welcomed and is currently exploring the estate." : "A mysterious traveler stands at the gates seeking hospitality."),
+                              style: GoogleFonts.oldStandardTt(
+                                color: Colors.white70,
                                 fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.5,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                             const SizedBox(height: 12),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                Text("REMAINING IN VEIN:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
-                                Text(
-                                  "${liveRoom.metadata['resourceAmount'] ?? 0} / ${liveRoom.metadata['resourceAmountMax'] ?? 0} UNITS",
-                                  style: GoogleFonts.oswald(
-                                    color: const Color(0xFFC4B89B),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                                if (!isGreeted) ...[
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      _showCharacterSelectionForGreeting(context, state, guest);
+                                    },
+                                    icon: const Icon(Icons.handshake, size: 14, color: Colors.black),
+                                    label: Text("GREET GUEST", style: GoogleFonts.oswald(fontWeight: FontWeight.bold, color: Colors.black)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFC4B89B),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton.icon(
+                                    onPressed: () => state.turnAwayGuest(guest.id),
+                                    icon: const Icon(Icons.do_not_disturb, size: 14, color: Colors.redAccent),
+                                    label: Text("TURN AWAY", style: GoogleFonts.oswald(fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                                    style: OutlinedButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      side: const BorderSide(color: Colors.redAccent),
+                                    ),
+                                  ),
+                                ] else if (isMerchant) ...[
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _showMerchantTradeDialog(context, state, guest);
+                                    },
+                                    icon: const Icon(Icons.shopping_cart, size: 14, color: Colors.black),
+                                    label: Text("TRADE ALCHEMY", style: GoogleFonts.oswald(fontWeight: FontWeight.bold, color: Colors.black)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFD4AF37),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],
                         ),
+                      );
+                    }).toList(),
+                  ];
+                }(),
+              ],
+
+              // Task List Queue
+              if (displayQueue.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 10),
+                Text(
+                  'PENDING ROOM TASKS',
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...displayQueue.map((enqueued) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
                       ),
-                    ],
-
-                    // BUILDING & CONVERSION OPTIONS
-                    if (liveRoom.type == RoomType.unused &&
-                        liveRoom.isRestored) ...[
-                      // Spare Bedroom (Ground Floor Unused)
-                      if (liveRoom.floor == Floor.ground &&
-                          liveRoom.name == 'Unused')
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: _buildExpandButton(
-                            context,
-                            'CONVERT TO SPARE BEDROOM',
-                            'Establish a quiet dwelling for residents (12 Hours, 250 Wood, 500 Funds)',
-                            Icons.king_bed,
-                            () => state.convertUnusedToBedroom(liveRoom.id),
-                          ),
-                        ),
-
-                      // Greenhouse (Garden Lot)
-                      if (liveRoom.id == 'lot_garden')
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: _buildExpandButton(
-                            context,
-                            'BUILD GREENHOUSE',
-                            'Construct a glass enclosure for rare botanicals (12 Hours, 100 Wood, 200 Funds)',
-                            Icons.eco,
-                            () => state.buildGreenhouse(liveRoom.id),
-                          ),
-                        ),
-
-                      // Tenement (Empty Lot)
-                      if (liveRoom.id == 'empty_lot')
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: _buildExpandButton(
-                            context,
-                            'BUILD TENEMENT',
-                            'Communal housing for additional labor (12 Hours, 200 Wood, 400 Funds)',
-                            Icons.domain,
-                            () => state.buildTenement(liveRoom.id),
-                          ),
-                        ),
-
-                      // Restored Attic or Basement Room Conversion
-                      if (liveRoom.floor == Floor.attic ||
-                          liveRoom.floor == Floor.basement)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: liveRoom.isUnderConstruction
-                              ? _buildExpandButton(
-                                  context,
-                                  'CANCEL CONVERSION',
-                                  'Halt current construction. Recover 100% if uncommenced, or 50% if underway.',
-                                  Icons.cancel,
-                                  () => state.cancelRoomConversion(liveRoom.id),
-                                )
-                              : _buildExpandButton(
-                                  context,
-                                  'CONVERT ROOM',
-                                  'Convert this secluded room into a specialized workshop or facility.',
-                                  Icons.construction,
-                                  () => _showConversionOptionsDialog(context, state, liveRoom),
-                                  popOnPress: false,
-                                ),
-                        ),
-                    ],
-                    if (liveRoom.isRestored &&
-                        (liveRoom.type == RoomType.study ||
-                            liveRoom.type == RoomType.laboratory ||
-                            liveRoom.type == RoomType.chickenCoop ||
-                            liveRoom.type == RoomType.kitchen ||
-                            liveRoom.type == RoomType.garden ||
-                            (liveRoom.type == RoomType.diningRoom && state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ||
-                            liveRoom.type == RoomType.library))
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            if (liveRoom.type == RoomType.study) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const StudyScreen(),
-                                ),
-                              );
-                            } else if (liveRoom.type == RoomType.kitchen) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const KitchenScreen(),
-                                ),
-                              );
-                            } else if (liveRoom.type == RoomType.diningRoom) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const DiningRoomScreen(),
-                                ),
-                              );
-                            } else if (liveRoom.type == RoomType.laboratory) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      LaboratoryScreen(room: liveRoom),
-                                ),
-                              );
-                            } else if (liveRoom.type == RoomType.chickenCoop) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ChickenCoopScreen(),
-                                ),
-                              );
-                            } else if (liveRoom.type == RoomType.library) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      LibraryScreen(room: liveRoom),
-                                ),
-                              );
-                            } else if (liveRoom.type == RoomType.garden) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const GardenScreen(),
-                                ),
-                              );
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFC4B89B)),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.zero,
+                      color: Colors.white.withValues(alpha: 0.02),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            enqueued.description.toUpperCase(),
+                            style: GoogleFonts.oldStandardTt(
+                              color: Colors.white70,
+                              fontSize: 11,
                             ),
-                            backgroundColor: const Color(
-                              0xFFC4B89B,
-                            ).withValues(alpha: 0.1),
                           ),
+                        ),
+                        IconButton(
                           icon: const Icon(
-                            Icons.login,
-                            color: Color(0xFFE5D5B0),
+                            Icons.delete_outline,
+                            color: Colors.white38,
                             size: 16,
                           ),
-                          label: Text(
-                            'ENTER ${liveRoom.name.toUpperCase()}',
+                          onPressed: () => state.removeTaskFromQueue(
+                            liveRoom.id,
+                            enqueued.intentId,
+                          ),
+                          tooltip: 'CANCEL PENDING TASK',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+
+              // Interactive Room Actions (Restored Status)
+              if (liveRoom.isRestored) ...[
+                const SizedBox(height: 10),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 10),
+
+                // Ground Floor Room Excavation Call
+                if (liveRoom.floor == Floor.ground) ...[
+                  ...() {
+                    final isExcavated = liveRoom.isExcavated;
+                    if (isExcavated) return <Widget>[];
+
+                    final depth = liveRoom.excavationDepth;
+                    String requiredTool = "Simple Shovel";
+                    String toolType = "simple_shovel";
+                    if (depth == 2) { requiredTool = "Iron Pickaxe"; toolType = "iron_pickaxe"; }
+                    else if (depth == 3) { requiredTool = "Steel Pickaxe"; toolType = "steel_pickaxe"; }
+                    else if (depth == 4) { requiredTool = "Pneumatic Drill"; toolType = "pneumatic_drill"; }
+
+                    String requiredExpertise = "None";
+                    int requiredLevel = 0;
+                    if (depth == 2) { requiredExpertise = "Adept Mining (Lvl 2)"; requiredLevel = 2; }
+                    else if (depth == 3) { requiredExpertise = "Professional Mining (Lvl 5)"; requiredLevel = 5; }
+                    else if (depth == 4) { requiredExpertise = "Expert Mining (Lvl 8)"; requiredLevel = 8; }
+
+                    Map<String, int> costMap = {
+                      'funds': 2000,
+                      'wood': 500,
+                      'bricks': 200,
+                    };
+                    if (depth == 2) {
+                      costMap = {'funds': 4000, 'wood': 1000, 'bricks': 500, 'iron_ore': 100};
+                    } else if (depth == 3) {
+                      costMap = {'funds': 8000, 'wood': 2000, 'bricks': 1000, 'iron_ore': 300};
+                    } else if (depth == 4) {
+                      costMap = {'funds': 16000, 'wood': 4000, 'bricks': 2000, 'iron_ore': 500};
+                    }
+
+                    final isAccessible = state.isRoomAccessibleForExcavation(liveRoom.id);
+                    final hasTool = state.hasItemInManor(toolType);
+                    final activeMiner = state.npcs.firstWhereOrNull((n) => n.isResident && (n.metadata['proficiency_level_Mining'] as int? ?? 0) >= requiredLevel);
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "EXCAVATION REQUIREMENTS (DEPTH LEVEL $depth)",
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFE5D5B0),
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                              letterSpacing: 2,
+                              letterSpacing: 1.5,
                             ),
                           ),
-                        ),
-                      ),
-                    if (liveRoom.type == RoomType.study ||
-                        liveRoom.type == RoomType.library ||
-                        liveRoom.type == RoomType.chickenCoop) ...[
-                      const SizedBox(height: 10),
-                      const Divider(color: Colors.white10),
-                      const SizedBox(height: 10),
-                      Text(
-                        'ROOM LEDGER',
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      RoomLedger(room: liveRoom, state: state, isCompact: true),
-                      const SizedBox(height: 12),
-                    ],
-                    if (liveRoom.type == RoomType.field)
-                      _buildFieldStatus(context, state, liveRoom),
-                    ...liveRoom.availableTasks
-                        .where((taskType) {
-                          // Only show available tasks.
-                          bool isAvail = _isTaskAvailable(
-                            state,
-                            liveRoom,
-                            taskType,
-                          );
-                          return isAvail;
-                        })
-                        .map((taskType) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: _assignmentButton(
-                              context,
-                              state,
-                              taskType,
-                              () => _handleTaskInteraction(
-                                context,
-                                state,
-                                liveRoom,
-                                taskType,
-                              ),
-                              room: liveRoom,
-                            ),
-                          );
-                        }),
-                    if (liveRoom.isRestored &&
-                        (liveRoom.type == RoomType.bedroom ||
-                            liveRoom.type == RoomType.butlerQuarters ||
-                            liveRoom.type == RoomType.attic ||
-                            liveRoom.type == RoomType.basement))
-                      BedAssignmentWidget(room: liveRoom),
-                    const SizedBox(height: 10),
-                    if (state.npcs.any(
-                      (n) => n.currentRoomId == liveRoom.id,
-                    )) ...[
-                      Text(
-                        "OCCUPANTS:",
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFC4B89B),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 8,
-                        children: state.npcs
-                            .where((n) => n.currentRoomId == liveRoom.id)
-                            .map(
-                              (npc) => InkWell(
-                                onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) =>
-                                        CharacterPortraitDialog(npc: npc),
-                                  );
-                                },
-                                child: Chip(
-                                  label: Text(
-                                    npc.name.toUpperCase(),
-                                    style: GoogleFonts.oldStandardTt(
-                                      fontSize: 9,
-                                    ),
-                                  ),
-                                  avatar: Icon(
-                                    npc.isPlayer ? Icons.stars : Icons.person,
-                                    size: 11,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: Colors.black26,
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("REQUIRED TOOL:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                              Text(
+                                requiredTool.toUpperCase(),
+                                style: GoogleFonts.oldStandardTt(
+                                  color: hasTool ? Colors.green : Colors.redAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("EXPERTISE:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                              Text(
+                                requiredExpertise.toUpperCase(),
+                                style: GoogleFonts.oldStandardTt(
+                                  color: activeMiner != null ? Colors.green : Colors.redAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text("MATERIALS TO SHORE ROOF & WALLS:", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 11)),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: costMap.entries.map((c) {
+                              final hasMat = (state.resources[c.key] ?? 0) >= c.value;
+                              return Text(
+                                "${c.value} ${c.key.toUpperCase()}",
+                                style: GoogleFonts.oswald(
+                                  color: hasMat ? const Color(0xFFC4B89B) : Colors.redAccent,
+                                  fontSize: 10,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
+                          if (!isAccessible)
+                            Text(
+                              "MUST CLEAR DISREPAIR FROM UPPER SUB-FLOOR FIRST.",
+                              style: GoogleFonts.oswald(color: Colors.orangeAccent, fontSize: 11, fontWeight: FontWeight.bold),
                             )
-                            .toList(),
+                          else if (!hasTool || activeMiner == null)
+                            Text(
+                              "UNMET EXCAVATION PREREQUISITES.",
+                              style: GoogleFonts.oswald(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                            )
+                          else
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                state.commenceExcavation(
+                                  liveRoom.id,
+                                  minerId: activeMiner.id,
+                                  costMap: costMap,
+                                );
+                              },
+                              icon: const Icon(Icons.hardware, size: 14, color: Colors.black),
+                              label: Text("COMMENCE EXCAVATION", style: GoogleFonts.oswald(color: Colors.black, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFC4B89B),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                    ],
-                  ],
+                    );
+                  }(),
+                ],
+
+                // Ground Tenement Building Option
+                if (liveRoom.floor == Floor.ground &&
+                    !liveRoom.isTenementBuilt &&
+                    liveRoom.type == RoomType.unused)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: _buildExpandButton(
+                      context,
+                      'ERECT TENEMENT BLOCK',
+                      'Build high-density worker housing to collect steady rent and increase workforce capacity.',
+                      Icons.domain,
+                      () => state.buildTenement(liveRoom.id),
+                    ),
+                  ),
+
+                // Restored Attic or Basement Room Conversion
+                if (liveRoom.floor == Floor.attic ||
+                    liveRoom.floor == Floor.basement)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: liveRoom.isUnderConstruction
+                        ? _buildExpandButton(
+                            context,
+                            'CANCEL CONVERSION',
+                            'Halt current construction. Recover 100% if uncommenced, or 50% if underway.',
+                            Icons.cancel,
+                            () => state.cancelRoomConversion(liveRoom.id),
+                          )
+                        : _buildExpandButton(
+                            context,
+                            'CONVERT ROOM',
+                            'Convert this secluded room into a specialized workshop or facility.',
+                            Icons.construction,
+                            () => _showConversionOptionsDialog(context, state, liveRoom),
+                            popOnPress: false,
+                          ),
+                  ),
+              ],
+              if (liveRoom.isRestored &&
+                  (liveRoom.type == RoomType.study ||
+                      liveRoom.type == RoomType.laboratory ||
+                      liveRoom.type == RoomType.chickenCoop ||
+                      liveRoom.type == RoomType.kitchen ||
+                      liveRoom.type == RoomType.garden ||
+                      (liveRoom.type == RoomType.diningRoom && state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ||
+                      liveRoom.type == RoomType.library))
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() => _selectedRoomForDetails = null);
+                      if (liveRoom.type == RoomType.study) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StudyScreen(),
+                          ),
+                        );
+                      } else if (liveRoom.type == RoomType.kitchen) {
+                        if (state.gilesTutorialStep == GilesTutorialStep.enterKitchen) {
+                          state.advanceGilesTutorial(GilesTutorialStep.commencePrep);
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const KitchenScreen(),
+                          ),
+                        );
+                      } else if (liveRoom.type == RoomType.diningRoom) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DiningRoomScreen(),
+                          ),
+                        );
+                      } else if (liveRoom.type == RoomType.laboratory) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                LaboratoryScreen(room: liveRoom),
+                          ),
+                        );
+                      } else if (liveRoom.type == RoomType.chickenCoop) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const ChickenCoopScreen(),
+                          ),
+                        );
+                      } else if (liveRoom.type == RoomType.library) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                LibraryScreen(room: liveRoom),
+                          ),
+                        );
+                      } else if (liveRoom.type == RoomType.garden) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const GardenScreen(),
+                          ),
+                        );
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFC4B89B)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                      backgroundColor: const Color(
+                        0xFFC4B89B,
+                      ).withValues(alpha: 0.1),
+                    ),
+                    icon: const Icon(
+                      Icons.login,
+                      color: Color(0xFFE5D5B0),
+                      size: 16,
+                    ),
+                    label: Text(
+                      'ENTER ${liveRoom.name.toUpperCase()}',
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              if (liveRoom.isRestored &&
+                  (liveRoom.type == RoomType.study ||
+                  liveRoom.type == RoomType.library ||
+                  liveRoom.type == RoomType.chickenCoop)) ...[
+                const SizedBox(height: 10),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 10),
+                Text(
+                  'ROOM LEDGER',
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                RoomLedger(room: liveRoom, state: state, isCompact: true),
+                const SizedBox(height: 12),
+              ],
+              if (liveRoom.type == RoomType.field)
+                _buildFieldStatus(context, state, liveRoom),
+              ...liveRoom.availableTasks
+                  .where((taskType) {
+                    // Only show available tasks.
+                    bool isAvail = _isTaskAvailable(
+                      state,
+                      liveRoom,
+                      taskType,
+                    );
+                    return isAvail;
+                  })
+                  .map((taskType) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: _assignmentButton(
+                        context,
+                        state,
+                        taskType,
+                        () => _handleTaskInteraction(
+                          context,
+                          state,
+                          liveRoom,
+                          taskType,
+                        ),
+                        room: liveRoom,
+                      ),
+                    );
+                  }),
+              if (liveRoom.isRestored &&
+                  (liveRoom.type == RoomType.bedroom ||
+                      liveRoom.type == RoomType.butlerQuarters ||
+                      liveRoom.type == RoomType.attic ||
+                      liveRoom.type == RoomType.basement))
+                BedAssignmentWidget(room: liveRoom),
+              const SizedBox(height: 10),
+              if (state.npcs.any(
+                (n) => n.currentRoomId == liveRoom.id,
+              )) ...[
+                Text(
+                  "OCCUPANTS:",
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFC4B89B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  children: state.npcs
+                      .where((n) => n.currentRoomId == liveRoom.id)
+                      .map(
+                        (npc) => InkWell(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) =>
+                                  CharacterPortraitDialog(npc: npc),
+                            );
+                          },
+                          child: Chip(
+                            label: Text(
+                              npc.name.toUpperCase(),
+                              style: GoogleFonts.oldStandardTt(
+                                fontSize: 9,
+                              ),
+                            ),
+                            avatar: Icon(
+                              npc.isPlayer ? Icons.stars : Icons.person,
+                              size: 11,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: Colors.black26,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 

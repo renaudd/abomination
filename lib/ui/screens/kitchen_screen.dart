@@ -22,6 +22,7 @@ import '../../services/task_service.dart';
 import '../../models/room.dart';
 import '../../models/active_business.dart';
 import '../widgets/room_ledger.dart';
+import '../widgets/giles_tutorial_overlay.dart';
 
 class KitchenScreen extends StatelessWidget {
   const KitchenScreen({super.key});
@@ -54,7 +55,9 @@ class KitchenScreen extends StatelessWidget {
               .where((r) => state.knownRecipes.contains(r.id) || r.id == 'butcher_generic')
               .toList();
 
-          return Container(
+          return Stack(
+            children: [
+              Container(
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: const AssetImage(
@@ -384,8 +387,21 @@ class KitchenScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+      if (state.gilesTutorialStep != GilesTutorialStep.inactive)
+        const Positioned.fill(
+          child: SafeArea(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: GilesTutorialOverlay(),
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
+}
 
   Widget _buildCookingQueue(GameState state) {
     if (state.cookingQueue.isEmpty) {
