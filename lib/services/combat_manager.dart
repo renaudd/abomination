@@ -2060,14 +2060,15 @@ class CombatManager extends ChangeNotifier {
           executeSpecial(c.npc.id);
         }
       }
-    final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
-    if (specials.length >= 2) {
-      final secAbility = specials[1];
-      final chargeInc = dt / (secAbility.chargeTime ?? 15.0);
-      c.specialCharge2 = min(1.0, c.specialCharge2 + chargeInc);
-      if (c.specialCharge2 >= 1.0 && (c.side == CombatSide.enemy || (isSurvivalMode && !c.npc.isPlayer))) {
-        if (canExecuteSpecial2(c.npc.id)) {
-          executeSpecial2(c.npc.id);
+      final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+      if (specials.length >= 2) {
+        final secAbility = specials[1];
+        final secChargeInc = dt / (secAbility.chargeTime ?? 15.0);
+        c.specialCharge2 = min(1.0, c.specialCharge2 + secChargeInc);
+        if (c.specialCharge2 >= 1.0 && (c.side == CombatSide.enemy || (isSurvivalMode && !c.npc.isPlayer))) {
+          if (canExecuteSpecial2(c.npc.id)) {
+            executeSpecial2(c.npc.id);
+          }
         }
       }
     }
@@ -2701,8 +2702,7 @@ class CombatManager extends ChangeNotifier {
     } else {
       c.stuckFrames = 0;
     }
-  } // Close combatants loop
-} // Close update method
+  } // Close _processUnitTick method
 
   void _performAttack(Combatant attacker, Combatant target) {
     if (target.isDead || target.isNonPhysicalSupport) return;
