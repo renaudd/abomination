@@ -8971,25 +8971,6 @@ class GameState extends ChangeNotifier {
       }
     }
 
-    final metadata = TaskService.getMetadata(task.type);
-    if (metadata.relevantAttributes.isNotEmpty) {
-      double xpRate = 1.0 / 50.0;
-      if (TaskCategoryMapping.getCategory(task.type) != null) {
-        xpRate *= 0.20;
-      }
-      int taskDuration = task.totalMinutes > 0
-          ? task.totalMinutes
-          : getEstimatedTaskMinutes(worker, task.type, task.targetId);
-      double earnedXp = taskDuration * xpRate;
-      if (earnedXp >= 0.01) {
-        String statName = metadata.relevantAttributes.first;
-        String formattedXp = earnedXp.toStringAsFixed(1);
-        _announcementHistory.insert(
-          0,
-          "[${_currentDate.formattedTime}] EXPERIENCE: ${worker.name} gained ~$formattedXp XP in ${statName[0].toUpperCase()}${statName.substring(1)} from completing ${task.type.displayName}.",
-        );
-      }
-    }
   }
 
   void _checkForCreatures(NPC worker, Room r) {
