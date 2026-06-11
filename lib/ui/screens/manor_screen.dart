@@ -1189,7 +1189,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                             onTap: () {
                               state.receiveEntrywayGuest(guest.id, res.id);
                               Navigator.pop(context); // Pop selection dialog
-                              Navigator.pop(context); // Pop room details bottom sheet
+                              _selectedRoomForDetails = null; // Close in-Stack room panel
                             },
                           );
                         }).toList(),
@@ -1999,7 +1999,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                           );
                         }
                         Navigator.pop(context);
-                        Navigator.pop(context);
+                        _selectedRoomForDetails = null;
                       },
                       leading: const Icon(
                         Icons.person,
@@ -2588,7 +2588,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                   child: ListTile(
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pop(context);
+                      _selectedRoomForDetails = null;
                       state.convertRoomToLaboratory(room.id);
                     },
                     leading: const Icon(Icons.biotech, color: Color(0xFFC4B89B)),

@@ -46,43 +46,48 @@ class GilesTutorialOverlay extends StatelessWidget {
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.selectKitchen);
             break;
           case GilesTutorialStep.selectKitchen:
-            dialogueText = "i) First, select the Kitchen by tapping on it in the estate layout above.";
+            dialogueText =
+                "First, select the Kitchen by tapping on it in the estate layout above.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.enterKitchen);
             break;
           case GilesTutorialStep.enterKitchen:
             dialogueText =
-                "ii) Now, enter the Kitchen by pressing the ENTER KITCHEN button in the room details panel.";
+                "Now, enter the Kitchen by pressing the ENTER KITCHEN button in the room details panel.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.commencePrep);
             break;
           case GilesTutorialStep.commencePrep:
-            dialogueText = "iii) In the Scullery, commence preparation of a Faba & Green Bean Stew by enqueuing it in the preparation ledger.";
+            dialogueText =
+                "In the Scullery, commence preparation of a Faba & Green Bean Stew by enqueuing it in the preparation ledger.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.assignResident);
             break;
           case GilesTutorialStep.assignResident:
-            dialogueText = "iv) Now, return to the Manor View and drag a resident onto the Kitchen to assign the task. (You should probably let me do it, Master ${state.playerLastName}.)";
+            dialogueText =
+                "Now, return to the Manor View and drag a resident onto the Kitchen to assign the task. (You should probably let me do it, Master ${state.playerLastName}.)";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.playClock);
             break;
           case GilesTutorialStep.playClock:
             dialogueText =
-                "v) Click on the time display in the top right corner of the screen, and press the NORMAL button to start the game clock.";
+                "Click on the time display in the top right corner of the screen, and press the NORMAL button to start the game clock.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.selectCoop);
             break;
           case GilesTutorialStep.selectCoop:
             dialogueText =
-                "vi) Excellent. Time marches forward. Now, select the Chicken Coop in the estate layout.";
+                "Excellent. Time marches forward. Now, select the Chicken Coop in the estate layout.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.directAssign);
             break;
           case GilesTutorialStep.directAssign:
             dialogueText =
-                "vii) You can also assign tasks to residents directly from the Manor interface below. You should have me restore the Chicken Coop. It's dangerous work.";
+                "You can also assign tasks to residents directly from the Manor interface below. You should have me RESTORE the Chicken Coop. It's dangerous work.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.inspectResident);
             break;
           case GilesTutorialStep.inspectResident:
-            dialogueText = "viii) You can see what tasks each resident has assigned to them by clicking on the Resident chip within the Manor interface.";
+            dialogueText =
+                "You can see what tasks each resident has assigned to them by clicking on the Resident chip within the Manor interface.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.summary);
             break;
           case GilesTutorialStep.summary:
-            dialogueText = "ix) You can give each resident a long to-do list. Residents will only perform assigned work during work hours. If no work is assigned, residents will find tasks to keep occupied, but I know how much you care about efficiency and productivity.";
+            dialogueText =
+                "You can give each resident a long to-do list. Residents will only perform assigned work during work hours. If no work is assigned, residents will find tasks to keep occupied, but I know how much you care about efficiency and productivity.";
             actionLabel = "UNDERSTOOD, GILES";
             onAction = () => state.dismissGilesTutorial();
             break;
