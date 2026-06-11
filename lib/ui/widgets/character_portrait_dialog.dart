@@ -364,7 +364,7 @@ class CharacterPortraitDialog extends StatelessWidget {
                       ),
                       if (level < 10)
                         Text(
-                          "${currentXp.toInt()} / $requiredXp XP",
+                          "${currentXp.toInt()} / ${requiredXp.toInt()} XP",
                           style: GoogleFonts.outfit(
                             color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
                             fontSize: 8,

@@ -3083,16 +3083,11 @@ class GameState extends ChangeNotifier {
               _npcs[i] = npc.copyWith(intentQueue: newQueue);
               npc = _npcs[i];
 
-              // Grant Experience for the active minute
+              // Experience is granted upon task completion in _handleTaskCompletion
               if (readyNpcIds.contains(npc.id)) {
                 final proficiencyName = TaskService.getProficiency(task.type);
-                if (proficiencyName != null) {
-                  _addProficiencyExperience(i, proficiencyName, 1.0 / 50.0);
-                }
 
                 if (TaskService.isPhysicallyStrenuous(task.type)) {
-                  _addStatExperience(i, 'strength', 1.0 / 200.0);
-                  _addStatExperience(i, 'endurance', 1.0 / 200.0);
 
                   // Workplace injury check
                   final npcRef = _npcs[i];
@@ -8542,12 +8537,15 @@ class GameState extends ChangeNotifier {
     final proficiencyName = TaskService.getProficiency(task.type);
     int? gainedProfXp;
     if (proficiencyName != null) {
-      gainedProfXp = (duration / 5.0).round().clamp(1, 999);
-      _addProficiencyExperience(
-        npcIndex,
-        proficiencyName,
-        gainedProfXp.toDouble(),
-      );
+      gainedProfXp = (duration / 5.0).floor();
+      if (gainedProfXp < 1) gainedProfXp = 0;
+      if (gainedProfXp > 0) {
+        _addProficiencyExperience(
+          npcIndex,
+          proficiencyName,
+          gainedProfXp.toDouble(),
+        );
+      }
     }
 
     // 2. Attribute XP (10x scaled, e.g. 60 mins -> 3 xp Dexterity)
@@ -8555,11 +8553,14 @@ class GameState extends ChangeNotifier {
     final List<String> gainedStats = [];
     int? gainedStatXp;
     if (taskMeta.relevantAttributes.isNotEmpty) {
-      gainedStatXp = (duration / 20.0).round().clamp(1, 999);
-      for (var stat in taskMeta.relevantAttributes) {
-        final cleanStat = stat.toLowerCase();
-        gainedStats.add(cleanStat);
-        _addStatExperience(npcIndex, cleanStat, gainedStatXp.toDouble());
+      gainedStatXp = (duration / 20.0).floor();
+      if (gainedStatXp < 1) gainedStatXp = 0;
+      if (gainedStatXp > 0) {
+        for (var stat in taskMeta.relevantAttributes) {
+          final cleanStat = stat.toLowerCase();
+          gainedStats.add(cleanStat);
+          _addStatExperience(npcIndex, cleanStat, gainedStatXp.toDouble());
+        }
       }
     }
 
@@ -13299,12 +13300,15 @@ class GameState extends ChangeNotifier {
 
   void _addStatExperience(int npcIndex, String stat, double amount) {
     if (npcIndex < 0 || npcIndex >= _npcs.length) return;
+    int intAmount = amount.floor();
+    if (intAmount < 1) return;
+
     var npc = _npcs[npcIndex];
     int currentLevel = npc.stats[stat] ?? 1;
     if (currentLevel >= 10) return;
 
     final statExperience = Map<String, double>.from(npc.statExperience);
-    double xp = (statExperience[stat] ?? 0.0) + amount;
+    double xp = ((statExperience[stat] ?? 0.0) + intAmount).floorToDouble();
 
     double required = getRequiredXP(currentLevel);
     if (xp >= required) {
@@ -13336,13 +13340,16 @@ class GameState extends ChangeNotifier {
     double amount,
   ) {
     if (npcIndex < 0 || npcIndex >= _npcs.length) return;
+    int intAmount = amount.floor();
+    if (intAmount < 1) return;
+
     var npc = _npcs[npcIndex];
     String levelKey = 'proficiency_level_$proficiency';
     int currentLevel = npc.metadata[levelKey] as int? ?? 0;
     if (currentLevel >= 10) return;
 
     final proficiencies = Map<String, double>.from(npc.proficiencies);
-    double xp = (proficiencies[proficiency] ?? 0.0) + amount;
+    double xp = ((proficiencies[proficiency] ?? 0.0) + intAmount).floorToDouble();
 
     double required = getRequiredXP(currentLevel);
     if (xp >= required) {
