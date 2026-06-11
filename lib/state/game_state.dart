@@ -1160,33 +1160,26 @@ class GameState extends ChangeNotifier {
             i.type == 'research_notes' &&
             !i.isReserved,
       )) {
-        targets.add({'id': item.id, 'name': item.name, 'type': 'item'});
+        targets.add({'id': item.id, 'name': item.name, 'type': 'item', 'vitality': 100});
       }
-    } else if (type == 'specimen') {
+    } else {
+      // 1. All rats and bats Giles has caught or standard specimen items in inventory
       for (var item in inventory.where(
         (i) => i.category == ItemCategory.specimen && !i.isReserved,
       )) {
-        targets.add({'id': item.id, 'name': item.name, 'type': 'item'});
+        targets.add({'id': item.id, 'name': item.name, 'type': 'item', 'vitality': 100});
       }
+      
+      // 2. All manor residents, servants, and dedicated specimens (other than the main player)
       for (var npc in _npcs.where(
-        (n) => n.specimenType.isNotEmpty && !n.isPlayer && !n.isReserved,
+        (n) => !n.isPlayer && n.id != 'alphonse' && !n.isReserved && (n.isResident || n.role == 'Specimen' || n.role == 'Servant' || n.specimenType.isNotEmpty),
       )) {
-        targets.add({'id': npc.id, 'name': npc.name, 'type': 'npc'});
+        targets.add({'id': npc.id, 'name': '${npc.name} (${npc.role})', 'type': 'npc', 'vitality': npc.combatStats?.health.round() ?? 100});
       }
-    } else {
-      for (var item in inventory.where(
-        (i) =>
-            i.category == ItemCategory.specimen &&
-            i.type == type &&
-            !i.isReserved,
-      )) {
-        targets.add({'id': item.id, 'name': item.name, 'type': 'item'});
-      }
-      final npcType = type == 'large_specimen' ? 'Human' : type;
-      for (var npc in _npcs.where(
-        (n) => n.specimenType == npcType && !n.isPlayer && !n.isReserved,
-      )) {
-        targets.add({'id': npc.id, 'name': npc.name, 'type': 'npc'});
+
+      // 3. The chickens in the chicken coop
+      for (var chicken in _chickens.where((c) => c.health > 0)) {
+        targets.add({'id': chicken.id, 'name': 'Chicken (${chicken.name})', 'type': 'chicken', 'vitality': chicken.health.round()});
       }
     }
 
@@ -4894,6 +4887,29 @@ class GameState extends ChangeNotifier {
           "Insufficient resources to build Tenement (Need 400 Funds, 200 Wood).";
       notifyListeners();
     }
+  }
+
+  void demolishRoom(String roomId) {
+    final index = _rooms.indexWhere((r) => r.id == roomId);
+    if (index == -1) return;
+    final r = _rooms[index];
+
+    RoomType revertedType = RoomType.attic;
+    if (r.floor == Floor.basement) revertedType = RoomType.basement;
+    else if (r.floor == Floor.attic) revertedType = RoomType.attic;
+    else revertedType = RoomType.unused;
+
+    activeTasks.removeWhere((t) => t.targetId == roomId);
+    
+    _rooms[index] = r.copyWith(
+      type: revertedType,
+      isUnderConstruction: false,
+      constructionTarget: null,
+      inventory: [],
+    );
+
+    _lastAnnouncement = "${r.name.toUpperCase()} DEMOLISHED. REVERTED TO ${revertedType.name.toUpperCase()}.";
+    notifyListeners();
   }
 
   void convertRoomToLaboratory(String roomId) {

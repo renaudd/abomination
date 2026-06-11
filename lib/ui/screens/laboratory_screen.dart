@@ -149,6 +149,85 @@ class LaboratoryScreen extends StatelessWidget {
               icon: const Icon(Icons.arrow_back, color: Color(0xFFE5D5B0)),
               onPressed: () => Navigator.pop(context),
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent, width: 1),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  icon: const Icon(Icons.delete_forever, size: 18),
+                  label: Text(
+                    "DEMOLISH ROOM",
+                    style: GoogleFonts.playfairDisplay(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          backgroundColor: const Color(0xFF1E1A15),
+                          shape: const RoundedRectangleBorder(),
+                          title: Text(
+                            "DEMOLISH ALCHEMICAL LABORATORY?",
+                            style: GoogleFonts.playfairDisplay(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          content: Text(
+                            "Are you absolutely sure you want to demolish this Laboratory? All ongoing procedures, active trials, and contained biological specimens will be completely lost, and the room will revert to an empty facility lot.",
+                            style: GoogleFonts.oldStandardTt(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(
+                                "NO, CANCEL",
+                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
+                              ),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () {
+                                state.demolishRoom(room.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Laboratory demolished and reverted."),
+                                    backgroundColor: Color(0xFF241F1A),
+                                  ),
+                                );
+                                Navigator.pop(context); // popup
+                                Navigator.pop(context); // laboratory screen
+                              },
+                              child: Text(
+                                "YES, DEMOLISH",
+                                style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
           body: Container(
             decoration: BoxDecoration(
@@ -538,9 +617,7 @@ class LaboratoryScreen extends StatelessWidget {
     final reqType = specimenRequirements.first.key;
     final reqCount = specimenRequirements.first.value;
 
-    // Fetch potential biological subjects in the Laboratory or inventory:
-    // This includes deceased human NPCs, livestock, dedicated Specimen occupants, or standard inventory specimens
-    final potentialOccupants = state.npcs.where((n) => (n.role == 'Specimen' || n.status == NPCStatus.dead || n.specimenType == 'Rat' || n.specimenType == 'Bat' || n.specimenType == 'Chicken') && n.id != 'alphonse').toList();
+    final potentialOccupants = state.getAvailableSpecimenTargets(reqType);
 
     showDialog(
       context: context,
@@ -588,15 +665,19 @@ class LaboratoryScreen extends StatelessWidget {
                           itemCount: potentialOccupants.length,
                           itemBuilder: (context, index) {
                             final subj = potentialOccupants[index];
-                            final isSelected = selectedIds.contains(subj.id);
+                            final subjId = subj['id'] as String;
+                            final subjName = subj['name'] as String;
+                            final subjType = subj['type'] as String;
+                            final vitality = subj['vitality'] as num? ?? 100;
+                            final isSelected = selectedIds.contains(subjId);
                             return InkWell(
                               onTap: () {
                                 setDialogState(() {
                                   if (isSelected) {
-                                    selectedIds.remove(subj.id);
+                                    selectedIds.remove(subjId);
                                   } else {
                                     if (selectedIds.length < reqCount) {
-                                      selectedIds.add(subj.id);
+                                      selectedIds.add(subjId);
                                     }
                                   }
                                 });
@@ -623,7 +704,7 @@ class LaboratoryScreen extends StatelessWidget {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            subj.name.toUpperCase(),
+                                            subjName.toUpperCase(),
                                             style: GoogleFonts.playfairDisplay(
                                               color: isSelected ? Colors.white : Colors.white70,
                                               fontSize: 12,
@@ -631,7 +712,7 @@ class LaboratoryScreen extends StatelessWidget {
                                             ),
                                           ),
                                           Text(
-                                            'Type: ${subj.specimenType.toUpperCase()} | Vitality: ${subj.combatStats?.health.round() ?? 100}',
+                                            'Type: ${subjType.toUpperCase()} | Vitality: ${vitality.round()}',
                                             style: GoogleFonts.oldStandardTt(
                                               color: Colors.white54,
                                               fontSize: 10,
