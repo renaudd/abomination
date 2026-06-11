@@ -187,11 +187,24 @@ class KitchenScreen extends StatelessWidget {
                 ),
               ],
             ),
-          );
-        },
-      ),
-    );
-  }
+            if (state.gilesTutorialStep != GilesTutorialStep.inactive)
+              const Positioned.fill(
+                child: SafeArea(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: GilesTutorialOverlay(),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
 
   Widget _buildSectionTitle(String title) {
     return Text(
@@ -384,24 +397,13 @@ class KitchenScreen extends StatelessWidget {
                 ),
               ),
             ),
+              ),
+            ),
           ],
         ),
       ),
-      if (state.gilesTutorialStep != GilesTutorialStep.inactive)
-        const Positioned.fill(
-          child: SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: GilesTutorialOverlay(),
-              ),
-            ),
-          ),
-        ),
-    ],
-  );
-}
+    );
+  }
 
   Widget _buildCookingQueue(GameState state) {
     if (state.cookingQueue.isEmpty) {
