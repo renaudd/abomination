@@ -14833,7 +14833,7 @@ class GameState extends ChangeNotifier {
           }
         }
       } else if (bus.type == BusinessType.lawPractice) {
-        if (currentIdx == 0 && _playerHasGraduateDegree) {
+        if (currentIdx == 0 && hasRequiredDegreeForBusiness(bus.type)) {
           advanceBusinessAssignment(bus.id);
         } else if (currentIdx == 1) {
           final study = _rooms.firstWhereOrNull(
@@ -14844,7 +14844,7 @@ class GameState extends ChangeNotifier {
           }
         }
       } else if (bus.type == BusinessType.medicalPractice) {
-        if (currentIdx == 0 && _playerHasGraduateDegree) {
+        if (currentIdx == 0 && hasRequiredDegreeForBusiness(bus.type)) {
           advanceBusinessAssignment(bus.id);
         } else if (currentIdx == 1) {
           final or = _rooms.firstWhereOrNull(
@@ -15054,7 +15054,7 @@ class GameState extends ChangeNotifier {
 
   // --- ADVANCED GRADUATE SCHOOL SYSTEM ---
   void enrollInGraduateSchool(AcademicSchoolType type) {
-    if (_playerHasGraduateDegree) return;
+    if (_graduateSchool != null || hasGraduateDegree(type)) return;
 
     _graduateSchool = GraduateSchoolState(
       type: type,
