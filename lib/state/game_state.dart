@@ -7693,22 +7693,22 @@ class GameState extends ChangeNotifier {
           );
           break;
         case BookCategory.perception:
-          _addStatExperience(npcIndex, 'perception', randAmt.toDouble());
+          _addStatExperience(npcIndex, 'perception', randAmt.toDouble() * 10.0);
           break;
         case BookCategory.judgment:
-          _addStatExperience(npcIndex, 'judgment', randAmt.toDouble());
+          _addStatExperience(npcIndex, 'judgment', randAmt.toDouble() * 10.0);
           break;
         case BookCategory.morality:
-          _addStatExperience(npcIndex, 'morality', randAmt.toDouble());
+          _addStatExperience(npcIndex, 'morality', randAmt.toDouble() * 10.0);
           break;
         case BookCategory.courage:
-          _addStatExperience(npcIndex, 'courage', randAmt.toDouble());
+          _addStatExperience(npcIndex, 'courage', randAmt.toDouble() * 10.0);
           break;
         case BookCategory.hygiene:
-          _addStatExperience(npcIndex, 'hygiene', randAmt.toDouble());
+          _addStatExperience(npcIndex, 'hygiene', randAmt.toDouble() * 10.0);
           break;
         case BookCategory.temperament:
-          _addStatExperience(npcIndex, 'temperament', randAmt.toDouble());
+          _addStatExperience(npcIndex, 'temperament', randAmt.toDouble() * 10.0);
           break;
         case BookCategory.trash:
           break;
@@ -8535,39 +8535,43 @@ class GameState extends ChangeNotifier {
           : newInventory,
     );
 
-    // Grant Experience for task completion
+    // Grant Integer Experience for task completion
     final int duration = task.totalMinutes > 0 ? task.totalMinutes : 60;
 
-    // 1. Proficiency XP
+    // 1. Proficiency XP (10x scaled, e.g. 60 mins -> 12 xp Cooking)
     final proficiencyName = TaskService.getProficiency(task.type);
-    double? gainedProfXp;
+    int? gainedProfXp;
     if (proficiencyName != null) {
-      gainedProfXp = (duration / 50.0);
-      _addProficiencyExperience(npcIndex, proficiencyName, gainedProfXp);
+      gainedProfXp = (duration / 5.0).round().clamp(1, 999);
+      _addProficiencyExperience(
+        npcIndex,
+        proficiencyName,
+        gainedProfXp.toDouble(),
+      );
     }
 
-    // 2. Attribute XP
+    // 2. Attribute XP (10x scaled, e.g. 60 mins -> 3 xp Dexterity)
     final taskMeta = TaskService.getMetadata(task.type);
     final List<String> gainedStats = [];
-    double? gainedStatXpDisplay;
+    int? gainedStatXp;
     if (taskMeta.relevantAttributes.isNotEmpty) {
-      final baseStatXp = duration / 200.0;
-      gainedStatXpDisplay = baseStatXp * 10.0;
+      gainedStatXp = (duration / 20.0).round().clamp(1, 999);
       for (var stat in taskMeta.relevantAttributes) {
         final cleanStat = stat.toLowerCase();
         gainedStats.add(cleanStat);
-        _addStatExperience(npcIndex, cleanStat, baseStatXp);
+        _addStatExperience(npcIndex, cleanStat, gainedStatXp.toDouble());
       }
     }
 
-    // Build Gained XP Summary String
+    // Build Gained Integer XP Summary String
     List<String> xpLogParts = [];
     if (gainedProfXp != null && gainedProfXp > 0) {
-      xpLogParts.add("+${gainedProfXp.toStringAsFixed(1)} XP ${proficiencyName!.toUpperCase()}");
+      xpLogParts.add("$gainedProfXp xp ${proficiencyName!.toUpperCase()}");
     }
-    if (gainedStatXpDisplay != null && gainedStatXpDisplay > 0 && gainedStats.isNotEmpty) {
-      final statNames = gainedStats.map((s) => s.toUpperCase()).join(', ');
-      xpLogParts.add("+${gainedStatXpDisplay.toStringAsFixed(1)} XP ATTRIBUTES ($statNames)");
+    if (gainedStatXp != null && gainedStatXp > 0 && gainedStats.isNotEmpty) {
+      for (var statName in gainedStats) {
+        xpLogParts.add("$gainedStatXp xp ${statName.toUpperCase()}");
+      }
     }
 
     String xpLogSuffix = "";
@@ -13267,34 +13271,30 @@ class GameState extends ChangeNotifier {
   double getRequiredXP(int currentLevel) {
     switch (currentLevel) {
       case 0:
-        return 40.0;
+        return 400.0;
       case 1:
-        return 40.0;
+        return 400.0;
       case 2:
-        return 70.0;
+        return 700.0;
       case 3:
-        return 130.0;
+        return 1300.0;
       case 4:
-        return 250.0;
+        return 2500.0;
       case 5:
-        return 470.0;
+        return 4700.0;
       case 6:
-        return 900.0;
+        return 9000.0;
       case 7:
-        return 1700.0;
+        return 17000.0;
       case 8:
-        return 3200.0;
+        return 32000.0;
       case 9:
-        return 6000.0;
+        return 60000.0;
       case 10:
-        return 12000.0;
+        return 120000.0;
       default:
         return double.infinity;
     }
-  }
-
-  double getRequiredStatXP(int currentLevel) {
-    return getRequiredXP(currentLevel) * 10.0;
   }
 
   void _addStatExperience(int npcIndex, String stat, double amount) {
@@ -13304,9 +13304,9 @@ class GameState extends ChangeNotifier {
     if (currentLevel >= 10) return;
 
     final statExperience = Map<String, double>.from(npc.statExperience);
-    double xp = (statExperience[stat] ?? 0.0) + (amount * 10.0);
+    double xp = (statExperience[stat] ?? 0.0) + amount;
 
-    double required = getRequiredStatXP(currentLevel);
+    double required = getRequiredXP(currentLevel);
     if (xp >= required) {
       xp -= required;
       final newStats = Map<String, int>.from(npc.stats);
