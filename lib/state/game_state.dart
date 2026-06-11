@@ -8548,7 +8548,7 @@ class GameState extends ChangeNotifier {
       }
     }
 
-  bool _doesTaskDevelopCoreAttributes(TaskType type) {
+  bool doesTaskDevelopCoreAttributes(TaskType type) {
     switch (type) {
       case TaskType.restoreRoom:
       case TaskType.construction:
@@ -8560,8 +8560,11 @@ class GameState extends ChangeNotifier {
       case TaskType.research:
       case TaskType.puzzleStudy:
       case TaskType.deprivationStudy:
-      case TaskType.combatTraining:
-      case TaskType.patrol:
+      case TaskType.defendManor:
+      case TaskType.guardCoop:
+      case TaskType.cardio:
+      case TaskType.weights:
+      case TaskType.trainCreature:
         return true;
       default:
         return false;
@@ -8572,7 +8575,7 @@ class GameState extends ChangeNotifier {
   final taskMeta = TaskService.getMetadata(task.type);
   final List<String> gainedStats = [];
   int? gainedStatXp;
-  if (taskMeta.relevantAttributes.isNotEmpty && _doesTaskDevelopCoreAttributes(task.type)) {
+  if (taskMeta.relevantAttributes.isNotEmpty && doesTaskDevelopCoreAttributes(task.type)) {
     int baseStatXp = (duration / 20.0).floor();
     if (baseStatXp >= 1) {
       final random = Random();

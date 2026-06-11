@@ -13,14 +13,12 @@
 // limitations under the License.
 
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../state/game_state.dart';
 import '../../models/room.dart';
-import '../../util/manor_layout.dart';
 import '../../services/task_service.dart';
 import '../../services/science_service.dart';
 import '../../services/kitchen_service.dart';
@@ -40,7 +38,6 @@ import 'laboratory_screen.dart';
 import 'chicken_coop_screen.dart';
 import 'world_map_screen.dart';
 import '../widgets/save_load_dialogs.dart';
-import '../widgets/visiting_merchant_trade_dialog.dart';
 import '../widgets/guest_conversation_dialog.dart';
 import '../widgets/encounter_dialog.dart';
 import 'game_over_screen.dart';
@@ -750,15 +747,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         .where((t) => t.targetId == liveRoom.id)
         .toList();
 
-    final displayQueue = roomQueue.where((q) {
-      for (var active in activeTasksInRoom) {
-        if (q.intentId == active.intentId || q.intentId == active.id) {
-          return false;
-        }
-      }
-      return true;
-    }).toList();
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       decoration: BoxDecoration(
@@ -1115,92 +1103,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           ),
         ),
       ),
-    );
-  }
-
-  void _showCharacterSelectionForGreeting(BuildContext context, GameState state, NPC guest) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final residents = state.npcs.where((n) => n.isResident && n.worldDestinationId == null).toList();
-        
-        return Dialog(
-          backgroundColor: const Color(0xFF1E1A15),
-          shape: const RoundedRectangleBorder(),
-          child: Container(
-            width: 400,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFC4B89B), width: 1),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "SELECT RECIPIENT",
-                  style: GoogleFonts.playfairDisplay(
-                    color: const Color(0xFFE5D5B0),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "CHOOSE WHO WILL GREET ${guest.name.toUpperCase()}",
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
-                    fontSize: 8,
-                  ),
-                ),
-                const Divider(color: Colors.white10, height: 24),
-                if (residents.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Text(
-                      "NO RESIDENTS ARE CURRENTLY PRESENT.",
-                      style: GoogleFonts.oldStandardTt(color: Colors.white24),
-                    ),
-                  )
-                else
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 250),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: residents.map((res) {
-                          return ListTile(
-                            title: Text(
-                              res.name.toUpperCase(),
-                              style: GoogleFonts.playfairDisplay(
-                                color: const Color(0xFFE5D5B0),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            subtitle: Text(
-                              res.role.toUpperCase(),
-                              style: GoogleFonts.oldStandardTt(
-                                color: Colors.white38,
-                                fontSize: 8,
-                              ),
-                            ),
-                            onTap: () {
-                              state.receiveEntrywayGuest(guest.id, res.id);
-                              Navigator.pop(context); // Pop selection dialog
-                              _selectedRoomForDetails = null; // Close in-Stack room panel
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -2393,168 +2295,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTheaterCreativeRoomSection(BuildContext context, GameState state) {
-    final theater = state.activeBusinesses.firstWhereOrNull((b) => b.type == BusinessType.theater && b.status == 'active');
-    if (theater == null) return const SizedBox.shrink();
-
-    final meta = theater.metadata;
-    final String scenery = meta['sceneryChoice'] ?? 'minimalist';
-    final String costume = meta['costumeChoice'] ?? 'period';
-    final String direction = meta['directionStyle'] ?? 'naturalistic';
-    final String score = meta['musicalScore'] ?? 'classical';
-
-    final TextEditingController feedbackController = TextEditingController(text: meta['directorFeedback'] ?? '');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(color: Colors.white24, height: 32),
-        Text(
-          "THEATER CREATIVE DESIGN",
-          style: GoogleFonts.playfairDisplay(
-            color: const Color(0xFFE5D5B0),
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "CONFIGURE THE CREATIVE DECISIONS FOR YOUR ACTIVE PLAYS AND THEATRICAL PRODUCTIONS:",
-          style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
-        ),
-        const SizedBox(height: 16),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("SCENERY DESIGN STYLE:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
-            DropdownButton<String>(
-              value: scenery,
-              dropdownColor: const Color(0xFF1E1A15),
-              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
-              onChanged: (val) {
-                if (val != null) {
-                  state.updateTheaterCreativeChoices(theater.id, scenery: val);
-                }
-              },
-              items: const [
-                DropdownMenuItem(value: 'minimalist', child: Text("MINIMALIST")),
-                DropdownMenuItem(value: 'classical', child: Text("CLASSICAL")),
-                DropdownMenuItem(value: 'baroque', child: Text("BAROQUE (+20% TICKET BONUS)")),
-                DropdownMenuItem(value: 'avant-garde', child: Text("AVANT-GARDE (-10% APPEAL)")),
-              ],
-            ),
-          ],
-        ),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("COSTUME DESIGN:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
-            DropdownButton<String>(
-              value: costume,
-              dropdownColor: const Color(0xFF1E1A15),
-              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
-              onChanged: (val) {
-                if (val != null) {
-                  state.updateTheaterCreativeChoices(theater.id, costume: val);
-                }
-              },
-              items: const [
-                DropdownMenuItem(value: 'period', child: Text("PERIOD STYLE")),
-                DropdownMenuItem(value: 'elaborate', child: Text("ELABORATE GOWNS (+15% BONUS)")),
-                DropdownMenuItem(value: 'modern', child: Text("MODERN APPAREL")),
-                DropdownMenuItem(value: 'gothic', child: Text("GOTHIC PARCHMENT (+5% BONUS)")),
-              ],
-            ),
-          ],
-        ),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("ACTING DIRECTION:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
-            DropdownButton<String>(
-              value: direction,
-              dropdownColor: const Color(0xFF1E1A15),
-              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
-              onChanged: (val) {
-                if (val != null) {
-                  state.updateTheaterCreativeChoices(theater.id, direction: val);
-                }
-              },
-              items: const [
-                DropdownMenuItem(value: 'naturalistic', child: Text("NATURALISTIC STANCE")),
-                DropdownMenuItem(value: 'expressionist', child: Text("EXPRESSIONIST SHADOWS")),
-                DropdownMenuItem(value: 'melodramatic', child: Text("MELODRAMATIC SIGHS")),
-                DropdownMenuItem(value: 'operatic', child: Text("OPERATIC VIBRATO")),
-              ],
-            ),
-          ],
-        ),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("MUSICAL SCORING STYLE:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
-            DropdownButton<String>(
-              value: score,
-              dropdownColor: const Color(0xFF1E1A15),
-              style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0)),
-              onChanged: (val) {
-                if (val != null) {
-                  state.updateTheaterCreativeChoices(theater.id, score: val);
-                }
-              },
-              items: const [
-                DropdownMenuItem(value: 'classical', child: Text("CLASSICAL SYMPHONY")),
-                DropdownMenuItem(value: 'haunting', child: Text("HAUNTING STRING HARMONIES (+10%)")),
-                DropdownMenuItem(value: 'orchestral', child: Text("FULL ORCHESTRAL COMPOSITION (+5%)")),
-                DropdownMenuItem(value: 'silent piano', child: Text("SILENT PIANO ACCOMPANIMENT")),
-              ],
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-        Text("DIRECTOR'S FEEDBACK & CRITIQUE:", style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 12)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: feedbackController,
-                style: GoogleFonts.oldStandardTt(color: Colors.white, fontSize: 12),
-                decoration: const InputDecoration(
-                  hintText: "Enter instructions (e.g., Speak louder, project emotion!)...",
-                  hintStyle: TextStyle(color: Colors.white10),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFC4B89B))),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: () {
-                state.updateTheaterCreativeChoices(theater.id, feedback: feedbackController.text);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Critique submitted to the cast: '${feedbackController.text}'")),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC4B89B),
-                foregroundColor: Colors.black,
-                shape: const RoundedRectangleBorder(),
-              ),
-              child: Text("CRITIQUE", style: GoogleFonts.playfairDisplay(fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
