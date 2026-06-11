@@ -968,9 +968,9 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                     ),
                   ),
 
-                // Restored Attic or Basement Room Conversion (Hidden once converted)
+                // Restored Attic or Basement Room Conversion (Hidden once converted into an advanced workshop/facility)
                 if ((liveRoom.floor == Floor.attic || liveRoom.floor == Floor.basement) &&
-                    (liveRoom.type == RoomType.attic || liveRoom.type == RoomType.basement || liveRoom.isUnderConstruction))
+                    (liveRoom.type == RoomType.unused || liveRoom.type == RoomType.attic || liveRoom.type == RoomType.basement || liveRoom.isUnderConstruction))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: liveRoom.isUnderConstruction
