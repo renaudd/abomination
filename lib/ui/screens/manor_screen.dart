@@ -738,6 +738,8 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     });
   }
 
+  // DO NOT CHANGE: This interface layout, formatting, and specific dimensions match the 
+  // original GitHub baseline exactly. Do not add rounded corners, close buttons (X), or alter spacing.
   Widget _buildRoomDetailsPanel(BuildContext context, GameState state, Room room) {
     final liveRoom = state.rooms.firstWhere(
       (r) => r.id == room.id,
@@ -758,26 +760,17 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     }).toList();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       decoration: BoxDecoration(
         color: const Color(0xFF241F1A),
-        border: Border.all(
-          color: const Color(0xFFD4AF37).withValues(alpha: 0.6), // Master Gold / Bronze
-          width: 1.5,
-        ),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.95),
-            blurRadius: 32,
-            spreadRadius: 8,
-            offset: const Offset(0, -4),
+        border: Border(
+          top: BorderSide(
+            color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
           ),
-        ],
+        ),
       ),
       constraints: BoxConstraints(
-        maxWidth: min(560, MediaQuery.of(context).size.width * 0.94),
-        maxHeight: min(480, MediaQuery.of(context).size.height * 0.78),
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
       ),
       child: SafeArea(
         top: false,
@@ -786,26 +779,14 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      liveRoom.name.toUpperCase(),
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                        color: const Color(0xFFE5D5B0),
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFD4AF37), size: 20),
-                    onPressed: () => setState(() => _selectedRoomForDetails = null),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
+              Text(
+                liveRoom.name.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                  color: const Color(0xFFE5D5B0),
+                ),
               ),
               const SizedBox(height: 4),
               Text(
