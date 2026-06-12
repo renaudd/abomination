@@ -103,6 +103,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
         final isSuperMerchant = liveMerchant.id == 'super_merchant' || liveMerchant.role == 'Super Merchant';
         final stock = liveMerchant.metadata['merchantStock'] as Map<String, dynamic>? ?? {};
         final funds = state.resources['funds'] ?? 0;
+        final bool isShort = MediaQuery.of(context).size.height < 500;
 
         // Merchant parameters
         final respect = liveMerchant.metadata['merchantRespect'] as int? ?? 50;
@@ -258,9 +259,9 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
           backgroundColor: const Color(0xFF1E1A15),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           child: Container(
-            width: 950,
-            height: 680,
-            padding: const EdgeInsets.all(24),
+            width: min(950.0, MediaQuery.of(context).size.width * 0.95),
+            height: min(680.0, MediaQuery.of(context).size.height * 0.95),
+            padding: EdgeInsets.all(isShort ? 12.0 : 24.0),
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
             ),
@@ -278,25 +279,25 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                           liveMerchant.name.toUpperCase(),
                           style: GoogleFonts.playfairDisplay(
                             color: const Color(0xFFE5D5B0),
-                            fontSize: 19,
+                            fontSize: isShort ? 15.0 : 19.0,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 2.5,
+                            letterSpacing: isShort ? 1.5 : 2.5,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           "${liveMerchant.role} • RESPECT: $respect%".toUpperCase(),
                           style: GoogleFonts.oldStandardTt(
                             color: const Color(0xFFC4B89B).withValues(alpha: 0.8),
-                            fontSize: 9.5,
+                            fontSize: isShort ? 8.5 : 9.5,
                             letterSpacing: 1.2,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    // Respect Visual Bar
-                    if (!isSuperMerchant)
+                    // Respect Visual Bar (hidden on short screens to save space)
+                    if (!isSuperMerchant && !isShort)
                       Container(
                         width: 180,
                         height: 10,
@@ -316,12 +317,14 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                         ),
                       ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 20),
+                      icon: Icon(Icons.close, color: const Color(0xFFE5D5B0), size: isShort ? 16.0 : 20.0),
                       onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: isShort ? const BoxConstraints() : null,
                     ),
                   ],
                 ),
-                const Divider(color: Colors.white10, height: 20),
+                Divider(color: Colors.white10, height: isShort ? 10.0 : 20.0),
 
                 // Financial Summary Row
                 Row(
@@ -331,7 +334,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                       "MANOR VAULT BALANCE: ${funds.round()} CHF",
                       style: GoogleFonts.oswald(
                         color: const Color(0xFFE5D5B0),
-                        fontSize: 13.5,
+                        fontSize: isShort ? 11.5 : 13.5,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
                       ),
@@ -377,7 +380,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                       ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: isShort ? 6.0 : 14.0),
 
                 // Double Catalog Layout
                 Expanded(
@@ -821,14 +824,14 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: isShort ? 6.0 : 16.0),
 
                 // Haggling feedback alert
                 if (_haggleMessage != null)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.symmetric(vertical: isShort ? 4.0 : 8.0, horizontal: 14.0),
+                    margin: EdgeInsets.only(bottom: isShort ? 6.0 : 12.0),
                     decoration: BoxDecoration(
                       color: _getOutcomeColor().withValues(alpha: 0.15),
                       border: Border.all(color: _getOutcomeColor(), width: 0.8),
@@ -842,7 +845,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                                   ? Icons.info
                                   : Icons.warning,
                           color: _getOutcomeColor(),
-                          size: 16,
+                          size: isShort ? 12.0 : 16.0,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -850,7 +853,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                             _haggleMessage!,
                             style: GoogleFonts.oldStandardTt(
                               color: const Color(0xFFE5D5B0),
-                              fontSize: 11,
+                              fontSize: isShort ? 9.5 : 11.0,
                             ),
                           ),
                         ),
@@ -864,7 +867,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                     color: Colors.black38,
                     border: Border.all(color: const Color(0xFFC4B89B), width: 0.8),
                   ),
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(isShort ? 8.0 : 16.0),
                   child: Column(
                     children: [
                       Row(
@@ -876,12 +879,16 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                             children: [
                               Text(
                                 "ITEMS QUEUED: $totalBuyItemsCount TO BUY / $totalSellItemsCount TO SELL",
-                                style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 10, letterSpacing: 1),
+                                style: GoogleFonts.oswald(
+                                  color: const Color(0xFFC4B89B),
+                                  fontSize: isShort ? 9.0 : 10.0,
+                                  letterSpacing: 1.0,
+                                ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               Text(
                                 "TOTAL WEIGHT CHANGE: +${(totalBuyWeight - totalSellWeight).toStringAsFixed(1)} kg",
-                                style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
+                                style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: isShort ? 8.0 : 9.0),
                               ),
                             ],
                           ),
@@ -893,7 +900,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                                 netCost >= 0 ? "TOTAL COST: " : "TOTAL GAIN: ",
                                 style: GoogleFonts.oswald(
                                   color: const Color(0xFFE5D5B0),
-                                  fontSize: 13,
+                                  fontSize: isShort ? 11.0 : 13.0,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -903,7 +910,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                                   color: netCost >= 0
                                       ? (funds >= netCost ? const Color(0xFFE5D5B0) : const Color(0xFFCF6679))
                                       : const Color(0xFF8D996C),
-                                  fontSize: 17,
+                                  fontSize: isShort ? 14.0 : 17.0,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -911,7 +918,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: isShort ? 6.0 : 12.0),
 
                       // Action Buttons Row
                       Row(

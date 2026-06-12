@@ -242,83 +242,100 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               alignment: Alignment.center,
               children: [
                 const Positioned.fill(child: FireworksOverlay()),
-                Container(
+                 Container(
                   width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 400),
+                  constraints: BoxConstraints(
+                    maxWidth: 400,
+                    maxHeight: MediaQuery.of(context).size.height - 48,
+                  ),
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                color: const Color(0xFF1A1612),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFC4B89B), width: 2),
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFFE5D5B0).withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 48),
-                  const SizedBox(height: 12),
-                  Text(
-                    "VICTORIAN SCIENTIFIC BREAKTHROUGH",
-                    style: GoogleFonts.oswald(
-                      color: const Color(0xFFC4B89B),
-                      fontSize: 12,
-                      letterSpacing: 3,
-                    ),
+                    color: const Color(0xFF1A1612),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFC4B89B), width: 2),
+                    boxShadow: [
+                      BoxShadow(color: const Color(0xFFE5D5B0).withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    notif['title'] ?? '',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.playfairDisplay(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
-                    child: Text(
-                      notif['message'] ?? '',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.oldStandardTt(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E1A0A),
-                        side: const BorderSide(color: Color(0xFFE5D5B0)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: () {
-                        state.clearPendingMobileNotification();
-                        Navigator.pop(context);
-                      },
-                      child: Text(
-                        "EXCELLENT",
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 48),
+                        const SizedBox(height: 12),
+                        Text(
+                          "VICTORIAN SCIENTIFIC BREAKTHROUGH",
+                          style: GoogleFonts.oswald(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 12,
+                            letterSpacing: 3,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          notif['title'] ?? '',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.playfairDisplay(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (notif['image'] != null && notif['image']!.isNotEmpty) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.asset(
+                              notif['image']!,
+                              height: 200,
+                              width: 200,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
+                          child: Text(
+                            notif['message'] ?? '',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.oldStandardTt(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E1A0A),
+                              side: const BorderSide(color: Color(0xFFE5D5B0)),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () {
+                              state.clearPendingMobileNotification();
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "EXCELLENT",
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFE5D5B0),
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
           ],
         ),
       ),
@@ -335,7 +352,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_manorScrollController.hasClients) {
           _manorScrollController.animateTo(
-            350.0,
+            315.0,
             duration: const Duration(seconds: 3),
             curve: Curves.easeInOut,
           );
@@ -1243,10 +1260,23 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           }
         }
       }
-    } else if ((type == TaskType.research || type == TaskType.experiment || type == TaskType.study) && state.researchQueue.isNotEmpty) {
-      final topic = room != null ? state.getFirstUnassignedResearchForRoom(room.id) : state.getFirstUnassignedResearch();
+    } else if ((type == TaskType.research || type == TaskType.experiment || type == TaskType.study || type == TaskType.dissect || type == TaskType.vivisection) &&
+        (state.researchQueue.isNotEmpty || state.laboratoryQueue.isNotEmpty)) {
+      final isLabTask = type == TaskType.experiment || type == TaskType.dissect || type == TaskType.vivisection;
+      final topic = (isLabTask && room?.type == RoomType.laboratory)
+          ? state.getFirstUnassignedLaboratoryTask()
+          : (room != null ? state.getFirstUnassignedResearchForRoom(room.id) : state.getFirstUnassignedResearch());
       if (topic != null) {
         final cleanTopic = topic.startsWith('activity:') ? topic.replaceFirst('activity:', '') : topic;
+        final parts = topic.split(':');
+        ScienceActivity? activeScience;
+        if (parts.length >= 2 && parts[0] == 'activity') {
+          final actId = parts[1];
+          activeScience = ScienceService.getActivityById(actId);
+        }
+        if (activeScience != null) {
+          durationLabel = "${activeScience.baseDurationMinutes} MINUTES";
+        }
         if (cleanTopic == 'reanimation_rat') {
           label = "PERFORM REANIMATION (RAT SUBJECT)";
           durationLabel = "180 MINUTES";
@@ -1258,7 +1288,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           label = "PERFORM REANIMATION (${tgtNpc?.name.toUpperCase() ?? 'HUMAN'})";
           durationLabel = "240 MINUTES";
         } else {
-          final parts = topic.split(':');
           if (parts[0] == 'recipe' && parts.length >= 2) {
             final recipeId = parts[1];
             final recipe = KitchenService.getAvailableRecipes().firstWhereOrNull((r) => r.id == recipeId);
@@ -1266,8 +1295,11 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           } else if (parts.length >= 3) {
             final activityId = parts[1];
             final itemId = parts[2];
-            final item = state.inventory.firstWhereOrNull((i) => i.id == itemId);
-            final itemName = item?.name ?? itemId;
+            final firstItemId = itemId.split(',').first;
+            final item = state.inventory.firstWhereOrNull((i) => i.id == firstItemId);
+            final npc = state.npcs.firstWhereOrNull((n) => n.id == firstItemId);
+            final chicken = state.chickens.firstWhereOrNull((c) => c.id == firstItemId);
+            final itemName = item?.name ?? npc?.name ?? (chicken != null ? 'Chicken' : firstItemId);
             if (activityId == 'generic_research') {
               label = "RESEARCH ${itemName.toUpperCase()}";
             } else if (activityId.contains('dissection')) {
@@ -1566,7 +1598,10 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         type == TaskType.cook ||
         type == TaskType.research ||
         type == TaskType.archiveResearch ||
-        type == TaskType.transcribeNotes;
+        type == TaskType.transcribeNotes ||
+        type == TaskType.dissect ||
+        type == TaskType.vivisection ||
+        type == TaskType.experiment;
 
     if (!isRepeatable) {
       final isAlreadyActiveOrQueued = state.activeTasks.any(
@@ -1586,6 +1621,12 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         return state.cookingQueue.isNotEmpty;
       case TaskType.research:
         return state.researchQueue.isNotEmpty;
+      case TaskType.dissect:
+        return state.laboratoryQueue.any((qId) => qId.contains('dissect') || qId.contains('dissection'));
+      case TaskType.vivisection:
+        return state.laboratoryQueue.any((qId) => qId.contains('vivisect') || qId.contains('vivisection'));
+      case TaskType.experiment:
+        return state.getFirstUnassignedLaboratoryTask() != null;
       case TaskType.plantCrops:
         return room.isTilled;
       case TaskType.waterCrops:
@@ -1622,6 +1663,32 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         break;
       case TaskType.dissect:
       case TaskType.vivisection:
+      case TaskType.experiment:
+        if (room.type == RoomType.laboratory) {
+          final nextRecipe = state.getFirstUnassignedLaboratoryTask();
+          TaskType assignedType = type;
+          if (nextRecipe != null) {
+            final cleanTopic = nextRecipe.startsWith('activity:') ? nextRecipe.replaceFirst('activity:', '') : nextRecipe;
+            final parts = nextRecipe.split(':');
+            final activityId = parts.length > 1 && parts[0] == 'activity' ? parts[1] : cleanTopic;
+            if (activityId.startsWith('reanimation')) {
+              assignedType = TaskType.experiment;
+            } else {
+              final activity = ScienceService.getActivityById(activityId);
+              if (activity != null) {
+                assignedType = activity.type;
+              } else if (activityId.contains('dissection')) {
+                assignedType = TaskType.dissect;
+              } else if (activityId.contains('vivisection')) {
+                assignedType = TaskType.vivisection;
+              }
+            }
+          }
+          _showWorkerSelection(context, state, room, assignedType, recipeId: nextRecipe);
+        } else {
+          _showSpecimenSelection(context, state, room, type);
+        }
+        break;
       case TaskType.puzzleStudy:
       case TaskType.deprivationStudy:
         _showSpecimenSelection(context, state, room, type);

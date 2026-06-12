@@ -1088,88 +1088,90 @@ class _HamletScreenState extends State<HamletScreen> {
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B)),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "SPECIALIST RECRUIT PROPOSAL",
-                  style: GoogleFonts.playfairDisplay(
-                    color: const Color(0xFFE5D5B0),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "SPECIALIST RECRUIT PROPOSAL",
+                    style: GoogleFonts.playfairDisplay(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "${guest.name.toUpperCase()} IS A SPECIALIST WHO OFFERS TO RUN A BUSINESS VENTURE AT THE MANOR. CHOOSE A VENTURE TO INITIATE:",
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFC4B89B),
-                    fontSize: 9.5,
-                    height: 1.3,
+                  const SizedBox(height: 8),
+                  Text(
+                    "${guest.name.toUpperCase()} IS A SPECIALIST WHO OFFERS TO RUN A BUSINESS VENTURE AT THE MANOR. CHOOSE A VENTURE TO INITIATE:",
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 9.5,
+                      height: 1.3,
+                    ),
                   ),
-                ),
-                const Divider(color: Colors.white10, height: 24),
-                ...options.map((type) {
-                  final bool requiresDegree = type == BusinessType.lawPractice || type == BusinessType.medicalPractice || type == BusinessType.opiateLab;
-                  final bool locked = requiresDegree && !state.hasRequiredDegreeForBusiness(type);
-                  final String degreeName = state.getRequiredDegreeNameForBusiness(type).toUpperCase();
+                  const Divider(color: Colors.white10, height: 24),
+                  ...options.map((type) {
+                    final bool requiresDegree = type == BusinessType.lawPractice || type == BusinessType.medicalPractice || type == BusinessType.opiateLab;
+                    final bool locked = requiresDegree && !state.hasRequiredDegreeForBusiness(type);
+                    final String degreeName = state.getRequiredDegreeNameForBusiness(type).toUpperCase();
 
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                    title: Text(
-                      type.displayName.toUpperCase(),
-                      style: GoogleFonts.playfairDisplay(
-                        color: locked ? Colors.white24 : const Color(0xFFE5D5B0),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      title: Text(
+                        type.displayName.toUpperCase(),
+                        style: GoogleFonts.playfairDisplay(
+                          color: locked ? Colors.white24 : const Color(0xFFE5D5B0),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      subtitle: Text(
+                        requiresDegree 
+                            ? (locked 
+                                ? "LOCKED: ALPHONSE LACKS $degreeName. STUDY AT GRADUATE SCHOOL."
+                                : "$degreeName ATTAINED (UNLOCKED)")
+                            : "STANDARD ASSIGNMENTS SYSTEM INITIATED.",
+                        style: GoogleFonts.oldStandardTt(
+                          color: locked ? Colors.redAccent : Colors.white38,
+                          fontSize: 8.5,
+                        ),
+                      ),
+                      trailing: locked 
+                          ? const Icon(Icons.lock_outline, color: Colors.white12, size: 14)
+                          : const Icon(Icons.arrow_forward, color: Color(0xFFC4B89B), size: 14),
+                      onTap: locked 
+                          ? null 
+                          : () {
+                              state.proposeBusiness(type, guest.id, guest.name);
+                              final bus = state.activeBusinesses.firstWhere((b) => b.proposerId == guest.id);
+                              state.acceptBusinessProposal(bus.id);
+                              
+                              Navigator.pop(context); // Pop selection
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("${type.displayName} setup assignments initiated at Glarus!"),
+                                  backgroundColor: const Color(0xFF241F1A),
+                                ),
+                              );
+                            },
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "DECLINE BUSINESS VENTURE FOR NOW",
+                        style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10),
                       ),
                     ),
-                    subtitle: Text(
-                      requiresDegree 
-                          ? (locked 
-                              ? "LOCKED: ALPHONSE LACKS $degreeName. STUDY AT GRADUATE SCHOOL."
-                              : "$degreeName ATTAINED (UNLOCKED)")
-                          : "STANDARD ASSIGNMENTS SYSTEM INITIATED.",
-                      style: GoogleFonts.oldStandardTt(
-                        color: locked ? Colors.redAccent : Colors.white38,
-                        fontSize: 8.5,
-                      ),
-                    ),
-                    trailing: locked 
-                        ? const Icon(Icons.lock_outline, color: Colors.white12, size: 14)
-                        : const Icon(Icons.arrow_forward, color: Color(0xFFC4B89B), size: 14),
-                    onTap: locked 
-                        ? null 
-                        : () {
-                            state.proposeBusiness(type, guest.id, guest.name);
-                            final bus = state.activeBusinesses.firstWhere((b) => b.proposerId == guest.id);
-                            state.acceptBusinessProposal(bus.id);
-                            
-                            Navigator.pop(context); // Pop selection
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("${type.displayName} setup assignments initiated at Glarus!"),
-                                backgroundColor: const Color(0xFF241F1A),
-                              ),
-                            );
-                          },
-                  );
-                }),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "DECLINE BUSINESS VENTURE FOR NOW",
-                      style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10),
-                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

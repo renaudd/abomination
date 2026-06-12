@@ -283,146 +283,148 @@ class GuestConversationDialog extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      quest.title.toUpperCase(),
-                      style: GoogleFonts.playfairDisplay(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        quest.title.toUpperCase(),
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 18),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white10, height: 24),
+                  Text(
+                    "PROPOSED BY ${guest.name.toUpperCase()} (${guest.role.toUpperCase()}):",
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Text(
+                      '"${quest.detailedDialog}"',
+                      style: GoogleFonts.oldStandardTt(
                         color: const Color(0xFFE5D5B0),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
+                        fontSize: 13,
+                        height: 1.5,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 18),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const Divider(color: Colors.white10, height: 24),
-                Text(
-                  "PROPOSED BY ${guest.name.toUpperCase()} (${guest.role.toUpperCase()}):",
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFC4B89B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Text(
-                    '"${quest.detailedDialog}"',
-                    style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFE5D5B0),
-                      fontSize: 13,
-                      height: 1.5,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  "ESTATE OBJECTIVE & RECORD OBLIGATION:",
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFC4B89B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "• Objective: ${quest.objective.title} — ${quest.objective.description}",
-                  style: GoogleFonts.oldStandardTt(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
-                ),
-                if (quest.agreement != null) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 24),
                   Text(
-                    "• Formal Agreement: ${quest.agreement!.description}",
+                    "ESTATE OBJECTIVE & RECORD OBLIGATION:",
                     style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFC4B89B).withValues(alpha: 0.8),
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "• Objective: ${quest.objective.title} — ${quest.objective.description}",
+                    style: GoogleFonts.oldStandardTt(
+                      color: Colors.white70,
                       fontSize: 12,
                       height: 1.4,
                     ),
                   ),
-                ],
-                const SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        side: const BorderSide(color: Colors.redAccent, width: 1),
-                      ),
-                      onPressed: () {
-                        // Request 4B: Denying incurs negative social standing with visitor
-                        state.adjustNpcSatisfaction(guest.id, -15);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(quest.denyMessage),
-                            backgroundColor: const Color(0xFF241F1A),
-                          ),
-                        );
-                        state.clearGuestConversation();
-                        Navigator.pop(context); // close details
-                      },
-                      child: Text(
-                        "DECLINE PROPOSAL",
-                        style: GoogleFonts.playfairDisplay(
-                          color: Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFC4B89B),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        shape: const RoundedRectangleBorder(),
-                      ),
-                      onPressed: () {
-                        // Request 4C: Accepting adds objective and manor record agreement
-                        state.acceptVisitorQuest(quest, guest.name);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(quest.acceptMessage),
-                            backgroundColor: const Color(0xFF241F1A),
-                          ),
-                        );
-                        state.clearGuestConversation();
-                        Navigator.pop(context); // close details
-                      },
-                      child: Text(
-                        "ACCEPT & SIGN AGREEMENT",
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFF1E1A15),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          letterSpacing: 1.5,
-                        ),
+                  if (quest.agreement != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      "• Formal Agreement: ${quest.agreement!.description}",
+                      style: GoogleFonts.oldStandardTt(
+                        color: const Color(0xFFC4B89B).withValues(alpha: 0.8),
+                        fontSize: 12,
+                        height: 1.4,
                       ),
                     ),
                   ],
-                ),
-              ],
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          side: const BorderSide(color: Colors.redAccent, width: 1),
+                        ),
+                        onPressed: () {
+                          // Request 4B: Denying incurs negative social standing with visitor
+                          state.adjustNpcSatisfaction(guest.id, -15);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(quest.denyMessage),
+                              backgroundColor: const Color(0xFF241F1A),
+                            ),
+                          );
+                          state.clearGuestConversation();
+                          Navigator.pop(context); // close details
+                        },
+                        child: Text(
+                          "DECLINE PROPOSAL",
+                          style: GoogleFonts.playfairDisplay(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC4B89B),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        onPressed: () {
+                          // Request 4C: Accepting adds objective and manor record agreement
+                          state.acceptVisitorQuest(quest, guest.name);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(quest.acceptMessage),
+                              backgroundColor: const Color(0xFF241F1A),
+                            ),
+                          );
+                          state.clearGuestConversation();
+                          Navigator.pop(context); // close details
+                        },
+                        child: Text(
+                          "ACCEPT & SIGN AGREEMENT",
+                          style: GoogleFonts.playfairDisplay(
+                            color: const Color(0xFF1E1A15),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -458,79 +460,81 @@ class GuestConversationDialog extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B)),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "COMMERCIAL PROPOSAL",
-                  style: GoogleFonts.playfairDisplay(
-                    color: const Color(0xFFE5D5B0),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "CHOOSE WHICH VENTURE TO ESTABLISH WITH ${guest.name.toUpperCase()}:",
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFC4B89B),
-                    fontSize: 11,
-                  ),
-                ),
-                const Divider(color: Colors.white10, height: 24),
-                ...options.map((type) {
-                  final bool requiresDegree = type == BusinessType.lawPractice || type == BusinessType.medicalPractice || type == BusinessType.opiateLab;
-                  final bool locked = requiresDegree && !state.hasRequiredDegreeForBusiness(type);
-                  final String degreeName = state.getRequiredDegreeNameForBusiness(type).toUpperCase();
-
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                    title: Text(
-                      type.displayName.toUpperCase(),
-                      style: GoogleFonts.playfairDisplay(
-                        color: locked ? Colors.white24 : const Color(0xFFE5D5B0),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "COMMERCIAL PROPOSAL",
+                    style: GoogleFonts.playfairDisplay(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
                     ),
-                    subtitle: Text(
-                      requiresDegree 
-                          ? (locked 
-                              ? "LOCKED: ALPHONSE LACKS $degreeName. STUDY AT GRADUATE SCHOOL."
-                              : "$degreeName ATTAINED (UNLOCKED)")
-                          : "STANDARD ASSIGNMENTS SYSTEM INITIATED.",
-                      style: GoogleFonts.oldStandardTt(
-                        color: locked ? Colors.redAccent : Colors.white38,
-                        fontSize: 9,
-                      ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "CHOOSE WHICH VENTURE TO ESTABLISH WITH ${guest.name.toUpperCase()}:",
+                    style: GoogleFonts.oldStandardTt(
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 11,
                     ),
-                    trailing: locked 
-                        ? const Icon(Icons.lock_outline, color: Colors.white12, size: 16)
-                        : const Icon(Icons.arrow_forward, color: Color(0xFFC4B89B), size: 16),
-                    onTap: locked 
-                        ? null 
-                        : () {
-                            state.welcomeNpc(guest.id);
-                            state.proposeBusiness(type, guest.id, guest.name);
-                            final bus = state.activeBusinesses.firstWhere((b) => b.proposerId == guest.id);
-                            state.acceptBusinessProposal(bus.id);
-                            
-                            state.clearGuestConversation();
-                            Navigator.pop(context); // Pop selection
-                            Navigator.pop(context); // Pop conversation
+                  ),
+                  const Divider(color: Colors.white10, height: 24),
+                  ...options.map((type) {
+                    final bool requiresDegree = type == BusinessType.lawPractice || type == BusinessType.medicalPractice || type == BusinessType.opiateLab;
+                    final bool locked = requiresDegree && !state.hasRequiredDegreeForBusiness(type);
+                    final String degreeName = state.getRequiredDegreeNameForBusiness(type).toUpperCase();
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("${type.displayName} setup assignments initiated at Glarus!"),
-                                backgroundColor: const Color(0xFF241F1A),
-                              ),
-                            );
-                          },
-                  );
-                }),
-              ],
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      title: Text(
+                        type.displayName.toUpperCase(),
+                        style: GoogleFonts.playfairDisplay(
+                          color: locked ? Colors.white24 : const Color(0xFFE5D5B0),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      subtitle: Text(
+                        requiresDegree 
+                            ? (locked 
+                                ? "LOCKED: ALPHONSE LACKS $degreeName. STUDY AT GRADUATE SCHOOL."
+                                : "$degreeName ATTAINED (UNLOCKED)")
+                            : "STANDARD ASSIGNMENTS SYSTEM INITIATED.",
+                        style: GoogleFonts.oldStandardTt(
+                          color: locked ? Colors.redAccent : Colors.white38,
+                          fontSize: 9,
+                        ),
+                      ),
+                      trailing: locked 
+                          ? const Icon(Icons.lock_outline, color: Colors.white12, size: 16)
+                          : const Icon(Icons.arrow_forward, color: Color(0xFFC4B89B), size: 16),
+                      onTap: locked 
+                          ? null 
+                          : () {
+                              state.welcomeNpc(guest.id);
+                              state.proposeBusiness(type, guest.id, guest.name);
+                              final bus = state.activeBusinesses.firstWhere((b) => b.proposerId == guest.id);
+                              state.acceptBusinessProposal(bus.id);
+                              
+                              state.clearGuestConversation();
+                              Navigator.pop(context); // Pop selection
+                              Navigator.pop(context); // Pop conversation
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("${type.displayName} setup assignments initiated at Glarus!"),
+                                  backgroundColor: const Color(0xFF241F1A),
+                                ),
+                              );
+                            },
+                    );
+                  }),
+                ],
+              ),
             ),
           ),
         );

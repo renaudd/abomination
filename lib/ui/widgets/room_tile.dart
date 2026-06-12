@@ -38,244 +38,286 @@ class RoomTile extends StatelessWidget {
     final state = Provider.of<GameState>(context);
     final String? prodText = state.getLastProductionText(room.id);
     final DateTime? prodTime = state.getLastProductionTime(room.id);
-    final bool showProductionFlash = prodTime != null && 
-                                     DateTime.now().difference(prodTime) < const Duration(seconds: 2);
+    final bool showProductionFlash =
+        prodTime != null &&
+        DateTime.now().difference(prodTime) < const Duration(seconds: 2);
 
     return GestureDetector(
       onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        fit: StackFit.expand,
-        children: [
-          // 2.5D Depth Overlay (Simulated via Shadow and Border)
-          Positioned(
-            left: 4,
-            top: 4,
-            right: -4,
-            bottom: -4,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.zero,
-              ),
-            ),
-          ),
-
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 500),
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(
-              color: showProductionFlash 
-                  ? const Color(0xFFC4B89B).withValues(alpha: 0.8) 
-                  : (room.name == 'Excavation Node' ? Colors.transparent : _getRoomBackgroundColor(room.type, room.isRestored)),
-              border: Border.all(
-                color: room.name == 'Excavation Node' 
-                    ? const Color(0xFFC4B89B).withValues(alpha: 0.05)
-                    : (room.isRestored
-                       ? const Color(0xFFC4B89B).withValues(alpha: 0.5)
-                       : Colors.white.withValues(alpha: 0.15)),
-                width: room.name == 'Excavation Node' ? 1.0 : 1.5,
-              ),
-              boxShadow: room.isRestored
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 10,
-                        offset: const Offset(4, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Damask-style background pattern
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.08,
-                    child: Icon(
-                      _getRoomIcon(room.type),
-                      size: 64,
-                      color: Colors.white,
-                    ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isCompact = constraints.maxWidth < 110.0;
+          return Stack(
+            clipBehavior: Clip.none,
+            fit: StackFit.expand,
+            children: [
+              // 2.5D Depth Overlay (Simulated via Shadow and Border)
+              Positioned(
+                left: 4,
+                top: 4,
+                right: -4,
+                bottom: -4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.zero,
                   ),
                 ),
+              ),
 
-                // Production Flash Overlay
-                if (showProductionFlash && prodText != null)
-                  Positioned.fill(
-                    child: Center(
-                      child: Text(
-                        prodText,
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: showProductionFlash
+                      ? const Color(0xFFC4B89B).withValues(alpha: 0.8)
+                      : (room.name == 'Excavation Node'
+                            ? Colors.transparent
+                            : _getRoomBackgroundColor(
+                                room.type,
+                                room.isRestored,
+                              )),
+                  border: Border.all(
+                    color: room.name == 'Excavation Node'
+                        ? const Color(0xFFC4B89B).withValues(alpha: 0.05)
+                        : (room.isRestored
+                              ? const Color(0xFFC4B89B).withValues(alpha: 0.5)
+                              : Colors.white.withValues(alpha: 0.15)),
+                    width: room.name == 'Excavation Node' ? 1.0 : 1.5,
+                  ),
+                  boxShadow: room.isRestored
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 10,
+                            offset: const Offset(4, 4),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Damask-style background pattern
+                    Positioned.fill(
+                      child: Opacity(
+                        opacity: 0.08,
+                        child: Icon(
+                          _getRoomIcon(room.type),
+                          size: 64,
                           color: Colors.white,
-                          shadows: [
-                            const Shadow(
-                              color: Colors.black,
-                              blurRadius: 4,
-                            ),
-                          ],
                         ),
                       ),
                     ),
-                  ),
 
-                // Content
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        room.displayShortName.toUpperCase(),
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 2.0,
-                          color: room.name == 'Excavation Node' 
-                              ? const Color(0xFFC4B89B).withValues(alpha: 0.15)
-                              : (room.isRestored
-                                 ? const Color(0xFFE5D5B0)
-                                 : Colors.white24),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const Spacer(),
-                      if (room.activeProjects.isNotEmpty && occupants.any((n) => n.status == NPCStatus.working))
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: room.activeProjects.values.map((project) {
-                              // Only show projects that have a worker assigned AND they are present (which we know by 'working' status + occupants filter)
-                              final isBeingWorkedOn = occupants.any((n) => n.activeTaskId == project.taskId && n.status == NPCStatus.working);
-                              if (!isBeingWorkedOn) return const SizedBox.shrink();
-
-                              return Tooltip(
-                                message:
-                                    "${project.name} (${(project.progress * 100).toInt()}%)",
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.withValues(alpha: 0.2),
-                                    border: Border.all(
-                                      color: Colors.amber.withValues(alpha: 0.5),
-                                      width: 0.5,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    _getProjectIcon(project.type),
-                                    size: 12,
-                                    color: Colors.amber,
-                                  ),
+                    // Production Flash Overlay
+                    if (showProductionFlash && prodText != null)
+                      Positioned.fill(
+                        child: Center(
+                          child: Text(
+                            prodText,
+                            style: GoogleFonts.playfairDisplay(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              shadows: [
+                                const Shadow(
+                                  color: Colors.black,
+                                  blurRadius: 4,
                                 ),
-                              );
-                            }).toList(),
+                              ],
+                            ),
                           ),
                         ),
-                      if (room.isRestored)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Icon(
-                              _getRoomIcon(room.type),
-                              size: 14,
-                              color: const Color(
-                                0xFFC4B89B,
-                              ).withValues(alpha: 0.6),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
+                      ),
 
-                // Construction Progress Overlay
-                if (constructionProgress != null)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.7),
+                    // Content
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 4.0 : 12.0,
+                        vertical: 12.0,
+                      ),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.architecture,
-                            color: Colors.amber,
-                            size: 28,
-                          ),
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: LinearProgressIndicator(
-                              value: constructionProgress,
-                              backgroundColor: Colors.white10,
-                              color: Colors.amber,
-                              minHeight: 3,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
                           Text(
-                            "CONSTRUCTING",
+                            room.displayShortName.toUpperCase(),
                             style: GoogleFonts.outfit(
-                              color: Colors.amber,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
+                              fontSize: isCompact ? 10.5 : 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: isCompact ? 2.0 : 2.0,
+                              color: room.name == 'Excavation Node'
+                                  ? const Color(
+                                      0xFFC4B89B,
+                                    ).withValues(alpha: 0.15)
+                                  : (room.isRestored
+                                        ? const Color(0xFFE5D5B0)
+                                        : Colors.white24),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                          const Spacer(),
+                          if (room.activeProjects.isNotEmpty &&
+                              occupants.any(
+                                (n) => n.status == NPCStatus.working,
+                              ))
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4.0),
+                              child: Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: room.activeProjects.values.map((
+                                  project,
+                                ) {
+                                  // Only show projects that have a worker assigned AND they are present (which we know by 'working' status + occupants filter)
+                                  final isBeingWorkedOn = occupants.any(
+                                    (n) =>
+                                        n.activeTaskId == project.taskId &&
+                                        n.status == NPCStatus.working,
+                                  );
+                                  if (!isBeingWorkedOn) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return Tooltip(
+                                    message:
+                                        "${project.name} (${(project.progress * 100).toInt()}%)",
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        border: Border.all(
+                                          color: Colors.amber.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        _getProjectIcon(project.type),
+                                        size: 12,
+                                        color: Colors.amber,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          if (room.isRestored)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Icon(
+                                  _getRoomIcon(room.type),
+                                  size: 14,
+                                  color: const Color(
+                                    0xFFC4B89B,
+                                  ).withValues(alpha: 0.6),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ),
-                  ),
 
-                // Toolbox Icon (Active Work Indicator)
-                if (occupants.any((n) => n.status == NPCStatus.working && n.activeTaskId != null && n.currentRoomId == room.id))
-                  Positioned(
-                    left: 8,
-                    bottom: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: const Color(0xFFC4B89B).withValues(alpha: 0.4),
-                          width: 0.5,
+                    // Construction Progress Overlay
+                    if (constructionProgress != null)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.architecture,
+                                color: Colors.amber,
+                                size: 28,
+                              ),
+                              const SizedBox(height: 12),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                ),
+                                child: LinearProgressIndicator(
+                                  value: constructionProgress,
+                                  backgroundColor: Colors.white10,
+                                  color: Colors.amber,
+                                  minHeight: 3,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "CONSTRUCTING",
+                                style: GoogleFonts.outfit(
+                                  color: Colors.amber,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.build,
-                        size: 14,
-                        color: Color(0xFFC4B89B),
-                      ),
-                    ),
-                  ),
 
-                // Disrepair Overlay
-                if (!room.isRestored && constructionProgress == null && room.name != 'Excavation Node')
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.lock_clock_outlined,
-                          color: Colors.white.withValues(alpha: 0.1),
-                          size: 32,
+                    // Toolbox Icon (Active Work Indicator)
+                    if (occupants.any(
+                      (n) =>
+                          n.status == NPCStatus.working &&
+                          n.activeTaskId != null &&
+                          n.currentRoomId == room.id,
+                    ))
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFC4B89B,
+                              ).withValues(alpha: 0.4),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.build,
+                            size: 14,
+                            color: Color(0xFFC4B89B),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+
+                    // Disrepair Overlay
+                    if (!room.isRestored &&
+                        constructionProgress == null &&
+                        room.name != 'Excavation Node')
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.lock_clock_outlined,
+                              color: Colors.white.withValues(alpha: 0.1),
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
