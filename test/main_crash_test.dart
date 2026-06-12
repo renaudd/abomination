@@ -49,7 +49,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Scene 4: Butler trait
-    await tester.tap(find.text('GIVING SAGE ADVICE.'));
+    await tester.tap(find.textContaining('GIVING SAGE ADVICE.'));
     await tester.pumpAndSettle();
 
     // Scene 5: Life objective

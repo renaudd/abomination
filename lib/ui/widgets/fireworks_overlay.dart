@@ -40,15 +40,19 @@ class _FireworksOverlayState extends State<FireworksOverlay>
   void _spawnParticles() {
     final rand = Random();
     _particles.clear();
+    final traditionalColors = [
+      const Color(0xFFD4AF37), // Gold
+      const Color(0xFFE5D5B0), // Pale Gold
+      const Color(0xFFFF8C00), // Amber / Orange
+      const Color(0xFFB22222), // Crimson
+      const Color(0xFFE0E0E0), // Silver
+      const Color(0xFF3B7A57), // Green
+      const Color(0xFF4682B4), // Copper Blue
+    ];
     for (int i = 0; i < 100; i++) {
       final angle = rand.nextDouble() * pi * 2;
       final speed = 2.0 + rand.nextDouble() * 7.0;
-      final color = HSVColor.fromAHSV(
-        1.0,
-        rand.nextDouble() * 360,
-        0.8,
-        0.9,
-      ).toColor();
+      final color = traditionalColors[rand.nextInt(traditionalColors.length)];
       _particles.add(
         _FireworkParticle(angle: angle, speed: speed, color: color),
       );

@@ -50,6 +50,19 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
   int? _offeredLoanAmount;
   double _offeredLoanInterest = 0.25;
 
+  late GameState _state;
+  GameSpeed? _savedSpeed;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _state = Provider.of<GameState>(context, listen: false);
+    if (_savedSpeed == null) {
+      _savedSpeed = _state.speed;
+      _state.setSpeed(GameSpeed.paused);
+    }
+  }
+
   @override
   void dispose() {
     for (var c in _buyControllers.values) {
@@ -57,6 +70,9 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
     }
     for (var c in _sellControllers.values) {
       c.dispose();
+    }
+    if (_savedSpeed != null) {
+      _state.setSpeed(_savedSpeed!);
     }
     super.dispose();
   }
@@ -103,7 +119,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
         final isSuperMerchant = liveMerchant.id == 'super_merchant' || liveMerchant.role == 'Super Merchant';
         final stock = liveMerchant.metadata['merchantStock'] as Map<String, dynamic>? ?? {};
         final funds = state.resources['funds'] ?? 0;
-        final bool isShort = MediaQuery.of(context).size.height < 500;
+        final bool isShort = MediaQuery.of(context).size.height < 600 || MediaQuery.of(context).size.width < 600;
 
         // Merchant parameters
         final respect = liveMerchant.metadata['merchantRespect'] as int? ?? 50;
@@ -259,128 +275,209 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
           backgroundColor: const Color(0xFF1E1A15),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           child: Container(
-            width: min(950.0, MediaQuery.of(context).size.width * 0.95),
-            height: min(680.0, MediaQuery.of(context).size.height * 0.95),
-            padding: EdgeInsets.all(isShort ? 12.0 : 24.0),
+            width: min(950.0, MediaQuery.of(context).size.width * 0.98),
+            height: min(680.0, MediaQuery.of(context).size.height * 0.98),
+            padding: EdgeInsets.all(isShort ? 6.0 : 24.0),
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Header Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          liveMerchant.name.toUpperCase(),
-                          style: GoogleFonts.playfairDisplay(
-                            color: const Color(0xFFE5D5B0),
-                            fontSize: isShort ? 15.0 : 19.0,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: isShort ? 1.5 : 2.5,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "${liveMerchant.role} • RESPECT: $respect%".toUpperCase(),
-                          style: GoogleFonts.oldStandardTt(
-                            color: const Color(0xFFC4B89B).withValues(alpha: 0.8),
-                            fontSize: isShort ? 8.5 : 9.5,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Respect Visual Bar (hidden on short screens to save space)
-                    if (!isSuperMerchant && !isShort)
-                      Container(
-                        width: 180,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          border: Border.all(color: const Color(0xFFC4B89B), width: 0.5),
-                        ),
-                        child: Stack(
+                if (isShort) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            FractionallySizedBox(
-                              widthFactor: respect / 100.0,
-                              child: Container(
-                                color: respect >= 50 ? const Color(0xFF8D996C) : const Color(0xFFCF6679),
+                            Row(
+                              children: [
+                                Text(
+                                  liveMerchant.name.toUpperCase(),
+                                  style: GoogleFonts.playfairDisplay(
+                                    color: const Color(0xFFE5D5B0),
+                                    fontSize: 12.0,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "RES: $respect%".toUpperCase(),
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: const Color(0xFFC4B89B),
+                                    fontSize: 8.0,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              "VAULT: ${funds.round()} CHF${state.activeMerchantLoan > 0 ? ' | DEBT: ${state.activeMerchantLoan} CHF' : ''}",
+                              style: GoogleFonts.oswald(
+                                color: const Color(0xFFE5D5B0),
+                                fontSize: 10.0,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.8,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    IconButton(
-                      icon: Icon(Icons.close, color: const Color(0xFFE5D5B0), size: isShort ? 16.0 : 20.0),
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: isShort ? const BoxConstraints() : null,
-                    ),
-                  ],
-                ),
-                Divider(color: Colors.white10, height: isShort ? 10.0 : 20.0),
-
-                // Financial Summary Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "MANOR VAULT BALANCE: ${funds.round()} CHF",
-                      style: GoogleFonts.oswald(
-                        color: const Color(0xFFE5D5B0),
-                        fontSize: isShort ? 11.5 : 13.5,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    if (state.activeMerchantLoan > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        color: const Color(0xFFCF6679).withValues(alpha: 0.2),
-                        child: Row(
-                          children: [
-                            Text(
-                              "OUTSTANDING DEBT: ${state.activeMerchantLoan} CHF",
-                              style: GoogleFonts.oswald(
-                                color: const Color(0xFFCF6679),
-                                fontSize: 11.5,
+                      if (state.activeMerchantLoan > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: OutlinedButton(
+                            onPressed: funds >= 50
+                                ? () {
+                                    final payAmount = min(funds.toInt(), state.activeMerchantLoan);
+                                    state.payMerchantLoan(payAmount);
+                                  }
+                                : null,
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFCF6679)),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                              shape: const RoundedRectangleBorder(),
+                            ),
+                            child: Text(
+                              "PAY DEBT",
+                              style: GoogleFonts.oldStandardTt(
+                                color: Colors.white,
+                                fontSize: 8,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            OutlinedButton(
-                              onPressed: funds >= 50
-                                  ? () {
-                                      final payAmount = min(funds.toInt(), state.activeMerchantLoan);
-                                      state.payMerchantLoan(payAmount);
-                                    }
-                                  : null,
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFCF6679)),
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                                shape: const RoundedRectangleBorder(),
+                          ),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 16.0),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  const Divider(color: Colors.white10, height: 2),
+                  const SizedBox(height: 2),
+                ] else ...[
+                  // Top Header Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            liveMerchant.name.toUpperCase(),
+                            style: GoogleFonts.playfairDisplay(
+                              color: const Color(0xFFE5D5B0),
+                              fontSize: isShort ? 15.0 : 19.0,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: isShort ? 1.5 : 2.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "${liveMerchant.role} • RESPECT: $respect%".toUpperCase(),
+                            style: GoogleFonts.oldStandardTt(
+                              color: const Color(0xFFC4B89B).withValues(alpha: 0.8),
+                              fontSize: isShort ? 8.5 : 9.5,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Respect Visual Bar (hidden on short screens to save space)
+                      if (!isSuperMerchant && !isShort)
+                        Container(
+                          width: 180,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            border: Border.all(color: const Color(0xFFC4B89B), width: 0.5),
+                          ),
+                          child: Stack(
+                            children: [
+                              FractionallySizedBox(
+                                widthFactor: respect / 100.0,
+                                child: Container(
+                                  color: respect >= 50 ? const Color(0xFF8D996C) : const Color(0xFFCF6679),
+                                ),
                               ),
-                              child: Text(
-                                "PAY BACK",
-                                style: GoogleFonts.oldStandardTt(
-                                  color: Colors.white,
-                                  fontSize: 9,
+                            ],
+                          ),
+                        ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: const Color(0xFFE5D5B0), size: isShort ? 16.0 : 20.0),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: isShort ? const BoxConstraints() : null,
+                      ),
+                    ],
+                  ),
+                  Divider(color: Colors.white10, height: isShort ? 10.0 : 20.0),
+
+                  // Financial Summary Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "MANOR VAULT BALANCE: ${funds.round()} CHF",
+                        style: GoogleFonts.oswald(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: isShort ? 11.5 : 13.5,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      if (state.activeMerchantLoan > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          color: const Color(0xFFCF6679).withValues(alpha: 0.2),
+                          child: Row(
+                            children: [
+                              Text(
+                                "OUTSTANDING DEBT: ${state.activeMerchantLoan} CHF",
+                                style: GoogleFonts.oswald(
+                                  color: const Color(0xFFCF6679),
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: funds >= 50
+                                    ? () {
+                                        final payAmount = min(funds.toInt(), state.activeMerchantLoan);
+                                        state.payMerchantLoan(payAmount);
+                                      }
+                                    : null,
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFFCF6679)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                                  shape: const RoundedRectangleBorder(),
+                                ),
+                                child: Text(
+                                  "PAY BACK",
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: isShort ? 6.0 : 14.0),
+                    ],
+                  ),
+                  SizedBox(height: isShort ? 6.0 : 14.0),
+                ],
 
                 // Double Catalog Layout
                 Expanded(
@@ -465,7 +562,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                                     final cartQty = _itemsToBuy[id] ?? 0;
 
                                     return Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      padding: EdgeInsets.symmetric(vertical: isShort ? 2 : 6),
                                       decoration: const BoxDecoration(
                                         border: Border(bottom: BorderSide(color: Colors.white10, width: 0.5)),
                                       ),
@@ -684,7 +781,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                                     final cartQty = _itemsToSell[id] ?? 0;
 
                                     return Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      padding: EdgeInsets.symmetric(vertical: isShort ? 2 : 6),
                                       decoration: const BoxDecoration(
                                         border: Border(bottom: BorderSide(color: Colors.white10, width: 0.5)),
                                       ),

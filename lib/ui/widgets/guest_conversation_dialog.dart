@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -455,7 +456,7 @@ class GuestConversationDialog extends StatelessWidget {
           backgroundColor: const Color(0xFF1E1A15),
           shape: const RoundedRectangleBorder(),
           child: Container(
-            width: 450,
+            width: min(450.0, MediaQuery.of(context).size.width * 0.95),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFC4B89B)),

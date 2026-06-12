@@ -173,7 +173,7 @@ class Chapter2AnnouncementDialog extends StatelessWidget {
                 border: const Border(top: BorderSide(color: Colors.white10)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(

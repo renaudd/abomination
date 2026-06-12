@@ -1322,7 +1322,7 @@ class RecipeCatalogue {
       name: 'Butcher Resident or Creature',
       ingredients: {},
       sophistication: 0.0,
-      isExperimental: true, // Don't show in discovery
+      isExperimental: false, // Don't show in discovery
       durationMinutes: 45,
       minKnifeSkills: 20,
     ),

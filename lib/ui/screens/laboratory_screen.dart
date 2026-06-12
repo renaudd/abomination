@@ -15,6 +15,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../../models/npc.dart';
 import '../../models/experiment.dart';
@@ -30,7 +31,8 @@ class LaboratoryScreen extends StatelessWidget {
   const LaboratoryScreen({super.key, required this.room});
 
   void _checkMobileNotificationModal(BuildContext context, GameState state) {
-    if (state.pendingMobileNotification != null && ModalRoute.of(context)?.isCurrent == true) {
+    if (state.pendingMobileNotification != null &&
+        ModalRoute.of(context)?.isCurrent == true) {
       final notif = state.pendingMobileNotification!;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showDialog(
@@ -38,86 +40,112 @@ class LaboratoryScreen extends StatelessWidget {
           barrierDismissible: false,
           builder: (context) => Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
                 const Positioned.fill(child: FireworksOverlay()),
-                 Container(
+                Container(
                   width: double.infinity,
                   constraints: BoxConstraints(
-                    maxWidth: 400,
-                    maxHeight: MediaQuery.of(context).size.height - 48,
+                    maxWidth: 420,
+                    maxHeight: MediaQuery.of(context).size.height - 24,
                   ),
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1A1612),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFC4B89B), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFC4B89B),
+                      width: 2,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFFE5D5B0).withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2),
+                      BoxShadow(
+                        color: const Color(0xFFE5D5B0).withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
                     ],
                   ),
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 48),
-                        const SizedBox(height: 12),
+                        const Icon(
+                          Icons.auto_awesome,
+                          color: Color(0xFFE5D5B0),
+                          size: 36,
+                        ),
+                        const SizedBox(height: 8),
                         Text(
                           "VICTORIAN SCIENTIFIC BREAKTHROUGH",
                           style: GoogleFonts.oswald(
                             color: const Color(0xFFC4B89B),
-                            fontSize: 12,
-                            letterSpacing: 3,
+                            fontSize: 11,
+                            letterSpacing: 2,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           notif['title'] ?? '',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.playfairDisplay(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        if (notif['image'] != null && notif['image']!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        if (notif['image'] != null &&
+                            notif['image']!.isNotEmpty) ...[
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.asset(
                               notif['image']!,
-                              height: 200,
-                              width: 200,
+                              height: 150,
+                              width: 150,
                               fit: BoxFit.cover,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                         ],
                         Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
-                          child: Text(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: _buildNotificationMessage(
                             notif['message'] ?? '',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.oldStandardTt(
+                            GoogleFonts.oldStandardTt(
                               color: Colors.white70,
-                              fontSize: 14,
-                              height: 1.4,
+                              fontSize: 13,
+                              height: 1.3,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        if (notif['title'] == 'Undead Bat' || notif['title'] == 'Undead Rat') ...[
+                          const SizedBox(height: 12),
+                          _buildUnitCollectionProgress(
+                            notif['title'] == 'Undead Bat' ? state.reanimatedBatsCount : state.reanimatedRatsCount,
+                            4,
+                          ),
+                        ],
+                        const SizedBox(height: 18),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF2E1A0A),
                               side: const BorderSide(color: Color(0xFFE5D5B0)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                             onPressed: () {
                               state.clearPendingMobileNotification();
@@ -127,7 +155,7 @@ class LaboratoryScreen extends StatelessWidget {
                               "EXCELLENT",
                               style: GoogleFonts.playfairDisplay(
                                 color: const Color(0xFFE5D5B0),
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 2,
                               ),
@@ -138,12 +166,118 @@ class LaboratoryScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-          ],
-        ),
-      ),
+              ],
+            ),
+          ),
         );
       });
     }
+  }
+
+  Widget _buildNotificationMessage(String text, TextStyle baseStyle) {
+    final List<TextSpan> spans = [];
+    final RegExp exp = RegExp(r'\*\*(.*?)\*\*');
+    int start = 0;
+    for (final match in exp.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start)));
+      }
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE5D5B0)),
+      ));
+      start = match.end;
+    }
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start)));
+    }
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: baseStyle,
+        children: spans,
+      ),
+    );
+  }
+
+  Widget _buildUnitCollectionProgress(int current, int target) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF251F1A),
+        border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "CONSTRUCT CREATION PROGRESS",
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              Text(
+                "$current / $target COLLECTED",
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(target, (index) {
+              final isAchieved = index < current;
+              return Expanded(
+                child: Container(
+                  height: 10,
+                  margin: EdgeInsets.symmetric(horizontal: index == 0 || index == target - 1 ? 0 : 4),
+                  decoration: BoxDecoration(
+                    color: isAchieved ? const Color(0xFFC4B89B) : Colors.black45,
+                    border: Border.all(
+                      color: isAchieved
+                          ? const Color(0xFFE5D5B0)
+                          : const Color(0xFFC4B89B).withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: isAchieved
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
+                              blurRadius: 4,
+                            )
+                          ]
+                        : null,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            current >= target
+                ? "Construct Unit Complete! The squadron is ready for battle."
+                : "Needs ${target - current} more to form a complete combat unit and unlock the unit card.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              color: Colors.white60,
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -181,7 +315,10 @@ class LaboratoryScreen extends StatelessWidget {
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                     side: const BorderSide(color: Colors.redAccent, width: 1),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                   ),
                   icon: const Icon(Icons.delete_forever, size: 18),
                   label: Text(
@@ -221,7 +358,9 @@ class LaboratoryScreen extends StatelessWidget {
                               onPressed: () => Navigator.pop(context),
                               child: Text(
                                 "NO, CANCEL",
-                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFE5D5B0),
+                                ),
                               ),
                             ),
                             ElevatedButton(
@@ -233,7 +372,9 @@ class LaboratoryScreen extends StatelessWidget {
                                 state.demolishRoom(room.id);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text("Laboratory demolished and reverted."),
+                                    content: Text(
+                                      "Laboratory demolished and reverted.",
+                                    ),
                                     backgroundColor: Color(0xFF241F1A),
                                   ),
                                 );
@@ -242,7 +383,9 @@ class LaboratoryScreen extends StatelessWidget {
                               },
                               child: Text(
                                 "YES, DEMOLISH",
-                                style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold),
+                                style: GoogleFonts.playfairDisplay(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -285,37 +428,50 @@ class LaboratoryScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionTitle('ACTIVE TRIALS'),
-                        const SizedBox(height: 24),
-                        if (activeExperiments.isEmpty)
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                'No ongoing trials or reanimations.',
-                                style: GoogleFonts.oldStandardTt(
-                                  color: Colors.white12,
-                                  fontSize: 12,
-                                ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionTitle('ACTIVE TRIALS'),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                child: activeExperiments.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          'No ongoing trials or reanimations.',
+                                          style: GoogleFonts.oldStandardTt(
+                                            color: Colors.white12,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: activeExperiments.length,
+                                        itemBuilder: (context, index) {
+                                          final exp = activeExperiments[index];
+                                          final subject = state.npcs.firstWhere(
+                                            (n) => n.id == exp.subjectId,
+                                          );
+                                          return _buildActiveExperimentTile(
+                                            context,
+                                            exp,
+                                            subject,
+                                          );
+                                        },
+                                      ),
                               ),
-                            ),
-                          )
-                        else
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: activeExperiments.length,
-                              itemBuilder: (context, index) {
-                                final exp = activeExperiments[index];
-                                final subject = state.npcs.firstWhere(
-                                  (n) => n.id == exp.subjectId,
-                                );
-                                return _buildActiveExperimentTile(
-                                  context,
-                                  exp,
-                                  subject,
-                                );
-                              },
-                            ),
+                            ],
                           ),
+                        ),
+                        const Divider(color: Colors.white10, height: 24),
+                        _buildSectionTitle('PROCEDURE QUEUE'),
+                        const SizedBox(height: 12),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 180),
+                          child: SingleChildScrollView(
+                            child: _buildLaboratoryQueue(context, state),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -330,13 +486,11 @@ class LaboratoryScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionTitle('LABORATORY PROCEDURES & EXPERIMENTS'),
+                          _buildSectionTitle(
+                            'LABORATORY PROCEDURES & EXPERIMENTS',
+                          ),
                           const SizedBox(height: 16),
                           _buildScienceActivities(context, state),
-                          const SizedBox(height: 32),
-                          _buildSectionTitle('PROCEDURES QUEUE'),
-                          const SizedBox(height: 16),
-                          _buildLaboratoryQueue(context, state),
                         ],
                       ),
                     ),
@@ -417,7 +571,8 @@ class LaboratoryScreen extends StatelessWidget {
 
   String _getPrettyTypeName(String type) {
     if (type == 'rat_specimen' || type == 'rat') return 'SMALL SPECIMEN';
-    if (type == 'bat_specimen' || type == 'bat') return 'SMALL SPECIMEN (FLYING)';
+    if (type == 'bat_specimen' || type == 'bat')
+      return 'SMALL SPECIMEN (FLYING)';
     if (type == 'chicken') return 'LIVESTOCK (CHICKEN)';
     if (type == 'herb_reagent') return 'HERB REAGENT';
     if (type == 'specimen') return 'BIOLOGICAL SPECIMEN';
@@ -427,72 +582,92 @@ class LaboratoryScreen extends StatelessWidget {
 
   Widget _buildLaboratoryQueue(BuildContext context, GameState state) {
     if (state.laboratoryQueue.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white10),
-          color: Colors.black.withValues(alpha: 0.2),
-        ),
-        child: Center(
-          child: Text(
-            'QUEUE IS EMPTY',
-            style: GoogleFonts.playfairDisplay(
-              color: Colors.white12,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+      return Text(
+        'NO PROCEDURES.',
+        style: GoogleFonts.oldStandardTt(color: Colors.white24, fontSize: 10),
       );
     }
 
     return Column(
-      children: state.laboratoryQueue.map((queueId) {
-        final index = state.laboratoryQueue.indexOf(queueId);
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: state.laboratoryQueue.asMap().entries.map((entry) {
+        final index = entry.key;
+        final queueId = entry.value;
         final parts = queueId.split(':');
         final category = parts[0];
         final activityId = parts.length > 1 ? parts[1] : null;
         final isActivity = category == 'activity';
 
         String title = queueId.toUpperCase();
-        String subtitle = 'ENQUEUED PROCEDURE';
 
         if (isActivity && activityId != null) {
           final cleanActivityId = activityId.split(':').first;
           final activity = ScienceService.getActivityById(cleanActivityId);
           if (activity != null) {
-            title = activity.name.toUpperCase();
-            subtitle = 'Base Duration: ${activity.baseDurationMinutes ~/ 60}H ${activity.baseDurationMinutes % 60}M';
+            String actionName = 'procedure';
+            if (activity.id.contains('dissection')) {
+              actionName = 'dissection';
+            } else if (activity.id.contains('vivisection')) {
+              actionName = 'vivisection';
+            } else if (activity.id.contains('reanimation')) {
+              actionName = 'reanimation';
+            } else {
+              actionName = activity.name.toLowerCase();
+            }
+
+            if (parts.length > 2 && parts[2].isNotEmpty) {
+              final targetIds = parts[2].split(',');
+              final targetNames = targetIds
+                  .map((id) {
+                    final npc = state.npcs.firstWhereOrNull((n) => n.id == id);
+                    if (npc != null) {
+                      final species = npc.specimenType.toLowerCase();
+                      final gender = npc.gender.toLowerCase();
+                      return '$species, $gender';
+                    }
+                    final chicken = state.chickens.firstWhereOrNull(
+                      (c) => c.id == id,
+                    );
+                    if (chicken != null) {
+                      return 'chicken, female';
+                    }
+                    final item = state.inventory.firstWhereOrNull(
+                      (i) => i.id == id,
+                    );
+                    if (item != null) {
+                      return item.name.toLowerCase();
+                    }
+                    return 'unknown';
+                  })
+                  .join(', ');
+              title = '$actionName ($targetNames)'.toUpperCase();
+            } else {
+              title = activity.name.toUpperCase();
+            }
           }
         }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
-            color: Colors.black.withValues(alpha: 0.3),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            title: Text(
-              title,
-              style: GoogleFonts.playfairDisplay(
-                color: const Color(0xFFE5D5B0),
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 2.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${index + 1}. $title',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B),
+                    fontSize: 10.5,
+                  ),
+                ),
               ),
-            ),
-            subtitle: Text(
-              subtitle,
-              style: GoogleFonts.oldStandardTt(
-                color: Colors.white38,
-                fontSize: 10,
+              GestureDetector(
+                onTap: () => state.removeLaboratoryFromQueue(index),
+                child: const Padding(
+                  padding: EdgeInsets.all(2.0),
+                  child: Icon(Icons.close, size: 10, color: Colors.white24),
+                ),
               ),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.cancel, color: Colors.redAccent, size: 18),
-              onPressed: () => state.removeLaboratoryFromQueue(index),
-            ),
+            ],
           ),
         );
       }).toList(),
@@ -521,18 +696,27 @@ class LaboratoryScreen extends StatelessWidget {
       children: activities.map<Widget>((activity) {
         bool canStart = true;
         activity.ingredients.forEach((ing, count) {
-          num available = state.inventory.where((i) {
-            if (ing == 'meat') {
-              return i.type.contains('meat') || i.category == ItemCategory.specimen;
-            }
-            if (ing == 'specimen' || ing == 'rat_specimen') {
-              return i.type == 'rat' || i.type == 'bat' || i.type == 'chicken' || i.category == ItemCategory.specimen;
-            }
-            return i.type == ing;
-          }).fold(0, (sum, i) => sum + i.quantity) +
-          ((ing == 'specimen' || ing == 'rat_specimen')
-              ? (state.resources['rat'] ?? 0) + (state.resources['bat'] ?? 0) + (state.resources['chicken'] ?? 0)
-              : (state.resources[ing] ?? 0));
+          num available =
+              state.inventory
+                  .where((i) {
+                    if (ing == 'meat') {
+                      return i.type.contains('meat') ||
+                          i.category == ItemCategory.specimen;
+                    }
+                    if (ing == 'specimen' || ing == 'rat_specimen') {
+                      return i.type == 'rat' ||
+                          i.type == 'bat' ||
+                          i.type == 'chicken' ||
+                          i.category == ItemCategory.specimen;
+                    }
+                    return i.type == ing;
+                  })
+                  .fold(0, (sum, i) => sum + i.quantity) +
+              ((ing == 'specimen' || ing == 'rat_specimen')
+                  ? (state.resources['rat'] ?? 0) +
+                        (state.resources['bat'] ?? 0) +
+                        (state.resources['chicken'] ?? 0)
+                  : (state.resources[ing] ?? 0));
           if (available < count) canStart = false;
         });
 
@@ -595,33 +779,52 @@ class LaboratoryScreen extends StatelessWidget {
                             'REQUIRED MATERIALS',
                             style: GoogleFonts.oswald(
                               fontSize: 9,
-                              color: const Color(0xFFE5D5B0).withValues(alpha: 0.5),
+                              color: const Color(
+                                0xFFE5D5B0,
+                              ).withValues(alpha: 0.5),
                             ),
                           ),
                           const SizedBox(height: 4),
                           Wrap(
                             spacing: 8,
-                            children: activity.ingredients.entries.map<Widget>((e) {
+                            children: activity.ingredients.entries.map<Widget>((
+                              e,
+                            ) {
                               final ing = e.key;
                               final count = e.value;
-                              num available = state.inventory.where((i) {
-                                if (ing == 'meat') {
-                                  return i.type.contains('meat') || i.category == ItemCategory.specimen;
-                                }
-                                if (ing == 'specimen' || ing == 'rat_specimen') {
-                                  return i.type == 'rat' || i.type == 'bat' || i.type == 'chicken' || i.category == ItemCategory.specimen;
-                                }
-                                return i.type == ing;
-                              }).fold(0, (sum, i) => sum + i.quantity) +
-                              ((ing == 'specimen' || ing == 'rat_specimen')
-                                  ? (state.resources['rat'] ?? 0) + (state.resources['bat'] ?? 0) + (state.resources['chicken'] ?? 0)
-                                  : (state.resources[ing] ?? 0));
-                              final hasEnough = available.round() >= count.round();
+                              num available =
+                                  state.inventory
+                                      .where((i) {
+                                        if (ing == 'meat') {
+                                          return i.type.contains('meat') ||
+                                              i.category ==
+                                                  ItemCategory.specimen;
+                                        }
+                                        if (ing == 'specimen' ||
+                                            ing == 'rat_specimen') {
+                                          return i.type == 'rat' ||
+                                              i.type == 'bat' ||
+                                              i.type == 'chicken' ||
+                                              i.category ==
+                                                  ItemCategory.specimen;
+                                        }
+                                        return i.type == ing;
+                                      })
+                                      .fold(0, (sum, i) => sum + i.quantity) +
+                                  ((ing == 'specimen' || ing == 'rat_specimen')
+                                      ? (state.resources['rat'] ?? 0) +
+                                            (state.resources['bat'] ?? 0) +
+                                            (state.resources['chicken'] ?? 0)
+                                      : (state.resources[ing] ?? 0));
+                              final hasEnough =
+                                  available.round() >= count.round();
 
                               return Text(
                                 '${_getPrettyTypeName(e.key)}: ${e.value.round()}',
                                 style: GoogleFonts.oldStandardTt(
-                                  color: hasEnough ? const Color(0xFFC4B89B) : Colors.redAccent,
+                                  color: hasEnough
+                                      ? const Color(0xFFC4B89B)
+                                      : Colors.redAccent,
                                   fontSize: 10,
                                 ),
                               );
@@ -638,12 +841,16 @@ class LaboratoryScreen extends StatelessWidget {
                             'EFFICIENCY STATS',
                             style: GoogleFonts.oswald(
                               fontSize: 9,
-                              color: const Color(0xFFE5D5B0).withValues(alpha: 0.5),
+                              color: const Color(
+                                0xFFE5D5B0,
+                              ).withValues(alpha: 0.5),
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            metadata.relevantAttributes.join(", ").toUpperCase(),
+                            metadata.relevantAttributes
+                                .join(", ")
+                                .toUpperCase(),
                             style: GoogleFonts.oldStandardTt(
                               fontSize: 10,
                               color: const Color(0xFFC4B89B),
@@ -659,11 +866,17 @@ class LaboratoryScreen extends StatelessWidget {
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: canStart
-                        ? () => _showScienceActivityTargetDialog(context, state, activity)
+                        ? () => _showScienceActivityTargetDialog(
+                            context,
+                            state,
+                            activity,
+                          )
                         : null,
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(
-                        color: canStart ? const Color(0xFFC4B89B) : Colors.white10,
+                        color: canStart
+                            ? const Color(0xFFC4B89B)
+                            : Colors.white10,
                       ),
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.zero,
@@ -673,7 +886,9 @@ class LaboratoryScreen extends StatelessWidget {
                     child: Text(
                       'COMMENCE PROCEDURE',
                       style: GoogleFonts.playfairDisplay(
-                        color: canStart ? const Color(0xFFE5D5B0) : Colors.white12,
+                        color: canStart
+                            ? const Color(0xFFE5D5B0)
+                            : Colors.white12,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
@@ -758,7 +973,9 @@ class LaboratoryScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(16.0),
                         child: Text(
                           'No viable biological subjects currently in the Laboratory.',
-                          style: GoogleFonts.oldStandardTt(color: Colors.white38),
+                          style: GoogleFonts.oldStandardTt(
+                            color: Colors.white38,
+                          ),
                         ),
                       )
                     else
@@ -789,27 +1006,36 @@ class LaboratoryScreen extends StatelessWidget {
                                 margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? const Color(0xFF2E1A0A) : Colors.black26,
+                                  color: isSelected
+                                      ? const Color(0xFF2E1A0A)
+                                      : Colors.black26,
                                   border: Border.all(
-                                    color: isSelected ? const Color(0xFFC4B89B) : Colors.white10,
+                                    color: isSelected
+                                        ? const Color(0xFFC4B89B)
+                                        : Colors.white10,
                                   ),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.biotech,
-                                      color: isSelected ? const Color(0xFFE5D5B0) : Colors.white24,
+                                      color: isSelected
+                                          ? const Color(0xFFE5D5B0)
+                                          : Colors.white24,
                                       size: 18,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             subjName.toUpperCase(),
                                             style: GoogleFonts.playfairDisplay(
-                                              color: isSelected ? Colors.white : Colors.white70,
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : Colors.white70,
                                               fontSize: 12,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -825,7 +1051,11 @@ class LaboratoryScreen extends StatelessWidget {
                                       ),
                                     ),
                                     if (isSelected)
-                                      const Icon(Icons.check_circle, color: Color(0xFFC4B89B), size: 16),
+                                      const Icon(
+                                        Icons.check_circle,
+                                        color: Color(0xFFC4B89B),
+                                        size: 16,
+                                      ),
                                   ],
                                 ),
                               ),
@@ -868,7 +1098,9 @@ class LaboratoryScreen extends StatelessWidget {
                   child: Text(
                     'START PROCEDURE',
                     style: GoogleFonts.playfairDisplay(
-                      color: selectedIds.length >= reqCount ? const Color(0xFFE5D5B0) : Colors.white24,
+                      color: selectedIds.length >= reqCount
+                          ? const Color(0xFFE5D5B0)
+                          : Colors.white24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -881,4 +1113,3 @@ class LaboratoryScreen extends StatelessWidget {
     );
   }
 }
-

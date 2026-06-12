@@ -340,6 +340,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         'title': 'Alchemical Laboratory',
         'category': 'Room / Wing',
         'desc': 'Advanced chemical and occult research wing.\n\n'
+                '• Capabilities: A precise workshop for the pursuit of forbidden science. From simple dissections to complex surgical operations and the creation of new life, this room handles your most ambitious experiments.\n'
                 '• Construction Cost: Precisely 450 CHF cash reserves plus 25 Wood timber planks and 15 Iron metal ingots. Requires formal Library archive as a structural prerequisite.\n'
                 '• Plot Location: Can be converted from any vacant unassigned ground-floor or basement East/West Wing chamber inside the primary Manor Fortress.\n'
                 '• Production Outputs: Staffed by hermetic scholars and chemists to synthesize Elixir of Vitality (100 CHF, 10 Herbs; restores 100% squad HP instantly), craft volatile Greek Fire Flask incendiary canisters (85 CHF, 10 Iron), synthesize Tear Gas riot canisters (60 CHF, 5 Herbs), and perform forbidden flesh golem anatomical stitching (Flesh Golem squad card: 200 CHF, 40 Food harvests).'
@@ -356,6 +357,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         'title': 'Brewery',
         'category': 'Room / Wing',
         'desc': 'Subterranean distillation hall and working-class pub wing.\n\n'
+                '• Capabilities: A specialized industrial facility for the production of ales and beers to maintain house morale and energy.\n'
                 '• Construction Cost: Precisely 280 CHF cash reserves plus 40 Wood timber planks.\n'
                 '• Plot Location: Can be erected inside any subterranean basement brick vault under the Manor.\n'
                 '• Production Outputs: Transforms raw agricultural Barley grain harvests into Restorative Ale casks (Cost: 5 Barley per cask; instantly restores +25 Manor morale) and unlocks the recruitment of fearless pub brawler mercenary squads (Recruitment Cost: 25 CHF, 2 Ale casks).'
@@ -364,6 +366,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         'title': 'Kitchen & Scullery',
         'category': 'Room / Wing',
         'desc': 'Culinary food processing and dietary contract fulfillment wing.\n\n'
+                '• Capabilities: It serves as the heart of the estate\'s industry, where meat is butchered, ingredients refined, and hearty meals prepared for the residents.\n'
                 '• Construction Cost: Baseline scullery facility costs precisely 150 CHF plus 20 Wood planks.\n'
                 '• Plot Location: Erected inside the Manor ground-floor service wing adjacent to dining rooms.\n'
                 '• Production Outputs: Staffed by scullions and master chefs to transform raw agricultural harvests (Potatoes, Wheat, Raw Fish, Game Poultry) into standard daily resident sustenance meals (Yields precisely 3 daily caloric meals per raw Food harvest unit) and lavish aristocratic banquet dishes.'
@@ -372,6 +375,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         'title': 'Library',
         'category': 'Room / Wing',
         'desc': 'Scholarly reading room and esoteric archive wing.\n\n'
+                '• Capabilities: The repository of all your collected wisdom. Use this space to archive research, transcribe messy notes into permanent records, or simply study the great authors of the past.\n'
                 '• Construction Cost: Precisely 300 CHF cash reserves plus 50 Wood timber planks for shelving.\n'
                 '• Plot Location: Converted inside formal East Wing quiet holding chambers.\n'
                 '• Production Outputs: Staffed by hired thinkers to generate a continuous flow of +2.5 Academic Research Points per minute, unlocking Heidelberg philosophy university doctrines and deep secret society priorate charters.'
@@ -380,9 +384,88 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         'title': 'Sleeping Quarters',
         'category': 'Room / Wing',
         'desc': 'Residential staff dormitory wings.\n\n'
+                '• Capabilities: Residents assigned here will recover energy and satisfaction more effectively than on the bare floor.\n'
                 '• Construction Cost: Precisely 100 CHF cash reserves plus 15 Wood planks per bedstead tier.\n'
                 '• Plot Location: Built inside the upper floor dormitory gallery wings.\n'
                 '• Production Outputs: Provides formal lodging for hired resident staff; upgrading bedsteads increases total maximum estate population capacity by +4 formal staff members per level.'
+      },
+      {
+        'title': 'Study',
+        'category': 'Room / Wing',
+        'desc': 'Quiet personal research desk.\n\n'
+                '• Capabilities: A sanctuary for intellectual labor. Here, your character can research new technologies, write treatises, and develop their scientific understanding.'
+      },
+      {
+        'title': 'Chicken Coop',
+        'category': 'Room / Wing',
+        'desc': 'A secure, weather-tight poultry shelter.\n\n'
+                '• Capabilities: Essential for the manor\'s survival. NPCs can collect eggs, guard the flock from foxes, or butcher poultry for meat.'
+      },
+      {
+        'title': 'Field',
+        'category': 'Room / Wing',
+        'desc': 'Broad stretches of arable land, clear of stones and weeds.\n\n'
+                '• Capabilities: The primary source of sustenance. Workers can till, plant, water, and eventually harvest the crops required to feed the growing household.'
+      },
+      {
+        'title': 'Greenhouse & Garden',
+        'category': 'Room / Wing',
+        'desc': 'A plot of fertile earth under protective glass.\n\n'
+                '• Capabilities: Unlike the open fields, the greenhouse allows for year-round horticultural research and the refinement of rare botanical or fungal samples.'
+      },
+      {
+        'title': 'Distillery',
+        'category': 'Room / Wing',
+        'desc': 'A complex network of copper and glass pipes and stills.\n\n'
+                '• Capabilities: Handles the precision work of distilling fine spirits and concentrated chemical tonics.'
+      },
+      {
+        'title': 'Workshop',
+        'category': 'Room / Wing',
+        'desc': 'A place of grit and utility with a central heavy-duty workbench.\n\n'
+                '• Capabilities: The estate\'s fabrication hub. Here, timber is processed, blacksmithing is performed at the forge, and complex inventions are manufactured.'
+      },
+      {
+        'title': 'Granary',
+        'category': 'Room / Wing',
+        'desc': 'Dry, cool, and well-ventilated storage bins.\n\n'
+                '• Capabilities: Dedicated to the processing and safe storage of harvested grain, protecting it from rot and pests.'
+      },
+      {
+        'title': 'Entryway',
+        'category': 'Room / Wing',
+        'desc': 'The grand entrance of the manor estate.\n\n'
+                '• Capabilities: The public face of the manor. Used for greeting guests and as a primary defensive post if the manor is threatened.'
+      },
+      {
+        'title': 'Butler\'s Quarters',
+        'category': 'Room / Wing',
+        'desc': 'A modest but perfectly ordered space.\n\n'
+                '• Capabilities: The primary residence for your loyal butler and henchman.'
+      },
+      {
+        'title': 'Basement & Attic',
+        'category': 'Room / Wing',
+        'desc': 'Storage and residential wings.\n\n'
+                '• Capabilities: Ideal for additional resident housing or quiet storage of sensitive materials.'
+      },
+      {
+        'title': 'Dining Room',
+        'category': 'Room / Wing',
+        'desc': 'A formal banquet setting.\n\n'
+                '• Capabilities: Used for communal meals and formal dinners to build relationships and status.'
+      },
+      {
+        'title': 'Toilet',
+        'category': 'Room / Wing',
+        'desc': 'A private washroom.\n\n'
+                '• Capabilities: Essential for maintaining the hygiene and comfort of the manor\'s inhabitants.'
+      },
+      {
+        'title': 'Dental Clinic',
+        'category': 'Room / Wing',
+        'desc': 'A clinical facility featuring advanced oral tools.\n\n'
+                '• Capabilities: A dedicated dental facility where Alphonse Giles performs tooth extractions, cleanings, and advanced oral care on Glarus citizens and visiting patients.'
       },
 
       // CROPS

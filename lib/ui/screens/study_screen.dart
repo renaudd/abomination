@@ -155,8 +155,6 @@ class StudyScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildExperimentalRecipes(context, state),
-                          const SizedBox(height: 32),
                           _buildSectionTitle('SCIENCE ACTIVITIES'),
                           const SizedBox(height: 16),
                           _buildScienceActivities(context, state),
@@ -351,119 +349,7 @@ class StudyScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildExperimentalRecipes(BuildContext context, GameState state) {
-    final experimentalRecipes = KitchenService.getAvailableRecipes()
-        .where((r) => r.isExperimental)
-        .toList();
 
-    return Column(
-      children: experimentalRecipes.map((recipe) {
-        bool canCraft = true;
-        recipe.ingredients.forEach((res, amount) {
-          if ((state.resources[res] ?? 0) < amount) canCraft = false;
-        });
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-            ),
-            color: Colors.black.withValues(alpha: 0.3),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome,
-                            color: Color(0xFFC4B89B),
-                            size: 14,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              recipe.name.toUpperCase(),
-                              style: GoogleFonts.playfairDisplay(
-                                color: const Color(0xFFE5D5B0),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: recipe.ingredients.entries.map((e) {
-                          final has = (state.resources[e.key] ?? 0) >= e.value;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Text(
-                              '${_getPrettyTypeName(e.key)}: ${e.value}',
-                              style: GoogleFonts.oldStandardTt(
-                                color: has
-                                    ? const Color(0xFFC4B89B)
-                                    : Colors.red,
-                                fontSize: 9,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-                OutlinedButton(
-                  onPressed: canCraft
-                      ? () {
-                          state.addExperimentalRecipeToQueue(recipe.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${recipe.name.toUpperCase()} ENQUEUED FOR STUDY',
-                              ),
-                              backgroundColor: const Color(0xFFC4B89B),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        }
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: canCraft
-                          ? const Color(0xFFC4B89B)
-                          : Colors.white10,
-                    ),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
-                    ),
-                  ),
-                  child: Text(
-                    'STUDY & PREPARE',
-                    style: GoogleFonts.playfairDisplay(
-                      color: canCraft
-                          ? const Color(0xFFE5D5B0)
-                          : Colors.white12,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
 
   Widget _buildScienceActivities(BuildContext context, GameState state) {
     // 1. Move dissection, vivisection, puzzle, deprivation, clinical trials entirely to Laboratory.

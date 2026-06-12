@@ -236,7 +236,7 @@ void main() {
       expect(stock['simple_shovel'], 999999);
 
       // Check base buy price for simple_shovel
-      expect(gameState.marketService.getBuyPrice('simple_shovel'), 50);
+      expect(gameState.marketService.getBuyPrice('simple_shovel'), 160);
 
       // Try purchasing simple_shovel from Super Merchant
       gameState.setResource('funds', 500);
@@ -245,7 +245,7 @@ void main() {
       gameState.buyFromVisitingMerchant('super_merchant', 'simple_shovel', 1);
 
       // Verify funds were deducted and simple_shovel was added
-      expect(gameState.resources['funds'], 450.0);
+      expect(gameState.resources['funds'], 340.0);
       expect(gameState.resources['simple_shovel'], 1.0);
 
       // Verify Super Merchant stock is UNLIMITED (remains 999999)

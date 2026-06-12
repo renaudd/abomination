@@ -17,6 +17,7 @@ import 'package:abomination/state/game_state.dart';
 import 'package:abomination/services/task_service.dart';
 import 'package:abomination/models/npc_intent.dart';
 import 'package:abomination/models/game_item.dart';
+import 'package:abomination/models/objective.dart';
 
 void main() {
   group('Study & Science Mechanics', () {
@@ -146,6 +147,112 @@ void main() {
       gameState.completeTaskManually(worker.id, vivisectionTask);
 
       expect(gameState.npcs.first.satisfaction < initialSatisfaction, isTrue);
+    });
+
+    test('Objectives track dissect and vivisection progress', () {
+      gameState.setSpeed(GameSpeed.normal);
+      // Set up the first construct Step 2 and Step 3 objectives
+      gameState.clearObjectivesForTesting();
+      gameState.addObjectiveForTesting(
+        Objective(
+          id: 'first_construct_2',
+          title: 'The First Construct - Step 2',
+          description: 'Perform Small Specimen Dissection two times.',
+          type: ObjectiveType.science,
+          requirements: {
+            'task_counts': {'dissect': 2},
+          },
+          nextObjectiveId: 'first_construct_3',
+        ),
+      );
+
+      // Complete a dissection
+      final dissectTask1 = GameTask(
+        id: 'dissect_1',
+        npcId: gameState.npcs.first.id,
+        priority: IntentPriority.normal,
+        type: TaskType.dissect,
+        targetId: 'study',
+        recipeId: 'small_dissection',
+        minutesRemaining: 1,
+      );
+      // Give a specimen to the study
+      gameState.addItemToRoom('study', GameItem.create(
+        name: 'Dead Rat',
+        type: 'rat_specimen',
+        category: ItemCategory.specimen,
+        quantity: 1,
+      ));
+      gameState.completeTaskManually(gameState.npcs.first.id, dissectTask1);
+      gameState.tick();
+
+      // Verify the task count is 1
+      expect(gameState.taskCompletionCounts[TaskType.dissect], equals(1));
+      expect(gameState.objectives.firstWhere((o) => o.id == 'first_construct_2').isCompleted, isFalse);
+
+      // Complete second dissection
+      gameState.addItemToRoom('study', GameItem.create(
+        name: 'Dead Rat 2',
+        type: 'rat_specimen',
+        category: ItemCategory.specimen,
+        quantity: 1,
+      ));
+      final dissectTask2 = GameTask(
+        id: 'dissect_2',
+        npcId: gameState.npcs.first.id,
+        priority: IntentPriority.normal,
+        type: TaskType.dissect,
+        targetId: 'study',
+        recipeId: 'small_dissection',
+        minutesRemaining: 1,
+      );
+      gameState.completeTaskManually(gameState.npcs.first.id, dissectTask2);
+      gameState.tick();
+
+      // Verify objective 2 completes and objective 3 (vivisection) is unlocked
+      expect(gameState.taskCompletionCounts[TaskType.dissect], equals(2));
+      expect(gameState.objectives.firstWhere((o) => o.id == 'first_construct_2').isCompleted, isTrue);
+      expect(gameState.objectives.any((o) => o.id == 'first_construct_3'), isTrue);
+
+      // Complete vivisections for Step 3
+      final obj3 = gameState.objectives.firstWhere((o) => o.id == 'first_construct_3');
+      expect(obj3.description, equals('Perform Small Specimen Vivisection two times.'));
+
+      gameState.addItemToRoom('study', GameItem.create(
+        name: 'Live Rat 1',
+        type: 'rat_specimen',
+        category: ItemCategory.specimen,
+        quantity: 2,
+      ));
+      final vivTask1 = GameTask(
+        id: 'viv_1',
+        npcId: gameState.npcs.first.id,
+        priority: IntentPriority.normal,
+        type: TaskType.vivisection,
+        targetId: 'study',
+        recipeId: 'small_vivisection',
+        minutesRemaining: 1,
+      );
+      gameState.completeTaskManually(gameState.npcs.first.id, vivTask1);
+      gameState.tick();
+
+      expect(gameState.taskCompletionCounts[TaskType.vivisection], equals(1));
+      expect(obj3.isCompleted, isFalse);
+
+      final vivTask2 = GameTask(
+        id: 'viv_2',
+        npcId: gameState.npcs.first.id,
+        priority: IntentPriority.normal,
+        type: TaskType.vivisection,
+        targetId: 'study',
+        recipeId: 'small_vivisection',
+        minutesRemaining: 1,
+      );
+      gameState.completeTaskManually(gameState.npcs.first.id, vivTask2);
+      gameState.tick();
+
+      expect(gameState.taskCompletionCounts[TaskType.vivisection], equals(2));
+      expect(obj3.isCompleted, isTrue);
     });
   });
 }

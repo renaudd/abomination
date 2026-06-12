@@ -590,20 +590,46 @@ class Room {
   }
 
   String get detailedDescription {
-    String hygieneNote = "";
     if (isRestored) {
+      String hygieneNote = "";
       if (dirtiness > 0.8) {
         hygieneNote =
-            "\n\nCRITICAL: The room is FILTHY and needs immediate cleaning.";
+            "CRITICAL: The room is FILTHY and needs immediate cleaning.";
       } else if (dirtiness > 0.4) {
         hygieneNote =
-            "\n\nWARNING: The surfaces are covered in a noticeable layer of grime.";
+            "WARNING: The surfaces are covered in a noticeable layer of grime.";
       } else if (dirtiness > 0.1) {
-        hygieneNote = "\n\nNOTE: It's starting to look a bit dusty.";
+        hygieneNote = "NOTE: It's starting to look a bit dusty.";
       }
+      return hygieneNote;
     }
 
     if (!isRestored) {
+      if (name == 'Excavation Node') {
+        final node = ManorLayout.grid[id];
+        final depth = node?.$2.abs() ?? 1;
+        String tool = 'Simple Shovel';
+        String miningLvl = 'None (Level 0)';
+        String costs = '2000 Funds, 500 Wood, 200 Bricks';
+        if (depth == 2) {
+          tool = 'Iron Pickaxe';
+          miningLvl = 'Adept (Level 2)';
+          costs = '4000 Funds, 1000 Wood, 500 Bricks, 100 Iron Ore';
+        } else if (depth == 3) {
+          tool = 'Steel Pickaxe';
+          miningLvl = 'Professional (Level 5)';
+          costs = '8000 Funds, 2000 Wood, 1000 Bricks, 300 Iron Ore';
+        } else if (depth == 4) {
+          tool = 'Pneumatic Drill';
+          miningLvl = 'Expert (Level 8)';
+          costs = '16000 Funds, 4000 Wood, 2000 Bricks, 500 Iron Ore';
+        }
+        return 'A blocked subterranean space waiting to be cleared.\n\n'
+               'EXCAVATION REQUIREMENTS:\n'
+               '• Required Tool: $tool\n'
+               '• Required Expertise: Mining ($miningLvl)\n'
+               '• Clearing Costs: $costs';
+      }
       if (type == RoomType.unused) {
         if (isInsideManor) {
           return "A hollow, dusty space within the manor walls. It awaits a purpose and the materials for its configuration. Once restored, it can be assigned as a specialized workshop or storage area.";
@@ -732,7 +758,7 @@ class Room {
         break;
     }
 
-    return "$baseDesc $capabilities$hygieneNote";
+    return baseDesc;
   }
 
   task_service.TaskType? get defaultAction {

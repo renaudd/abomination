@@ -21,6 +21,7 @@ import '../../state/game_state.dart';
 import '../../models/room.dart';
 import '../../services/task_service.dart';
 import '../../services/science_service.dart';
+import '../../util/manor_layout.dart';
 import '../../services/kitchen_service.dart';
 import '../../services/save_service.dart';
 import '../../models/game_item.dart';
@@ -236,7 +237,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
           barrierDismissible: false,
           builder: (context) => Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -245,10 +246,10 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                  Container(
                   width: double.infinity,
                   constraints: BoxConstraints(
-                    maxWidth: 400,
-                    maxHeight: MediaQuery.of(context).size.height - 48,
+                    maxWidth: 420,
+                    maxHeight: MediaQuery.of(context).size.height - 24,
                   ),
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1A1612),
                     borderRadius: BorderRadius.circular(16),
@@ -261,60 +262,66 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 48),
-                        const SizedBox(height: 12),
+                        const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 36),
+                        const SizedBox(height: 8),
                         Text(
                           "VICTORIAN SCIENTIFIC BREAKTHROUGH",
                           style: GoogleFonts.oswald(
                             color: const Color(0xFFC4B89B),
-                            fontSize: 12,
-                            letterSpacing: 3,
+                            fontSize: 11,
+                            letterSpacing: 2,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           notif['title'] ?? '',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.playfairDisplay(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         if (notif['image'] != null && notif['image']!.isNotEmpty) ...[
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.asset(
                               notif['image']!,
-                              height: 200,
-                              width: 200,
+                              height: 150,
+                              width: 150,
                               fit: BoxFit.cover,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                         ],
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
-                          child: Text(
+                          child: _buildNotificationMessage(
                             notif['message'] ?? '',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.oldStandardTt(
+                            GoogleFonts.oldStandardTt(
                               color: Colors.white70,
-                              fontSize: 14,
-                              height: 1.4,
+                              fontSize: 13,
+                              height: 1.3,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        if (notif['title'] == 'Undead Bat' || notif['title'] == 'Undead Rat') ...[
+                          const SizedBox(height: 12),
+                          _buildUnitCollectionProgress(
+                            notif['title'] == 'Undead Bat' ? state.reanimatedBatsCount : state.reanimatedRatsCount,
+                            4,
+                          ),
+                        ],
+                        const SizedBox(height: 18),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF2E1A0A),
                               side: const BorderSide(color: Color(0xFFE5D5B0)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                             onPressed: () {
@@ -325,7 +332,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                               "EXCELLENT",
                               style: GoogleFonts.playfairDisplay(
                                 color: const Color(0xFFE5D5B0),
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 2,
                               ),
@@ -336,12 +343,118 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                     ),
                   ),
                 ),
-          ],
-        ),
-      ),
+              ],
+            ),
+          ),
         );
       });
     }
+  }
+
+  Widget _buildNotificationMessage(String text, TextStyle baseStyle) {
+    final List<TextSpan> spans = [];
+    final RegExp exp = RegExp(r'\*\*(.*?)\*\*');
+    int start = 0;
+    for (final match in exp.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start)));
+      }
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE5D5B0)),
+      ));
+      start = match.end;
+    }
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start)));
+    }
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: baseStyle,
+        children: spans,
+      ),
+    );
+  }
+
+  Widget _buildUnitCollectionProgress(int current, int target) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF251F1A),
+        border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "CONSTRUCT CREATION PROGRESS",
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              Text(
+                "$current / $target COLLECTED",
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(target, (index) {
+              final isAchieved = index < current;
+              return Expanded(
+                child: Container(
+                  height: 10,
+                  margin: EdgeInsets.symmetric(horizontal: index == 0 || index == target - 1 ? 0 : 4),
+                  decoration: BoxDecoration(
+                    color: isAchieved ? const Color(0xFFC4B89B) : Colors.black45,
+                    border: Border.all(
+                      color: isAchieved
+                          ? const Color(0xFFE5D5B0)
+                          : const Color(0xFFC4B89B).withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: isAchieved
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
+                              blurRadius: 4,
+                            )
+                          ]
+                        : null,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            current >= target
+                ? "Construct Unit Complete! The squadron is ready for battle."
+                : "Needs ${target - current} more to form a complete combat unit and unlock the unit card.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              color: Colors.white60,
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   bool _tutorialCameraGuided = false;
@@ -963,15 +1076,17 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                   ),
                 );
               }),
-              const SizedBox(height: 6),
-              Text(
-                liveRoom.description,
-                style: GoogleFonts.oldStandardTt(
-                  fontSize: 12,
-                  color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
-                  height: 1.3,
+              if (liveRoom.detailedDescription.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  liveRoom.detailedDescription,
+                  style: GoogleFonts.oldStandardTt(
+                    fontSize: 12,
+                    color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
+                    height: 1.3,
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 10),
 
               // Interactive Room Actions (Restored Status)
@@ -1136,6 +1251,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                 _buildFieldStatus(context, state, liveRoom),
               ...liveRoom.availableTasks
                   .where((taskType) {
+                    if (taskType == TaskType.excavate) return true;
                     // Only show available tasks.
                     bool isAvail = _isTaskAvailable(
                       state,
@@ -1145,18 +1261,25 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                     return isAvail;
                   })
                   .map((taskType) {
+                    bool isGreyed = false;
+                    if (taskType == TaskType.excavate) {
+                      isGreyed = !_isTaskAvailable(state, liveRoom, taskType);
+                    }
                     return Padding(
                       padding: const EdgeInsets.only(top: 2.0),
                       child: _assignmentButton(
                         context,
                         state,
                         taskType,
-                        () => _handleTaskInteraction(
-                          context,
-                          state,
-                          liveRoom,
-                          taskType,
-                        ),
+                        isGreyed
+                            ? null
+                            : () => _handleTaskInteraction(
+                                  context,
+                                  state,
+                                  liveRoom,
+                                  taskType,
+                                ),
+                        isGreyed: isGreyed,
                         room: liveRoom,
                       ),
                     );
@@ -1587,9 +1710,11 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     if (room.type == RoomType.garden) return false;
 
     final metadata = TaskService.getMetadata(type);
-    for (var entry in metadata.requirements.entries) {
-      if ((state.resources[entry.key] ?? 0) < entry.value) {
-        return false;
+    if (type != TaskType.excavate) {
+      for (var entry in metadata.requirements.entries) {
+        if ((state.resources[entry.key] ?? 0) < entry.value) {
+          return false;
+        }
       }
     }
 
@@ -1611,6 +1736,53 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     }
 
     switch (type) {
+      case TaskType.excavate:
+        final node = ManorLayout.grid[room.id];
+        if (node != null) {
+          final depth = node.$2.abs();
+          String? requiredTool;
+          if (depth == 1) {
+            requiredTool = 'simple_shovel';
+          } else if (depth == 2) {
+            requiredTool = 'iron_pickaxe';
+          } else if (depth == 3) {
+            requiredTool = 'steel_pickaxe';
+          } else if (depth == 4) {
+            requiredTool = 'pneumatic_drill';
+          }
+          if (requiredTool != null && !state.hasItemInManor(requiredTool)) {
+            return false;
+          }
+
+          final Map<String, num> reqs = {};
+          if (depth == 1) {
+            reqs['funds'] = 2000;
+            reqs['wood'] = 500;
+            reqs['bricks'] = 200;
+          } else if (depth == 2) {
+            reqs['funds'] = 4000;
+            reqs['wood'] = 1000;
+            reqs['bricks'] = 500;
+            reqs['iron_ore'] = 100;
+          } else if (depth == 3) {
+            reqs['funds'] = 8000;
+            reqs['wood'] = 2000;
+            reqs['bricks'] = 1000;
+            reqs['iron_ore'] = 300;
+          } else if (depth == 4) {
+            reqs['funds'] = 16000;
+            reqs['wood'] = 4000;
+            reqs['bricks'] = 2000;
+            reqs['iron_ore'] = 500;
+          }
+
+          for (var entry in reqs.entries) {
+            if ((state.resources[entry.key] ?? 0) < entry.value) {
+              return false;
+            }
+          }
+        }
+        return true;
       case TaskType.cleanRoom:
         return room.dirtiness > 0.1;
       case TaskType.cleanDish:

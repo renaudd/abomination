@@ -24,6 +24,7 @@ import '../widgets/room_ledger.dart';
 import '../widgets/discoveries_content.dart';
 import '../widgets/agreements_content.dart';
 import '../widgets/business_records_content.dart';
+import '../widgets/forces_content.dart';
 
 class RecordsScreen extends StatelessWidget {
   const RecordsScreen({super.key});
@@ -34,7 +35,7 @@ class RecordsScreen extends StatelessWidget {
     final activeBiz = state.activeBusinesses.where((b) => b.status == 'active').toList();
 
     return DefaultTabController(
-      length: 8 + activeBiz.length,
+      length: 9 + activeBiz.length,
       child: Scaffold(
         backgroundColor: const Color(0xFF1A1612),
         appBar: AppBar(
@@ -61,6 +62,7 @@ class RecordsScreen extends StatelessWidget {
               const Tab(text: "DOSSIERS"),
               const Tab(text: "HOLDINGS"),
               const Tab(text: "DISCOVERIES"),
+              const Tab(text: "FORCES"),
               const Tab(text: "AGREEMENTS"),
               ...activeBiz.map((b) => Tab(text: b.name.toUpperCase())),
             ],
@@ -82,7 +84,9 @@ class RecordsScreen extends StatelessWidget {
             _buildManorHoldingsTab(context),
             // 7. Discoveries
             _buildDiscoveriesTab(context),
-            // 8. Agreements
+            // 8. Forces & Constructs
+            const ForcesContentTab(),
+            // 9. Agreements
             _buildAgreementsTab(context),
             // Dynamic Business records
             ...activeBiz.map((b) => BusinessRecordsContent(business: b)),

@@ -78,21 +78,7 @@ class DiscoveriesContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader('FORCES & CONSTRUCTS'),
-                    const SizedBox(height: 16),
-                    if (state.npcs.where((n) => n.status == NPCStatus.zombie).isEmpty)
-                      Text(
-                        'NO COMBAT UNITS AVAILABLE.',
-                        style: GoogleFonts.oldStandardTt(
-                          color: Colors.white12,
-                          fontSize: 12,
-                        ),
-                      )
-                    else
-                      ...state.npcs
-                          .where((n) => n.status == NPCStatus.zombie)
-                          .map((n) => _buildForceItem(n)),
-                    const SizedBox(height: 24),
+
                     _buildResearchStanding(state),
                   ],
                 ),

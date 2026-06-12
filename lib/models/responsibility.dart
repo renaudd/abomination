@@ -155,8 +155,20 @@ class TaskCategoryMapping {
   }
 
   static List<TaskType> getTasksForCategory(ResponsibilityCategory category) {
-    return TaskType.values
+    final list = TaskType.values
         .where((type) => getCategory(type) == category)
         .toList();
+    if (category == ResponsibilityCategory.farming) {
+      final prioritised = [TaskType.waterCrops, TaskType.careForCrops];
+      list.sort((a, b) {
+        final aIdx = prioritised.indexOf(a);
+        final bIdx = prioritised.indexOf(b);
+        if (aIdx != -1 && bIdx != -1) return aIdx.compareTo(bIdx);
+        if (aIdx != -1) return -1;
+        if (bIdx != -1) return 1;
+        return a.index.compareTo(b.index);
+      });
+    }
+    return list;
   }
 }

@@ -214,6 +214,10 @@ class GameState extends ChangeNotifier {
 
   void clearPendingMobileNotification() {
     _pendingMobileNotification = null;
+    if (_speedBeforePause != null) {
+      setSpeed(_speedBeforePause!);
+      _speedBeforePause = null;
+    }
     notifyListeners();
   }
 
@@ -224,6 +228,8 @@ class GameState extends ChangeNotifier {
       'message': message,
       'image': imagePath ?? '',
     };
+    _speedBeforePause = _speed;
+    setSpeed(GameSpeed.paused);
     notifyListeners();
   }
 
@@ -533,6 +539,10 @@ class GameState extends ChangeNotifier {
 
   void dismissChapter2Modal() {
     _showChapter2Modal = false;
+    if (_speedBeforePause != null) {
+      setSpeed(_speedBeforePause!);
+      _speedBeforePause = null;
+    }
     notifyListeners();
   }
 
@@ -831,6 +841,7 @@ class GameState extends ChangeNotifier {
     'crops': _crops.map((c) => c.toJson()).toList(),
     'gardenPlants': _gardenPlants.map((p) => p.toJson()).toList(),
     'customTaskCounts': _customTaskCounts,
+    'taskCompletionCounts': _taskCompletionCounts.map((k, v) => MapEntry(k.name, v)),
     'butlerDisposition': _butlerDisposition.index,
     'crises': _crises.map((c) => c.toJson()).toList(),
     'pendingCombatEncounter': _pendingCombatEncounter,
@@ -1133,6 +1144,16 @@ class GameState extends ChangeNotifier {
     final customTaskC = json['customTaskCounts'] as Map<String, dynamic>? ?? {};
     customTaskC.forEach((k, v) => _customTaskCounts[k] = (v as num).toInt());
 
+    _taskCompletionCounts.clear();
+    if (json['taskCompletionCounts'] != null) {
+      (json['taskCompletionCounts'] as Map<String, dynamic>).forEach((k, v) {
+        final t = TaskType.values.firstWhereOrNull((val) => val.name == k);
+        if (t != null) {
+          _taskCompletionCounts[t] = v as int;
+        }
+      });
+    }
+
     _chickens.clear();
     _chickens.addAll(
       (json['chickens'] as List).map((c) => Chicken.fromJson(c)).toList(),
@@ -1232,19 +1253,21 @@ class GameState extends ChangeNotifier {
         });
       }
     } else {
-      // 1. All rats and bats Giles has caught or standard specimen items in inventory
-      for (var item in inventory.where(
-        (i) => i.category == ItemCategory.specimen && !i.isReserved,
-      )) {
-        targets.add({
-          'id': item.id,
-          'name': item.name,
-          'type': 'item',
-          'vitality': 100,
-        });
+      // 1. All rats and bats Giles has caught or standard specimen items in inventory (only for small specimens)
+      if (type == 'specimen') {
+        for (var item in inventory.where(
+          (i) => i.category == ItemCategory.specimen && !i.isReserved,
+        )) {
+          targets.add({
+            'id': item.id,
+            'name': item.name,
+            'type': 'item',
+            'vitality': 100,
+          });
+        }
       }
 
-      // 2. All manor residents, servants, and dedicated specimens (other than the main player)
+      // 2. NPCs (Large specimens like residents/servants vs small NPC specimens)
       for (var npc in _npcs.where(
         (n) =>
             !n.isPlayer &&
@@ -1255,6 +1278,13 @@ class GameState extends ChangeNotifier {
                 n.role == 'Servant' ||
                 n.specimenType.isNotEmpty),
       )) {
+        final bool isLarge = npc.isResident || npc.role == 'Servant' || npc.specimenType.toLowerCase() == 'human';
+        if (type == 'specimen' && isLarge) {
+          continue;
+        }
+        if (type == 'large_specimen' && !isLarge) {
+          continue;
+        }
         targets.add({
           'id': npc.id,
           'name': '${npc.name} (${npc.role})',
@@ -1263,14 +1293,16 @@ class GameState extends ChangeNotifier {
         });
       }
 
-      // 3. The chickens in the chicken coop
-      for (var chicken in _chickens.where((c) => c.hunger < 100)) {
-        targets.add({
-          'id': chicken.id,
-          'name': 'Chicken (${chicken.breed.name})',
-          'type': 'chicken',
-          'vitality': (100 - chicken.hunger).round(),
-        });
+      // 3. The chickens in the chicken coop (only for small specimens)
+      if (type == 'specimen') {
+        for (var chicken in _chickens.where((c) => c.hunger < 100)) {
+          targets.add({
+            'id': chicken.id,
+            'name': 'Chicken (${chicken.breed.name})',
+            'type': 'chicken',
+            'vitality': (100 - chicken.hunger).round(),
+          });
+        }
       }
     }
 
@@ -1456,6 +1488,9 @@ class GameState extends ChangeNotifier {
   List<String> get researchQueue => List.unmodifiable(_researchQueue);
   List<String> get laboratoryQueue => List.unmodifiable(_laboratoryQueue);
   List<String> get performedExperiments => List.unmodifiable(_performedExperiments);
+  Map<TaskType, int> get taskCompletionCounts => Map.unmodifiable(_taskCompletionCounts);
+  Map<String, int> get customTaskCounts => Map.unmodifiable(_customTaskCounts);
+  Map<String, double> get researchPoints => Map.unmodifiable(_researchPoints);
 
   bool isLaboratoryActivity(String activityId) {
     return activityId.contains('dissection') ||
@@ -1797,13 +1832,7 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _consumeScienceIngredients(Map<String, num> ingredients) {
-    ingredients.forEach((ing, count) {
-      for (int i = 0; i < count; i++) {
-        _consumeSingleItem(ing);
-      }
-    });
-  }
+
 
   bool _consumeSingleItem(String typeOrCategory) {
     for (int rIndex = 0; rIndex < _rooms.length; rIndex++) {
@@ -5484,6 +5513,22 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _advanceToChapter2() {
+    if (_activeChapter == 1) {
+      _activeChapter = 2;
+      _showChapter2Modal = true;
+      _speedBeforePause = _speed;
+      setSpeed(GameSpeed.paused);
+      _lastAnnouncement = "CHAPTER 2: THE EXPANDING DOMAIN UNLOCKED!";
+      _announcementHistory.insert(
+        0,
+        "[${_currentDate.formattedTime}] CHAPTER 2: The Modern Prometheus Unlocked.",
+      );
+      _objectives.addAll(_getChapter2Objectives());
+      notifyListeners();
+    }
+  }
+
   List<Objective> _getChapter2Objectives() {
     return [
       Objective(
@@ -5774,7 +5819,7 @@ class GameState extends ChangeNotifier {
               id: 'first_construct_2',
               title: 'The First Construct - Step 2',
               description:
-                  'Perform Dissection (using a small creature) two times.',
+                  'Perform Small Specimen Dissection two times.',
               type: ObjectiveType.science,
               requirements: {
                 'task_counts': {'dissect': 2},
@@ -5788,7 +5833,7 @@ class GameState extends ChangeNotifier {
               id: 'first_construct_3',
               title: 'The First Construct - Step 3',
               description:
-                  'Perform Vivisection (using a small creature) two times.',
+                  'Perform Small Specimen Vivisection two times.',
               type: ObjectiveType.science,
               requirements: {
                 'task_counts': {'vivisection': 2},
@@ -5815,16 +5860,7 @@ class GameState extends ChangeNotifier {
             ),
           );
         } else if (objective.id == 'first_construct_4') {
-          if (_activeChapter == 1) {
-            _activeChapter = 2;
-            _showChapter2Modal = true;
-            _lastAnnouncement = "CHAPTER 2: THE EXPANDING DOMAIN UNLOCKED!";
-            _announcementHistory.insert(
-              0,
-              "[${_currentDate.formattedTime}] CHAPTER 2: The Modern Prometheus Unlocked.",
-            );
-            _objectives.addAll(_getChapter2Objectives());
-          }
+          _advanceToChapter2();
         } else if (objective.id == 'build_laboratory') {
           updateResource('funds', 200);
           _lastAnnouncement =
@@ -5971,6 +6007,12 @@ class GameState extends ChangeNotifier {
           0,
           "[${_currentDate.formattedTime}] SCIENCE: ${discovery.name} unlocked.",
         );
+        if (discovery.id == 'basic_reanimation') {
+          _triggerMobileFireworksNotification(
+            "GALVANIC REANIMATION UNLOCKED",
+            "You have discovered the master principles of galvanic life! You can now perform Reanimation procedures in the Laboratory.",
+          );
+        }
       }
     }
     if (changed) notifyListeners();
@@ -6539,7 +6581,8 @@ class GameState extends ChangeNotifier {
         for (int j = 0; j < newInv.length; j++) {
           final item = newInv[j];
           if (item.category == ItemCategory.food ||
-              item.category == ItemCategory.resource) {
+              item.category == ItemCategory.specimen ||
+              item.category == ItemCategory.corpse) {
             if (item.creationDate != null &&
                 item.metadata['spoilWarned'] != true) {
               double shelfLifeDays =
@@ -6586,8 +6629,9 @@ class GameState extends ChangeNotifier {
                   "[${_currentDate.formattedTime}] LIFE: A new chick has hatched from an egg in the coop!";
               return true; // remove the egg item
             }
-          } else if (item.category == ItemCategory.resource ||
-              item.category == ItemCategory.food) {
+          } else if (item.category == ItemCategory.food ||
+              item.category == ItemCategory.specimen ||
+              item.category == ItemCategory.corpse) {
             if (item.creationDate != null) {
               double shelfLifeDays =
                   (item.metadata['shelfLifeDays'] as num? ?? 10).toDouble();
@@ -7981,13 +8025,7 @@ class GameState extends ChangeNotifier {
         consumedDishes: newHistory,
       );
     } else if (task.type == TaskType.plantCrops) {
-      CropType type = CropType.cabbage;
-      if (task.recipeId != null) {
-        try {
-          type = CropType.values.firstWhere((e) => e.name == task.recipeId);
-        } catch (_) {}
-      }
-      plantCrops(type, task.targetId ?? 'vegetable_garden');
+      // Crop was already planted and seeds deducted at task assignment.
     } else if (task.type == TaskType.waterCrops) {
       if (task.targetId != null) waterCrops(task.targetId!);
     } else if (task.type == TaskType.careForCrops) {
@@ -8922,11 +8960,14 @@ class GameState extends ChangeNotifier {
       _checkDiscoveries();
     }
 
-    if (task.type == TaskType.experiment ||
-        task.type == TaskType.operation ||
-        task.type == TaskType.research ||
-        task.type == TaskType.study) {
-      final matchId = task.recipeId ?? task.targetName ?? '';
+    final matchId = task.recipeId ?? task.targetName ?? '';
+    final bool isReanimation = matchId.toLowerCase().contains('reanimation');
+
+    if ((task.type == TaskType.experiment ||
+            task.type == TaskType.operation ||
+            task.type == TaskType.research ||
+            task.type == TaskType.study) &&
+        isReanimation) {
       final firstReservedId = task.reservedEntityIds.firstOrNull;
 
       NPC? specimenNpc;
@@ -9003,7 +9044,7 @@ class GameState extends ChangeNotifier {
         if (_reanimatedRatsCount == 1) {
           _triggerMobileFireworksNotification(
             "Undead Rat",
-            "Congratulations! You have reanimated a rat. This creature is mostly loyal, virtually indestructible, and does not require any food. Undead rats can be sold (if you can find an interested buyer). Once you have collected four undead rats they will form a combat unit of Undead Rats that can be used in your army.\n\n"
+            "Congratulations! You have reanimated a rat. This creature is mostly loyal, virtually indestructible, and does not require any food. Undead rats can be sold (if you can find an interested buyer). **Once you have collected four undead rats they will form a combat unit of Undead Rats that can be used in your army.**\n\n"
             "[Undead Rats Combat Unit Card]\n"
             "• Unit Type: Swarm (4 Rats)\n"
             "• Deployment Cost: 3\n"
@@ -9028,9 +9069,32 @@ class GameState extends ChangeNotifier {
               lastEscortIds: [...p.lastEscortIds, newSquad.id],
             );
           }
+          if (!_unlockedCombatCards.contains('undead_rats')) {
+            _unlockedCombatCards.add('undead_rats');
+          }
+          ArenaSaveService.loadProgress(1).then((progress) {
+            if (progress != null) {
+              if (progress.campaign != null &&
+                  !progress.campaign!.playerDeckIds.contains('undead_rats')) {
+                progress.campaign!.playerDeckIds.add('undead_rats');
+              }
+              if (progress.survival != null &&
+                  !progress.survival!.playerDeckIds.contains('undead_rats')) {
+                progress.survival!.playerDeckIds.add('undead_rats');
+              }
+              ArenaSaveService.saveProgress(progress);
+            }
+          });
+          _triggerMobileFireworksNotification(
+            "Undead Rats Squad",
+            "By collecting four undead rats, you have created a permanent Undead Rats combat unit card that has entered your standing army available for your deck!",
+            imagePath: "assets/images/undead_rat.png",
+          );
         }
-        if (!_performedExperiments.contains('reanimation'))
+        if (!_performedExperiments.contains('reanimation')) {
           _performedExperiments.add('reanimation');
+          _advanceToChapter2();
+        }
         _researchQueue.removeWhere(
           (q) =>
               q == 'reanimation_rat' ||
@@ -9050,7 +9114,7 @@ class GameState extends ChangeNotifier {
         if (_reanimatedBatsCount == 1) {
           _triggerMobileFireworksNotification(
             "Undead Bat",
-            "Congratulations! You have reanimated a bat. This creature is agile, virtually indestructible, and does not require any food. Undead bats can be sold. Once you have collected four undead bats they will form a combat unit of Undead Bats that can be used in your army.\n\n"
+            "Congratulations! You have reanimated a bat. This creature is agile, virtually indestructible, and does not require any food. Undead bats can be sold. **Once you have collected four undead bats they will form a combat unit of Undead Bats that can be used in your army.**\n\n"
             "[Undead Bats Combat Unit Card]\n"
             "• Unit Type: Swarm (4 Bats)\n"
             "• Deployment Cost: 3\n"
@@ -9075,9 +9139,32 @@ class GameState extends ChangeNotifier {
               lastEscortIds: [...p.lastEscortIds, newSquad.id],
             );
           }
+          if (!_unlockedCombatCards.contains('undead_bats')) {
+            _unlockedCombatCards.add('undead_bats');
+          }
+          ArenaSaveService.loadProgress(1).then((progress) {
+            if (progress != null) {
+              if (progress.campaign != null &&
+                  !progress.campaign!.playerDeckIds.contains('undead_bats')) {
+                progress.campaign!.playerDeckIds.add('undead_bats');
+              }
+              if (progress.survival != null &&
+                  !progress.survival!.playerDeckIds.contains('undead_bats')) {
+                progress.survival!.playerDeckIds.add('undead_bats');
+              }
+              ArenaSaveService.saveProgress(progress);
+            }
+          });
+          _triggerMobileFireworksNotification(
+            "Undead Bats Squad",
+            "By collecting four undead bats, you have created a permanent Undead Bats combat unit card that has entered your standing army available for your deck!",
+            imagePath: "assets/images/undead_bat.png",
+          );
         }
-        if (!_performedExperiments.contains('reanimation'))
+        if (!_performedExperiments.contains('reanimation')) {
           _performedExperiments.add('reanimation');
+          _advanceToChapter2();
+        }
         _researchQueue.removeWhere(
           (q) =>
               q == 'reanimation_bat' ||
@@ -9153,8 +9240,10 @@ class GameState extends ChangeNotifier {
             );
           }
         }
-        if (!_performedExperiments.contains('reanimation'))
+        if (!_performedExperiments.contains('reanimation')) {
           _performedExperiments.add('reanimation');
+          _advanceToChapter2();
+        }
         _researchQueue.removeWhere(
           (q) =>
               q.contains('reanimation_human') ||
@@ -9173,6 +9262,7 @@ class GameState extends ChangeNotifier {
         }
         if (!_performedExperiments.contains('reanimation')) {
           _performedExperiments.add('reanimation');
+          _advanceToChapter2();
         }
         _researchQueue.removeWhere(
           (q) =>
@@ -9836,6 +9926,7 @@ class GameState extends ChangeNotifier {
         }
       }
     }
+    _checkObjectives();
   }
 
   void _checkForCreatures(NPC worker, Room r) {
@@ -10164,6 +10255,19 @@ class GameState extends ChangeNotifier {
       }
     }
 
+    if (type == TaskType.plantCrops) {
+      CropType cropType = CropType.cabbage;
+      if (recipeId != null) {
+        try {
+          cropType = CropType.values.firstWhere((e) => e.name == recipeId);
+        } catch (_) {}
+      }
+      final bool plantOk = plantCrops(cropType, targetId ?? 'vegetable_garden');
+      if (!plantOk) {
+        return false;
+      }
+    }
+
     if (type == TaskType.mining && targetId != null) {
       final room = _rooms.firstWhereOrNull((r) => r.id == targetId);
       if (room == null) return false;
@@ -10447,7 +10551,6 @@ class GameState extends ChangeNotifier {
               assignedType = activity.type;
               assignedRecipeId = rawActivityId;
               duration = activity.baseDurationMinutes;
-              _consumeScienceIngredients(activity.ingredients);
             }
           } else if (qId.startsWith('recipe:')) {
             final recipe = KitchenService.getAvailableRecipes().firstWhere(
@@ -10534,7 +10637,6 @@ class GameState extends ChangeNotifier {
               assignedType = activity.type;
               assignedRecipeId = cleanActivityId;
               duration = activity.baseDurationMinutes;
-              _consumeScienceIngredients(activity.ingredients);
             }
           } else {
             assignedType = TaskType.experiment;
@@ -12988,6 +13090,23 @@ class GameState extends ChangeNotifier {
       }
       if (assignedNormal) return;
 
+      // Evaluate Low Priority Manual Work Queue
+      final lowPriQueue = npc.intentQueue
+          .where((i) =>
+              i.priority == IntentPriority.low &&
+              !i.id.startsWith('sched_leisure') &&
+              !i.id.startsWith('artwork') &&
+              TaskCategoryMapping.getCategory(i.action) != null)
+          .toList();
+      bool assignedLowPri = false;
+      for (var intent in lowPriQueue) {
+        if (tryAssign(intent)) {
+          assignedLowPri = true;
+          break;
+        }
+      }
+      if (assignedLowPri) return;
+
       // Evaluate Low Priority Responsibilities
       final validCategories =
           npc.responsibilities.entries.where((e) => e.value > 0).toList()
@@ -13374,21 +13493,19 @@ class GameState extends ChangeNotifier {
         }
         return hasSeeds ? tilledFields.first.id : null;
       case TaskType.waterCrops:
-        bool needsWater = _crops.any((c) => c.moistureLevel < 0.40);
-        return needsWater
-            ? 'vegetable_garden'
-            : null; // Default to garden for now
+        final dryCrop = _crops.firstWhereOrNull((c) => c.moistureLevel < 0.40);
+        return dryCrop?.roomId;
       case TaskType.careForCrops:
-        bool needsCare = _crops.any(
+        final neglectedCrop = _crops.firstWhereOrNull(
           (c) =>
               c.lastCaredForAt == null ||
               DateTime.now().difference(c.lastCaredForAt!).inHours > 12,
         );
-        return needsCare ? 'vegetable_garden' : null;
+        return neglectedCrop?.roomId;
       case TaskType.harvestCabbage:
       case TaskType.harvestCrops:
-        final mature = _crops.any((c) => c.isHarvestable);
-        return mature ? 'vegetable_garden' : null;
+        final mature = _crops.firstWhereOrNull((c) => c.isHarvestable);
+        return mature?.roomId;
       case TaskType.research:
         return _researchQueue.isNotEmpty ? 'study' : null;
       case TaskType.study:
@@ -13758,66 +13875,7 @@ class GameState extends ChangeNotifier {
           worker = _npcs[npcIndex];
         }
 
-        // Master Scientific Milestone Progression Network
-        if (activity.type == TaskType.dissect) {
-          _dissectionsPerformed++;
-          if (_dissectionsPerformed == 1) {
-            _unlockedLabActivities.add('small_vivisection');
-            _unlockedLabActivities.add('large_vivisection');
-            _triggerMobileFireworksNotification(
-              "VIVISECTION UNLOCKED",
-              "By dissecting deceased tissue, you have discovered how to perform biological vivisection on living subjects!",
-            );
-          }
-        } else if (activity.type == TaskType.vivisection) {
-          _vivisectionsPerformed++;
-          if (_vivisectionsPerformed == 3) {
-            _unlockedLabActivities.add('deprivation_study');
-            _triggerMobileFireworksNotification(
-              "DEPRIVATION STUDY UNLOCKED",
-              "Your profound vivisection studies have revealed how to conduct rigorous sensory and nutritional deprivation experiments!",
-            );
-          }
-        } else if (activity.type == TaskType.puzzleStudy) {
-          _puzzleStudiesPerformed++;
-          if (_puzzleStudiesPerformed == 2 &&
-              !_unlockedLabActivities.contains('behavioral_optimization')) {
-            _unlockedLabActivities.add('behavioral_optimization');
-            _triggerMobileFireworksNotification(
-              "BEHAVIORAL OPTIMIZATION UNLOCKED",
-              "Your extensive cognitive puzzle studies enable master behavioral optimization experiments!",
-            );
-          }
-        } else if (activity.type == TaskType.experiment ||
-            activity.type == TaskType.operation) {
-          _labExperimentsPerformed++;
-          if (_labExperimentsPerformed == 5 &&
-              !_unlockedLabActivities.contains('transmutation')) {
-            _unlockedLabActivities.add('transmutation');
-            _triggerMobileFireworksNotification(
-              "BIOLOGICAL TRANSMUTATION UNLOCKED",
-              "Your consistent galvanic experiments unlock the profound secrets of biological Transmutation!",
-            );
-          }
-        }
 
-        // Knowledge Unlocks Check
-        if (getKnowledgeLevel('Zoology') >= 15 &&
-            !_unlockedLabActivities.contains('puzzle_study')) {
-          _unlockedLabActivities.add('puzzle_study');
-          _triggerMobileFireworksNotification(
-            "COGNITIVE PUZZLE STUDY UNLOCKED",
-            "Your advanced Zoology knowledge (Level 15+) enables complex cognitive puzzle experiments!",
-          );
-        }
-        if (getKnowledgeLevel('Medicine') >= 20 &&
-            !_unlockedLabActivities.contains('clinical_trial')) {
-          _unlockedLabActivities.add('clinical_trial');
-          _triggerMobileFireworksNotification(
-            "GENERAL CLINICAL TRIAL UNLOCKED",
-            "Your masterful Medicine knowledge (Level 20+) enables sweeping general clinical trials!",
-          );
-        }
       } else {
         _announcementHistory.insert(
           0,
