@@ -107,20 +107,20 @@ void main() {
     });
 
     test('Stats influence attraction', () {
-      final highCharisma = femaleNpc.copyWith(
-        stats: {'charisma': 100, 'vitality': 100},
+      final highBeauty = femaleNpc.copyWith(
+        stats: {'beauty': 100, 'vitality': 100},
       );
-      final lowCharisma = femaleNpc.copyWith(
-        stats: {'charisma': 0, 'vitality': 0},
+      final lowBeauty = femaleNpc.copyWith(
+        stats: {'beauty': 0, 'vitality': 0},
       );
 
       final attrHigh = SocialService.calculateInitialAttraction(
         maleNpc,
-        highCharisma,
+        highBeauty,
       );
       final attrLow = SocialService.calculateInitialAttraction(
         maleNpc,
-        lowCharisma,
+        lowBeauty,
       );
 
       expect(attrHigh, greaterThan(attrLow));

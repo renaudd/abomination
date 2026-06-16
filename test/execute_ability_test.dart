@@ -250,13 +250,13 @@ void main() {
       manager.spawnUnit(rats, CombatSide.player, x: 50, y: 40);
       expect(manager.hand.length, 0);
 
-      // Verify 4 combatants spawned
+      // Verify combatants spawned
       final squadCombatants = manager.combatants.where((c) => c.npc.id.contains('rats_unit') || c.npc.name.contains('Rats Unit')).toList();
-      expect(squadCombatants.length, 4);
+      expect(squadCombatants.length, 8);
 
       final leader = squadCombatants.firstWhere((c) => c.isSquadLeader);
       final followers = squadCombatants.where((c) => !c.isSquadLeader).toList();
-      expect(followers.length, 3);
+      expect(followers.length, 7);
 
       final String squadId = leader.squadId!;
       for (final f in followers) {
@@ -276,8 +276,8 @@ void main() {
       manager.drawCard();
       expect(manager.hand.length, 0);
 
-      // Kill first two followers
-      for (int i = 0; i < 2; i++) {
+      // Kill all followers except the last one
+      for (int i = 0; i < followers.length - 1; i++) {
         followers[i].npc = followers[i].npc.copyWith(
           combatStats: followers[i].npc.combatStats!.copyWith(health: 0),
         );
@@ -291,10 +291,10 @@ void main() {
       expect(manager.hand.length, 0);
 
       // Kill the last follower
-      followers[2].npc = followers[2].npc.copyWith(
-        combatStats: followers[2].npc.combatStats!.copyWith(health: 0),
+      followers.last.npc = followers.last.npc.copyWith(
+        combatStats: followers.last.npc.combatStats!.copyWith(health: 0),
       );
-      followers[2].isDead = true;
+      followers.last.isDead = true;
       manager.update(0.1);
 
       // Last follower dead, squad should be automatically recycled and drawn back to hand by continuous draw
@@ -313,10 +313,11 @@ void main() {
       expect(manager.hand.length, 0);
 
       final squadCombatants = manager.combatants.where((c) => c.npc.id.contains('rats_unit') || c.npc.name.contains('Rats Unit')).toList();
-      expect(squadCombatants.length, 4);
+      expect(squadCombatants.length, 8);
 
       final leader = squadCombatants.firstWhere((c) => c.isSquadLeader);
       final followers = squadCombatants.where((c) => !c.isSquadLeader).toList();
+      expect(followers.length, 7);
 
       // Kill all followers first
       for (final f in followers) {

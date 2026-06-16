@@ -48,16 +48,7 @@ void main() {
       );
 
       // Assign a task in the Vegetable Garden
-      final gardenTask = GameTask(
-        id: 'garden_task',
-        npcId: 'player',
-        priority: IntentPriority.normal,
-        type: TaskType.rest,
-        targetId: 'vegetable_garden',
-        minutesRemaining: 60,
-      );
-
-      gameState.assignTask(gardenTask);
+      gameState.assignNpcToTask('player', TaskType.cleanRoom, 'vegetable_garden');
 
       final updatedNpc = gameState.npcs.firstWhere((n) => n.id == 'player');
 
@@ -84,16 +75,7 @@ void main() {
         ),
       );
 
-      final kitchenTask = GameTask(
-        id: 'kitchen_task',
-        npcId: 'player',
-        priority: IntentPriority.normal,
-        type: TaskType.eat,
-        targetId: 'kitchen',
-        minutesRemaining: 30,
-      );
-
-      gameState.assignTask(kitchenTask);
+      gameState.assignNpcToTask('player', TaskType.eat, 'kitchen');
 
       final updatedNpc = gameState.npcs.firstWhere((n) => n.id == 'player');
 

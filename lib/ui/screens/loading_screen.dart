@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'main_menu_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
-  const LoadingScreen({super.key});
+  final VoidCallback? onCompleted;
+  const LoadingScreen({super.key, this.onCompleted});
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
@@ -71,7 +71,12 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
       if (currentStep >= totalSteps) {
         timer.cancel();
-        _completeLoading();
+        if (mounted) {
+          setState(() {
+            _progress = 1.0;
+            _currentLog = "Ready for the experiment.";
+          });
+        }
       }
     });
     
@@ -80,6 +85,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   void _completeLoading() {
+    widget.onCompleted?.call();
     if (mounted) {
       Navigator.pushReplacement(
         context,
@@ -126,8 +132,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
                   child: Text(
                     _currentLog.toUpperCase(),
                     key: ValueKey(_currentLog),
-                    style: GoogleFonts.playfairDisplay(
-                      color: const Color(0xFFE5D5B0),
+                    style: const TextStyle(
+                      fontFamily: 'Georgia',
+                      color: Color(0xFFE5D5B0),
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,
@@ -159,12 +166,44 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 // Progress Percentage
                 Text(
                   "${(_progress * 100).toInt()}%",
-                  style: GoogleFonts.oswald(
+                  style: TextStyle(
+                    fontFamily: 'Courier',
                     color: const Color(0xFFC4B89B).withValues(alpha: 0.5),
                     fontSize: 10,
+                    fontWeight: FontWeight.bold,
                     letterSpacing: 1,
                   ),
                 ),
+                if (_progress >= 1.0) ...[
+                  const SizedBox(height: 24),
+                  InkWell(
+                    onTap: _completeLoading,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFC4B89B),
+                        border: Border.all(color: const Color(0xFFE5D5B0), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFC4B89B).withValues(alpha: 0.4),
+                            blurRadius: 16,
+                            spreadRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        'AWAKEN',
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          color: Color(0xFF1A1612),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 8,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -175,22 +214,24 @@ class _LoadingScreenState extends State<LoadingScreen> {
             right: 0,
             child: Column(
               children: [
-                Text(
+                const Text(
                   'ABOMINATION',
-                  style: GoogleFonts.playfairDisplay(
-                    color: const Color(0xFFE5D5B0),
+                  style: TextStyle(
+                    fontFamily: 'Georgia',
+                    color: Color(0xFFE5D5B0),
                     fontSize: 48,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 12,
                     shadows: [
-                      const Shadow(blurRadius: 20, color: Colors.black),
+                      Shadow(blurRadius: 20, color: Colors.black),
                     ],
                   ),
                 ),
-                Text(
+                const Text(
                   'AN EXPERIMENT IN GALVANISM',
-                  style: GoogleFonts.playfairDisplay(
-                    color: const Color(0xFFC4B89B),
+                  style: TextStyle(
+                    fontFamily: 'Georgia',
+                    color: Color(0xFFC4B89B),
                     fontSize: 12,
                     fontStyle: FontStyle.italic,
                     letterSpacing: 4,

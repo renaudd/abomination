@@ -30,7 +30,7 @@ templates = {
     "perception": ["Seeing the {adjective} World", "Exercises in Observation", "The Art of Noticing {noun}", "Perspectives on {place}", "The Keen Eye"],
     "judgment": ["Justice and the {noun}", "The Ethics of {noun}", "A Guide to Wise Decisions", "Principles of Equity", "Weighing the {noun}"],
     "morality": ["The Virtuous {noun}", "On Good and Evil in the {place}", "The Path of Righteousness", "Ethics for the {noun}", "A Moral {noun}"],
-    "courage": ["Tales of the Brave {noun}", "Facing the {adjective} Unknown", "Overcoming {emotion}", "The Hero's {noun}", "Valor in the {place}"],
+    "confidence": ["Tales of the Brave {noun}", "Facing the {adjective} Unknown", "Overcoming {emotion}", "The Hero's {noun}", "Valor in the {place}"],
     "hygiene": ["The Clean {noun}", "A Treatise on Sanitation", "Purifying the {place}", "Bathing Rituals of the {place}", "Health and Cleanliness"],
     "temperament": ["Calming the {emotion}", "The Balanced {noun}", "Mastering Your {emotion}", "Achieving Inner Peace", "The Stoic {noun}"]
 }

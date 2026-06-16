@@ -79,6 +79,67 @@ void main() {
       expect(paragraph, contains('Father:'));
       expect(paragraph, contains('Mother:'));
     });
+
+    test('Religion matching and conversion biographical descriptions are generated correctly', () {
+      final currentDate = GameDate(minute: 0, hour: 12, day: 15, month: 5, year: 1818);
+
+      int conversionCount = 0;
+      for (int i = 0; i < 50; i++) {
+        final res = NPCGenerator.generateBiographyForCharacter(
+          role: 'Refugee',
+          age: 30,
+          currentDate: currentDate,
+          gender: 'Female',
+        );
+        final bio = res.biography;
+        if (res.childReligion != bio.fatherReligion) {
+          conversionCount++;
+          expect(bio.religiousConversionEvent, isNotNull);
+          expect(bio.toParagraph(), contains(bio.religiousConversionEvent!));
+        } else {
+          expect(bio.religiousConversionEvent, isNull);
+        }
+      }
+      expect(conversionCount, greaterThan(0));
+      expect(conversionCount, lessThan(50));
+    });
+
+    test('Frankenstein (Master) and Giles (Butler) are unmarried at start, and spouses are generated for married NPCs', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Victor",
+        lastName: "Frankenstein",
+        estateName: "Geneva Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 35,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      final master = state.npcs.firstWhere((n) => n.isPlayer);
+      final butler = state.npcs.firstWhere((n) => n.role == 'Butler');
+
+      expect(master.biography?.relationshipStatus, isNot('married'));
+      expect(butler.biography?.relationshipStatus, isNot('married'));
+
+      int marriedCount = 0;
+      for (int i = 0; i < 20; i++) {
+        final originalCount = state.npcs.length;
+        state.spawnRefugee();
+        final latest = state.npcs[originalCount];
+        if (latest.biography?.relationshipStatus == 'married') {
+          marriedCount++;
+          final spouseId = "spouse_${latest.id}";
+          final spouse = state.npcs.firstWhere((n) => n.id == spouseId);
+          expect(spouse, isNotNull);
+          expect(spouse.isResident, isFalse);
+          expect(spouse.currentRoomId, isNull);
+          expect(spouse.relationships.containsKey(latest.id), isTrue);
+          expect(latest.relationships.containsKey(spouse.id), isTrue);
+        }
+      }
+      expect(marriedCount, greaterThan(0));
+    });
   });
 
   group('Birthday Celebration & Custom Payout Tests', () {

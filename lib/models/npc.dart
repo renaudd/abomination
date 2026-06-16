@@ -106,6 +106,7 @@ class CharacterBiography {
   final String? tragicEvent;
   final String? discoveredPassion;
   final String? healthIssue;
+  final String? religiousConversionEvent;
 
   CharacterBiography({
     required this.birthDate,
@@ -125,6 +126,7 @@ class CharacterBiography {
     this.tragicEvent,
     this.discoveredPassion,
     this.healthIssue,
+    this.religiousConversionEvent,
   });
 
   Map<String, dynamic> toJson() => {
@@ -145,6 +147,7 @@ class CharacterBiography {
     'tragicEvent': tragicEvent,
     'discoveredPassion': discoveredPassion,
     'healthIssue': healthIssue,
+    'religiousConversionEvent': religiousConversionEvent,
   };
 
   factory CharacterBiography.fromJson(Map<String, dynamic> json) => CharacterBiography(
@@ -165,6 +168,7 @@ class CharacterBiography {
     tragicEvent: json['tragicEvent'] as String?,
     discoveredPassion: json['discoveredPassion'] as String?,
     healthIssue: json['healthIssue'] as String?,
+    religiousConversionEvent: json['religiousConversionEvent'] as String?,
   );
 
   String toParagraph() {
@@ -177,6 +181,9 @@ class CharacterBiography {
       sb.write("Mother: $motherClass, religion $motherReligion. ");
     }
     sb.write("Born $parentsMaritalStatus, placing them in the $characterClass class. ");
+    if (religiousConversionEvent != null) {
+      sb.write("$religiousConversionEvent ");
+    }
     if (childhoodEvent != null) {
       sb.write("Formative childhood event: $childhoodEvent ");
     }
@@ -371,6 +378,7 @@ class NPC {
   final int age;
   final GameDate? birthDate;
   final String gender;
+  bool get isMale => gender.toLowerCase() == 'male';
   final String nationality;
   final String religion;
   final SexualOrientation sexualOrientation;
@@ -767,8 +775,7 @@ class NPC {
         'perception': 2,
         'judgment': 3,
         'temperament': 5,
-        'leadership': 3,
-        'courage': 4,
+        'confidence': 4,
         'hygiene': 5,
         'beauty': 1,
         'morality': 6,

@@ -563,7 +563,7 @@ class TaskService {
         return const TaskMetadata(
           explanation: "Work on carving or molding a sculpture.",
           typicalDuration: "Multi-day (12 hours total)",
-          relevantAttributes: ['courage'],
+          relevantAttributes: ['confidence'],
           possibleOutcomes: ["Completed Sculpture item"],
         );
       case TaskType.interactAnimals:

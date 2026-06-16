@@ -515,9 +515,9 @@ class _ResidentBarState extends State<ResidentBar> {
                     inkColor,
                   ),
                   _buildAttrBar(
-                    "Courage",
+                    "Confidence",
                     Icons.shield,
-                    (widget.npc.stats['courage'] ?? 0) / 10,
+                    (widget.npc.stats['confidence'] ?? 0) / 10,
                     inkColor,
                   ),
                   _buildAttrBar(

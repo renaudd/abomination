@@ -249,10 +249,10 @@ class SocialService {
     // 2. Base Attraction (Stats)
     double base = 2.0;
 
-    int charisma = target.stats['charisma'] ?? 5;
+    int beauty = target.stats['beauty'] ?? 5;
     int vitality = target.stats['vitality'] ?? 5;
 
-    base += (charisma / 100.0) * 1.5;
+    base += (beauty / 100.0) * 1.5;
     base += (vitality / 100.0) * 0.2; // Downgraded to tertiary
 
     // 3. Age Factor
@@ -261,7 +261,7 @@ class SocialService {
       int distFrom20 = (target.age - 20).abs();
       ageScore = (1.0 - (distFrom20 / 40.0)).clamp(0.0, 1.0);
     } else {
-      int distFrom40 = (target.age - 20).abs();
+      int distFrom40 = (target.age - 40).abs();
       ageScore = (1.0 - (distFrom40 / 40.0)).clamp(0.0, 1.0);
     }
     base += ageScore * 0.8;

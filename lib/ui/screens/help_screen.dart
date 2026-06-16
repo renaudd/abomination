@@ -756,7 +756,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         'category': 'Assignable Task',
         'desc': 'Non-invasive behavioral labyrinth trials.\n\n'
                 '• Assignment Location: Enqueued and assigned within The Laboratory or Study interface.\n'
-                '• Driving Attributes: Intellect, Charisma.\n'
+                '• Driving Attributes: Intellect, Judgment, Perception.\n'
                 '• Activity Duration: Extended study requires precisely 16 hours (960 minutes).\n'
                 '• Required Resources: Precisely 5 Live Specimens and 1 Caloric Meal ration.\n'
                 '• Mechanical Outcome: Conducts complex psychological maze solving. Advances fundamental cognitive psychology documents and yields advanced behavioral Labyrinth blueprints.'

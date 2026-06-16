@@ -86,7 +86,7 @@ class CombatControlsDialog extends StatelessWidget {
                       onChanged: (val) => state.setCombatControlMode(val!),
                     ),
                     const Divider(color: Colors.white10, height: 32),
-                    _sectionTitle('DESKTOP KEY ASSIGNMENTS'),
+                    _sectionTitle('COMBAT KEY ASSIGNMENTS'),
                     const SizedBox(height: 8),
                     _buildKeyAssignmentRow('Move Left', 'A / ArrowLeft'),
                     _buildKeyAssignmentRow('Move Up', 'W / ArrowUp'),

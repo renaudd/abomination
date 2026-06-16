@@ -4,19 +4,22 @@
     {
       "name": "Abomination",
       "request": "launch",
-      "type": "dart"
+      "type": "dart",
+      "toolArgs": ["--web-renderer", "canvaskit"]
     },
     {
       "name": "Abomination (Profile Mode)",
       "request": "launch",
       "type": "dart",
-      "flutterMode": "profile"
+      "flutterMode": "profile",
+      "toolArgs": ["--web-renderer", "canvaskit"]
     },
     {
       "name": "Abomination (Release Mode)",
       "request": "launch",
       "type": "dart",
-      "flutterMode": "release"
+      "flutterMode": "release",
+      "toolArgs": ["--web-renderer", "canvaskit"]
     }
   ]
 }

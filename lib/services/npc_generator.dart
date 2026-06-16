@@ -46,6 +46,7 @@ class NPCGenerator {
       age: age,
       currentDate: bioDate,
       gender: gender,
+      religion: religion,
     );
 
     final background = biographyRes.biography.characterClass;
@@ -213,8 +214,7 @@ class NPCGenerator {
     int perception = 3 + _random.nextInt(5);
     int judgment = 3 + _random.nextInt(5);
     int temperament = 3 + _random.nextInt(5);
-    int leadership = 2 + _random.nextInt(5);
-    int courage = 3 + _random.nextInt(5);
+    int confidence = 3 + _random.nextInt(5);
     int hygiene = 4 + _random.nextInt(5);
     int beauty = 2 + _random.nextInt(6);
     int morality = 3 + _random.nextInt(5);
@@ -237,8 +237,7 @@ class NPCGenerator {
       'perception': perception.clamp(0, 10),
       'judgment': judgment.clamp(0, 10),
       'temperament': temperament.clamp(0, 10),
-      'leadership': leadership.clamp(0, 10),
-      'courage': courage.clamp(0, 10),
+      'confidence': confidence.clamp(0, 10),
       'hygiene': hygiene.clamp(0, 10),
       'beauty': beauty.clamp(0, 10),
       'morality': morality.clamp(0, 10),
@@ -633,8 +632,18 @@ class NPCGenerator {
     required int age,
     required GameDate currentDate,
     required String gender,
+    String? religion,
   }) {
     final birthDate = generateBirthDate(age, currentDate);
+
+    final String actualChildReligion = religion ?? (role == 'Master'
+        ? _pickOne(['Protestant', 'Calvinist', 'Catholic'], weights: [60, 20, 20])
+        : (role == 'Butler'
+            ? _pickOne(['Protestant', 'Catholic'], weights: [50, 50])
+            : _pickOne(
+                ['Protestant', 'Catholic', 'Jewish', 'Atheist', 'Agnostic', 'Calvinist'],
+                weights: [40, 30, 5, 10, 10, 5],
+              )));
 
     String placeOfBirth = "";
     String fatherProfession = "";
@@ -646,6 +655,35 @@ class NPCGenerator {
     String parentsMaritalStatus = "";
     String characterClass = "";
 
+    // Determine parents' religion based on child's religion (90% match chance)
+    if (_random.nextDouble() < 0.9) {
+      fatherReligion = actualChildReligion;
+      motherReligion = actualChildReligion;
+    } else {
+      // 10% chance child has converted from their parents' religion
+      final List<String> parentReligionPool = role == 'Master'
+          ? ['Protestant', 'Calvinist', 'Catholic']
+          : (role == 'Butler'
+              ? ['Protestant', 'Catholic']
+              : ['Protestant', 'Catholic', 'Calvinist', 'Jewish', 'Atheist']);
+      final otherOptions = parentReligionPool.where((r) => r != actualChildReligion).toList();
+      fatherReligion = _pickOne(otherOptions.isEmpty ? [actualChildReligion] : otherOptions);
+      motherReligion = _random.nextDouble() < 0.8 ? fatherReligion : _pickOne(otherOptions.isEmpty ? [actualChildReligion] : otherOptions);
+    }
+
+    String? religiousConversionEvent;
+    if (actualChildReligion != fatherReligion) {
+      final reasons = [
+        "Converted to $actualChildReligion after a deep spiritual crisis during their youth.",
+        "Adopted $actualChildReligion following theological studies with a foreign mentor.",
+        "Embraced $actualChildReligion after surviving a life-threatening illness that transformed their outlook.",
+        "Converted to $actualChildReligion during a period of destitution, when a local congregation took them in.",
+        "Converted to $actualChildReligion following intense philosophical debates with an intellectual peer.",
+        "Converted to $actualChildReligion to marry their first love, though the relationship ultimately ended.",
+      ];
+      religiousConversionEvent = reasons[_random.nextInt(reasons.length)];
+    }
+
     final statModifiers = <String, int>{};
     final traitsToAdd = <NPCTrait>[];
     final proficienciesToAdd = <String, double>{};
@@ -655,10 +693,8 @@ class NPCGenerator {
       placeOfBirth = _pickOne(['Geneva', 'Lausanne', 'Neuchâtel', 'Vevey']);
       fatherClass = 'Noble';
       fatherProfession = _pickOne(['Landowner', 'Banker', 'Diplomat', 'Aristocrat']);
-      fatherReligion = _pickOne(['Protestant', 'Calvinist', 'Catholic'], weights: [60, 20, 20]);
       motherClass = _pickOne(['Noble', 'Merchant']);
       motherProfession = _pickOne(['None', 'Socialite']);
-      motherReligion = fatherReligion; // Match for high status families
       parentsMaritalStatus = 'in wedlock';
       characterClass = 'Noble';
 
@@ -669,7 +705,7 @@ class NPCGenerator {
         statModifiers['walkSpeed'] = 5;
         statModifiers['intellect'] = -1;
         statModifiers['judgment'] = -1;
-        statModifiers['leadership'] = -1;
+        statModifiers['confidence'] = -1;
         traitsToAdd.add(NPCTrait(id: 'track_finder', name: 'Track Finder', group: 'skill'));
         proficienciesToAdd['Farming'] = 10.0;
       } else if (age >= 30 && age < 46) {
@@ -680,7 +716,7 @@ class NPCGenerator {
         // Old player
         statModifiers['intellect'] = 2;
         statModifiers['judgment'] = 2;
-        statModifiers['leadership'] = 2;
+        statModifiers['confidence'] = 2;
         statModifiers['strength'] = -2;
         statModifiers['endurance'] = -2;
         statModifiers['walkSpeed'] = -5;
@@ -694,10 +730,8 @@ class NPCGenerator {
       placeOfBirth = _pickOne(['Lausanne', 'Fribourg', 'Sion', 'Vevey']);
       fatherClass = 'Servant';
       fatherProfession = _pickOne(['Butler', 'Valet', 'Clerk', 'Head Gardener']);
-      fatherReligion = _pickOne(['Protestant', 'Catholic'], weights: [50, 50]);
       motherClass = 'Servant';
       motherProfession = _pickOne(['None', 'Housekeeper', 'Cook']);
-      motherReligion = fatherReligion;
       parentsMaritalStatus = 'in wedlock';
       characterClass = 'Servant';
     } else {
@@ -708,12 +742,8 @@ class NPCGenerator {
       ]);
       fatherClass = _pickOne(['Noble', 'Merchant', 'Scholar', 'Soldier', 'Peasant', 'Criminal'], weights: [5, 15, 10, 15, 50, 5]);
       fatherProfession = _generateRandomProfession(fatherClass);
-      fatherReligion = _pickOne(['Protestant', 'Catholic', 'Calvinist', 'Jewish', 'Atheist'], weights: [35, 45, 10, 5, 5]);
-      
       motherClass = _pickOne(['Noble', 'Merchant', 'Scholar', 'Peasant', 'Servant'], weights: [5, 15, 5, 60, 15]);
       motherProfession = _random.nextDouble() < 0.6 ? 'None' : _generateRandomProfession(motherClass);
-      motherReligion = _pickOne(['Protestant', 'Catholic', 'Calvinist', 'Jewish', 'Atheist'], weights: [35, 45, 10, 5, 5]);
-      
       parentsMaritalStatus = _pickOne(['in wedlock', 'out of wedlock', 'spurious'], weights: [80, 15, 5]);
       
       // Determine character class
@@ -812,7 +842,11 @@ class NPCGenerator {
     // Relationship status (if >=25 years old)
     String? relationshipStatus;
     if (age >= 25) {
-      relationshipStatus = _pickOne(['married', 'widowed', 'spurned', 'engaged', 'bachelor'], weights: [40, 10, 10, 10, 30]);
+      if (role == 'Master' || role == 'Butler') {
+        relationshipStatus = _pickOne(['widowed', 'spurned', 'engaged', 'bachelor'], weights: [15, 15, 10, 60]);
+      } else {
+        relationshipStatus = _pickOne(['married', 'widowed', 'spurned', 'engaged', 'bachelor'], weights: [40, 10, 10, 10, 30]);
+      }
     }
 
     // Tragic event (if >30 years old)
@@ -841,7 +875,7 @@ class NPCGenerator {
           traitsToAdd.add(NPCTrait(id: 'stoic', name: 'Stoic', group: 'character'));
           break;
         case 3:
-          statModifiers['courage'] = (statModifiers['courage'] ?? 0) - 1;
+          statModifiers['confidence'] = (statModifiers['confidence'] ?? 0) - 1;
           break;
       }
     }
@@ -922,6 +956,7 @@ class NPCGenerator {
       tragicEvent: tragicEvent,
       discoveredPassion: discoveredPassion,
       healthIssue: healthIssue,
+      religiousConversionEvent: religiousConversionEvent,
     );
 
     return BiographyResult(
@@ -930,6 +965,7 @@ class NPCGenerator {
       traitsToAdd: traitsToAdd,
       proficienciesToAdd: proficienciesToAdd,
       finalClass: characterClass,
+      childReligion: actualChildReligion,
     );
   }
 
@@ -961,6 +997,7 @@ class BiographyResult {
   final List<NPCTrait> traitsToAdd;
   final Map<String, double> proficienciesToAdd;
   final String finalClass;
+  final String childReligion;
 
   BiographyResult({
     required this.biography,
@@ -968,5 +1005,6 @@ class BiographyResult {
     required this.traitsToAdd,
     required this.proficienciesToAdd,
     required this.finalClass,
+    required this.childReligion,
   });
 }

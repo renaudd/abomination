@@ -19,6 +19,7 @@ import 'dart:collection';
 import 'package:uuid/uuid.dart';
 
 import '../models/manor_crisis.dart';
+import '../services/audio_service.dart';
 import '../models/npc.dart';
 import '../models/plant.dart';
 import '../models/room.dart';
@@ -98,6 +99,8 @@ class GameState extends ChangeNotifier {
       _categoryDividers[cat] = (tasks.length / 2).floor(); // Default middle
     }
   }
+
+  static bool isTesting = false;
 
   GameDate _currentDate = GameDate.initial();
   GameSpeed _speed = GameSpeed.paused;
@@ -791,11 +794,52 @@ class GameState extends ChangeNotifier {
   final Map<ResponsibilityCategory, int> _categoryDividers = {};
 
   // Options Section
+  bool _soundEnabled = true;
+  bool _musicEnabled = true;
+  double _musicVolume = 0.5;
+  bool _sfxEnabled = true;
+  double _sfxVolume = 0.7;
+
   String _combatControlMode = 'pad'; // 'pad' or 'click'
   String _emergencyBehavior =
       'slow'; // 'slow' (default), 'pause', 'normal', 'nothing'
   String _residentsAsleepBehavior =
       'lightning'; // 'lightning' (default), 'fast', 'nothing'
+
+  static const Map<String, String> _defaultHotkeys = {
+    'Move Left': 'A',
+    'Move Up': 'W',
+    'Move Right': 'D',
+    'Move Down': 'S',
+    '1st Special Action': 'R',
+    '2nd Special Action': 'F',
+    'Select Hand Card 1': '1',
+    'Select Hand Card 2': '2',
+    'Select Hand Card 3': '3',
+    'Select Hand Card 4': '4',
+    'Select Hand Card 5': '5',
+    'Pause': '0',
+    'Slow Speed': '1',
+    'Normal Speed': '2',
+    'Fast Speed': '3',
+    'Lightning Speed': '4',
+    'Manor View': 'U',
+    'Manor Holdings': 'I',
+    'Chronicle Records': 'O',
+    'Survey Estate Map': 'P',
+    'Dialogue Option 1': '1',
+    'Dialogue Option 2': '2',
+    'Dialogue Option 3': '3',
+    'Dialogue Option 4': '4',
+    'Dialogue Option 5': '5',
+    'Dialogue Option 6': '6',
+    'Dialogue Option 7': '7',
+    'Next Dialogue / Scene': '9',
+    'Back Dialogue / Scene': '8',
+  };
+
+  Map<String, String> _hotkeys = Map.from(_defaultHotkeys);
+  bool _isReassigningHotkey = false;
 
   // New Game Choices
   String _playerFirstName = "The";
@@ -865,6 +909,11 @@ class GameState extends ChangeNotifier {
     'mainObjective': _mainObjective.index,
     'researchPoints': _researchPoints,
     'manorVenture': _manorVenture.index,
+    'soundEnabled': _soundEnabled,
+    'musicEnabled': _musicEnabled,
+    'musicVolume': _musicVolume,
+    'sfxEnabled': _sfxEnabled,
+    'sfxVolume': _sfxVolume,
     'combatControlMode': _combatControlMode,
     'emergencyBehavior': _emergencyBehavior,
     'residentsAsleepBehavior': _residentsAsleepBehavior,
@@ -915,6 +964,7 @@ class GameState extends ChangeNotifier {
     'newRegionUnlocked': _newRegionUnlocked,
     'newPropertyConstructed': _newPropertyConstructed,
     'cheatCodesEnabled': _cheatCodesEnabled,
+    'hotkeys': _hotkeys,
   };
 
   void loadFromJson(Map<String, dynamic> json) {
@@ -922,10 +972,22 @@ class GameState extends ChangeNotifier {
     _simulationAiDeck = null;
     _currentDate = GameDate.fromJson(json['currentDate']);
     _speed = GameSpeed.values[json['speed'] as int? ?? GameSpeed.paused.index];
+    _soundEnabled = json['soundEnabled'] as bool? ?? true;
+    _musicEnabled = json['musicEnabled'] as bool? ?? true;
+    _musicVolume = (json['musicVolume'] as num?)?.toDouble() ?? 0.5;
+    _sfxEnabled = json['sfxEnabled'] as bool? ?? true;
+    _sfxVolume = (json['sfxVolume'] as num?)?.toDouble() ?? 0.7;
+    AudioService().applySettings(this);
     _combatControlMode = json['combatControlMode'] as String? ?? 'pad';
     _emergencyBehavior = json['emergencyBehavior'] as String? ?? 'slow';
     _residentsAsleepBehavior =
         json['residentsAsleepBehavior'] as String? ?? 'lightning';
+    final savedKeys = json['hotkeys'] as Map<String, dynamic>?;
+    if (savedKeys != null) {
+      _hotkeys = savedKeys.map((k, v) => MapEntry(k, v.toString()));
+    } else {
+      _hotkeys = Map.from(_defaultHotkeys);
+    }
     _hasFoodDropTriggered = json['hasFoodDropTriggered'] as bool? ?? false;
     _foodDropTriggerTime = json['foodDropTriggerTime'] as int?;
     _lastMerchantSpawnMinutes = json['lastMerchantSpawnMinutes'] as int? ?? 0;
@@ -1454,6 +1516,42 @@ class GameState extends ChangeNotifier {
   String get emergencyBehavior => _emergencyBehavior;
   String get residentsAsleepBehavior => _residentsAsleepBehavior;
 
+  bool get soundEnabled => _soundEnabled;
+  bool get musicEnabled => _musicEnabled;
+  double get musicVolume => _musicVolume;
+  bool get sfxEnabled => _sfxEnabled;
+  double get sfxVolume => _sfxVolume;
+
+  void setSoundEnabled(bool val) {
+    _soundEnabled = val;
+    AudioService().applySettings(this);
+    notifyListeners();
+  }
+
+  void setMusicEnabled(bool val) {
+    _musicEnabled = val;
+    AudioService().applySettings(this);
+    notifyListeners();
+  }
+
+  void setMusicVolume(double val) {
+    _musicVolume = val;
+    AudioService().applySettings(this);
+    notifyListeners();
+  }
+
+  void setSfxEnabled(bool val) {
+    _sfxEnabled = val;
+    AudioService().applySettings(this);
+    notifyListeners();
+  }
+
+  void setSfxVolume(double val) {
+    _sfxVolume = val;
+    AudioService().applySettings(this);
+    notifyListeners();
+  }
+
   void setCombatControlMode(String val) {
     _combatControlMode = val;
     notifyListeners();
@@ -1466,6 +1564,47 @@ class GameState extends ChangeNotifier {
 
   void setResidentsAsleepBehavior(String val) {
     _residentsAsleepBehavior = val;
+    notifyListeners();
+  }
+
+  Map<String, String> get hotkeys => Map.unmodifiable(_hotkeys);
+
+  void setHotkey(String action, String newKey) {
+    _hotkeys[action] = newKey.toUpperCase();
+    notifyListeners();
+  }
+
+  void resetToFactorySettings() {
+    _combatControlMode = 'pad';
+    _emergencyBehavior = 'slow';
+    _residentsAsleepBehavior = 'lightning';
+
+    // Factory reset audio settings EXCEPT do not turn sound on if it is currently off
+    if (_soundEnabled) {
+      _musicEnabled = true;
+      _musicVolume = 0.5;
+      _sfxEnabled = true;
+      _sfxVolume = 0.7;
+    } else {
+      // If sound is currently off, leave soundEnabled false, but reset nested audio defaults
+      _soundEnabled = false;
+      _musicEnabled = true;
+      _musicVolume = 0.5;
+      _sfxEnabled = true;
+      _sfxVolume = 0.7;
+    }
+
+    _hotkeys = Map.from(_defaultHotkeys);
+
+    AudioService().applySettings(this);
+
+    notifyListeners();
+  }
+
+  bool get isReassigningHotkey => _isReassigningHotkey;
+
+  void setReassigningHotkey(bool val) {
+    _isReassigningHotkey = val;
     notifyListeners();
   }
 
@@ -2935,8 +3074,7 @@ class GameState extends ChangeNotifier {
       'perception': 4,
       'judgment': 3,
       'temperament': 3,
-      'leadership': 3,
-      'courage': 3,
+      'confidence': 3,
       'hygiene': 4,
       'beauty': 2,
       'morality': 4,
@@ -2978,6 +3116,7 @@ class GameState extends ChangeNotifier {
       bio: playerBioRes.biography.toParagraph(),
       hometown: playerBioRes.biography.placeOfBirth,
       background: playerBioRes.biography.characterClass,
+      religion: playerBioRes.childReligion,
       bodyParts: [
         BodyPart(type: BodyPartType.head, health: 100, maxHealth: 100),
         BodyPart(type: BodyPartType.torso, health: 100, maxHealth: 100),
@@ -3024,8 +3163,7 @@ class GameState extends ChangeNotifier {
       'perception': 3,
       'judgment': 3,
       'temperament': 5,
-      'leadership': 3,
-      'courage': 4,
+      'confidence': 4,
       'hygiene': 5,
       'beauty': 1,
       'morality': 6,
@@ -3074,6 +3212,7 @@ class GameState extends ChangeNotifier {
       birthDate: butlerBioRes.biography.birthDate,
       hometown: butlerBioRes.biography.placeOfBirth,
       background: butlerBioRes.biography.characterClass,
+      religion: butlerBioRes.childReligion,
       appearance: NPCAppearance.defaultButler(),
       responsibilities: {
         ResponsibilityCategory.cleaning: 3,
@@ -3362,6 +3501,7 @@ class GameState extends ChangeNotifier {
       );
 
       // [FIX] Consolidate Sync: Update NPCs with latest Task Progress FIRST
+      bool anyActiveFoley = false;
       for (int i = 0; i < _npcs.length; i++) {
         var npc = _npcs[i];
         if (npc.activeTaskId != null) {
@@ -3384,6 +3524,9 @@ class GameState extends ChangeNotifier {
 
               // Experience is granted upon task completion in _handleTaskCompletion
               if (readyNpcIds.contains(npc.id)) {
+                anyActiveFoley = true;
+                AudioService().startActionSound(task.type);
+
                 final proficiencyName = TaskService.getProficiency(task.type);
 
                 if (TaskService.isPhysicallyStrenuous(task.type)) {
@@ -3517,6 +3660,10 @@ class GameState extends ChangeNotifier {
             }
           }
         }
+      }
+
+      if (!anyActiveFoley) {
+        AudioService().stopActionSound();
       }
 
       final allCompleted = [...completedTasks];
@@ -4153,6 +4300,7 @@ class GameState extends ChangeNotifier {
     }
 
     _npcs.add(npc);
+    _addSpouseIfMarried(npc);
 
     _lastAnnouncement =
         "A ${guest['role']}, ${guest['name']}, has arrived in the entryway.";
@@ -6744,6 +6892,16 @@ class GameState extends ChangeNotifier {
       // Health decay or other penalties...
     }
 
+    // Alarm triggers for extreme thresholds
+    if (npcSnapshot.isResident) {
+      if (npcSnapshot.hunger < 90.0 && (npcSnapshot.hunger + dHunger) >= 90.0) {
+        AudioService().playDispleased();
+      }
+      if (npcSnapshot.energy > 10.0 && (npcSnapshot.energy + dEnergy) <= 10.0) {
+        AudioService().playDispleased();
+      }
+    }
+
     double newEnergy = (npcSnapshot.energy + dEnergy).clamp(0.0, 100.0);
     double newHunger = (npcSnapshot.hunger + dHunger).clamp(0.0, 100.0);
     double newSatisf = (npcSnapshot.satisfaction + dSatisf).clamp(0.0, 100.0);
@@ -6836,17 +6994,23 @@ class GameState extends ChangeNotifier {
       }
 
       // 0.5. Spontaneous Baseline Incident Check (Once a year = 1 / 525600 mins)
-      double baselineChance = (latestNpc.isPlayer ? 2.0 : 1.0) / 525600.0;
-      if (Random().nextDouble() < baselineChance) {
-        _triggerBowelMovementIncident(i);
-        continue;
+      if (!isTesting) {
+        double baselineChance = (latestNpc.isPlayer ? 2.0 : 1.0) / 525600.0;
+        if (Random().nextDouble() < baselineChance) {
+          _triggerBowelMovementIncident(i);
+          continue;
+        }
       }
 
       // 1. Breaking Point Tracking
       if (latestNpc.digestion >= 100.0) {
         int newBreakingMinutes = latestNpc.breakingPointMinutes + 1;
         // Accident chance is high: approx 5% chance per minute after holding it at 100% capacity.
-        if (Random().nextDouble() < 0.05) {
+        final bool triggerAccident = isTesting
+            ? newBreakingMinutes >= 15
+            : Random().nextDouble() < 0.05;
+
+        if (triggerAccident) {
           _triggerBowelMovementIncident(i);
         } else {
           _npcs[i] = latestNpc.copyWith(
@@ -7555,6 +7719,16 @@ class GameState extends ChangeNotifier {
       worker = _npcs[npcIndex];
     }
 
+    if (worker.isResident) {
+      if (result.quality < 0.6) {
+        AudioService().playDispleased();
+      } else if (result.quality >= 1.0 && doesNpcLoveTask(worker, task.type)) {
+        if (Random().nextDouble() < 0.4) {
+          AudioService().playPleased();
+        }
+      }
+    }
+
     _completedTaskTypes.add(task.type);
     _taskCompletionCounts[task.type] =
         (_taskCompletionCounts[task.type] ?? 0) + 1;
@@ -7907,8 +8081,14 @@ class GameState extends ChangeNotifier {
           mealName = "raw $foundKey".replaceAll('_', ' ');
           hungerRestore = 30.0;
           mealConsumed = true;
+          if (worker.isResident) {
+            AudioService().playDispleased();
+          }
         } else {
           // Nothing to eat!!
+          if (worker.isResident) {
+            AudioService().playDispleased();
+          }
           _announcementHistory.insert(
             0,
             "[${_currentDate.formattedTime}] SURVIVAL: ${worker.name} found nothing to eat in the manor!",
@@ -7921,12 +8101,16 @@ class GameState extends ChangeNotifier {
 
       List<Map<String, dynamic>>? newLog;
       if (mealConsumed) {
+        AudioService().playMealCompleted();
         // Dietary modifiers
         final lowerMealName = mealName.toLowerCase();
         if (worker.diet.favoriteFoods.any(
           (f) => f.toLowerCase() == lowerMealName,
         )) {
           satBonus += 15.0;
+          if (worker.isResident && Random().nextDouble() < 0.4) {
+            AudioService().playPleased();
+          }
         }
 
         // Repetition penalty
@@ -8254,8 +8438,8 @@ class GameState extends ChangeNotifier {
         case BookCategory.morality:
           _addStatExperience(npcIndex, 'morality', randAmt.toDouble() * 10.0);
           break;
-        case BookCategory.courage:
-          _addStatExperience(npcIndex, 'courage', randAmt.toDouble() * 10.0);
+        case BookCategory.confidence:
+          _addStatExperience(npcIndex, 'confidence', randAmt.toDouble() * 10.0);
           break;
         case BookCategory.hygiene:
           _addStatExperience(npcIndex, 'hygiene', randAmt.toDouble() * 10.0);
@@ -8323,7 +8507,7 @@ class GameState extends ChangeNotifier {
           category: ItemCategory.resource,
           value:
               (100 + Random().nextInt(100)) *
-              (worker.stats['courage'] ?? 1) ~/
+              (worker.stats['confidence'] ?? 1) ~/
               5,
         ),
       );
@@ -10205,6 +10389,51 @@ class GameState extends ChangeNotifier {
     return finalMinutes;
   }
 
+  bool doesNpcLoveTask(NPC npc, TaskType task) {
+    final String role = npc.role.toLowerCase();
+    switch (role) {
+      case 'scientist':
+      case 'player':
+        if (task == TaskType.research || task == TaskType.dissect || task == TaskType.vivisection || task == TaskType.invention || task == TaskType.experiment || task == TaskType.study) return true;
+        break;
+      case 'butler':
+        if (task == TaskType.greetGuest || task == TaskType.cleanRoom || task == TaskType.transcribeNotes) return true;
+        break;
+      case 'chef':
+      case 'cook':
+        if (task == TaskType.cook || task == TaskType.prepareMeals || task == TaskType.brew || task == TaskType.distill || task == TaskType.butcherAnimals) return true;
+        break;
+      case 'groundskeeper':
+      case 'farmer':
+      case 'laborer':
+        if (task == TaskType.plantCrops || task == TaskType.harvestCrops || task == TaskType.harvestCabbage || task == TaskType.processTimber || task == TaskType.construction) return true;
+        break;
+      case 'maid':
+      case 'servant':
+        if (task == TaskType.cleanRoom || task == TaskType.cleanDish || task == TaskType.wash || task == TaskType.collectEggs) return true;
+        break;
+    }
+    return false;
+  }
+
+  bool doesNpcHateTask(NPC npc, TaskType task) {
+    final String role = npc.role.toLowerCase();
+    switch (role) {
+      case 'scientist':
+      case 'player':
+        if (task == TaskType.cleanRoom || task == TaskType.cleanDish || task == TaskType.discardTrash || task == TaskType.discardSpoiledFood || task == TaskType.hauling) return true;
+        break;
+      case 'butler':
+        if (task == TaskType.dissect || task == TaskType.vivisection || task == TaskType.mining || task == TaskType.strengthLabor || task == TaskType.butcherAnimals) return true;
+        break;
+      case 'chef':
+      case 'cook':
+        if (task == TaskType.mining || task == TaskType.excavate || task == TaskType.cleanRoom) return true;
+        break;
+    }
+    return false;
+  }
+
   bool assignNpcToTask(
     String npcId,
     TaskType type,
@@ -10837,6 +11066,19 @@ class GameState extends ChangeNotifier {
       movementProgress: finalProgress,
       status: _determineStatus(updatedNpc, task),
     );
+
+    if (!silent) {
+      AudioService().playTaskAssignment();
+    }
+    if (updatedNpc.isResident) {
+      if (doesNpcHateTask(updatedNpc, assignedType)) {
+        AudioService().playDispleased();
+      } else if (doesNpcLoveTask(updatedNpc, assignedType)) {
+        if (Random().nextDouble() < 0.4) {
+          AudioService().playPleased();
+        }
+      }
+    }
     return true;
   }
 
@@ -11127,9 +11369,100 @@ class GameState extends ChangeNotifier {
   void spawnRefugee() {
     final refugee = NPCGenerator.generateRefugee(currentDate: _currentDate);
     _npcs.add(refugee);
+    _addSpouseIfMarried(refugee);
     _lastAnnouncement =
         "A new refugee, ${refugee.name}, has arrived at the manor gates.";
     notifyListeners();
+  }
+
+  void _addSpouseIfMarried(NPC npc) {
+    if (npc.biography?.relationshipStatus == 'married') {
+      final spouseId = "spouse_${npc.id}";
+      if (_npcs.any((n) => n.id == spouseId) || _availableHamletNpcs.any((n) => n.id == spouseId)) {
+        return;
+      }
+
+      final spouseGender = npc.gender == 'Male' ? 'Female' : 'Male';
+      final spouseAge = (npc.age + (Random().nextInt(7) - 3)).clamp(18, 100);
+
+      final spouseBioRes = NPCGenerator.generateBiographyForCharacter(
+        role: 'Refugee',
+        age: spouseAge,
+        currentDate: _currentDate,
+        gender: spouseGender,
+        religion: npc.religion,
+      );
+
+      final updatedBio = CharacterBiography(
+        birthDate: spouseBioRes.biography.birthDate,
+        placeOfBirth: spouseBioRes.biography.placeOfBirth,
+        fatherProfession: spouseBioRes.biography.fatherProfession,
+        fatherClass: spouseBioRes.biography.fatherClass,
+        fatherReligion: spouseBioRes.biography.fatherReligion,
+        motherProfession: spouseBioRes.biography.motherProfession,
+        motherClass: spouseBioRes.biography.motherClass,
+        motherReligion: spouseBioRes.biography.motherReligion,
+        parentsMaritalStatus: spouseBioRes.biography.parentsMaritalStatus,
+        characterClass: spouseBioRes.biography.characterClass,
+        childhoodEvent: spouseBioRes.biography.childhoodEvent,
+        educationOrApprenticeship: spouseBioRes.biography.educationOrApprenticeship,
+        profession: spouseBioRes.biography.profession,
+        relationshipStatus: 'married',
+        tragicEvent: spouseBioRes.biography.tragicEvent,
+        discoveredPassion: spouseBioRes.biography.discoveredPassion,
+        healthIssue: spouseBioRes.biography.healthIssue,
+        religiousConversionEvent: spouseBioRes.biography.religiousConversionEvent,
+      );
+
+      final nameParts = npc.name.split(' ');
+      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Commoner';
+      final baseRandomSpouse = NPCGenerator.generateRefugee(currentDate: _currentDate);
+      final randomFirstName = baseRandomSpouse.name.split(' ').first;
+
+      final spouseNpc = baseRandomSpouse.copyWith(
+        id: spouseId,
+        name: "$randomFirstName $lastName",
+        gender: spouseGender,
+        age: spouseAge,
+        nationality: npc.nationality,
+        religion: npc.religion,
+        biography: updatedBio,
+        bio: updatedBio.toParagraph(),
+        hometown: npc.hometown,
+        isResident: false,
+        currentRoomId: null, // Off-map
+        relationships: {
+          npc.id: Relationship(
+            admiration: 4.5,
+            respect: 4.0,
+            attraction: 4.5,
+            fear: 1.0,
+          ),
+        },
+      );
+
+      // Update npc's own relationships map to contain the spouse
+      final updatedRelations = Map<String, Relationship>.from(npc.relationships);
+      updatedRelations[spouseNpc.id] = Relationship(
+        admiration: 4.5,
+        respect: 4.0,
+        attraction: 4.5,
+        fear: 1.0,
+      );
+
+      // Update npc in the main list or available list
+      final npcIdxInMain = _npcs.indexWhere((n) => n.id == npc.id);
+      if (npcIdxInMain != -1) {
+        _npcs[npcIdxInMain] = _npcs[npcIdxInMain].copyWith(relationships: updatedRelations);
+      }
+      final npcIdxInHamlet = _availableHamletNpcs.indexWhere((n) => n.id == npc.id);
+      if (npcIdxInHamlet != -1) {
+        _availableHamletNpcs[npcIdxInHamlet] = _availableHamletNpcs[npcIdxInHamlet].copyWith(relationships: updatedRelations);
+      }
+
+      // Add spouse off-map directly to the main npcs list
+      _npcs.add(spouseNpc);
+    }
   }
 
   void receiveEntrywayGuest(String guestId, [String? greeterId]) {
@@ -11422,6 +11755,53 @@ class GameState extends ChangeNotifier {
         ? (currentOfferedCost / baseIntrinsicsCost)
         : markupFactor;
 
+    // Find the negotiator resident
+    NPC? negotiator;
+    final merchantRoom = merchant.currentRoomId;
+    if (merchantRoom != null) {
+      final residentsInRoom = _npcs
+          .where((n) =>
+              n.isResident &&
+              n.currentRoomId == merchantRoom &&
+              n.status != NPCStatus.dead)
+          .toList();
+      if (residentsInRoom.isNotEmpty) {
+        residentsInRoom.sort((a, b) {
+          final scoreA = (a.stats['confidence'] ?? 5) +
+              (a.stats['beauty'] ?? 5) +
+              (a.stats['temperament'] ?? 5);
+          final scoreB = (b.stats['confidence'] ?? 5) +
+              (b.stats['beauty'] ?? 5) +
+              (b.stats['temperament'] ?? 5);
+          return scoreB.compareTo(scoreA);
+        });
+        negotiator = residentsInRoom.first;
+      }
+    }
+
+    if (negotiator == null) {
+      final allResidents = _npcs
+          .where((n) => n.isResident && n.status != NPCStatus.dead)
+          .toList();
+      if (allResidents.isNotEmpty) {
+        allResidents.sort((a, b) {
+          final scoreA = (a.stats['confidence'] ?? 5) +
+              (a.stats['beauty'] ?? 5) +
+              (a.stats['temperament'] ?? 5);
+          final scoreB = (b.stats['confidence'] ?? 5) +
+              (b.stats['beauty'] ?? 5) +
+              (b.stats['temperament'] ?? 5);
+          return scoreB.compareTo(scoreA);
+        });
+        negotiator = allResidents.first;
+      }
+    }
+
+    final int confidence = negotiator?.stats['confidence'] ?? 5;
+    final int beauty = negotiator?.stats['beauty'] ?? 5;
+    final int temperament = negotiator?.stats['temperament'] ?? 5;
+    final String negotiatorName = negotiator?.name ?? "Victor";
+
     double successChance = 40.0;
     double offenseChance = 20.0;
 
@@ -11438,6 +11818,15 @@ class GameState extends ChangeNotifier {
       successChance = 40.0 + (respect - 50) * 0.5;
       offenseChance = 20.0;
     }
+
+    // Apply negotiator stat modifiers
+    final double successModifier =
+        (confidence - 5) * 2.5 + (beauty - 5) * 1.5 + (temperament - 5) * 1.0;
+    final double offenseModifier =
+        -(temperament - 5) * 3.0 - (confidence - 5) * 1.0;
+
+    successChance += successModifier;
+    offenseChance += offenseModifier;
 
     successChance = successChance.clamp(5.0, 95.0);
     offenseChance = offenseChance.clamp(5.0, 95.0);
@@ -11469,10 +11858,10 @@ class GameState extends ChangeNotifier {
         final int multiplier = isSalt ? 10 : 1;
         updateResource(freeItem, multiplier);
         message =
-            "CRITICAL SUCCESS! ${merchant.name} is deeply impressed by Glarus Manor's prestige and lowers their markup by 20%, throwing in a free ${_getPrettyResourceName(freeItem)}!";
+            "CRITICAL SUCCESS! ${merchant.name} is deeply impressed by $negotiatorName's confidence and lowers their markup by 20%, throwing in a free ${_getPrettyResourceName(freeItem)}!";
       } else {
         message =
-            "CRITICAL SUCCESS! ${merchant.name} is deeply impressed by Glarus Manor's prestige and lowers their markup by 20%!";
+            "CRITICAL SUCCESS! ${merchant.name} is deeply impressed by $negotiatorName's confidence and lowers their markup by 20%!";
       }
     } else if (roll < successChance) {
       // Success
@@ -11481,13 +11870,13 @@ class GameState extends ChangeNotifier {
       discount = 0.12;
       markupFactor = (markupFactor - 0.12).clamp(0.85, 2.0);
       message =
-          "SUCCESS! You haggle a good deal. ${merchant.name} drops their markup by 12%.";
+          "SUCCESS! $negotiatorName haggles a good deal. ${merchant.name} drops their markup by 12%.";
     } else if (roll < (100 - offenseChance)) {
       // Failure
       outcome = 'failure';
       respect = (respect - 10).clamp(0, 100);
       message =
-          "FAILURE! ${merchant.name} flatly refuses your offer: \"My prices are already more than fair!\"";
+          "FAILURE! ${merchant.name} flatly refuses $negotiatorName's offer: \"My prices are already more than fair!\"";
     } else {
       // Critical Failure / Offended
       respect = (respect - 25).clamp(0, 100);
@@ -11497,7 +11886,7 @@ class GameState extends ChangeNotifier {
       if (isUpsetRefuse) {
         outcome = 'upset_refused';
         message =
-            "CRITICAL FAILURE! ${merchant.name} is deeply insulted by your lowball offer and refuses to do any further business with Glarus Manor!";
+            "CRITICAL FAILURE! ${merchant.name} is deeply insulted by $negotiatorName's lowball offer and refuses to do any further business with Glarus Manor!";
       } else {
         outcome = 'loan_offer';
         message =
@@ -11644,6 +12033,7 @@ class GameState extends ChangeNotifier {
         );
 
     _npcs.add(merchant);
+    _addSpouseIfMarried(merchant);
 
     _lastAnnouncement =
         "A traveling merchant, $name, has arrived at the entryway.";
@@ -11685,6 +12075,7 @@ class GameState extends ChangeNotifier {
         );
 
     _npcs.add(merchant);
+    _addSpouseIfMarried(merchant);
 
     _lastAnnouncement =
         "Staples Merchant Eldon has arrived with cartloads of food ingredients!";
@@ -12117,6 +12508,7 @@ class GameState extends ChangeNotifier {
         );
       }
       _availableHamletNpcs.add(refugee);
+      _addSpouseIfMarried(refugee);
     }
     _lastAnnouncement = "A new group of travelers has arrived at the Tavern.";
     notifyListeners();
@@ -12244,6 +12636,17 @@ class GameState extends ChangeNotifier {
       taskQueue: newRoomQueue,
       activeProjects: newProjects,
     );
+
+    AudioService().playTaskAssignment();
+    if (npc.isResident) {
+      if (doesNpcHateTask(npc, type)) {
+        AudioService().playDispleased();
+      } else if (doesNpcLoveTask(npc, type)) {
+        if (Random().nextDouble() < 0.4) {
+          AudioService().playPleased();
+        }
+      }
+    }
 
     _lastAnnouncement =
         "Task '${getTaskDescriptionForType(type)}' has been enqueued for ${npc.name}.";
@@ -12717,24 +13120,26 @@ class GameState extends ChangeNotifier {
     if (currentTask != null && currentTask.type == TaskType.eat) return;
 
     // --- STEP 1 & 2: EMERGENCY OVERRIDES ---
-    if (npc.energy <= 0.0) {
-      _npcs[index] = npc = npc.copyWith(
-        energy: 15.0,
-        status: NPCStatus.sleeping,
-      );
-      return;
-    }
-    if (npc.digestion >= 100.0) {
-      _npcs[index] = npc = npc.copyWith(
-        digestion: 0.0,
-        energy: max(0.0, npc.energy - 10.0),
-      );
-      _announcementHistory.insert(
-        0,
-        "[${_currentDate.formattedTime}] EMERGENCY: ${npc.name} had a bowel incident.",
-      );
-      notifyListeners();
-      return;
+    if (!isTesting) {
+      if (npc.energy <= 0.0) {
+        _npcs[index] = npc = npc.copyWith(
+          energy: 15.0,
+          status: NPCStatus.sleeping,
+        );
+        return;
+      }
+      if (npc.digestion >= 100.0) {
+        _npcs[index] = npc = npc.copyWith(
+          digestion: 0.0,
+          energy: max(0.0, npc.energy - 10.0),
+        );
+        _announcementHistory.insert(
+          0,
+          "[${_currentDate.formattedTime}] EMERGENCY: ${npc.name} had a bowel incident.",
+        );
+        notifyListeners();
+        return;
+      }
     }
 
     final crisis = _crises.firstWhereOrNull((c) => c.severity > 0.0);
@@ -13199,7 +13604,7 @@ class GameState extends ChangeNotifier {
       weights[TaskType.paint] = (stats['dexterity'] ?? 1).toDouble();
     }
     if (_rooms.any((r) => r.isRestored && r.type == RoomType.workshop)) {
-      weights[TaskType.sculpt] = (stats['courage'] ?? 1).toDouble();
+      weights[TaskType.sculpt] = (stats['confidence'] ?? 1).toDouble();
     }
     if (_chickens.isNotEmpty ||
         npc.inventory.any(
@@ -14194,6 +14599,8 @@ class GameState extends ChangeNotifier {
       discoveryDate: _currentDate.toDateTime(),
     );
 
+    AudioService().playDispleased();
+
     _crises.add(crisis);
     _announcementHistory.insert(
       0,
@@ -14203,6 +14610,10 @@ class GameState extends ChangeNotifier {
   }
 
   void triggerJoy(String npcId, String cause) {
+    final npc = _npcs.firstWhereOrNull((n) => n.id == npcId);
+    if (npc != null && npc.isResident && npc.isMale) {
+      AudioService().playPleased();
+    }
     final joyEffect = StatusEffect(
       id: 'joy_${DateTime.now().millisecondsSinceEpoch}',
       name: 'Overjoyed',
@@ -14218,6 +14629,10 @@ class GameState extends ChangeNotifier {
   }
 
   void triggerSadness(String npcId, String cause) {
+    final npc = _npcs.firstWhereOrNull((n) => n.id == npcId);
+    if (npc != null && npc.isResident && npc.isMale) {
+      AudioService().playDispleased();
+    }
     final sadnessEffect = StatusEffect(
       id: 'sadness_${DateTime.now().millisecondsSinceEpoch}',
       name: 'Deep Sadness',
@@ -15839,6 +16254,7 @@ class GameState extends ChangeNotifier {
         );
 
     _npcs.add(superMerchant);
+    _addSpouseIfMarried(superMerchant);
     _lastAnnouncement = "Super Merchant Silas has arrived at the entryway!";
     _announcementHistory.insert(
       0,

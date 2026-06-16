@@ -13,28 +13,15 @@
 // limitations under the License.
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/arena_progress.dart';
+import 'storage_helper.dart';
 
 class ArenaSaveService {
   static const int maxSlots = 3;
 
   static String _getFileName(int slot) => 'arena_save_slot_$slot.json';
-
-  static Future<String> get _localPath async {
-    if (kIsWeb) return '';
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
-  }
-
-  static Future<dynamic> _localFile(int slot) async {
-    if (kIsWeb) return null;
-    final path = await _localPath;
-    return File('$path/${_getFileName(slot)}');
-  }
 
   static Future<void> saveProgress(ArenaProgress progress) async {
     try {
@@ -46,8 +33,7 @@ class ArenaSaveService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_getFileName(progress.slot), jsonString);
       } else {
-        final file = await _localFile(progress.slot) as File;
-        await file.writeAsString(jsonString);
+        await StorageHelper.instance.saveFile(_getFileName(progress.slot), jsonString);
       }
     } catch (e) {
       debugPrint('Error saving arena progress (slot ${progress.slot}): $e');
@@ -63,9 +49,9 @@ class ArenaSaveService {
         if (dataStr == null) return null;
         contents = dataStr;
       } else {
-        final file = await _localFile(slot) as File;
-        if (!await file.exists()) return null;
-        contents = await file.readAsString();
+        final dataStr = await StorageHelper.instance.readFile(_getFileName(slot));
+        if (dataStr == null) return null;
+        contents = dataStr;
       }
 
       final data = jsonDecode(contents) as Map<String, dynamic>;
@@ -82,8 +68,7 @@ class ArenaSaveService {
         final prefs = await SharedPreferences.getInstance();
         return prefs.containsKey(_getFileName(slot));
       } else {
-        final file = await _localFile(slot) as File;
-        return file.exists();
+        return await StorageHelper.instance.fileExists(_getFileName(slot));
       }
     } catch (e) {
       return false;
@@ -96,10 +81,7 @@ class ArenaSaveService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove(_getFileName(slot));
       } else {
-        final file = await _localFile(slot) as File;
-        if (await file.exists()) {
-          await file.delete();
-        }
+        await StorageHelper.instance.deleteFile(_getFileName(slot));
       }
     } catch (e) {
       debugPrint('Error deleting arena save (slot $slot): $e');

@@ -70,16 +70,16 @@ void main() {
       manager.update(111.0); // Remaining time is 180 - 120 = 60.0s. AP caps at 10.0.
       
       // Drain AP so we don't hit maxAP (10.0) during the test tick
-      // Spawn Rats (costs 3 AP) twice:
+      // Spawn Rats (costs 4 AP) twice:
       manager.spawnUnit(CombatUnitFactory.createBrownRats(), CombatSide.player, y: 30.0);
       manager.spawnUnit(CombatUnitFactory.createBrownRats(), CombatSide.player, y: 30.0);
       
-      final apStartOverdrive = manager.actionPoints; // 4.0
-      expect(apStartOverdrive, 4.0);
+      final apStartOverdrive = manager.actionPoints; // 2.0
+      expect(apStartOverdrive, 2.0);
       
       // Tick 6 seconds (Overdrive rate is 2/3 AP/sec).
       manager.update(6.0);
-      // AP should increase by (2/3) * 6 = 4.0 AP, ending at 8.0 AP
+      // AP should increase by (2/3) * 6 = 4.0 AP, ending at 6.0 AP
       expect(manager.actionPoints, closeTo(apStartOverdrive + 4.0, 0.01));
     });
 

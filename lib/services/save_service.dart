@@ -13,28 +13,15 @@
 // limitations under the License.
 
 import 'dart:convert';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../state/game_state.dart';
+import 'storage_helper.dart';
 
 class SaveService {
   static const int maxSlots = 3;
 
   static String _getFileName(int slot) => 'savegame_slot_$slot.json';
-
-  static Future<String> get _localPath async {
-    if (kIsWeb) return '';
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
-  }
-
-  static Future<dynamic> _localFile(int slot) async {
-    if (kIsWeb) return null;
-    final path = await _localPath;
-    return File('$path/${_getFileName(slot)}');
-  }
 
   static Future<void> saveGame(GameState gameState, {int slot = 1}) async {
     try {
@@ -53,8 +40,7 @@ class SaveService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_getFileName(slot), jsonString);
       } else {
-        final file = await _localFile(slot) as File;
-        await file.writeAsString(jsonString);
+        await StorageHelper.instance.saveFile(_getFileName(slot), jsonString);
       }
     } catch (e) {
       debugPrint('Error saving game (slot $slot): $e');
@@ -70,9 +56,9 @@ class SaveService {
         if (dataStr == null) return null;
         contents = dataStr;
       } else {
-        final file = await _localFile(slot) as File;
-        if (!await file.exists()) return null;
-        contents = await file.readAsString();
+        final dataStr = await StorageHelper.instance.readFile(_getFileName(slot));
+        if (dataStr == null) return null;
+        contents = dataStr;
       }
       return jsonDecode(contents) as Map<String, dynamic>;
     } catch (e) {
@@ -87,8 +73,7 @@ class SaveService {
         final prefs = await SharedPreferences.getInstance();
         return prefs.containsKey(_getFileName(slot));
       } else {
-        final file = await _localFile(slot) as File;
-        return file.exists();
+        return await StorageHelper.instance.fileExists(_getFileName(slot));
       }
     } catch (e) {
       return false;
@@ -104,9 +89,9 @@ class SaveService {
         if (dataStr == null) return null;
         contents = dataStr;
       } else {
-        final file = await _localFile(slot) as File;
-        if (!await file.exists()) return null;
-        contents = await file.readAsString();
+        final dataStr = await StorageHelper.instance.readFile(_getFileName(slot));
+        if (dataStr == null) return null;
+        contents = dataStr;
       }
       final data = jsonDecode(contents) as Map<String, dynamic>;
       return data['metadata'] as Map<String, dynamic>?;
@@ -122,10 +107,7 @@ class SaveService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove(_getFileName(slot));
       } else {
-        final file = await _localFile(slot) as File;
-        if (await file.exists()) {
-          await file.delete();
-        }
+        await StorageHelper.instance.deleteFile(_getFileName(slot));
       }
     } catch (e) {
       debugPrint('Error deleting save (slot $slot): $e');

@@ -758,7 +758,7 @@ class Room {
         break;
     }
 
-    return baseDesc;
+    return "$baseDesc\n\n$capabilities";
   }
 
   task_service.TaskType? get defaultAction {

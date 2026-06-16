@@ -122,38 +122,6 @@ class DiscoveriesContent extends StatelessWidget {
     );
   }
 
-  Widget _buildForceItem(NPC npc) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.bolt, color: Colors.blueAccent, size: 14),
-          const SizedBox(width: 12),
-          Text(
-            npc.name.toUpperCase(),
-            style: GoogleFonts.oldStandardTt(
-              color: const Color(0xFFE5D5B0),
-              fontSize: 12,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            "LV. ${(npc.stats['strength'] ?? 5) ~/ 10}",
-            style: GoogleFonts.oldStandardTt(
-              color: Colors.white24,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildResearchStanding(GameState state) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

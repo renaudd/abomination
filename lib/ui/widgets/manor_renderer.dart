@@ -352,8 +352,15 @@ class ManorArchitectPainter extends CustomPainter {
       ..strokeWidth = 3.0 * scale;
 
     for (int floor = -1; floor <= 2; floor++) {
-      final left = ManorProjection.project(-3.5, floor, 0, scale: scale);
-      final right = ManorProjection.project(2.5, floor, 0, scale: scale);
+      double leftX = -3.5;
+      double rightX = 2.5;
+      if (floor == 2) {
+        // Attic roof only covers the central 4 blocks
+        leftX = -2.5;
+        rightX = 1.5;
+      }
+      final left = ManorProjection.project(leftX, floor, 0, scale: scale);
+      final right = ManorProjection.project(rightX, floor, 0, scale: scale);
 
       // Horizontal beam
       canvas.drawLine(
@@ -365,7 +372,12 @@ class ManorArchitectPainter extends CustomPainter {
 
     // Vertical supports
     for (double x = -3.5; x <= 2.5; x += 1.0) {
-      final top = ManorProjection.project(x, 2, 0, scale: scale);
+      int maxFloor = 2;
+      if (x == -3.5 || x == 2.5) {
+        // Outer wings (Master Bedroom & Library) have no attic above them
+        maxFloor = 1;
+      }
+      final top = ManorProjection.project(x, maxFloor, 0, scale: scale);
       final bot = ManorProjection.project(x, -1, 0, scale: scale);
       
       canvas.drawLine(

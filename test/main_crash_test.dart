@@ -29,6 +29,10 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
 
+    // Tap "AWAKEN" button to enter Main Menu
+    await tester.tap(find.text('AWAKEN'));
+    await tester.pumpAndSettle();
+
     // Tap "BEGIN EXPERIMENT" button to open introduction screen
     final beginButtonFinder = find.text('BEGIN EXPERIMENT');
     expect(beginButtonFinder, findsOneWidget);

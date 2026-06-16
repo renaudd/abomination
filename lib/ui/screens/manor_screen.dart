@@ -23,6 +23,7 @@ import '../../services/task_service.dart';
 import '../../services/science_service.dart';
 import '../../util/manor_layout.dart';
 import '../../services/kitchen_service.dart';
+import '../../services/audio_service.dart';
 import '../../services/save_service.dart';
 import '../../models/game_item.dart';
 import '../widgets/manor_renderer.dart';
@@ -595,7 +596,10 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                 _hudExpanded ? Icons.expand_less : Icons.expand_more,
                 color: const Color(0xFFC4B89B),
               ),
-              onPressed: () => setState(() => _hudExpanded = !_hudExpanded),
+              onPressed: () {
+                AudioService().playTap();
+                setState(() => _hudExpanded = !_hudExpanded);
+              },
               tooltip: 'Toggle Logs',
             ),
             // d) Survey Estate
@@ -603,6 +607,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               icon: const Icon(Icons.map_outlined, color: Color(0xFFC4B89B)),
               tooltip: 'Survey Estate',
               onPressed: () {
+                AudioService().playTap();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -617,6 +622,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               tooltip: 'Menu',
               color: const Color(0xFF1A1612),
               onSelected: (value) {
+                AudioService().playTap();
                 if (value == 'save') {
                   showDialog(
                     context: context,

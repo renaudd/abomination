@@ -17,6 +17,8 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:ui';
 import 'state/game_state.dart';
 import 'services/audio_service.dart';
 import 'services/game_engine.dart';
@@ -26,6 +28,18 @@ import 'ui/screens/world_map_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint("CRITICAL FLUTTER ERROR: ${details.exception}\n${details.stack}");
+  };
+
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    debugPrint("CRITICAL PLATFORM ERROR: $error\n$stack");
+    return true;
+  };
+
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
@@ -33,7 +47,9 @@ void main() async {
   ]);
 
   final audioService = AudioService();
-  await audioService.initialize();
+  if (!kIsWeb) {
+    await audioService.initialize();
+  }
 
   final gameState = GameState();
   globalGameState = gameState;
@@ -53,6 +69,8 @@ void main() async {
   );
 }
 
+VoidCallback? onGameLoadingComplete;
+
 GameState? globalGameState;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -66,11 +84,23 @@ class AbominationApp extends StatefulWidget {
 
 class _AbominationAppState extends State<AbominationApp> {
   late final FocusNode _globalFocusNode;
+  bool _isFullyLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _globalFocusNode = FocusNode();
+    onGameLoadingComplete = () {
+      if (globalGameState != null) {
+        AudioService().applySettings(globalGameState!);
+      }
+      AudioService().playBGM('audio/vivaldi_winter.m4a', isAsset: true);
+      if (mounted) {
+        setState(() {
+          _isFullyLoaded = true;
+        });
+      }
+    };
   }
 
   @override
@@ -102,6 +132,8 @@ class _AbominationAppState extends State<AbominationApp> {
               final state = globalGameState;
               if (state == null) return;
 
+              if (state.isReassigningHotkey) return;
+
               // If player is not initialized yet (e.g. game setup screen) or if we are in active combat/combat simulator,
               // do not handle global keys!
               final player = state.npcs.firstWhereOrNull((n) => n.isPlayer);
@@ -115,18 +147,20 @@ class _AbominationAppState extends State<AbominationApp> {
                 return;
               }
 
-               // Numeric speed keys are only active when the clock is not paused.
+              final keyLabel = event.logicalKey.keyLabel.toUpperCase();
+
+              // Numeric speed keys are only active when the clock is not paused.
               // During combat, encounters, dialogue, or menus, the clock is paused so numbers won't affect it!
               if (state.speed != GameSpeed.paused) {
-                if (key == PhysicalKeyboardKey.digit0 || key == PhysicalKeyboardKey.numpad0) {
+                if (key == PhysicalKeyboardKey.digit0 || key == PhysicalKeyboardKey.numpad0 || keyLabel == state.hotkeys['Pause']) {
                   state.setSpeed(GameSpeed.paused);
-                } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
+                } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1 || keyLabel == state.hotkeys['Slow Speed']) {
                   state.setSpeed(GameSpeed.slow);
-                } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2) {
+                } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2 || keyLabel == state.hotkeys['Normal Speed']) {
                   state.setSpeed(GameSpeed.normal);
-                } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3) {
+                } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3 || keyLabel == state.hotkeys['Fast Speed']) {
                   state.setSpeed(GameSpeed.fast);
-                } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4) {
+                } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4 || keyLabel == state.hotkeys['Lightning Speed']) {
                   state.setSpeed(GameSpeed.lightning);
                 }
               }
@@ -134,19 +168,19 @@ class _AbominationAppState extends State<AbominationApp> {
               final bool isAtManor = (player.worldTravelProgress == 0.0 || player.worldTravelProgress >= 1.0);
 
               if (isAtManor) {
-                if (key == PhysicalKeyboardKey.keyU) {
+                if (key == PhysicalKeyboardKey.keyU || keyLabel == state.hotkeys['Manor View']) {
                   navigatorKey.currentState?.popUntil((route) => route.isFirst);
-                } else if (key == PhysicalKeyboardKey.keyO) {
+                } else if (key == PhysicalKeyboardKey.keyO || keyLabel == state.hotkeys['Chronicle Records']) {
                   navigatorKey.currentState?.popUntil((route) => route.isFirst);
                   navigatorKey.currentState?.push(
                     MaterialPageRoute(builder: (context) => const RecordsScreen()),
                   );
-                } else if (key == PhysicalKeyboardKey.keyP) {
+                } else if (key == PhysicalKeyboardKey.keyP || keyLabel == state.hotkeys['Survey Estate Map']) {
                   navigatorKey.currentState?.popUntil((route) => route.isFirst);
                   navigatorKey.currentState?.push(
                     MaterialPageRoute(builder: (context) => const WorldMapScreen()),
                   );
-                } else if (key == PhysicalKeyboardKey.keyI) {
+                } else if (key == PhysicalKeyboardKey.keyI || keyLabel == state.hotkeys['Manor Holdings']) {
                   navigatorKey.currentState?.popUntil((route) => route.isFirst);
                   navigatorKey.currentState?.push(
                     MaterialPageRoute(builder: (context) => const RecordsScreen()),
@@ -158,26 +192,30 @@ class _AbominationAppState extends State<AbominationApp> {
           child: child!,
         );
       },
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF1A1612), // Deep wood shadow
-        textTheme:
-            GoogleFonts.playfairDisplayTextTheme(
-              ThemeData.dark().textTheme,
-            ).copyWith(
-              bodyMedium: GoogleFonts.oldStandardTt(
-                color: const Color(0xFFC4B89B),
+      theme: _isFullyLoaded
+          ? ThemeData(
+              brightness: Brightness.dark,
+              scaffoldBackgroundColor: const Color(0xFF1A1612), // Deep wood shadow
+              textTheme: GoogleFonts.playfairDisplayTextTheme(
+                ThemeData.dark().textTheme,
+              ).copyWith(
+                bodyMedium: GoogleFonts.oldStandardTt(
+                  color: const Color(0xFFC4B89B),
+                ),
               ),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFF3B2F21), // Mahogany
+                brightness: Brightness.dark,
+                surface: const Color(0xFF241F1A),
+                primary: const Color(0xFFC4B89B), // Brass/Parchment
+              ),
+              useMaterial3: true,
+            )
+          : ThemeData(
+              brightness: Brightness.dark,
+              scaffoldBackgroundColor: const Color(0xFF1A1612),
             ),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3B2F21), // Mahogany
-          brightness: Brightness.dark,
-          surface: const Color(0xFF241F1A),
-          primary: const Color(0xFFC4B89B), // Brass/Parchment
-        ),
-        useMaterial3: true,
-      ),
-      home: const LoadingScreen(),
+      home: LoadingScreen(onCompleted: onGameLoadingComplete),
     );
   }
 }

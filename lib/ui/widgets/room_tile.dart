@@ -145,7 +145,7 @@ class RoomTile extends StatelessWidget {
                             room.displayShortName.toUpperCase(),
                             style: GoogleFonts.outfit(
                               fontSize: room.type == RoomType.chickenCoop
-                                  ? (isCompact ? 9.0 : 9.5)
+                                  ? (isCompact ? 10.0 : 10.5)
                                   : (isCompact ? 10.5 : 11),
                               fontWeight: FontWeight.w700,
                               letterSpacing: room.type == RoomType.chickenCoop

@@ -22,6 +22,7 @@ void main() {
   late GameState gameState;
 
   setUp(() {
+    GameState.isTesting = true;
     gameState = GameState();
     gameState.initializeNewGame(
       firstName: "Test",
@@ -33,6 +34,10 @@ void main() {
       objective: LifeObjective.science,
     );
     gameState.setSpeed(GameSpeed.normal);
+  });
+
+  tearDown(() {
+    GameState.isTesting = false;
   });
 
   group('Digestion Logic', () {
@@ -58,7 +63,7 @@ void main() {
 
       final updatedNpc = gameState.npcs.firstWhere((n) => n.id == 'player');
       // Should have a toilet task from intent system
-      expect(updatedNpc.activeTaskId, contains("toilet"));
+      expect(updatedNpc.activeTaskId, contains("useToilet"));
     });
 
     // ... (UBMI test is fine)
@@ -103,20 +108,11 @@ void main() {
 
       gameState.updateNpc(npc.copyWith(digestion: 90.0));
 
-      // Mock task assignment
-      final task = GameTask(
-        id: 'test_toilet',
-        npcId: npc.id,
-        priority: IntentPriority.normal,
-        type: TaskType.useToilet,
-        targetId: bathroom.id,
-        minutesRemaining: 1,
-      );
-      gameState.assignTask(task);
+      gameState.assignNpcToTask('player', TaskType.useToilet, bathroom.id);
 
       // Advance time to complete task.
-      // Movement (3 ticks) + Task Duration (1 tick)
-      for (int i = 0; i < 15; i++) {
+      // Movement (1 tick) + Task Duration (15 ticks)
+      for (int i = 0; i < 20; i++) {
         gameState.tick();
       }
 
