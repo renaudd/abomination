@@ -10441,58 +10441,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       color: Colors.black.withValues(alpha: 0.35),
       child: Stack(
         children: [
-          Positioned(
-            top: 60,
-            left: 0,
-            right: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "FATE'S ROLL",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.oswald(
-                    color: const Color(0xFFD4AF37),
-                    fontSize: 34,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 6.0,
-                    shadows: [
-                      const Shadow(
-                        color: Colors.black87,
-                        offset: Offset(2, 2),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  "THE DICE HAVE BEEN CAST UPON GLARUS",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.playfairDisplay(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2.0,
-                    shadows: [
-                      const Shadow(
-                        color: Colors.black87,
-                        offset: Offset(1, 1),
-                        blurRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+
 
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _build3DDie(_die1, _isDiceRolling, 0.2),
+                _build3DCube(_die1, _isDiceRolling, 0.2),
                 const SizedBox(width: 48),
-                _build3DDie(_die2, _isDiceRolling, -0.15),
+                _build3DCube(_die2, _isDiceRolling, -0.15),
               ],
             ),
           ),
@@ -10575,48 +10532,116 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
   }
 
-  Widget _build3DDie(int value, bool rolling, double baseAngle) {
-    final double randAngleY = rolling ? (Random().nextDouble() - 0.5) * 2.0 : baseAngle;
-    final double randAngleX = rolling ? (Random().nextDouble() - 0.5) * 2.0 : 0.3;
-    final double randAngleZ = rolling ? (Random().nextDouble() - 0.5) * 1.5 : 0.0;
-    final double scale = rolling ? 1.0 + (Random().nextDouble() * 0.15) : 1.0;
+  Widget _build3DCube(int topValue, bool rolling, double baseAngle) {
+    final int top = topValue;
+    final int bottom = 7 - top;
+    
+    int front = 2;
+    int back = 5;
+    int left = 3;
+    int right = 4;
+    
+    if (top == 2) {
+      front = 1; back = 6; left = 3; right = 4;
+    } else if (top == 3) {
+      front = 1; back = 6; left = 2; right = 5;
+    } else if (top == 4) {
+      front = 1; back = 6; left = 5; right = 2;
+    } else if (top == 5) {
+      front = 6; back = 1; left = 3; right = 4;
+    } else if (top == 6) {
+      front = 2; back = 5; left = 4; right = 3;
+    }
 
-    return Transform(
-      transform: Matrix4.identity()
-        ..setEntry(3, 2, 0.002)
-        ..scale(scale)
-        ..rotateX(randAngleX)
-        ..rotateY(randAngleY)
-        ..rotateZ(randAngleZ),
-      alignment: Alignment.center,
-      child: Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF4ECD8),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFD4AF37), width: 2),
-          gradient: const RadialGradient(
-            colors: [
-              Color(0xFFFFF9EC),
-              Color(0xFFEADFCA),
-            ],
-            center: Alignment(-0.3, -0.3),
-            radius: 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: rolling ? 0.35 : 0.5),
-              blurRadius: rolling ? 16 : 8,
-              spreadRadius: rolling ? 2 : 0,
-              offset: rolling ? const Offset(10, 20) : const Offset(4, 10),
+    final double randAngleY = rolling ? (Random().nextDouble() - 0.5) * 5.0 : baseAngle;
+    final double randAngleX = rolling ? (Random().nextDouble() - 0.5) * 5.0 : 0.65;
+    final double randAngleZ = rolling ? (Random().nextDouble() - 0.5) * 3.0 : 0.15;
+
+    final double scale = rolling ? 1.0 + (Random().nextDouble() * 0.15) : 1.0;
+    
+    final size = 80.0;
+    final halfSize = size / 2;
+
+    Widget buildFace(int val, Matrix4 transform, String debugLabel) {
+      return Transform(
+        transform: transform,
+        alignment: Alignment.center,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4ECD8),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
+            gradient: const RadialGradient(
+              colors: [
+                Color(0xFFFFF9EC),
+                Color(0xFFEADFCA),
+              ],
+              center: Alignment(-0.2, -0.2),
+              radius: 1.0,
             ),
-          ],
+          ),
+          child: Center(
+            child: _buildDieDots(val),
+          ),
         ),
-        child: Center(
-          child: _buildDieDots(value),
+      );
+    }
+
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0015)
+            ..translate(rolling ? 12.0 : 6.0, rolling ? 24.0 : 16.0, -halfSize)
+            ..rotateX(1.2)
+            ..scale(rolling ? 1.15 : 0.95),
+          alignment: Alignment.center,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: rolling ? 0.2 : 0.35),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: rolling ? 16 : 6,
+                  spreadRadius: rolling ? 3 : 1,
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+
+        Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0015)
+            ..scale(scale)
+            ..rotateX(randAngleX)
+            ..rotateY(randAngleY)
+            ..rotateZ(randAngleZ),
+          alignment: Alignment.center,
+          child: Container(
+            width: size,
+            height: size,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                buildFace(bottom, Matrix4.identity()..translate(0.0, 0.0, -halfSize)..rotateY(pi), 'bottom'),
+                buildFace(back, Matrix4.identity()..translate(0.0, -halfSize, 0.0)..rotateX(pi / 2), 'back'),
+                buildFace(left, Matrix4.identity()..translate(-halfSize, 0.0, 0.0)..rotateY(-pi / 2), 'left'),
+                buildFace(right, Matrix4.identity()..translate(halfSize, 0.0, 0.0)..rotateY(pi / 2), 'right'),
+                buildFace(front, Matrix4.identity()..translate(0.0, halfSize, 0.0)..rotateX(-pi / 2), 'front'),
+                buildFace(top, Matrix4.identity()..translate(0.0, 0.0, halfSize), 'top'),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
