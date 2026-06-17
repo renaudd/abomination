@@ -80,13 +80,22 @@ class TaskResultGenerator {
           );
         }
 
-        // Default cooking/butcher quality calculation
-        double hygiene = worker.cleanliness / 100.0;
+        // Default cooking/butcher quality calculation using adjacent attribute weights:
+        // Perception (taste) primary [40%], Dexterity (utensil handling) secondary [25%],
+        // Intellect, Temperament, and Judgment tertiary [35% total].
         double perception = (worker.stats['perception'] ?? 3) / 10.0;
         double dexterity = (worker.stats['dexterity'] ?? 3) / 10.0;
-        double intelligence = (worker.stats['intellect'] ?? 3) / 10.0;
-        double cookQuality =
-            (hygiene + perception + dexterity + intelligence) / 4.0;
+        double intellect = (worker.stats['intellect'] ?? 3) / 10.0;
+        double temperament = (worker.stats['temperament'] ?? 3) / 10.0;
+        double judgment = (worker.stats['judgment'] ?? 3) / 10.0;
+        double hygiene = worker.cleanliness / 100.0;
+
+        double baseAttributeQuality = (perception * 0.40) +
+            (dexterity * 0.25) +
+            (((intellect + temperament + judgment) / 3.0) * 0.35);
+
+        // Keep hygiene as a minor multiplier on top
+        double cookQuality = baseAttributeQuality * (0.8 + hygiene * 0.2);
 
         final recipeDisplay = recipeId?.replaceAll('_', ' ') ?? "a meal";
         String qualityMsg = cookQuality > 0.6

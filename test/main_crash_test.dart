@@ -60,7 +60,13 @@ void main() {
     await tester.tap(find.text('SCIENCE.'));
     await tester.pumpAndSettle();
 
-    // Scene 6: Begin the work
+    // Scene 6: Stats allocation (dismiss unspent points warning)
+    await tester.tap(find.text('NEXT'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Proceed'));
+    await tester.pumpAndSettle();
+
+    // Scene 7: Begin the work
     final beginWorkButtonFinder = find.text('BEGIN THE WORK');
     expect(beginWorkButtonFinder, findsOneWidget);
     await tester.tap(beginWorkButtonFinder);

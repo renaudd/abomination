@@ -490,7 +490,10 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _sceneText("ALLOCATE CHARACTERISTICS"),
+                  Expanded(
+                    child: _sceneText("ALLOCATE CHARACTERISTICS"),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     "POINTS: $_unspentPoints",
                     style: GoogleFonts.playfairDisplay(

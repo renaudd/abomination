@@ -3560,7 +3560,7 @@ class GameState extends ChangeNotifier {
                 anyActiveFoley = true;
                 AudioService().startActionSound(task.type);
 
-                final proficiencyName = TaskService.getProficiency(task.type);
+                final proficiencyName = TaskService.getResolvedCookingProficiency(task.type, task.recipeId);
 
                 if (TaskService.isPhysicallyStrenuous(task.type)) {
                   // Workplace injury check
@@ -9545,7 +9545,7 @@ class GameState extends ChangeNotifier {
     final int duration = task.totalMinutes > 0 ? task.totalMinutes : 60;
 
     // 1. Proficiency XP (10x scaled, e.g. 60 mins -> 12 xp Cooking)
-    final proficiencyName = TaskService.getProficiency(task.type);
+    final proficiencyName = TaskService.getResolvedCookingProficiency(task.type, task.recipeId);
     int? gainedProfXp;
     if (proficiencyName != null) {
       gainedProfXp = (duration / 5.0).floor();
@@ -14919,11 +14919,46 @@ class GameState extends ChangeNotifier {
     int currentLevel = npc.metadata[levelKey] as int? ?? 0;
     if (currentLevel >= 10) return;
 
+    final adjacentProficiencies = ['Baking', 'Grilling', 'Brewing', 'Distilling'];
+    
+    // Catch-up Experience Synergy modifier:
+    if (adjacentProficiencies.contains(proficiency)) {
+      int maxAdjacentLvl = 0;
+      for (final adj in adjacentProficiencies) {
+        final adjLvl = npc.metadata['proficiency_level_$adj'] as int? ?? 0;
+        if (adjLvl > maxAdjacentLvl) {
+          maxAdjacentLvl = adjLvl;
+        }
+      }
+      if (currentLevel < maxAdjacentLvl) {
+        intAmount = intAmount * 2; // double XP
+      }
+    }
+
     final proficiencies = Map<String, double>.from(npc.proficiencies);
     double xp = ((proficiencies[proficiency] ?? 0.0) + intAmount)
         .floorToDouble();
 
     double required = getRequiredXP(currentLevel);
+    if (proficiency == 'Cooking') {
+      int minAdjacentLvl = 10;
+      for (final adj in adjacentProficiencies) {
+        final adjLvl = npc.metadata['proficiency_level_$adj'] as int? ?? 0;
+        if (adjLvl < minAdjacentLvl) {
+          minAdjacentLvl = adjLvl;
+        }
+      }
+      
+      // Level 6 cap: Lowest adjacent skill must be >= Level 3
+      if (currentLevel == 5 && minAdjacentLvl < 3) {
+        xp = required - 1.0;
+      }
+      // Level 8 cap: Lowest adjacent skill must be >= Level 5
+      else if (currentLevel == 7 && minAdjacentLvl < 5) {
+        xp = required - 1.0;
+      }
+    }
+
     if (xp >= required) {
       xp -= required;
       currentLevel += 1;

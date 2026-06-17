@@ -107,6 +107,63 @@ class KitchenService {
 
     bool has(String term) => names.any((n) => n.contains(term)) || types.any((t) => t.contains(term));
 
+    final recipes = getAvailableRecipes();
+    Recipe? find(String id) => recipes.cast<Recipe?>().firstWhere((r) => r?.id == id, orElse: () => null);
+
+    // Pizza Margherita: bread_dough + tomato_sauce + cheese
+    if ((has('bread_dough') || has('bread dough') || has('dough')) && (has('tomato_sauce') || has('tomato sauce') || has('tomato')) && has('cheese')) {
+      final r = find('pizza_margherita');
+      if (r != null) return r;
+    }
+    
+    // Lasagna al Forno: sheet_pasta + tomato_sauce + seared_beef + cheese
+    if ((has('sheet_pasta') || has('sheet pasta') || has('pasta')) && (has('tomato_sauce') || has('tomato sauce') || has('tomato')) && (has('seared_beef') || has('beef') || has('meat')) && has('cheese')) {
+      final r = find('lasagna_al_forno');
+      if (r != null) return r;
+    }
+
+    // Pasta Genovese: sheet_pasta + genovese_sauce
+    if ((has('sheet_pasta') || has('sheet pasta') || has('pasta')) && (has('genovese_sauce') || has('genovese sauce') || has('ragu') || has('genovese'))) {
+      final r = find('pasta_genovese');
+      if (r != null) return r;
+    }
+
+    // Spaghetti Carbonara: sheet_pasta + pork + eggs + cheese
+    if ((has('sheet_pasta') || has('sheet pasta') || has('pasta')) && (has('bacon') || has('pork') || has('guanciale') || has('meat_pork')) && (has('egg') || has('eggs')) && has('cheese')) {
+      final r = find('spaghetti_carbonara');
+      if (r != null) return r;
+    }
+
+    // Spaghetti al Pomodoro: sheet_pasta + tomato_sauce
+    if ((has('sheet_pasta') || has('sheet pasta') || has('pasta')) && (has('tomato_sauce') || has('tomato sauce') || has('tomato'))) {
+      final r = find('spaghetti_pomodoro');
+      if (r != null) return r;
+    }
+
+    // Apple Strudel: baked_apple_comp + sweet_pastry_dough
+    if ((has('baked_apple_comp') || has('apple')) && (has('sweet_pastry_dough') || has('dough') || has('pastry'))) {
+      final r = find('apple_strudel');
+      if (r != null) return r;
+    }
+
+    // Pain au Chocolat: sweet_pastry_dough + chocolate
+    if ((has('sweet_pastry_dough') || has('dough') || has('pastry')) && (has('chocolate') || has('dark_chocolate'))) {
+      final r = find('pain_au_chocolat');
+      if (r != null) return r;
+    }
+
+    // Gourmet Cheeseburger: bread_dough + seared_beef + cheese
+    if ((has('bread_dough') || has('dough')) && (has('seared_beef') || has('beef') || has('meat')) && has('cheese')) {
+      final r = find('gourmet_cheeseburger');
+      if (r != null) return r;
+    }
+
+    // Spiced Warm Cider: cider + cinnamon + sugar
+    if (has('cider') && (has('cinnamon') || has('spice')) && (has('sugar') || has('honey'))) {
+      final r = find('spiced_warm_cider');
+      if (r != null) return r;
+    }
+
     final random = Random();
 
     // 7. Pasta Carbonara Unlock

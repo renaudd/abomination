@@ -151,10 +151,10 @@ void main() {
     service.endTurn();
     expect(service.progress!.unitExp['footman'], 2.0);
 
-    // Level 2 footman (XP = 10.0, Level = 2) -> gains 1 + 2 = 3 XP
-    service.progress!.unitExp['footman'] = 10.0;
+    // Level 2 footman (XP = 14.0, Level = 2) -> gains 1 + 2 = 3 XP
+    service.progress!.unitExp['footman'] = 14.0;
     service.endTurn();
-    expect(service.progress!.unitExp['footman'], 13.0);
+    expect(service.progress!.unitExp['footman'], 17.0);
 
     // 2. Verify paid drills cost and XP scaling: XP = 3 * lvl, Cost = 15 * lvl
     // Give plenty of cash
@@ -183,7 +183,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // At level 2 (XP = 13.0), it should say "BUY DRILLS: +6 XP (30 CHF)"
+    // At level 2 (XP = 17.0), it should say "BUY DRILLS: +6 XP (30 CHF)"
     expect(find.text('BUY DRILLS: +6 XP (30 CHF)'), findsOneWidget);
 
     // Let's buy drills
@@ -191,8 +191,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // Footman XP should now be 19.0 (13.0 + 6.0)
-    expect(service.progress!.unitExp['footman'], 19.0);
+    // Footman XP should now be 23.0 (17.0 + 6.0)
+    expect(service.progress!.unitExp['footman'], 23.0);
     // Cash should be decremented by 30
     expect(service.progress!.cash, 970);
 

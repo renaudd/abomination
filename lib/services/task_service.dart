@@ -367,6 +367,42 @@ class TaskService {
         type == TaskType.eat;
   }
 
+  static String? getResolvedCookingProficiency(TaskType type, String? recipeId) {
+    if (type == TaskType.brew) return 'Brewing';
+    if (type == TaskType.distill) return 'Distilling';
+    if (type != TaskType.cook && type != TaskType.prepareMeals && type != TaskType.refineFood) {
+      return getProficiency(type);
+    }
+    
+    if (recipeId == null) return 'Cooking';
+    
+    final rId = recipeId.toLowerCase();
+    final bakingIds = [
+      'staple_bread', 'hard_hardtack', 'croissant', 'butter_croissant', 
+      'brioche_bun', 'glazed_fruit_tart', 'sweet_pastry_twist', 'tea_scones', 
+      'apple_strudel', 'pain_au_chocolat', 'pizza_margherita', 'lasagna_al_forno', 
+      'lasagna', 'ravioli', 'tortellini', 'shepherds_pie', 'bread_dough', 
+      'sweet_pastry_dough', 'pizza_dough'
+    ];
+    final grillingIds = [
+      'fried_generic_meat', 'roasted_rat', 'seared_beef', 'gourmet_cheeseburger', 
+      'roasted_carrots', 'roasted_squash', 'baked_apple', 'simple_pears'
+    ];
+    final brewingIds = [
+      'wort', 'beer', 'wine', 'cider', 'mash', 'spiced_warm_cider'
+    ];
+    final distillingIds = [
+      'whiskey', 'brandy', 'applejack', 'vodka', 'gin', 'absinthe', 'greek_fire'
+    ];
+    
+    if (bakingIds.contains(rId)) return 'Baking';
+    if (grillingIds.contains(rId)) return 'Grilling';
+    if (brewingIds.contains(rId)) return 'Brewing';
+    if (distillingIds.contains(rId)) return 'Distilling';
+    
+    return 'Cooking';
+  }
+
   static String? getProficiency(TaskType type) {
     switch (type) {
       case TaskType.prepareMeals:
