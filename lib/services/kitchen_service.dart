@@ -128,10 +128,54 @@ class KitchenService {
       if (r != null) return r;
     }
 
-    // Spaghetti Carbonara: sheet_pasta + pork + eggs + cheese
-    if ((has('sheet_pasta') || has('sheet pasta') || has('pasta')) && (has('bacon') || has('pork') || has('guanciale') || has('meat_pork')) && (has('egg') || has('eggs')) && has('cheese')) {
-      final r = find('spaghetti_carbonara');
-      if (r != null) return r;
+    // Probabilistic Roman Pasta Selection (Carbonara / Amatriciana / Gricia / Cacio e Pepe)
+    if ((has('sheet_pasta') || has('sheet pasta') || has('pasta')) && has('cheese')) {
+      final rand = Random();
+      final hasPork = has('bacon') || has('pork') || has('guanciale') || has('meat_pork');
+      final hasEgg = has('egg') || has('eggs');
+      final hasTomato = has('tomato_sauce') || has('tomato sauce') || has('tomato');
+      final hasPepper = has('pepper') || has('black pepper');
+
+      if (hasPork && hasEgg) {
+        // Carbonara mix: 70% Carbonara, 15% Gricia, 15% Cacio e Pepe
+        final roll = rand.nextDouble();
+        if (roll < 0.70) {
+          final r = find('spaghetti_carbonara');
+          if (r != null) return r;
+        } else if (roll < 0.85) {
+          final r = find('spaghetti_gricia');
+          if (r != null) return r;
+        } else {
+          final r = find('cacio_e_pepe');
+          if (r != null) return r;
+        }
+      } else if (hasPork && hasTomato) {
+        // Amatriciana mix: 70% Amatriciana, 15% Gricia, 15% Cacio e Pepe
+        final roll = rand.nextDouble();
+        if (roll < 0.70) {
+          final r = find('spaghetti_amatriciana');
+          if (r != null) return r;
+        } else if (roll < 0.85) {
+          final r = find('spaghetti_gricia');
+          if (r != null) return r;
+        } else {
+          final r = find('cacio_e_pepe');
+          if (r != null) return r;
+        }
+      } else if (hasPork) {
+        // Gricia mix: 75% Gricia, 25% Cacio e Pepe
+        final roll = rand.nextDouble();
+        if (roll < 0.75) {
+          final r = find('spaghetti_gricia');
+          if (r != null) return r;
+        } else {
+          final r = find('cacio_e_pepe');
+          if (r != null) return r;
+        }
+      } else if (hasPepper) {
+        final r = find('cacio_e_pepe');
+        if (r != null) return r;
+      }
     }
 
     // Spaghetti al Pomodoro: sheet_pasta + tomato_sauce
@@ -152,8 +196,8 @@ class KitchenService {
       if (r != null) return r;
     }
 
-    // Gourmet Cheeseburger: bread_dough + seared_beef + cheese
-    if ((has('bread_dough') || has('dough')) && (has('seared_beef') || has('beef') || has('meat')) && has('cheese')) {
+    // Gourmet Cheeseburger: staple_bread (spelt bread) + seared_beef + cheese
+    if ((has('staple_bread') || has('spelt_bread') || has('bread')) && (has('seared_beef') || has('beef') || has('meat')) && has('cheese')) {
       final r = find('gourmet_cheeseburger');
       if (r != null) return r;
     }
