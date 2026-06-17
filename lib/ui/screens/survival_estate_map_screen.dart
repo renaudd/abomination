@@ -2520,16 +2520,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   );
                   double meanLvl = 1.0;
                   final turn = progress.currentTurn;
-                  if (turn <= 4) {
-                    meanLvl = 1.0 + (turn - 1) * (2.0 - 1.0) / (4 - 1);
-                  } else if (turn <= 10) {
-                    meanLvl = 2.0 + (turn - 4) * (3.0 - 2.0) / (10 - 4);
-                  } else if (turn <= 22) {
-                    meanLvl = 3.0 + (turn - 10) * (4.0 - 3.0) / (22 - 10);
+                  if (turn < 9) {
+                    meanLvl = 2.0;
+                  } else if (turn < 20) {
+                    meanLvl = 3.0;
                   } else {
-                    meanLvl = min(7.0, 4.0 + (turn - 22) / 12.0);
+                    meanLvl = (3.0 + (turn - 20) * 0.15).clamp(3.0, 7.0);
                   }
                   final int enemyLvl = meanLvl.round().clamp(1, 7);
+                  final double enemyUpgradeMult = 1.0 + (turn * 0.03).clamp(0.0, 0.75);
                   final enemyLvlMult = 1.0 + (enemyLvl - 1) * 0.1;
 
                   final enemyHero = baseEnemyHero.copyWith(
@@ -2540,9 +2539,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     combatStats: baseEnemyHero.combatStats?.copyWith(
                       health: baseEnemyHero.combatStats!.health * enemyLvlMult,
                       maxHealth: baseEnemyHero.combatStats!.maxHealth * enemyLvlMult,
-                      attack: baseEnemyHero.combatStats!.attack * enemyLvlMult,
-                      meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
-                      rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
+                      attack: baseEnemyHero.combatStats!.attack * enemyLvlMult * enemyUpgradeMult,
+                      meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
+                      rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
                     ),
                   );
 
@@ -3291,7 +3290,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   stat: 'hp',
                                   currentLvl: indHpLvl,
                                   maxLvl: 5,
-                                  cost: 20 + indHpLvl * 15,
+                                  cost: 200 + indHpLvl * 100,
                                   towerId: towerId,
                                   progress: currentProgress,
                                   service: service,
@@ -3303,7 +3302,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   stat: 'atk',
                                   currentLvl: indAtkLvl,
                                   maxLvl: 5,
-                                  cost: 20 + indAtkLvl * 15,
+                                  cost: 200 + indAtkLvl * 100,
                                   towerId: towerId,
                                   progress: currentProgress,
                                   service: service,
@@ -3315,7 +3314,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   stat: 'range',
                                   currentLvl: indRangeLvl,
                                   maxLvl: 5,
-                                  cost: 40 + indRangeLvl * 20,
+                                  cost: 250 + indRangeLvl * 125,
                                   towerId: towerId,
                                   progress: currentProgress,
                                   service: service,
@@ -3327,7 +3326,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   stat: 'speed',
                                   currentLvl: indSpeedLvl,
                                   maxLvl: 5,
-                                  cost: 50 + indSpeedLvl * 25,
+                                  cost: 300 + indSpeedLvl * 150,
                                   towerId: towerId,
                                   progress: currentProgress,
                                   service: service,
@@ -5955,7 +5954,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     const SizedBox(height: 8),
                                     ...List.generate(5, (index) {
                                       final targetLvl = index + 2;
-                                      final cost = 40 + (targetLvl - 2) * 20;
+                                      final cost = 200 + (targetLvl - 2) * 100;
                                       final isCompleted =
                                           (atkLvl + 1) >= targetLvl;
                                       final isUnlocked =
@@ -6002,7 +6001,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     _buildTowerNodeBubble(
                                       stat: 'range',
                                       targetLevel: 1,
-                                      cost: 120,
+                                      cost: 350,
                                       isUnlocked:
                                           rangeUnlocked && rangeLvl == 0,
                                       isCompleted: rangeLvl >= 1,
@@ -6025,7 +6024,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     _buildTowerNodeBubble(
                                       stat: 'speed',
                                       targetLevel: 1,
-                                      cost: 200,
+                                      cost: 500,
                                       isUnlocked:
                                           speedUnlocked && speedLvl == 0,
                                       isCompleted: speedLvl >= 1,
@@ -6051,7 +6050,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     const SizedBox(height: 8),
                                     ...List.generate(5, (index) {
                                       final targetLvl = index + 2;
-                                      final cost = 40 + (targetLvl - 2) * 20;
+                                      final cost = 200 + (targetLvl - 2) * 100;
                                       final isCompleted =
                                           (hpLvl + 1) >= targetLvl;
                                       final isUnlocked = hpLvl >= targetLvl - 2;
@@ -9698,16 +9697,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
     double meanLvl = 1.0;
     final turn = progress.currentTurn;
-    if (turn <= 4) {
-      meanLvl = 1.0 + (turn - 1) * (2.0 - 1.0) / (4 - 1);
-    } else if (turn <= 10) {
-      meanLvl = 2.0 + (turn - 4) * (3.0 - 2.0) / (10 - 4);
-    } else if (turn <= 22) {
-      meanLvl = 3.0 + (turn - 10) * (4.0 - 3.0) / (22 - 10);
+    if (turn < 9) {
+      meanLvl = 2.0;
+    } else if (turn < 20) {
+      meanLvl = 3.0;
     } else {
-      meanLvl = min(7.0, 4.0 + (turn - 22) / 12.0);
+      meanLvl = (3.0 + (turn - 20) * 0.15).clamp(3.0, 7.0);
     }
     final int enemyLvl = meanLvl.round().clamp(1, 7);
+    final double enemyUpgradeMult = 1.0 + (turn * 0.03).clamp(0.0, 0.75);
     final enemyLvlMult = 1.0 + (enemyLvl - 1) * 0.1;
 
     final enemyHero = baseEnemyHero.copyWith(
@@ -9718,9 +9716,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       combatStats: baseEnemyHero.combatStats?.copyWith(
         health: baseEnemyHero.combatStats!.health * enemyLvlMult,
         maxHealth: baseEnemyHero.combatStats!.maxHealth * enemyLvlMult,
-        attack: baseEnemyHero.combatStats!.attack * enemyLvlMult,
-        meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
-        rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
+        attack: baseEnemyHero.combatStats!.attack * enemyLvlMult * enemyUpgradeMult,
+        meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
+        rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
       ),
     );
 
@@ -10198,24 +10196,42 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         CombatUnitFactory.createForesterBeastmaster(),
       ],
     ];
-    double meanLevel = 1.0;
-    if (turn <= 4) {
-      meanLevel = 1.0 + (turn - 1) * (2.0 - 1.0) / (4 - 1);
-    } else if (turn <= 10) {
-      meanLevel = 2.0 + (turn - 4) * (3.0 - 2.0) / (10 - 4);
-    } else if (turn <= 22) {
-      meanLevel = 3.0 + (turn - 10) * (4.0 - 3.0) / (22 - 10);
+    final rand = Random();
+    final List<int> cardLevels = [];
+    if (turn < 9) {
+      final int numLvl2 = turn.clamp(1, targetDeckSize);
+      for (int i = 0; i < numLvl2; i++) {
+        cardLevels.add(2);
+      }
+      for (int i = 0; i < targetDeckSize - numLvl2; i++) {
+        cardLevels.add(1);
+      }
     } else {
-      meanLevel = min(7.0, 4.0 + (turn - 22) / 12.0);
+      final int numLvl3 = (turn - 8).clamp(0, 12);
+      if (numLvl3 >= 12) {
+        final double targetMean = (3.0 + (turn - 20) * 0.15).clamp(3.0, 7.0);
+        for (int i = 0; i < 12; i++) {
+          final double offset = (i % 2 == 0) ? -0.5 : 0.5;
+          final double noise = (rand.nextDouble() - 0.5) * 0.4;
+          final int lvl = (targetMean + offset + noise).round().clamp(3, 7);
+          cardLevels.add(lvl);
+        }
+      } else {
+        final int numLvl2 = 12 - numLvl3;
+        for (int i = 0; i < numLvl3; i++) {
+          cardLevels.add(3);
+        }
+        for (int i = 0; i < numLvl2; i++) {
+          cardLevels.add(2);
+        }
+      }
     }
 
-    final rand = Random();
+    final double upgradeMult = 1.0 + (turn * 0.03).clamp(0.0, 0.75);
     final list = <NPC>[];
     for (int i = 0; i < targetDeckSize; i++) {
       final baseNpc = pool[i % pool.length];
-      final double offset = (i % 2 == 0) ? -0.4 : 0.4;
-      final double noise = (rand.nextDouble() - 0.5) * 0.4;
-      final int cardLevel = (meanLevel + offset + noise).clamp(1.0, 7.0).round();
+      final int cardLevel = cardLevels[i];
 
       final mult = 1.0 + (cardLevel - 1) * 0.1;
       final npc = baseNpc.copyWith(
@@ -10226,9 +10242,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         combatStats: baseNpc.combatStats?.copyWith(
           health: baseNpc.combatStats!.health * mult,
           maxHealth: baseNpc.combatStats!.maxHealth * mult,
-          attack: baseNpc.combatStats!.attack * mult,
-          meleeDamage: (baseNpc.combatStats!.meleeDamage ?? baseNpc.combatStats!.attack) * mult,
-          rangedDamage: (baseNpc.combatStats!.rangedDamage ?? baseNpc.combatStats!.attack) * mult,
+          attack: baseNpc.combatStats!.attack * mult * upgradeMult,
+          meleeDamage: (baseNpc.combatStats!.meleeDamage ?? baseNpc.combatStats!.attack) * mult * upgradeMult,
+          rangedDamage: (baseNpc.combatStats!.rangedDamage ?? baseNpc.combatStats!.attack) * mult * upgradeMult,
         ),
       );
       list.add(npc);
