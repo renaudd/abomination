@@ -20,6 +20,7 @@ import 'package:abomination/services/combat_unit_service.dart';
 import 'package:abomination/models/npc.dart';
 import 'package:abomination/models/game_item.dart';
 import 'package:abomination/services/kitchen_service.dart';
+import 'package:abomination/services/task_service.dart';
 import 'package:abomination/services/combat_manager.dart';
 import 'package:abomination/services/combat_unit_factory.dart';
 import 'package:abomination/models/combat_stats.dart';
@@ -421,6 +422,40 @@ void main() {
       final discoveredWithRedWine = KitchenService.performRecipeDiscovery(genoveseWithRedWine, 85);
       // It should not find genovese_sauce because white_wine is strictly required
       expect(discoveredWithRedWine?.id, isNot(equals('genovese_sauce')));
+    });
+
+    test('Agriculture: plantCrops task only adds crop to field upon completion', () {
+      final fields = gameState.rooms.where((r) => r.type == RoomType.field).toList();
+      final field = fields[0];
+
+      // Setup field to be tilled and have seed resources
+      gameState.updateRoom(field.copyWith(tilledAmount: 1.0));
+      gameState.setResource('seeds_cabbage', 10);
+
+      final workerId = gameState.npcs.firstWhere((n) => n.isResident).id;
+
+      // Start the plant crops task
+      final success = gameState.assignNpcToTask(
+        workerId,
+        TaskType.plantCrops,
+        field.id,
+        recipeId: 'cabbage',
+      );
+      expect(success, isTrue);
+
+      // Verify that the crop is NOT added to the field yet while task is active
+      final activeCropsCount = gameState.crops.where((c) => c.roomId == field.id).length;
+      expect(activeCropsCount, equals(0));
+
+      // Let's manually complete the task to verify it gets added
+      final activeTasks = gameState.activeTasks.where((t) => t.npcId == workerId && t.type == TaskType.plantCrops).toList();
+      expect(activeTasks.length, equals(1));
+
+      gameState.completeTaskManually(workerId, activeTasks[0]);
+
+      // Verify that the crop IS added now that the task has completed
+      final completedCropsCount = gameState.crops.where((c) => c.roomId == field.id).length;
+      expect(completedCropsCount, equals(1));
     });
   });
 }

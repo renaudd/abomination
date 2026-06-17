@@ -4643,7 +4643,7 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool plantCrops(CropType type, String roomId, {int? bedIndex}) {
+  bool canPlantCrops(CropType type, String roomId) {
     if (roomId == 'vegetable_garden') {
       return false; // Prevent traditional crop planting in garden
     }
@@ -4707,12 +4707,31 @@ class GameState extends ChangeNotifier {
       return false;
     }
 
+    return true;
+  }
+
+  bool executePlantCrops(CropType type, String roomId) {
+    if (!canPlantCrops(type, roomId)) return false;
+
+    final roomIndex = _rooms.indexWhere((r) => r.id == roomId);
+    final room = _rooms[roomIndex];
+
+    String seedId;
+    if (type == CropType.grain) {
+      seedId = 'grain';
+    } else if (type == CropType.mushroom) {
+      seedId = 'mushroom_spores';
+    } else {
+      seedId = 'seeds_${type.name}';
+    }
+    final isFullTilled = room.tilledAmount >= 0.9;
+    double seedConsumption = isFullTilled ? 10.0 : 5.0;
+
     setResource(
       seedId,
       ((resources[seedId] ?? 0) - seedConsumption).round().toDouble(),
     );
 
-    // Yield based on preparation: full preparation = 4, partial = 2 (plus fertilizer bonuses)
     final baseYield = isFullTilled ? 4 : 2;
     final fertBonus = room.isFertilized ? (isFullTilled ? 2 : 1) : 0;
     final totalYield = (baseYield + fertBonus).toInt();
@@ -4736,6 +4755,10 @@ class GameState extends ChangeNotifier {
     _lastAnnouncement = "Planted ${type.name} in ${room.name}.";
     notifyListeners();
     return true;
+  }
+
+  bool plantCrops(CropType type, String roomId, {int? bedIndex}) {
+    return executePlantCrops(type, roomId);
   }
 
   void tillSoil(String roomId) {
@@ -8242,7 +8265,15 @@ class GameState extends ChangeNotifier {
         consumedDishes: newHistory,
       );
     } else if (task.type == TaskType.plantCrops) {
-      // Crop was already planted and seeds deducted at task assignment.
+      if (task.targetId != null) {
+        CropType cropType = CropType.cabbage;
+        if (task.recipeId != null) {
+          try {
+            cropType = CropType.values.firstWhere((e) => e.name == task.recipeId);
+          } catch (_) {}
+        }
+        executePlantCrops(cropType, task.targetId!);
+      }
     } else if (task.type == TaskType.waterCrops) {
       if (task.targetId != null) waterCrops(task.targetId!);
     } else if (task.type == TaskType.careForCrops) {
@@ -10524,7 +10555,7 @@ class GameState extends ChangeNotifier {
           cropType = CropType.values.firstWhere((e) => e.name == recipeId);
         } catch (_) {}
       }
-      final bool plantOk = plantCrops(cropType, targetId ?? 'vegetable_garden');
+      final bool plantOk = canPlantCrops(cropType, targetId ?? 'vegetable_garden');
       if (!plantOk) {
         return false;
       }
@@ -17687,6 +17718,19 @@ class GameState extends ChangeNotifier {
           );
         }
         // plant crops
+        final isPlantingEnqueued =
+            _taskService.activeTasks.any(
+              (t) => t.type == TaskType.plantCrops && t.targetId == room.id,
+            ) ||
+            _npcs.any(
+              (n) => n.intentQueue.any(
+                (i) =>
+                    i.action == TaskType.plantCrops &&
+                    i.targetRoomId == room.id,
+              ),
+            );
+        if (isPlantingEnqueued) return null;
+
         final minSeeds = room.tilledAmount >= 0.9 ? 10.0 : 5.0;
         final availableSeedTypes = CropType.values.where((type) {
           String seedId;

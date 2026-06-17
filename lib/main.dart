@@ -195,7 +195,7 @@ class _AbominationAppState extends State<AbominationApp> {
               colorScheme: ColorScheme.fromSeed(
                 seedColor: const Color(0xFF3B2F21), // Mahogany
                 brightness: Brightness.dark,
-                surface: const Color(0xFF241F1A),
+                surface: const Color.fromARGB(255, 250, 238, 226),
                 primary: const Color(0xFFC4B89B), // Brass/Parchment
               ),
               useMaterial3: true,
