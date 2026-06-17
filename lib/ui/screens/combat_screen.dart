@@ -1881,6 +1881,18 @@ class _BattlefieldViewport extends StatelessWidget {
                   );
                 }),
 
+                // AOE Visual Effects
+                ...manager.aoeEffects.map((fx) {
+                  return Positioned.fill(
+                    child: IgnorePointer(
+                      child: _AoeEffectVisual(
+                        effect: fx,
+                        projection: projection,
+                      ),
+                    ),
+                  );
+                }),
+
                 // 4. Atmosphere: Dark Vignette
                 Positioned.fill(
                   child: IgnorePointer(
@@ -6723,6 +6735,81 @@ class _OpponentDeckInspectorScreenState
         ],
       ),
     );
+  }
+}
+
+class _AoeEffectVisual extends StatelessWidget {
+  final AoeEffect effect;
+  final _CombatProjection projection;
+
+  const _AoeEffectVisual({
+    required this.effect,
+    required this.projection,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _AoeEffectPainter(
+        effect: effect,
+        projection: projection,
+      ),
+    );
+  }
+}
+
+class _AoeEffectPainter extends CustomPainter {
+  final AoeEffect effect;
+  final _CombatProjection projection;
+
+  _AoeEffectPainter({
+    required this.effect,
+    required this.projection,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
+    final double currentRadius = effect.maxRadius * pct;
+    
+    final basePath = Path();
+    for (int i = 0; i < 36; i++) {
+      final double angle = i * (2.0 * pi / 36.0);
+      final double wx = effect.x + cos(angle) * currentRadius;
+      final double wy = effect.y + sin(angle) * currentRadius;
+      final p = projection.project(wx, wy);
+      if (i == 0) {
+        basePath.moveTo(p.dx, p.dy);
+      } else {
+        basePath.lineTo(p.dx, p.dy);
+      }
+    }
+    basePath.close();
+
+    final double fillAlpha = (0.25 * (1.0 - pct)).clamp(0.0, 1.0);
+    final fillPaint = Paint()
+      ..color = effect.color.withValues(alpha: fillAlpha)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(basePath, fillPaint);
+
+    final double borderAlpha = (0.85 * (1.0 - pct)).clamp(0.0, 1.0);
+    final borderPaint = Paint()
+      ..color = effect.color.withValues(alpha: borderAlpha)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawPath(basePath, borderPaint);
+
+    final double coreAlpha = (0.65 * (1.0 - pct * pct)).clamp(0.0, 1.0);
+    final corePaint = Paint()
+      ..color = Colors.white.withValues(alpha: coreAlpha)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawPath(basePath, corePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AoeEffectPainter oldDelegate) {
+    return oldDelegate.effect.elapsedSeconds != effect.elapsedSeconds;
   }
 }
 

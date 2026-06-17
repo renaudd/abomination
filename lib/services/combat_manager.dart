@@ -189,6 +189,31 @@ class Combatant {
   }
 }
 
+class AoeEffect {
+  final String id;
+  final double x;
+  final double y;
+  final double maxRadius;
+  final Color color;
+  final Duration duration;
+  double elapsedSeconds = 0.0;
+
+  AoeEffect({
+    required this.id,
+    required this.x,
+    required this.y,
+    required this.maxRadius,
+    required this.color,
+    this.duration = const Duration(milliseconds: 600),
+  });
+
+  bool get isExpired => elapsedSeconds >= duration.inMilliseconds / 1000.0;
+
+  void update(double dt) {
+    elapsedSeconds += dt;
+  }
+}
+
 class Projectile {
   final String id;
   double x;
@@ -279,6 +304,8 @@ class CombatManager extends ChangeNotifier {
   }
 
   final List<Projectile> _projectiles = [];
+  final List<AoeEffect> _aoeEffects = [];
+  List<AoeEffect> get aoeEffects => _aoeEffects;
   final List<CombatLogEntry> _logs = [];
   double _actionPoints = 6.0; // Start with 6
   set actionPoints(double value) {
@@ -1149,6 +1176,7 @@ class CombatManager extends ChangeNotifier {
         }
       } else if (npc.name.toLowerCase().contains('greek fire') || npc.name.toLowerCase().contains('holy grail')) {
         // Greek Fire area ignition
+        spawnAoeEffect(spawnX, spawnY, 35.0, Colors.deepOrangeAccent, durationMs: 750.0);
         for (final enemy in _combatants) {
           if (enemy.isDead || enemy.side == side) continue;
           final distSq = pow(enemy.x - spawnX, 2) + pow(enemy.y - spawnY, 2);
@@ -1205,11 +1233,16 @@ class CombatManager extends ChangeNotifier {
     final rateMultiplier = (_combatTimeRemaining <= 60.0) ? 2.0 : 1.0;
     _actionPoints = min(maxAP, _actionPoints + apPerSecond * rateMultiplier * dt);
 
-    // 1b. Projectile Ticks
+    // 1b. Projectile & AOE Ticks
     for (var p in _projectiles) {
       p.update(dt, this);
     }
     _projectiles.removeWhere((p) => p.isExpired);
+
+    for (var fx in _aoeEffects) {
+      fx.update(dt);
+    }
+    _aoeEffects.removeWhere((fx) => fx.isExpired);
 
     // 2. Battlefield Scrolling (Gradual camera follow/centering on player character)
     if (_combatants.isNotEmpty) {
@@ -3355,6 +3388,7 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'aoe_invulnerability': // 3) making all friendly units within a significant radius immune to all damage for a short period
+        spawnAoeEffect(c.x, c.y, 30.0, Colors.yellowAccent, durationMs: 800.0);
         final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
         for (final t in allies) {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
@@ -3368,6 +3402,7 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'whirlwind_melee': // 4) a whirlwind melee attack that hits all enemies in a tight circle around the player with high damage.
+        spawnAoeEffect(c.x, c.y, 15.0, Colors.deepOrangeAccent, durationMs: 500.0);
         final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
         for (final t in enemies) {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
@@ -3400,6 +3435,7 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'aoe_heal': // 7) heal all units within a significant radius.
+        spawnAoeEffect(c.x, c.y, 35.0, Colors.greenAccent, durationMs: 800.0);
         final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
         for (final t in allies) {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
@@ -3413,6 +3449,7 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'vampiric_drain': // 8) harm all enemy units within a moderate (tear gas grenade-sized) circle around the leader and heal the leader by the amount of damage inflicted.
+        spawnAoeEffect(c.x, c.y, 18.0, Colors.purpleAccent, durationMs: 700.0);
         final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
         double totalDrain = 0.0;
         for (final t in enemies) {
@@ -3432,6 +3469,7 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'tight_slow': // 9) slow all enemies in a tight circle around the leader for a moderate length of time (~9 seconds).
+        spawnAoeEffect(c.x, c.y, 15.0, Colors.amberAccent, durationMs: 700.0);
         final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
         for (final t in enemies) {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
@@ -3692,6 +3730,20 @@ class CombatManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  void spawnAoeEffect(double x, double y, double radius, Color color, {double durationMs = 600.0}) {
+    _aoeEffects.add(
+      AoeEffect(
+        id: DateTime.now().millisecondsSinceEpoch.toString() + Random().nextDouble().toString(),
+        x: x,
+        y: y,
+        maxRadius: radius,
+        color: color,
+        duration: Duration(milliseconds: durationMs.toInt()),
+      ),
+    );
+    notifyListeners();
+  }
+
 
   void _applyDamage(Combatant attacker, Combatant target, double damage) {
     if (target.isDead || target.isNonPhysicalSupport || target.isInvulnerable) {
@@ -3819,6 +3871,7 @@ class CombatManager extends ChangeNotifier {
       }
     } else if (knell == DeathknellEffect.explosion || target.npc.name.toLowerCase().contains('martyr')) {
       _addFloatingMessage(target, 'MARTYR BLAST!', Colors.redAccent);
+      spawnAoeEffect(target.x, target.y, 45.0, Colors.redAccent, durationMs: 900.0);
       for (final other in _combatants) {
         if (other == target || other.isDead || other.side == target.side) continue;
         final distSq = pow(other.x - target.x, 2) + pow(other.y - target.y, 2);
