@@ -1364,7 +1364,7 @@ class RecipeCatalogue {
     Recipe(
       id: 'genovese_sauce',
       name: 'Genovese Meat Sauce',
-      ingredients: {'meat_beef': 1, 'meat_pork': 1, 'onion': 1, 'wine': 1},
+      ingredients: {'meat_beef': 1, 'meat_pork': 1, 'onion': 1, 'white_wine': 1},
       sophistication: 3.5,
       yield: 4,
       baseQuality: 1.5,

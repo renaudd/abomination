@@ -17,6 +17,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/npc.dart';
 import '../../models/combat_stats.dart';
 import '../../services/combat_unit_factory.dart';
+import '../../services/recipe_catalogue.dart';
 import '../widgets/character_blob_renderer.dart';
 import '../widgets/combat_card_detail_modal.dart';
 
@@ -1002,6 +1003,25 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                 '• Mechanical Outcome: Solves complex engineering bottlenecks, yielding cutting-edge technological schematic diagrams (Automated Steam Turrets, Subterranean Excavators).'
       },
     ];
+
+    for (final recipe in RecipeCatalogue.allRecipes) {
+      final ingredientsList = recipe.ingredients.entries.map((e) {
+        final name = e.key.replaceAll('_', ' ').toUpperCase();
+        return '${e.value}x $name';
+      }).join(', ');
+
+      glossaryArticles.add({
+        'title': recipe.name,
+        'category': 'Dish / Culinary',
+        'desc': '${recipe.name}\n\n'
+                '• Sophistication Level: ${recipe.sophistication}\n'
+                '• Base Quality Yield: ${recipe.baseQuality} (Serves ${recipe.yield} portion${recipe.yield > 1 ? "s" : ""})\n'
+                '• Required Ingredients: $ingredientsList\n'
+                '• Prep Duration: ${recipe.durationMinutes} minutes\n'
+                '• Required Skills: Knife skill ${recipe.minKnifeSkills}, Fire/Stove skill ${recipe.minFireSkills}.\n'
+                '• Discoverable: ${recipe.id != "staple_bread" && recipe.id != "hard_hardtack" && recipe.id != "porridge" && recipe.id != "scrambled_eggs" ? "Yes, via New Recipe experimentation inside Kitchen & Scullery." : "No, starts unlocked by default."}'
+      });
+    }
 
     // Filter and sort
     final filtered = glossaryArticles.where((art) {

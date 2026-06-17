@@ -150,16 +150,16 @@ class KitchenService {
           if (r != null) return r;
         }
       } else if (hasPork && hasTomato) {
-        // Amatriciana mix: 70% Amatriciana, 15% Gricia, 15% Cacio e Pepe
+        // Amatriciana mix: 70% Amatriciana, 20% Spaghetti al Pomodoro, 10% Spaghetti alla Gricia
         final roll = rand.nextDouble();
         if (roll < 0.70) {
           final r = find('spaghetti_amatriciana');
           if (r != null) return r;
-        } else if (roll < 0.85) {
-          final r = find('spaghetti_gricia');
+        } else if (roll < 0.90) {
+          final r = find('spaghetti_pomodoro');
           if (r != null) return r;
         } else {
-          final r = find('cacio_e_pepe');
+          final r = find('spaghetti_gricia');
           if (r != null) return r;
         }
       } else if (hasPork) {
@@ -206,6 +206,50 @@ class KitchenService {
     if (has('cider') && (has('cinnamon') || has('spice')) && (has('sugar') || has('honey'))) {
       final r = find('spiced_warm_cider');
       if (r != null) return r;
+    }
+    
+    // EXACT OR MAJOR INGREDIENT OVERLAP CHECK
+    // If the input ingredients contain all of the ingredients required for a recipe,
+    // we return that recipe. This ensures that any specific recipe is discoverable
+    // when its exact ingredients are used, regardless of the sophistication/score tier.
+    Recipe? bestExactMatch;
+    int maxOverlap = 0;
+    for (var r in recipes) {
+      if (r.id == 'butcher_generic' || r.id == 'staple_bread' || r.id == 'hard_hardtack' || r.id == 'porridge' || r.id == 'scrambled_eggs') {
+        continue;
+      }
+      
+      bool allIngredientsPresent = true;
+      for (var reqIng in r.ingredients.keys) {
+        bool matched = false;
+        if (reqIng == 'meat') {
+          matched = has('meat') || has('beef') || has('pork') || has('chicken') || has('lamb');
+        } else if (reqIng == 'wine') {
+          matched = has('wine') || has('white_wine') || has('red_wine');
+        } else if (reqIng == 'white_wine') {
+          matched = has('white_wine') || has('white wine');
+        } else if (reqIng == 'flour') {
+          matched = has('flour') || has('flour_spelt') || has('flour_durum');
+        } else {
+          matched = has(reqIng);
+        }
+        if (!matched) {
+          allIngredientsPresent = false;
+          break;
+        }
+      }
+
+      if (allIngredientsPresent) {
+        int overlap = r.ingredients.keys.length;
+        if (overlap > maxOverlap) {
+          maxOverlap = overlap;
+          bestExactMatch = r;
+        }
+      }
+    }
+
+    if (bestExactMatch != null) {
+      return bestExactMatch;
     }
 
     final random = Random();
