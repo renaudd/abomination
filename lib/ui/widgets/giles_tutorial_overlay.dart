@@ -47,7 +47,7 @@ class GilesTutorialOverlay extends StatelessWidget {
             break;
           case GilesTutorialStep.selectKitchen:
             dialogueText =
-                "First, select the Kitchen by tapping on it in the estate layout above.";
+                "First, select the Kitchen by tapping on it in the Manor layout above.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.enterKitchen);
             break;
           case GilesTutorialStep.enterKitchen:
@@ -57,7 +57,7 @@ class GilesTutorialOverlay extends StatelessWidget {
             break;
           case GilesTutorialStep.commencePrep:
             dialogueText =
-                "In the Scullery, commence preparation of a Faba & Green Bean Stew by enqueuing it in the preparation ledger.";
+                "Commence preparation of a Faba & Green Bean Stew by enqueuing it in the preparation ledger.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.assignResident);
             break;
           case GilesTutorialStep.assignResident:
@@ -72,7 +72,7 @@ class GilesTutorialOverlay extends StatelessWidget {
             break;
           case GilesTutorialStep.selectCoop:
             dialogueText =
-                "Excellent. Time marches forward. Now, select the Chicken Coop in the estate layout.";
+                "Excellent. Time marches forward. Now, select the Chicken Coop over on the right side of the Manor.";
             onAction = () => state.advanceGilesTutorial(GilesTutorialStep.directAssign);
             break;
           case GilesTutorialStep.directAssign:
@@ -87,7 +87,7 @@ class GilesTutorialOverlay extends StatelessWidget {
             break;
           case GilesTutorialStep.summary:
             dialogueText =
-                "You can give each resident a long to-do list. Residents will only perform assigned work during work hours. If no work is assigned, residents will find tasks to keep occupied, but I know how much you care about efficiency and productivity.";
+                "Please look to the Manor Records icon at the top of the screen. You will find that all active objectives are tracked in the Journal tab there.";
             actionLabel = "UNDERSTOOD, GILES";
             onAction = () => state.dismissGilesTutorial();
             break;
@@ -95,7 +95,7 @@ class GilesTutorialOverlay extends StatelessWidget {
             break;
         }
 
-        return Container(
+        final mainCard = Container(
           margin: const EdgeInsets.all(8),
           constraints: const BoxConstraints(maxWidth: 550),
           decoration: BoxDecoration(
@@ -204,7 +204,42 @@ class GilesTutorialOverlay extends StatelessWidget {
             ),
           ),
         );
+
+        if (step == GilesTutorialStep.summary) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 24.0, bottom: 4.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Manor Records",
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFD4AF37),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_upward,
+                      color: Color(0xFFD4AF37),
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+              mainCard,
+            ],
+          );
+        }
+
+        return mainCard;
       },
     );
   }
 }
+

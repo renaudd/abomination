@@ -225,9 +225,9 @@ class SurvivalService extends ChangeNotifier {
     final oldLvl = SurvivalProgress.getLevelFromXp(currentXp);
     final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
     if (newLvl > oldLvl) {
-      addLog('LEVEL UP! Bought training points for ${cardId.toUpperCase()} promoting to Level $newLvl!');
+      addLog('LEVEL UP! Bought training points for ${cardId.replaceAll('_', ' ').toUpperCase()} promoting to Level $newLvl!');
     } else {
-      addLog('Bought +$xpAmount XP for ${cardId.toUpperCase()} for $cashCost CHF.');
+      addLog('Bought +$xpAmount XP for ${cardId.replaceAll('_', ' ').toUpperCase()} for $cashCost CHF.');
     }
     _save();
     return true;
@@ -293,7 +293,7 @@ class SurvivalService extends ChangeNotifier {
     }
     _progress!.cash -= cost;
     _progress!.playerDeckIds.add(type);
-    addLog('Recruited card ${type.toUpperCase()} for $cost CHF.');
+    addLog('Recruited card ${type.replaceAll('_', ' ').toUpperCase()} for $cost CHF.');
     _save();
     return true;
   }
@@ -546,7 +546,7 @@ class SurvivalService extends ChangeNotifier {
 
     _progress!.food -= foodCost;
     _progress!.bondageDebuffCount[cardType] = count - 1;
-    addLog('Perform maintenance feeding: cured 1 bondage penalty on ${cardType.toUpperCase()}.');
+    addLog('Perform maintenance feeding: cured 1 bondage penalty on ${cardType.replaceAll('_', ' ').toUpperCase()}.');
     _save();
     return true;
   }
@@ -751,7 +751,7 @@ class SurvivalService extends ChangeNotifier {
         final deserter = eliteStarving[i];
         _progress!.playerDeckIds.remove(deserter);
         unassignUnitEverywhere(deserter);
-        addLog('ELITE UNIT DESERTED: ${deserter.toUpperCase()} abandoned the army due to starvation.');
+        addLog('ELITE UNIT DESERTED: ${deserter.replaceAll('_', ' ').toUpperCase()} abandoned the army due to starvation.');
       }
 
       // Process Basic unit infractions
@@ -766,10 +766,10 @@ class SurvivalService extends ChangeNotifier {
           _progress!.playerDeckIds.remove(t);
           unassignUnitEverywhere(t);
           _progress!.starvationInfractions.remove(t);
-          addLog('BASIC UNIT DESERTED: ${t.toUpperCase()} permanently deserted after missing 2 consecutive feedings.');
+          addLog('BASIC UNIT DESERTED: ${t.replaceAll('_', ' ').toUpperCase()} permanently deserted after missing 2 consecutive feedings.');
         } else {
           _progress!.starvationInfractions[t] = infractions;
-          addLog('Starvation Infraction! ${t.toUpperCase()} is starving (suffers -50% stats debuff next combat).');
+          addLog('Starvation Infraction! ${t.replaceAll('_', ' ').toUpperCase()} is starving (suffers -50% stats debuff next combat).');
         }
       }
 
@@ -781,7 +781,7 @@ class SurvivalService extends ChangeNotifier {
       for (var t in constructs) {
         final debuffs = (_progress!.bondageDebuffCount[t] ?? 0) + 1;
         _progress!.bondageDebuffCount[t] = debuffs;
-        addLog('Construct wear! ${t.toUpperCase()} accumulates a bondage debuff (-15% effectiveness). Curing requires maintenance food.');
+        addLog('Construct wear! ${t.replaceAll('_', ' ').toUpperCase()} accumulates a bondage debuff (-15% effectiveness). Curing requires maintenance food.');
       }
     }
 
@@ -801,7 +801,11 @@ class SurvivalService extends ChangeNotifier {
         _progress!.iron += out;
         if (out > 0) addLog('Iron Mine produced +$out Iron (workers: $workers).');
       } else {
-        final out = getAdvancedOutput(b.level, workers);
+        var out = getAdvancedOutput(b.level, workers);
+        if (b.type == SurvivalBuildingType.arsenal &&
+            _progress!.cardUpgrades['davos_vaccine_choice'] == 1) {
+          out = (out * 1.5).round();
+        }
         _progress!.cash += out;
         if (out > 0) addLog('${b.type.displayName.toUpperCase()} produced +$out CHF (workers: $workers).');
       }
@@ -816,9 +820,9 @@ class SurvivalService extends ChangeNotifier {
       _progress!.unitExp[t] = nextXp;
       final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
       if (newLvl > oldLvl) {
-        addLog('LEVEL UP! Trained ${t.toUpperCase()} has promoted to Level $newLvl!');
+        addLog('LEVEL UP! Trained ${t.replaceAll('_', ' ').toUpperCase()} has promoted to Level $newLvl!');
       } else {
-        addLog('Trained ${t.toUpperCase()} gained +${gainedXp.toInt()} XP (Current: ${nextXp.toInt()} XP).');
+        addLog('Trained ${t.replaceAll('_', ' ').toUpperCase()} gained +${gainedXp.toInt()} XP (Current: ${nextXp.toInt()} XP).');
       }
     }
 
@@ -828,7 +832,7 @@ class SurvivalService extends ChangeNotifier {
   }
 
   // Apply combat details to progress state
-  void processCombatOutcome(
+  Map<String, List<int>> processCombatOutcome(
     bool playerWon,
     bool isTie,
     Map<String, double> towerFinalHealth,
@@ -840,7 +844,9 @@ class SurvivalService extends ChangeNotifier {
     int? customSpoilsIron,
     int? customSpoilsWood,
   }) {
-    if (_progress == null) return;
+    if (_progress == null) return const {};
+
+    final levelUps = <String, List<int>>{};
 
     addLog('--- COMBAT POST-ACTION REPORT ---');
 
@@ -918,12 +924,13 @@ class SurvivalService extends ChangeNotifier {
       
       if (finalXp > 0) {
         if (newLvl > oldLvl) {
-          addLog('LEVEL UP! ${entry.key.toUpperCase()} reached Level $newLvl in battle!');
+          addLog('LEVEL UP! ${entry.key.replaceAll('_', ' ').toUpperCase()} reached Level $newLvl in battle!');
+          levelUps[entry.key] = [oldLvl, newLvl];
         } else {
-          addLog('${entry.key.toUpperCase()} gained +${finalXp.toInt()} XP in combat.');
+          addLog('${entry.key.replaceAll('_', ' ').toUpperCase()} gained +${finalXp.toInt()} XP in combat.');
         }
       } else if (finalXp < 0) {
-        addLog('${entry.key.toUpperCase()} suffered -${(-finalXp).toInt()} XP demerits.');
+        addLog('${entry.key.replaceAll('_', ' ').toUpperCase()} suffered -${(-finalXp).toInt()} XP demerits.');
       }
     }
 
@@ -931,5 +938,6 @@ class SurvivalService extends ChangeNotifier {
     if (!isArcadeDefeat) {
       _save();
     }
+    return levelUps;
   }
 }

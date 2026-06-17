@@ -551,6 +551,9 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                       icon: const Icon(Icons.history_edu, color: Color(0xFFC4B89B)),
                       tooltip: 'Records',
                       onPressed: () {
+                        if (state.gilesTutorialStep == GilesTutorialStep.summary) {
+                          state.dismissGilesTutorial();
+                        }
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -803,9 +806,11 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 350),
                 curve: Curves.easeInOutQuart,
-                alignment: (_selectedRoomForDetails != null || state.gilesTutorialStep == GilesTutorialStep.enterKitchen || state.gilesTutorialStep == GilesTutorialStep.directAssign)
-                    ? Alignment.topCenter
-                    : Alignment.bottomLeft,
+                alignment: (state.gilesTutorialStep == GilesTutorialStep.summary)
+                    ? Alignment.topRight
+                    : (_selectedRoomForDetails != null || state.gilesTutorialStep == GilesTutorialStep.enterKitchen || state.gilesTutorialStep == GilesTutorialStep.directAssign)
+                        ? Alignment.topCenter
+                        : Alignment.bottomLeft,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: const GilesTutorialOverlay(),

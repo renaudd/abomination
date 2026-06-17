@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'dart:math';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +31,7 @@ import 'combat_screen.dart';
 import 'game_over_screen.dart';
 import 'help_screen.dart';
 import '../widgets/options_dialog.dart';
+import '../widgets/combat_card_detail_modal.dart';
 class WeaponUpgradeSpec {
   final String name;
   final int cost;
@@ -114,9 +116,9 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
     name: 'Flintlock Rifle',
     cost: 40,
     isRanged: true,
-    damage: 34,
-    speed: 2.0,
-    range: 10.0,
+    damage: 26,
+    speed: 2.4,
+    range: 9.5,
     aoe: 0.0,
     targetingRule: 'Closest',
     tier: 1,
@@ -145,12 +147,12 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
     tier: 2,
   ),
   const GeneralWeaponSpec(
-    name: 'Straight-Line Laser System',
+    name: 'Rifled Carbine',
     cost: 60,
     isRanged: true,
-    damage: 28,
-    speed: 1.9,
-    range: 8.0,
+    damage: 34,
+    speed: 2.0,
+    range: 10.0,
     aoe: 0.0,
     targetingRule: 'Closest',
     tier: 2,
@@ -666,6 +668,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   String? _selectedWepCardId;
   String? _selectedInspectorCardId;
 
+  bool _showDiceOverlay = false;
+  bool _isDiceRolling = false;
+  int _die1 = 1;
+  int _die2 = 1;
+  String _diceOutcomeMessage = '';
+  VoidCallback? _diceOutcomeAction;
+
   set selectedInspectorCardId(String? val) {
     setState(() {
       _selectedInspectorCardId = val;
@@ -757,56 +766,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       _isDrafting = false;
     }
 
-    // Auto-trigger turn narrative dialogues based on dynamic scheduled turns
-    final turn = progress.currentTurn;
-    if (progress.cardUpgrades['next_encounter_turn'] == null) {
-      final rand = Random();
-      progress.cardUpgrades['next_encounter_turn'] = rand.nextBool() ? 4 : 5;
-      progress.cardUpgrades['next_encounter_index'] = 0;
-      service.manualSave();
-    }
 
-    final nextEncounterTurn = progress.cardUpgrades['next_encounter_turn']!;
-    if (turn >= nextEncounterTurn &&
-        !_isDrafting &&
-        !_isTransitioningToCombat) {
-      final index = progress.cardUpgrades['next_encounter_index'] ?? 0;
-      final encountersList = [
-        'gnomes_artillery',
-        'freemasons_tribute',
-        'alchemist_transmutation',
-        'templar_levy',
-        'carbonari_strike',
-        'golden_dawn_seance',
-        'fenian_gunrunning',
-        'french_cavalry',
-        'adrenochrome_syndicate',
-        'bank_audit',
-        'mystic_herbs',
-        'irish_mutiny',
-        'monarchist_ball',
-        'masonic_toll',
-        'alchemical_explosion',
-        'secret_treaty',
-        'carbonari_press',
-        'golden_dawn_relic',
-        'forester_woodcutters',
-        'swiss_banker_loan',
-        'grenadier_sabotage',
-      ];
-      final String encounterId = encountersList[index % encountersList.length];
-      if (progress.cardUpgrades['encounter_${encounterId}_resolved'] != 1) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showNarrativeEncounter(
-            context,
-            encounterId,
-            progress,
-            service,
-            state,
-          );
-        });
-      }
-    }
 
     Widget centerArea;
     switch (_activeTab) {
@@ -874,6 +834,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               service,
               _selectedInspectorCardId!,
             ),
+
+          // 4. DICE ROLL OVERLAY
+          if (_showDiceOverlay) _buildDiceRollOverlay(progress, service, state),
         ],
       ),
     );
@@ -2112,14 +2075,21 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    npc.name.toUpperCase(),
-                                    style: GoogleFonts.oldStandardTt(
-                                      color: isAssigned
-                                          ? Colors.white38
-                                          : const Color(0xFFE5D5B0),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
+                                  InkWell(
+                                    onTap: () => CombatCardDetailModal.show(context, type),
+                                    child: Text(
+                                      npc.name.toUpperCase(),
+                                      style: GoogleFonts.oldStandardTt(
+                                        color: isAssigned
+                                            ? Colors.white38
+                                            : const Color(0xFFE5D5B0),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: isAssigned
+                                            ? Colors.white38
+                                            : const Color(0xFFE5D5B0),
+                                      ),
                                     ),
                                   ),
                                   Text(
@@ -2566,7 +2536,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               combatExp,
                               activeContext,
                             ) {
-                              service.processCombatOutcome(
+                              final levelUps = service.processCombatOutcome(
                                 true,
                                 false,
                                 playerTowerHealth,
@@ -2580,6 +2550,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               );
                               state.clearEncounterState();
                               Navigator.pop(activeContext);
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (levelUps.isNotEmpty) {
+                                  _showPendingLevelUps(levelUps.entries.toList(), onComplete: _triggerDiceRollSequence);
+                                } else {
+                                  _triggerDiceRollSequence();
+                                }
+                              });
                             },
                         onSurvivalDefeat:
                             (
@@ -2589,7 +2566,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               combatExp,
                               activeContext,
                             ) {
-                              service.processCombatOutcome(
+                              final levelUps = service.processCombatOutcome(
                                 false,
                                 false,
                                 playerTowerHealth,
@@ -2618,6 +2595,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 );
                               } else {
                                 Navigator.pop(activeContext);
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (levelUps.isNotEmpty) {
+                                    _showPendingLevelUps(levelUps.entries.toList(), onComplete: _triggerDiceRollSequence);
+                                  } else {
+                                    _triggerDiceRollSequence();
+                                  }
+                                });
                               }
                             },
                         onSurvivalDraw:
@@ -2628,7 +2612,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               combatExp,
                               activeContext,
                             ) {
-                              service.processCombatOutcome(
+                              final levelUps = service.processCombatOutcome(
                                 false,
                                 true,
                                 playerTowerHealth,
@@ -2642,6 +2626,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               );
                               state.clearEncounterState();
                               Navigator.pop(activeContext);
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (levelUps.isNotEmpty) {
+                                  _showPendingLevelUps(levelUps.entries.toList(), onComplete: _triggerDiceRollSequence);
+                                } else {
+                                  _triggerDiceRollSequence();
+                                }
+                              });
                             },
                       ),
                     ),
@@ -7796,13 +7787,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   ) {
     progress.cardUpgrades['encounter_${encounterId}_resolved'] = 1;
 
-    final rand = Random();
-    final nextInterval = rand.nextBool() ? 3 : 4;
-    progress.cardUpgrades['next_encounter_turn'] =
-        progress.currentTurn + nextInterval;
+    final isConditional = encounterId == 'davos_smallpox_vaccine' || encounterId == 'smallpox_outbreak';
 
-    final currentIndex = progress.cardUpgrades['next_encounter_index'] ?? 0;
-    progress.cardUpgrades['next_encounter_index'] = currentIndex + 1;
+    if (!isConditional) {
+      final rand = Random();
+      final nextInterval = rand.nextBool() ? 3 : 4;
+      progress.cardUpgrades['next_encounter_turn'] =
+          progress.currentTurn + nextInterval;
+
+      final currentIndex = progress.cardUpgrades['next_encounter_index'] ?? 0;
+      progress.cardUpgrades['next_encounter_index'] = currentIndex + 1;
+    }
 
     service.manualSave();
 
@@ -7812,6 +7807,99 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final List<Map<String, dynamic>> options = [];
 
     switch (encounterId) {
+      case 'davos_smallpox_vaccine':
+        title = "THE DAVOS VACCINE DISCOVERY";
+        faction = "Davos Farm workers";
+        story =
+            "A farm worker assigned to the Davos Plot has discovered a viable vaccine for smallpox by observing cowpox pustules on the dairy cows. How shall we utilize this breakthrough?";
+        options.add({
+          'title': 'A) "Sell the formula to the Arsenal for mass production."',
+          'subtitle': 'Effect: Gain +1000 CHF immediately. Future Arsenal production yields +50% profits. Outbreak scheduled.',
+          'onPress': () {
+            progress.cash += 1000;
+            progress.cardUpgrades['davos_vaccine_choice'] = 1;
+            progress.cardUpgrades['next_smallpox_outbreak_turn'] = progress.currentTurn + 3;
+            service.addLog('Vaccine formula sold to the Arsenal. High-volume pharmaceutical profits unlocked.');
+          },
+        });
+        options.add({
+          'title': 'B) "Provide it to the Secret Societies in exchange for funding and favor."',
+          'subtitle': 'Effect: Gain +600 CHF. Gain +25 Standing with Gnomes of Zurich and Freemasons. Outbreak scheduled.',
+          'onPress': () {
+            progress.cash += 600;
+            progress.cardUpgrades['davos_vaccine_choice'] = 2;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 25;
+            progress.factionStandings['Freemasons'] = (progress.factionStandings['Freemasons'] ?? 0) + 25;
+            progress.cardUpgrades['next_smallpox_outbreak_turn'] = progress.currentTurn + 3;
+            service.addLog('Vaccine formula shared with the Secret Societies. Influence increased.');
+          },
+        });
+        options.add({
+          'title': 'C) "Immunize our watchtower guards and local village immediately."',
+          'subtitle': 'Effect: Fully protects watchtowers and Glarus village from future outbreak. (+20 Glarus standing). Outbreak scheduled.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+            progress.cardUpgrades['davos_vaccine_choice'] = 3;
+            progress.cardUpgrades['next_smallpox_outbreak_turn'] = progress.currentTurn + 3;
+            service.addLog('Valley immunized immediately. Security and local relations secured.');
+          },
+        });
+        break;
+
+      case 'smallpox_outbreak':
+        title = "THE SMALLPOX OUTBREAK";
+        faction = "Glarus Village";
+        final choice = progress.cardUpgrades['davos_vaccine_choice'] ?? 0;
+        if (choice == 3) {
+          story =
+              "Smallpox has broken out in the valley! Fortunately, our immediate immunization campaigns have completely protected both the watchtowers and the residents of Glarus village. We suffer no losses.";
+          options.add({
+            'title': 'A) "Thank goodness we prepared."',
+            'subtitle': 'Effect: No casualties. (+10 Standing with Glarus)',
+            'onPress': () {
+              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+              service.addLog('Valley successfully weathered the outbreak with zero casualties.');
+            },
+          });
+        } else {
+          story =
+              "Smallpox has broken out in the valley! Because we sold or shared the formula, we only have a limited supply of vaccine doses. We must choose how to allocate them.";
+          options.add({
+            'title': 'A) "Prioritize Glarus Village."',
+            'subtitle': 'Effect: Glarus village is saved (+20 Standing). Watchtowers suffer -20% health damage from sick guards.',
+            'onPress': () {
+              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+              progress.towerDamaged['tower_1'] = min(1.0, (progress.towerDamaged['tower_1'] ?? 0.0) + 0.2);
+              progress.towerDamaged['tower_2'] = min(1.0, (progress.towerDamaged['tower_2'] ?? 0.0) + 0.2);
+              progress.towerDamaged['tower_3'] = min(1.0, (progress.towerDamaged['tower_3'] ?? 0.0) + 0.2);
+              service.addLog('Outbreak: Village protected, watchtowers suffered casualties.');
+            },
+          });
+          options.add({
+            'title': 'B) "Prioritize Watchtower Guards."',
+            'subtitle': 'Effect: Watchtowers are saved. Glarus village health is reduced by 40% (-20 Glarus Standing).',
+            'onPress': () {
+              progress.villageHealth = max(0, progress.villageHealth - 40);
+              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 20;
+              service.addLog('Outbreak: Watchtowers protected, Glarus village devastated.');
+            },
+          });
+          options.add({
+            'title': 'C) "Sell the limited vaccine doses on the black market."',
+            'subtitle': 'Effect: Gain +800 CHF. Both watchtowers (-20% health) and Glarus village (-40% health) suffer casualties (-25 Standing).',
+            'onPress': () {
+              progress.cash += 800;
+              progress.villageHealth = max(0, progress.villageHealth - 40);
+              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 25;
+              progress.towerDamaged['tower_1'] = min(1.0, (progress.towerDamaged['tower_1'] ?? 0.0) + 0.2);
+              progress.towerDamaged['tower_2'] = min(1.0, (progress.towerDamaged['tower_2'] ?? 0.0) + 0.2);
+              progress.towerDamaged['tower_3'] = min(1.0, (progress.towerDamaged['tower_3'] ?? 0.0) + 0.2);
+              service.addLog('Outbreak: Black market vaccine sales completed. Outbreak devastated valley.');
+            },
+          });
+        }
+        break;
+
       case 'gnomes_artillery':
         title = "THE GNOMES OF ZURICH ARTILLERY";
         faction = "Gnomes of Zurich";
@@ -9591,20 +9679,27 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 combatExp,
                 activeContext,
               ) {
-                service.processCombatOutcome(
+                final levelUps = service.processCombatOutcome(
                   true,
                   false,
                   playerTowerHealth,
                   combatExp,
                   opponentDeck: enemyDeck,
                   destroyedEnemyTowers: destroyedTowersCount,
-                  customSpoilsFood: spoilsFood,
-                  customSpoilsCash: spoilsCash,
-                  customSpoilsIron: spoilsIron,
-                  customSpoilsWood: spoilsWood,
+                  customSpoilsFood: finalSpoilsFood,
+                  customSpoilsCash: finalSpoilsCash,
+                  customSpoilsIron: finalSpoilsIron,
+                  customSpoilsWood: finalSpoilsWood,
                 );
                 state.clearEncounterState();
                 Navigator.pop(activeContext);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (levelUps.isNotEmpty) {
+                    _showPendingLevelUps(levelUps.entries.toList(), onComplete: _triggerDiceRollSequence);
+                  } else {
+                    _triggerDiceRollSequence();
+                  }
+                });
               },
           onSurvivalDefeat:
               (
@@ -9614,7 +9709,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 combatExp,
                 activeContext,
               ) {
-                service.processCombatOutcome(
+                final levelUps = service.processCombatOutcome(
                   false,
                   false,
                   playerTowerHealth,
@@ -9641,6 +9736,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   );
                 } else {
                   Navigator.pop(activeContext);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (levelUps.isNotEmpty) {
+                      _showPendingLevelUps(levelUps.entries.toList(), onComplete: _triggerDiceRollSequence);
+                    } else {
+                      _triggerDiceRollSequence();
+                    }
+                  });
                 }
               },
           onSurvivalDraw:
@@ -9651,7 +9753,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 combatExp,
                 activeContext,
               ) {
-                service.processCombatOutcome(
+                final levelUps = service.processCombatOutcome(
                   false,
                   true,
                   playerTowerHealth,
@@ -9665,9 +9767,150 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 );
                 state.clearEncounterState();
                 Navigator.pop(activeContext);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (levelUps.isNotEmpty) {
+                    _showPendingLevelUps(levelUps.entries.toList(), onComplete: _triggerDiceRollSequence);
+                  } else {
+                    _triggerDiceRollSequence();
+                  }
+                });
               },
         ),
       ),
+    );
+  }
+
+  void _showPendingLevelUps(
+    List<MapEntry<String, List<int>>> remaining, {
+    required VoidCallback onComplete,
+  }) {
+    if (remaining.isEmpty) {
+      onComplete();
+      return;
+    }
+    final first = remaining.first;
+    final cardId = first.key;
+    final oldLvl = first.value[0];
+    final newLvl = first.value[1];
+
+    final npc = CombatUnitService.createUnit(cardId);
+    final stats = npc.combatStats!;
+
+    final oldMult = 1.0 + (oldLvl - 1) * 0.1;
+    final newMult = 1.0 + (newLvl - 1) * 0.1;
+
+    final oldHP = stats.maxHealth * oldMult;
+    final newHP = stats.maxHealth * newMult;
+
+    final oldAtk = stats.attack * oldMult;
+    final newAtk = stats.attack * newMult;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Fireworks
+              const Positioned.fill(child: FireworksOverlay()),
+
+              // Content Card
+              Container(
+                width: 320,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A130E),
+                  border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black87,
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'LEVEL UP!',
+                        style: GoogleFonts.oswald(
+                          color: const Color(0xFFD4AF37),
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      CharacterBlobRenderer(npc: npc, size: 64, isCombat: true),
+                      const SizedBox(height: 8),
+                      Text(
+                        npc.name.toUpperCase(),
+                        style: GoogleFonts.playfairDisplay(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Level $oldLvl ➔ Level $newLvl',
+                        style: GoogleFonts.oswald(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(color: Colors.white10),
+                      const SizedBox(height: 8),
+                      _buildLevelUpStatRow(
+                        'MAX HEALTH (HP)',
+                        oldHP.toInt().toString(),
+                        newHP.toInt().toString(),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildLevelUpStatRow(
+                        'ATTACK POWER',
+                        oldAtk.toInt().toString(),
+                        newAtk.toInt().toString(),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 36,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFC4B89B),
+                            foregroundColor: Colors.black,
+                            shape: const RoundedRectangleBorder(),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(dlgContext);
+                            _showPendingLevelUps(remaining.sublist(1), onComplete: onComplete);
+                          },
+                          child: Text(
+                            'CONTINUE',
+                            style: GoogleFonts.playfairDisplay(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -9704,7 +9947,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               // Content Card
               Container(
                 width: 320,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1A130E),
                   border: Border.all(color: const Color(0xFFD4AF37), width: 2),
@@ -9717,73 +9960,75 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'LEVEL UP!',
-                      style: GoogleFonts.oswald(
-                        color: const Color(0xFFD4AF37),
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    CharacterBlobRenderer(npc: npc, size: 80, isCombat: true),
-                    const SizedBox(height: 10),
-                    Text(
-                      npc.name.toUpperCase(),
-                      style: GoogleFonts.playfairDisplay(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Level $oldLvl ➔ Level $newLvl',
-                      style: GoogleFonts.oswald(
-                        color: const Color(0xFFE5D5B0),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(color: Colors.white10),
-                    const SizedBox(height: 10),
-                    _buildLevelUpStatRow(
-                      'MAX HEALTH (HP)',
-                      oldHP.toInt().toString(),
-                      newHP.toInt().toString(),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildLevelUpStatRow(
-                      'ATTACK POWER',
-                      oldAtk.toInt().toString(),
-                      newAtk.toInt().toString(),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 36,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFC4B89B),
-                          foregroundColor: Colors.black,
-                          shape: const RoundedRectangleBorder(),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'LEVEL UP!',
+                        style: GoogleFonts.oswald(
+                          color: const Color(0xFFD4AF37),
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
                         ),
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          'CONTINUE',
-                          style: GoogleFonts.playfairDisplay(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            letterSpacing: 1.0,
+                      ),
+                      const SizedBox(height: 8),
+                      CharacterBlobRenderer(npc: npc, size: 64, isCombat: true),
+                      const SizedBox(height: 8),
+                      Text(
+                        npc.name.toUpperCase(),
+                        style: GoogleFonts.playfairDisplay(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Level $oldLvl ➔ Level $newLvl',
+                        style: GoogleFonts.oswald(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(color: Colors.white10),
+                      const SizedBox(height: 8),
+                      _buildLevelUpStatRow(
+                        'MAX HEALTH (HP)',
+                        oldHP.toInt().toString(),
+                        newHP.toInt().toString(),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildLevelUpStatRow(
+                        'ATTACK POWER',
+                        oldAtk.toInt().toString(),
+                        newAtk.toInt().toString(),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 36,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFC4B89B),
+                            foregroundColor: Colors.black,
+                            shape: const RoundedRectangleBorder(),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'CONTINUE',
+                            style: GoogleFonts.playfairDisplay(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -9885,12 +10130,555 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         CombatUnitFactory.createForesterBeastmaster(),
       ],
     ];
-
     final list = <NPC>[];
     for (int i = 0; i < targetDeckSize; i++) {
       list.add(pool[i % pool.length]);
     }
     return list;
+  }
+
+  void _triggerDiceRollSequence() {
+    final service = Provider.of<SurvivalService>(context, listen: false);
+    final progress = service.progress;
+    if (progress == null) return;
+
+    if (progress.currentTurn < 2) return;
+
+    setState(() {
+      _showDiceOverlay = true;
+      _isDiceRolling = true;
+      _diceOutcomeMessage = 'ROLLING THE DICE...';
+      _diceOutcomeAction = null;
+    });
+
+    final rand = Random();
+    int count = 0;
+
+    void rollTick() {
+      if (!mounted) return;
+      if (count < 15) {
+        setState(() {
+          _die1 = rand.nextInt(6) + 1;
+          _die2 = rand.nextInt(6) + 1;
+        });
+        count++;
+        Future.delayed(const Duration(milliseconds: 100), rollTick);
+      } else {
+        final finalDie1 = rand.nextInt(6) + 1;
+        final finalDie2 = rand.nextInt(6) + 1;
+        final total = finalDie1 + finalDie2;
+
+        setState(() {
+          _die1 = finalDie1;
+          _die2 = finalDie2;
+          _isDiceRolling = false;
+        });
+
+        _evaluateDiceOutcome(total, progress, service);
+      }
+    }
+
+    Future.delayed(const Duration(milliseconds: 100), rollTick);
+  }
+
+  void _evaluateDiceOutcome(int total, SurvivalProgress progress, SurvivalService service) {
+    final state = Provider.of<GameState>(context, listen: false);
+
+    String logDesc = 'Nothing happens.';
+    if (total == 7) {
+      logDesc = 'Narrative Event triggered.';
+    } else if (total == 12) {
+      logDesc = 'Scientific Discovery check triggered.';
+    } else if (total == 2) {
+      logDesc = 'Disaster check triggered.';
+    } else if (total == 4) {
+      logDesc = 'Bad omen: -1 starting AP next combat.';
+    } else if (total == 10) {
+      logDesc = 'Good omen: +1 starting AP next combat.';
+    }
+    service.addLog('FATE\'S ROLL: Rolled $total ($_die1 + $_die2). $logDesc');
+
+    switch (total) {
+      case 7:
+        final index = progress.cardUpgrades['next_encounter_index'] ?? 0;
+        final encountersList = [
+          'gnomes_artillery',
+          'freemasons_tribute',
+          'alchemist_transmutation',
+          'templar_levy',
+          'carbonari_strike',
+          'golden_dawn_seance',
+          'fenian_gunrunning',
+          'french_cavalry',
+          'adrenochrome_syndicate',
+          'bank_audit',
+          'mystic_herbs',
+          'irish_mutiny',
+          'monarchist_ball',
+          'masonic_toll',
+          'alchemical_explosion',
+          'secret_treaty',
+          'carbonari_press',
+          'golden_dawn_relic',
+          'forester_woodcutters',
+          'swiss_banker_loan',
+          'grenadier_sabotage',
+        ];
+
+        String? nextEncounterId;
+        int foundIndex = index;
+        for (int i = 0; i < encountersList.length; i++) {
+          final checkIdx = (index + i) % encountersList.length;
+          final encId = encountersList[checkIdx];
+          if (progress.cardUpgrades['encounter_${encId}_resolved'] != 1) {
+            nextEncounterId = encId;
+            foundIndex = checkIdx;
+            break;
+          }
+        }
+
+        if (nextEncounterId != null) {
+          progress.cardUpgrades['next_encounter_index'] = foundIndex;
+          _diceOutcomeMessage = "ROLLED A 7!\nNarrative event triggered: ${nextEncounterId.replaceAll('_', ' ').toUpperCase()}";
+          _diceOutcomeAction = () {
+            _showNarrativeEncounter(
+              context,
+              nextEncounterId!,
+              progress,
+              service,
+              state,
+            );
+          };
+        } else {
+          _diceOutcomeMessage = "ROLLED A 7!\nHowever, all narrative events in Glarus have been resolved.";
+          _diceOutcomeAction = null;
+        }
+        break;
+
+      case 12:
+        final davosBuilding = progress.buildings.firstWhereOrNull((b) => b.id == 'plot_d');
+        final davosFarmWorking = davosBuilding != null &&
+            davosBuilding.type == SurvivalBuildingType.farm &&
+            davosBuilding.assignedUnitIds.isNotEmpty;
+
+        if (progress.cardUpgrades['encounter_davos_smallpox_vaccine_resolved'] != 1 && davosFarmWorking) {
+          _diceOutcomeMessage = "ROLLED A 12!\nScientific Discovery: Davos Farm workers discover a Smallpox Vaccine!";
+          _diceOutcomeAction = () {
+            _showNarrativeEncounter(
+              context,
+              'davos_smallpox_vaccine',
+              progress,
+              service,
+              state,
+            );
+          };
+        } else {
+          _diceOutcomeMessage = "ROLLED A 12!\nNo scientific discoveries are currently available (requires staffed farm on Davos Plot).";
+          _diceOutcomeAction = null;
+        }
+        break;
+
+      case 2:
+        if (progress.cardUpgrades['encounter_davos_smallpox_vaccine_resolved'] == 1 &&
+            progress.cardUpgrades['encounter_smallpox_outbreak_resolved'] != 1) {
+          _diceOutcomeMessage = "ROLLED A 2!\nDisaster: Smallpox Outbreak strikes Glarus!";
+          _diceOutcomeAction = () {
+            _showNarrativeEncounter(
+              context,
+              'smallpox_outbreak',
+              progress,
+              service,
+              state,
+            );
+          };
+        } else {
+          final factoryBuilding = progress.buildings.firstWhereOrNull(
+            (b) => b.type == SurvivalBuildingType.munitionsFactory,
+          );
+          final factoryWorking = factoryBuilding != null && factoryBuilding.assignedUnitIds.isNotEmpty;
+
+          if (factoryWorking) {
+            _diceOutcomeMessage = "ROLLED A 2!\nDisaster: Accident at the Munitions Factory!";
+            _diceOutcomeAction = () {
+              _showMunitionsFactoryExplosionDisaster(progress, service);
+            };
+          } else {
+            _diceOutcomeMessage = "ROLLED A 2!\nDisaster narrowly avoided (no active high-risk facilities).";
+            _diceOutcomeAction = null;
+          }
+        }
+        break;
+
+      case 4:
+        _diceOutcomeMessage = "ROLLED A 4!\nBad omen: -1 starting AP in the next combat.";
+        _diceOutcomeAction = () {
+          progress.cardUpgrades['next_combat_ap_modifier'] = -1;
+          service.manualSave();
+        };
+        break;
+
+      case 10:
+        _diceOutcomeMessage = "ROLLED A 10!\nGood omen: +1 starting AP in the next combat.";
+        _diceOutcomeAction = () {
+          progress.cardUpgrades['next_combat_ap_modifier'] = 1;
+          service.manualSave();
+        };
+        break;
+
+      default:
+        _diceOutcomeMessage = "ROLLED A $total.\nNothing happens this turn.";
+        _diceOutcomeAction = null;
+        break;
+    }
+
+    setState(() {});
+  }
+
+  void _showMunitionsFactoryExplosionDisaster(
+    SurvivalProgress progress,
+    SurvivalService service,
+  ) {
+    final factoryBuilding = progress.buildings.firstWhereOrNull(
+      (b) => b.type == SurvivalBuildingType.munitionsFactory,
+    );
+    if (factoryBuilding != null) {
+      if (factoryBuilding.level > 1) {
+        factoryBuilding.level -= 1;
+      } else {
+        progress.buildings.remove(factoryBuilding);
+      }
+    }
+    progress.wood = max(0, progress.wood - 100);
+    progress.iron = max(0, progress.iron - 50);
+    service.addLog('Disaster: Munitions Factory explosion! Facility damaged, -100 Wood, -50 Iron.');
+    service.manualSave();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 340,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1A15),
+              border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'DISASTER STRIKES!',
+                  style: GoogleFonts.oswald(
+                    color: Colors.redAccent,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'MUNITIONS FACTORY EXPLOSION',
+                  style: GoogleFonts.playfairDisplay(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "A devastating explosion tore through the Munitions Factory today! The facility's level has been reduced by 1, and we have lost 100 Wood and 50 Iron in the ensuing fires.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white70,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 36,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFC4B89B),
+                      foregroundColor: Colors.black,
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    onPressed: () => Navigator.pop(dlgContext),
+                    child: Text(
+                      'ACKNOWLEDGE',
+                      style: GoogleFonts.playfairDisplay(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDiceRollOverlay(
+    SurvivalProgress progress,
+    SurvivalService service,
+    GameState state,
+  ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final total = _die1 + _die2;
+
+    return Container(
+      width: screenWidth,
+      height: screenHeight,
+      color: Colors.black.withValues(alpha: 0.35),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 60,
+            left: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "FATE'S ROLL",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.oswald(
+                    color: const Color(0xFFD4AF37),
+                    fontSize: 34,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 6.0,
+                    shadows: [
+                      const Shadow(
+                        color: Colors.black87,
+                        offset: Offset(2, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  "THE DICE HAVE BEEN CAST UPON GLARUS",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.playfairDisplay(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.0,
+                    shadows: [
+                      const Shadow(
+                        color: Colors.black87,
+                        offset: Offset(1, 1),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _build3DDie(_die1, _isDiceRolling, 0.2),
+                const SizedBox(width: 48),
+                _build3DDie(_die2, _isDiceRolling, -0.15),
+              ],
+            ),
+          ),
+
+          if (!_isDiceRolling)
+            Positioned(
+              bottom: 50,
+              left: (screenWidth - 420) / 2,
+              width: 420,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1A15).withValues(alpha: 0.9),
+                  border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black54,
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "ROLLED A $total",
+                      style: GoogleFonts.oswald(
+                        color: const Color(0xFFE5D5B0),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _diceOutcomeMessage,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.oldStandardTt(
+                        color: Colors.white,
+                        fontSize: 14.0,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 36,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC4B89B),
+                          foregroundColor: Colors.black,
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _showDiceOverlay = false;
+                          });
+                          if (_diceOutcomeAction != null) {
+                            _diceOutcomeAction!();
+                          }
+                        },
+                        child: Text(
+                          'CONTINUE',
+                          style: GoogleFonts.playfairDisplay(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _build3DDie(int value, bool rolling, double baseAngle) {
+    final double randAngleY = rolling ? (Random().nextDouble() - 0.5) * 2.0 : baseAngle;
+    final double randAngleX = rolling ? (Random().nextDouble() - 0.5) * 2.0 : 0.3;
+    final double randAngleZ = rolling ? (Random().nextDouble() - 0.5) * 1.5 : 0.0;
+    final double scale = rolling ? 1.0 + (Random().nextDouble() * 0.15) : 1.0;
+
+    return Transform(
+      transform: Matrix4.identity()
+        ..setEntry(3, 2, 0.002)
+        ..scale(scale)
+        ..rotateX(randAngleX)
+        ..rotateY(randAngleY)
+        ..rotateZ(randAngleZ),
+      alignment: Alignment.center,
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4ECD8),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+          gradient: const RadialGradient(
+            colors: [
+              Color(0xFFFFF9EC),
+              Color(0xFFEADFCA),
+            ],
+            center: Alignment(-0.3, -0.3),
+            radius: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: rolling ? 0.35 : 0.5),
+              blurRadius: rolling ? 16 : 8,
+              spreadRadius: rolling ? 2 : 0,
+              offset: rolling ? const Offset(10, 20) : const Offset(4, 10),
+            ),
+          ],
+        ),
+        child: Center(
+          child: _buildDieDots(value),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDieDots(int value) {
+    final dots = <Positioned>[];
+    
+    void addDot(double x, double y) {
+      dots.add(
+        Positioned(
+          left: x,
+          top: y,
+          child: Container(
+            width: 11,
+            height: 11,
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1A15),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black38,
+                  blurRadius: 1,
+                  offset: Offset(1, 1),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (value == 1) {
+      addDot(34, 34);
+    } else if (value == 2) {
+      addDot(14, 14);
+      addDot(54, 54);
+    } else if (value == 3) {
+      addDot(14, 14);
+      addDot(34, 34);
+      addDot(54, 54);
+    } else if (value == 4) {
+      addDot(14, 14);
+      addDot(54, 14);
+      addDot(14, 54);
+      addDot(54, 54);
+    } else if (value == 5) {
+      addDot(14, 14);
+      addDot(54, 14);
+      addDot(34, 34);
+      addDot(14, 54);
+      addDot(54, 54);
+    } else if (value == 6) {
+      addDot(14, 14);
+      addDot(54, 14);
+      addDot(14, 34);
+      addDot(54, 34);
+      addDot(14, 54);
+      addDot(54, 54);
+    }
+
+    return Stack(
+      children: dots,
+    );
   }
 }
 

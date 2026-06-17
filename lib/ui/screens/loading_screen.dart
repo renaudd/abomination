@@ -84,7 +84,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
     _currentLog = _logs[0];
   }
 
+  bool _isNavigating = false;
+
   void _completeLoading() {
+    if (_isNavigating) return;
+    _isNavigating = true;
     widget.onCompleted?.call();
     if (mounted) {
       Navigator.pushReplacement(

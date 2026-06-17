@@ -124,6 +124,14 @@ class Combatant {
   double damageDebuffMultiplier = 1.0;
   double damageDebuffDurationRemaining = 0.0;
 
+  double strengthFactor = 0.0;
+  double enduranceFactor = 0.0;
+  double dexterityFactor = 0.0;
+  double intellectFactor = 0.0;
+  double perceptionFactor = 0.0;
+  double judgmentFactor = 0.0;
+  double confidenceFactor = 0.0;
+
   Combatant({
     required this.npc,
     required this.side,
@@ -259,9 +267,24 @@ class CombatManager extends ChangeNotifier {
   }
 
   final List<Combatant> _combatants = [];
+  
+  double getBaseMovementMultiplier(Combatant c) {
+    if (c.npc.isPlayer || c.isAiLeader || c.npc.role == 'Leader' || c.npc.role == 'Master') {
+      return 24.0 * 1.5; // Leaders move at 36.0 base
+    } else if (c.isStampedeHorse) {
+      return 24.0; // Stampede horses (support unit, no speed reduction)
+    } else {
+      return 24.0 * 0.9; // 10% reduction for all other units
+    }
+  }
+
   final List<Projectile> _projectiles = [];
   final List<CombatLogEntry> _logs = [];
   double _actionPoints = 6.0; // Start with 6
+  set actionPoints(double value) {
+    _actionPoints = value;
+    notifyListeners();
+  }
   static const double maxAP = 10.0;
   static const double apPerSecond = 1.0 / 3.0; // 1 point of energy every 3 seconds
   static const double fieldWidth = 140.0;
@@ -288,6 +311,7 @@ class CombatManager extends ChangeNotifier {
   final Map<String, int> summonCounts = {};
   final Map<String, int> killCounts = {};
   final Map<String, double> killXpTotals = {};
+  final Map<String, double> _squadJudgmentFactors = {};
 
   double _fieldScroll = 0.0;
   double _yFieldScroll = 0.0;
@@ -847,6 +871,67 @@ class CombatManager extends ChangeNotifier {
     final stats = npc.combatStats;
     if (stats == null) return false;
 
+    // Resolve leader factors
+    double strFactor = 0.0;
+    double endFactor = 0.0;
+    double dexFactor = 0.0;
+    double intFactor = 0.0;
+    double perFactor = 0.0;
+    double judFactor = 0.0;
+    double confFactor = 0.0;
+
+    final statsMap = npc.stats;
+    if (statsMap.isNotEmpty) {
+      double getFactor(String statName) {
+        final val = statsMap[statName] ?? 0;
+        if (val < 4) return (val - 4).toDouble();
+        if (val > 5) return (val - 5).toDouble();
+        return 0.0;
+      }
+      strFactor = getFactor('strength');
+      endFactor = getFactor('endurance');
+      dexFactor = getFactor('dexterity');
+      intFactor = getFactor('intellect');
+      perFactor = getFactor('perception');
+      judFactor = getFactor('judgment');
+      confFactor = getFactor('confidence');
+    }
+
+    if (side == CombatSide.player) {
+      final cardType = npc.metadata['cardType'] ?? npc.id;
+      _squadJudgmentFactors[cardType] = judFactor;
+    }
+
+    CombatStats finalStats = stats;
+    // 1. Endurance (HP)
+    if (endFactor != 0.0) {
+      final double hpMult = 1.0 + endFactor * 0.05;
+      finalStats = finalStats.copyWith(
+        health: (finalStats.health * hpMult).roundToDouble(),
+        maxHealth: (finalStats.maxHealth * hpMult).roundToDouble(),
+      );
+    }
+    // 2. Intellect (Summon Speed / Deployment Time)
+    if (intFactor != 0.0) {
+      final double depMult = 1.0 - intFactor * 0.10; // 10% per point faster/slower
+      finalStats = finalStats.copyWith(
+        deploymentTime: max(0.0, finalStats.deploymentTime * depMult),
+      );
+    }
+    // 3. Dexterity (Ranged attack speed) & Perception (Melee attack speed)
+    final bool isRanged = finalStats.distance >= 3.0;
+    if (isRanged && dexFactor != 0.0) {
+      final double speedMult = 1.0 - dexFactor * 0.08;
+      finalStats = finalStats.copyWith(
+        speed: max(0.1, finalStats.speed * speedMult),
+      );
+    } else if (!isRanged && perFactor != 0.0) {
+      final double speedMult = 1.0 - perFactor * 0.08;
+      finalStats = finalStats.copyWith(
+        speed: max(0.1, finalStats.speed * speedMult),
+      );
+    }
+
     if (side == CombatSide.player) {
       final playerCharacter = _combatants.firstWhereOrNull((c) => c.npc.isPlayer);
       if (playerCharacter != null && playerCharacter.isDead) return false;
@@ -934,7 +1019,7 @@ class CombatManager extends ChangeNotifier {
     } else {
       // Spawn the Leader
       final leader = Combatant(
-        npc: npc,
+        npc: npc.copyWith(combatStats: finalStats),
         side: side,
         x: spawnX,
         y: finalSpawnY,
@@ -943,9 +1028,17 @@ class CombatManager extends ChangeNotifier {
         isAiLeader: isAiLeader,
         squadId: squadId,
         isSquadLeader: true,
-        activeDeploymentTimer: stats.deploymentTime,
+        activeDeploymentTimer: finalStats.deploymentTime,
         originCardName: npc.name,
-      )..supportDurationRemaining = initialSupportDuration;
+      )
+        ..supportDurationRemaining = initialSupportDuration
+        ..strengthFactor = strFactor
+        ..enduranceFactor = endFactor
+        ..dexterityFactor = dexFactor
+        ..intellectFactor = intFactor
+        ..perceptionFactor = perFactor
+        ..judgmentFactor = judFactor
+        ..confidenceFactor = confFactor;
 
       _combatants.add(leader);
       spawnedLeader = leader;
@@ -987,7 +1080,7 @@ class CombatManager extends ChangeNotifier {
           schedule: npc.schedule,
           diet: npc.diet,
           appearance: followerAppearance,
-          combatStats: stats.copyWith(unitCount: 1), // Followers themselves represent single entities
+          combatStats: finalStats.copyWith(unitCount: 1), // Followers themselves represent single entities
           metadata: npc.metadata, // Copy metadata including cardType!
         );
 
@@ -1002,9 +1095,16 @@ class CombatManager extends ChangeNotifier {
           leaderId: npc.id,
           isSquadLeader: false,
           formationOffset: offset,
-          activeDeploymentTimer: stats.deploymentTime,
+          activeDeploymentTimer: finalStats.deploymentTime,
           originCardName: npc.name,
-        );
+        )
+          ..strengthFactor = strFactor
+          ..enduranceFactor = endFactor
+          ..dexterityFactor = dexFactor
+          ..intellectFactor = intFactor
+          ..perceptionFactor = perFactor
+          ..judgmentFactor = judFactor
+          ..confidenceFactor = confFactor;
 
         _combatants.add(follower);
       }
@@ -1847,7 +1947,8 @@ class CombatManager extends ChangeNotifier {
       // 1. Burning
       if (c.isBurning) {
         c.burnDurationRemaining -= dt;
-        final double res = stats.trait == CombatTrait.fireImmune ? 1.0 : (stats.trait == CombatTrait.fireResistant ? 0.5 : (stats.trait == CombatTrait.fireVulnerable ? -0.5 : 0.0));
+        final double baseRes = stats.trait == CombatTrait.fireImmune ? 1.0 : (stats.trait == CombatTrait.fireResistant ? 0.5 : (stats.trait == CombatTrait.fireVulnerable ? -0.5 : 0.0));
+        final double res = baseRes + c.confidenceFactor * 0.10;
         final double dmg = c.burnDamagePerSec * dt * max(0.0, 1.0 - res);
         if (dmg > 0) {
           applyDirectDamage(c, dmg, 'fire_dot');
@@ -1880,7 +1981,8 @@ class CombatManager extends ChangeNotifier {
         c.poisonDurationRemaining -= dt;
         final bool isImmune = stats.trait == CombatTrait.poisonImmune || stats.unitType == UnitType.vehicle;
         if (!isImmune) {
-          final double dmg = c.poisonDamagePerSec * dt;
+          final double res = c.confidenceFactor * 0.10;
+          final double dmg = c.poisonDamagePerSec * dt * max(0.0, 1.0 - res);
           applyDirectDamage(c, dmg, 'poison_dot');
         }
         if (c.poisonDurationRemaining <= 0) {
@@ -2278,8 +2380,9 @@ class CombatManager extends ChangeNotifier {
         }
       }
 
-      double nextX = c.x + c.moveDirX * stats.movement * dt * 7.5 * 2.25;
-      double nextY = c.y + c.moveDirY * stats.movement * dt * 7.5 * 2.25;
+      final baseSpeed = getBaseMovementMultiplier(c);
+      double nextX = c.x + c.moveDirX * stats.movement * dt * baseSpeed;
+      double nextY = c.y + c.moveDirY * stats.movement * dt * baseSpeed;
 
       bool inWall = _isPointInWall(nextX, nextY);
 
@@ -2288,13 +2391,13 @@ class CombatManager extends ChangeNotifier {
         c.y = nextY;
       } else {
         // Slide along collision boundaries
-        double tryX = c.x + c.moveDirX * stats.movement * dt * 7.5 * 2.25;
+        double tryX = c.x + c.moveDirX * stats.movement * dt * baseSpeed;
         bool tryXObstructed = _isPointInWall(tryX, c.y);
         if (!tryXObstructed) {
           c.x = tryX;
         }
 
-        double tryY = c.y + c.moveDirY * stats.movement * dt * 7.5 * 2.25;
+        double tryY = c.y + c.moveDirY * stats.movement * dt * baseSpeed;
         bool tryYObstructed = _isPointInWall(c.x, tryY);
         if (!tryYObstructed) {
           c.y = tryY;
@@ -2371,8 +2474,9 @@ class CombatManager extends ChangeNotifier {
         final dy = ty - c.y;
         final len = sqrt(dx * dx + dy * dy);
 
-        double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
-        double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+        final baseSpeed = getBaseMovementMultiplier(c);
+        double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * baseSpeed;
+        double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * baseSpeed;
 
         bool inWall = _isPointInWall(nextX, nextY);
 
@@ -2380,13 +2484,13 @@ class CombatManager extends ChangeNotifier {
           c.x = nextX;
           c.y = nextY;
         } else {
-          double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+          double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * baseSpeed;
           bool tryXObstructed = _isPointInWall(tryX, c.y);
           if (!tryXObstructed) {
             c.x = tryX;
           }
 
-          double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+          double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * baseSpeed;
           bool tryYObstructed = _isPointInWall(c.x, tryY);
           if (!tryYObstructed) {
             c.y = tryY;
@@ -2436,8 +2540,9 @@ class CombatManager extends ChangeNotifier {
           final dy = ty - c.y;
           final len = sqrt(dx * dx + dy * dy);
           
-          double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
-          double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+          final baseSpeed = getBaseMovementMultiplier(c);
+          double nextX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * baseSpeed;
+          double nextY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * baseSpeed;
 
           bool inWall = _isPointInWall(nextX, nextY);
 
@@ -2446,13 +2551,13 @@ class CombatManager extends ChangeNotifier {
             c.y = nextY;
           } else {
             // Slide
-            double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+            double tryX = c.x + (len > 0.0 ? (dx / len) : 0.0) * stats.movement * dt * baseSpeed;
             bool tryXObstructed = _isPointInWall(tryX, c.y);
             if (!tryXObstructed) {
               c.x = tryX;
             }
 
-            double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * 24.0 * 2.25;
+            double tryY = c.y + (len > 0.0 ? (dy / len) : 0.0) * stats.movement * dt * baseSpeed;
             bool tryYObstructed = _isPointInWall(c.x, tryY);
             if (!tryYObstructed) {
               c.y = tryY;
@@ -2482,14 +2587,15 @@ class CombatManager extends ChangeNotifier {
 
         // Two-phase channel navigation: seek vertical alignment Y first, advance horizontally X only when aligned!
         double dy = nearestLaneY - c.y;
+        final baseSpeed = getBaseMovementMultiplier(c);
         if (dy.abs() > 4.0) {
           c.moveDirY = dy > 0.0 ? 1.0 : -1.0;
-          c.y += c.moveDirY * stats.movement * dt * 24.0 * 2.25;
+          c.y += c.moveDirY * stats.movement * dt * baseSpeed;
           c.moveDirX = 0.0; // Strictly prevent advancing horizontally into barrier walls!
         } else {
           c.moveDirY = 0.0;
           c.moveDirX = c.side == CombatSide.player ? 1.0 : -1.0;
-          c.x += c.moveDirX * stats.movement * dt * 24.0 * 2.25;
+          c.x += c.moveDirX * stats.movement * dt * baseSpeed;
         }
       }
       
@@ -2514,8 +2620,9 @@ class CombatManager extends ChangeNotifier {
             final double mdy = dy / len;
             c.moveDirX = mdx;
             c.moveDirY = mdy;
-            c.x += mdx * stats.movement * dt * 24.0;
-            c.y += mdy * stats.movement * dt * 24.0;
+            final baseSpeed = getBaseMovementMultiplier(c);
+            c.x += mdx * stats.movement * dt * baseSpeed;
+            c.y += mdy * stats.movement * dt * baseSpeed;
             enforceUnitBoundaries(c);
           }
           return;
@@ -2535,14 +2642,15 @@ class CombatManager extends ChangeNotifier {
 
       // Two-phase channel navigation: seek vertical alignment Y first, advance horizontally X only when aligned!
       double dy = nearestLaneY - c.y;
+      final baseSpeed = getBaseMovementMultiplier(c);
       if (dy.abs() > 4.0) {
         c.moveDirY = dy > 0.0 ? 1.0 : -1.0;
-        c.y += c.moveDirY * stats.movement * dt * 24.0;
+        c.y += c.moveDirY * stats.movement * dt * baseSpeed;
         c.moveDirX = 0.0; // Strictly prevent advancing horizontally into barrier walls!
       } else {
         c.moveDirY = 0.0;
         c.moveDirX = c.side == CombatSide.player ? 1.0 : -1.0;
-        c.x += c.moveDirX * stats.movement * dt * 24.0;
+        c.x += c.moveDirX * stats.movement * dt * baseSpeed;
       }
 
       enforceUnitBoundaries(c);
@@ -2640,8 +2748,9 @@ class CombatManager extends ChangeNotifier {
         c.moveDirY = 0.0;
       }
       
-      double nextX = c.x + c.moveDirX * stats.movement * dt * 24.0;
-      double nextY = c.y + c.moveDirY * stats.movement * dt * 24.0;
+      final baseSpeed = getBaseMovementMultiplier(c);
+      double nextX = c.x + c.moveDirX * stats.movement * dt * baseSpeed;
+      double nextY = c.y + c.moveDirY * stats.movement * dt * baseSpeed;
 
       bool inWall = _isPointInWall(nextX, nextY);
 
@@ -2650,13 +2759,13 @@ class CombatManager extends ChangeNotifier {
         c.y = nextY;
       } else {
         // Slide along collision boundaries
-        double tryX = c.x + c.moveDirX * stats.movement * dt * 24.0;
+        double tryX = c.x + c.moveDirX * stats.movement * dt * baseSpeed;
         bool tryXObstructed = _isPointInWall(tryX, c.y);
         if (!tryXObstructed) {
           c.x = tryX;
         }
 
-        double tryY = c.y + c.moveDirY * stats.movement * dt * 24.0;
+        double tryY = c.y + c.moveDirY * stats.movement * dt * baseSpeed;
         bool tryYObstructed = _isPointInWall(c.x, tryY);
         if (!tryYObstructed) {
           c.y = tryY;
@@ -2776,6 +2885,11 @@ class CombatManager extends ChangeNotifier {
       damage = max(1.0, (damage * buffMult) - targetStats.defense);
     } else {
       damage = max(1.0, ((stats.attack * buffMult) - targetStats.defense) * 1.5);
+    }
+
+    final strFactor = attacker.strengthFactor;
+    if (stats.distance < 3.0 && strFactor != 0.0) {
+      damage *= (1.0 + strFactor * 0.05);
     }
 
     if (targetStats.swarmSize > 0) {
@@ -3749,6 +3863,8 @@ class CombatManager extends ChangeNotifier {
           finalXpChange = -baseSummonXp;
         }
       }
+      final double judFactor = _squadJudgmentFactors[cardType] ?? 0.0;
+      finalXpChange *= (1.0 + judFactor * 0.10);
       combatExp[cardType] = finalXpChange;
     }
   }

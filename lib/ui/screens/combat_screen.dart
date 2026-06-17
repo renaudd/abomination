@@ -296,12 +296,18 @@ class _CombatScreenState extends State<CombatScreen>
         widget.customEnemyHero == null &&
         widget.onVictory == null;
 
+    final apModifier = widget.cardUpgrades?['next_combat_ap_modifier'] ?? 0;
+    if (apModifier != 0) {
+      widget.cardUpgrades?.remove('next_combat_ap_modifier');
+    }
+
     _combatManager = CombatManager()
       ..map = state.selectedCombatMap
       ..combatControlMode = state.combatControlMode
       ..upgrades = widget.cardUpgrades ?? {}
       ..isSurvivalMode = widget.survivalTurn != null
-      ..isNormalGameMode = isNormalGame;
+      ..isNormalGameMode = isNormalGame
+      ..actionPoints = 6.0 + apModifier;
 
     _checkSaveSlots();
 

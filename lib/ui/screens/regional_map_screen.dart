@@ -207,7 +207,7 @@ class RegionalMapScreen extends StatelessWidget {
                     const TimeSpeedControls(),
                     const Divider(color: Colors.white10),
                     Text(
-                      'CANTON DE VAUD, NEUTRAL SWITZERLAND - 1860',
+                      'CANTON DE VAUD, NEUTRAL SWITZERLAND - 1818',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.playfairDisplay(
                         color: const Color(0xFFC4B89B),

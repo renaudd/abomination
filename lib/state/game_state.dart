@@ -849,6 +849,7 @@ class GameState extends ChangeNotifier {
   int _playerAge = 30;
   GilesTrait _gilesTrait = GilesTrait.silent;
   LifeObjective _mainObjective = LifeObjective.science;
+  Map<String, int>? _customStartingStats;
 
   Map<String, dynamic> toJson() => {
     'dissectionsPerformed': _dissectionsPerformed,
@@ -2454,6 +2455,7 @@ class GameState extends ChangeNotifier {
     required int age,
     required GilesTrait gilesTrait,
     required LifeObjective objective,
+    Map<String, int>? customPlayerStats,
   }) {
     _playerFirstName = firstName;
     _playerLastName = lastName;
@@ -2462,6 +2464,7 @@ class GameState extends ChangeNotifier {
     _playerAge = age;
     _gilesTrait = gilesTrait;
     _mainObjective = objective;
+    _customStartingStats = customPlayerStats;
     if (gilesTrait == GilesTrait.sage) {
       _gilesTutorialStep = GilesTutorialStep.intro;
     } else {
@@ -3066,25 +3069,33 @@ class GameState extends ChangeNotifier {
     );
 
     final Map<String, int> basePlayerStats = {
-      'strength': 3,
+      'strength': 2,
       'endurance': 3,
       'adaptability': 3,
       'dexterity': 3,
-      'intellect': 5,
-      'perception': 4,
-      'judgment': 3,
-      'temperament': 3,
-      'confidence': 3,
+      'intellect': 4,
+      'perception': 3,
+      'judgment': 2,
+      'temperament': 2,
+      'confidence': 4,
+      'beauty': 3,
       'hygiene': 4,
-      'beauty': 2,
-      'morality': 4,
+      'morality': 3,
       'walkSpeed': 30,
     };
 
-    for (var entry in playerBioRes.statModifiers.entries) {
-      if (basePlayerStats.containsKey(entry.key)) {
-        basePlayerStats[entry.key] = (basePlayerStats[entry.key]! + entry.value)
-            .clamp(0, 10);
+    if (_customStartingStats != null) {
+      _customStartingStats!.forEach((key, value) {
+        if (basePlayerStats.containsKey(key)) {
+          basePlayerStats[key] = value;
+        }
+      });
+    } else {
+      for (var entry in playerBioRes.statModifiers.entries) {
+        if (basePlayerStats.containsKey(entry.key)) {
+          basePlayerStats[entry.key] = (basePlayerStats[entry.key]! + entry.value)
+              .clamp(0, 10);
+        }
       }
     }
 
@@ -3113,7 +3124,7 @@ class GameState extends ChangeNotifier {
       traits: playerTraits,
       proficiencies: playerProficiencies,
       biography: playerBioRes.biography,
-      bio: playerBioRes.biography.toParagraph(),
+      bio: _buildPlayerBioParagraph(playerBioRes.biography),
       hometown: playerBioRes.biography.placeOfBirth,
       background: playerBioRes.biography.characterClass,
       religion: playerBioRes.childReligion,
@@ -3269,6 +3280,28 @@ class GameState extends ChangeNotifier {
     // If we add more units to the initial deck later, we should filter out duplicates here.
     _butlerRoomId = 'butler_quarters';
     _checkForTodayBirthday();
+  }
+
+  String _buildPlayerBioParagraph(CharacterBiography bio) {
+    final baseBio = bio.toParagraph();
+    String deathDesc = "";
+    switch (_deathCause) {
+      case DeathCause.disease:
+        deathDesc = "Their parents met a tragic end, falling victim to a terrible disease that swept through their homeland.";
+        break;
+      case DeathCause.trainCrash:
+        deathDesc = "Their parents perished in a horrific train crash, a metal-twisting catastrophe that shook the region.";
+        break;
+      case DeathCause.murderSuicide:
+        deathDesc = "Their parents' lives were cut short in a dark, shocking murder-suicide that remains a taboo subject.";
+        break;
+      case DeathCause.misunderstanding:
+        deathDesc = "Their parents met a bizarre, tragic demise stemming from a catastrophic misunderstanding.";
+        break;
+      default:
+        deathDesc = "Their parents met a mysterious, untimely death.";
+    }
+    return "$baseBio $deathDesc\n\n// TODO: develop meaningful quests and game consequences tied to this death cause.";
   }
 
   bool _isTicking = false;

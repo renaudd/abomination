@@ -17,7 +17,7 @@ import random
 
 categories = [
     "trash", "zoology", "medicine", "chemistry", "psychology", "physics",
-    "perception", "judgment", "morality", "courage", "hygiene", "temperament"
+    "perception", "judgment", "morality", "confidence", "hygiene", "temperament"
 ]
 
 templates = {

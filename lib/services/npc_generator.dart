@@ -849,16 +849,26 @@ class NPCGenerator {
       }
     }
 
-    // Tragic event (if >30 years old)
+    // Tragic event (if >30 years old, or if widowed at any age to explain who the spouse was)
     String? tragicEvent;
-    if (age > 30) {
+    if (age > 30 || relationshipStatus == 'widowed') {
+      final spouseNames = ["Amelia", "Elizabeth", "Caroline", "Justine", "Clara"];
+      final spouseName = spouseNames[_random.nextInt(spouseNames.length)];
       final tragedies = [
-        "Lost their spouse to consumption, leaving them melancholic.",
+        "Lost their spouse, $spouseName, to consumption, leaving them melancholic.",
         "Betrayed by a business partner, making them cynical.",
         "Fled their home city due to political turmoil, losing all their possessions.",
         "Surrendered to a brief period of imprisonment for a debt they did not owe."
       ];
-      final idx = _random.nextInt(tragedies.length);
+      int idx;
+      if (relationshipStatus == 'widowed') {
+        idx = 0; // Force lost spouse
+      } else {
+        idx = _random.nextInt(tragedies.length);
+        if (idx == 0) {
+          relationshipStatus = 'widowed';
+        }
+      }
       tragicEvent = tragedies[idx];
       switch (idx) {
         case 0:

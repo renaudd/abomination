@@ -39,12 +39,14 @@ void main() async {
     return true;
   };
 
-  GoogleFonts.config.allowRuntimeFetching = false;
-
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
+  try {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  } catch (e) {
+    debugPrint("SystemChrome error: $e");
+  }
 
   final audioService = AudioService();
   if (!kIsWeb) {
@@ -69,8 +71,6 @@ void main() async {
   );
 }
 
-VoidCallback? onGameLoadingComplete;
-
 GameState? globalGameState;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -83,30 +83,97 @@ class AbominationApp extends StatefulWidget {
 }
 
 class _AbominationAppState extends State<AbominationApp> {
-  late final FocusNode _globalFocusNode;
   bool _isFullyLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _globalFocusNode = FocusNode();
-    onGameLoadingComplete = () {
-      if (globalGameState != null) {
-        AudioService().applySettings(globalGameState!);
-      }
-      AudioService().playBGM('audio/vivaldi_winter.m4a', isAsset: true);
-      if (mounted) {
-        setState(() {
-          _isFullyLoaded = true;
-        });
-      }
-    };
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  void _onGameLoadingComplete() {
+    if (globalGameState != null) {
+      AudioService().applySettings(globalGameState!);
+    }
+    AudioService().playBGM('audio/vivaldi_winter.m4a', isAsset: true);
+    if (mounted) {
+      setState(() {
+        _isFullyLoaded = true;
+      });
+    }
   }
 
   @override
   void dispose() {
-    _globalFocusNode.dispose();
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     super.dispose();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final key = event.physicalKey;
+
+      final primaryFocus = FocusManager.instance.primaryFocus;
+      if (primaryFocus != null && primaryFocus.context != null) {
+        final hasTextFocus = primaryFocus.context!.findAncestorWidgetOfExactType<EditableText>() != null;
+        if (hasTextFocus) return false;
+      }
+
+      final state = globalGameState;
+      if (state == null) return false;
+
+      if (state.isReassigningHotkey) return false;
+
+      final player = state.npcs.firstWhereOrNull((n) => n.isPlayer);
+      if (player == null || state.simulationPlayerDeck != null) {
+        return false;
+      }
+
+      final bool isEncounterActive = state.pendingCombatEncounter || state.pendingEncounterData != null;
+      if (isEncounterActive) {
+        return false;
+      }
+
+      final keyLabel = event.logicalKey.keyLabel.toUpperCase();
+
+      if (state.speed != GameSpeed.paused) {
+        if (key == PhysicalKeyboardKey.digit0 || key == PhysicalKeyboardKey.numpad0 || keyLabel == state.hotkeys['Pause']) {
+          state.setSpeed(GameSpeed.paused);
+        } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1 || keyLabel == state.hotkeys['Slow Speed']) {
+          state.setSpeed(GameSpeed.slow);
+        } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2 || keyLabel == state.hotkeys['Normal Speed']) {
+          state.setSpeed(GameSpeed.normal);
+        } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3 || keyLabel == state.hotkeys['Fast Speed']) {
+          state.setSpeed(GameSpeed.fast);
+        } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4 || keyLabel == state.hotkeys['Lightning Speed']) {
+          state.setSpeed(GameSpeed.lightning);
+        }
+      }
+
+      final bool isAtManor = (player.worldTravelProgress == 0.0 || player.worldTravelProgress >= 1.0);
+
+      if (isAtManor) {
+        if (key == PhysicalKeyboardKey.keyU || keyLabel == state.hotkeys['Manor View']) {
+          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        } else if (key == PhysicalKeyboardKey.keyO || keyLabel == state.hotkeys['Chronicle Records']) {
+          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(builder: (context) => const RecordsScreen()),
+          );
+        } else if (key == PhysicalKeyboardKey.keyP || keyLabel == state.hotkeys['Survey Estate Map']) {
+          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(builder: (context) => const WorldMapScreen()),
+          );
+        } else if (key == PhysicalKeyboardKey.keyI || keyLabel == state.hotkeys['Manor Holdings']) {
+          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(builder: (context) => const RecordsScreen()),
+          );
+        }
+      }
+    }
+    return false;
   }
 
   @override
@@ -114,84 +181,6 @@ class _AbominationAppState extends State<AbominationApp> {
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'Abomination',
-      builder: (ctx, child) {
-        return KeyboardListener(
-          focusNode: _globalFocusNode,
-          autofocus: true,
-          onKeyEvent: (event) {
-            if (event is KeyDownEvent) {
-              final key = event.physicalKey;
-
-              // Skip hotkeys if typing in a text field
-              final primaryFocus = FocusManager.instance.primaryFocus;
-              if (primaryFocus != null && primaryFocus.context != null) {
-                final hasTextFocus = primaryFocus.context!.findAncestorWidgetOfExactType<EditableText>() != null;
-                if (hasTextFocus) return;
-              }
-
-              final state = globalGameState;
-              if (state == null) return;
-
-              if (state.isReassigningHotkey) return;
-
-              // If player is not initialized yet (e.g. game setup screen) or if we are in active combat/combat simulator,
-              // do not handle global keys!
-              final player = state.npcs.firstWhereOrNull((n) => n.isPlayer);
-              if (player == null || state.simulationPlayerDeck != null) {
-                return;
-              }
-
-              // Skip speed adjustments and global navigations if a dialogue or decision-based encounter is active!
-              final bool isEncounterActive = state.pendingCombatEncounter || state.pendingEncounterData != null;
-              if (isEncounterActive) {
-                return;
-              }
-
-              final keyLabel = event.logicalKey.keyLabel.toUpperCase();
-
-              // Numeric speed keys are only active when the clock is not paused.
-              // During combat, encounters, dialogue, or menus, the clock is paused so numbers won't affect it!
-              if (state.speed != GameSpeed.paused) {
-                if (key == PhysicalKeyboardKey.digit0 || key == PhysicalKeyboardKey.numpad0 || keyLabel == state.hotkeys['Pause']) {
-                  state.setSpeed(GameSpeed.paused);
-                } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1 || keyLabel == state.hotkeys['Slow Speed']) {
-                  state.setSpeed(GameSpeed.slow);
-                } else if (key == PhysicalKeyboardKey.digit2 || key == PhysicalKeyboardKey.numpad2 || keyLabel == state.hotkeys['Normal Speed']) {
-                  state.setSpeed(GameSpeed.normal);
-                } else if (key == PhysicalKeyboardKey.digit3 || key == PhysicalKeyboardKey.numpad3 || keyLabel == state.hotkeys['Fast Speed']) {
-                  state.setSpeed(GameSpeed.fast);
-                } else if (key == PhysicalKeyboardKey.digit4 || key == PhysicalKeyboardKey.numpad4 || keyLabel == state.hotkeys['Lightning Speed']) {
-                  state.setSpeed(GameSpeed.lightning);
-                }
-              }
-
-              final bool isAtManor = (player.worldTravelProgress == 0.0 || player.worldTravelProgress >= 1.0);
-
-              if (isAtManor) {
-                if (key == PhysicalKeyboardKey.keyU || keyLabel == state.hotkeys['Manor View']) {
-                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
-                } else if (key == PhysicalKeyboardKey.keyO || keyLabel == state.hotkeys['Chronicle Records']) {
-                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
-                  navigatorKey.currentState?.push(
-                    MaterialPageRoute(builder: (context) => const RecordsScreen()),
-                  );
-                } else if (key == PhysicalKeyboardKey.keyP || keyLabel == state.hotkeys['Survey Estate Map']) {
-                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
-                  navigatorKey.currentState?.push(
-                    MaterialPageRoute(builder: (context) => const WorldMapScreen()),
-                  );
-                } else if (key == PhysicalKeyboardKey.keyI || keyLabel == state.hotkeys['Manor Holdings']) {
-                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
-                  navigatorKey.currentState?.push(
-                    MaterialPageRoute(builder: (context) => const RecordsScreen()),
-                  );
-                }
-              }
-            }
-          },
-          child: child!,
-        );
-      },
       theme: _isFullyLoaded
           ? ThemeData(
               brightness: Brightness.dark,
@@ -215,7 +204,7 @@ class _AbominationAppState extends State<AbominationApp> {
               brightness: Brightness.dark,
               scaffoldBackgroundColor: const Color(0xFF1A1612),
             ),
-      home: LoadingScreen(onCompleted: onGameLoadingComplete),
+      home: LoadingScreen(onCompleted: _onGameLoadingComplete),
     );
   }
 }

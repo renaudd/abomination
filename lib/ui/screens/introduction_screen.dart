@@ -36,6 +36,42 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
   GilesTrait _gilesTrait = GilesTrait.sage;
   LifeObjective _objective = LifeObjective.science;
 
+  final Map<String, int> _playerStats = {
+    'strength': 2,
+    'endurance': 3,
+    'dexterity': 3,
+    'intellect': 4,
+    'perception': 3,
+    'judgment': 2,
+    'temperament': 2,
+    'confidence': 4,
+    'beauty': 3,
+    'hygiene': 4,
+    'morality': 3,
+  };
+
+  static const Map<String, int> _defaultPlayerStats = {
+    'strength': 2,
+    'endurance': 3,
+    'dexterity': 3,
+    'intellect': 4,
+    'perception': 3,
+    'judgment': 2,
+    'temperament': 2,
+    'confidence': 4,
+    'beauty': 3,
+    'hygiene': 4,
+    'morality': 3,
+  };
+
+  int get _unspentPoints {
+    int spent = 0;
+    _playerStats.forEach((key, val) {
+      spent += (val - (_defaultPlayerStats[key] ?? 0));
+    });
+    return 4 - spent;
+  }
+
   final TextEditingController _firstNameController = TextEditingController(
     text: "Alphonse",
   );
@@ -92,7 +128,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           _selectObjective(LifeObjective.values[index]);
         }
         break;
-      case 6:
+      case 7:
         if (index == 0) {
           _finish(context);
         }
@@ -120,8 +156,16 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
               _navigateToScene(_currentScene - 1);
             }
           } else if (key == PhysicalKeyboardKey.digit9 || key == PhysicalKeyboardKey.numpad9) {
-            if (_currentScene < 6 && _currentScene != 1) {
-              _navigateToScene(_currentScene + 1);
+            if (_currentScene < 7 && _currentScene != 1) {
+              if (_currentScene == 6) {
+                if (_unspentPoints > 0) {
+                  _showUnspentPointsWarning(context);
+                } else {
+                  _navigateToScene(7);
+                }
+              } else {
+                _navigateToScene(_currentScene + 1);
+              }
             }
           } else if (key == PhysicalKeyboardKey.digit1 || key == PhysicalKeyboardKey.numpad1) {
             _triggerOptionByIndex(0);
@@ -192,7 +236,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
 
   Widget _buildHeader() {
     return Text(
-      'ANNO 1860',
+      'ANNO 1818',
       style: GoogleFonts.playfairDisplay(
         color: const Color(0xFFC4B89B),
         fontSize: 12,
@@ -216,6 +260,8 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
         return _scene5();
       case 6:
         return _scene6();
+      case 7:
+        return _scene7();
       default:
         return const SizedBox.shrink();
     }
@@ -420,6 +466,143 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
   }
 
   Widget _scene6() {
+    final statsKeys = _playerStats.keys.toList();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left half: Description
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sceneText(_buildDynamicDescription()),
+            ],
+          ),
+        ),
+        const SizedBox(width: 24),
+        // Right half: Stat modifications
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _sceneText("ALLOCATE CHARACTERISTICS"),
+                  Text(
+                    "POINTS: $_unspentPoints",
+                    style: GoogleFonts.playfairDisplay(
+                      color: _unspentPoints > 0 ? const Color(0xFFC4B89B) : Colors.greenAccent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: SizedBox(
+                  width: 260,
+                  child: Column(
+                    children: statsKeys.map((key) {
+                      final val = _playerStats[key]!;
+                      final def = _defaultPlayerStats[key]!;
+                      final label = key.toUpperCase();
+
+                      final canDecrease = val > def - 1;
+                      final canIncrease = val < def + 2 && _unspentPoints > 0;
+
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: Colors.white10, width: 0.5),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "$label - $val",
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFC4B89B),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: canDecrease
+                                      ? () {
+                                          setState(() {
+                                            _playerStats[key] = val - 1;
+                                          });
+                                        }
+                                      : null,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: canDecrease ? const Color(0xFFC4B89B) : Colors.white12,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "-",
+                                      style: GoogleFonts.oldStandardTt(
+                                        color: canDecrease ? const Color(0xFFC4B89B) : Colors.white24,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: canIncrease
+                                      ? () {
+                                          setState(() {
+                                            _playerStats[key] = val + 1;
+                                          });
+                                        }
+                                      : null,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: canIncrease ? const Color(0xFFC4B89B) : Colors.white12,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "+",
+                                      style: GoogleFonts.oldStandardTt(
+                                        color: canIncrease ? const Color(0xFFC4B89B) : Colors.white24,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _scene7() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -436,6 +619,72 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  String _buildDynamicDescription() {
+    final fn = _firstNameController.text;
+    final ln = _lastNameController.text;
+
+    _getDesc(String stat, List<String> options) {
+      final val = _playerStats[stat] ?? 0;
+      final def = _defaultPlayerStats[stat] ?? 0;
+      final diff = val - def; // -1, 0, 1, 2
+      final idx = diff + 1; // 0, 1, 2, 3
+      if (idx >= 0 && idx < options.length) {
+        return options[idx];
+      }
+      return options[1];
+    }
+
+    final str = _getDesc('strength', ["a weakling", "not very strong", "of average build", "fairly strong"]);
+    final end = _getDesc('endurance', ["frail and sickly", "of moderate stamina", "sturdy and resilient", "exceptionally hardy"]);
+    final dex = _getDesc('dexterity', ["quite clumsy", "reasonably coordinated", "nimble-fingered", "astonishingly swift"]);
+    final intel = _getDesc('intellect', ["slow-witted", "of average intelligence", "highly intellectual", "quite smart"]);
+    final per = _getDesc('perception', ["half-blind to detail", "observant enough", "sharp-eyed", "uncannily perceptive"]);
+    final jud = _getDesc('judgment', ["rash and foolish", "somewhat naive", "prudent and sensible", "wise beyond his years"]);
+    final tem = _getDesc('temperament', ["short-tempered and volatile", "prone to moodiness", "calm and collected", "supremely even-tempered"]);
+    final conf = _getDesc('confidence', ["a timid and self-doubting", "a moderately self-assured", "a bold and assertive", "a supremely confident"]);
+    final bea = _getDesc('beauty', ["unremarkable, even plain", "of passable appearance", "strikingly handsome", "breathtakingly beautiful"]);
+    final hyg = _getDesc('hygiene', ["untidy and disheveled", "presentable and clean", "immaculately groomed", "obsessively neat"]);
+    final mor = _getDesc('morality', ["morally flexible", "of decent character", "highly principled", "virtuous to a fault"]);
+
+    return "And how to describe Master $fn $ln. Well, you could say that he is $str and $end, with a $dex hand. Intellectually, he is $intel, though $jud and $tem, possessing a $per eye. He carries himself in $conf manner. To the eye, he is $bea, always $hyg and $mor.";
+  }
+
+  void _showUnspentPointsWarning(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF241F1A),
+        title: Text(
+          "Unspent Stat Points",
+          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
+        ),
+        content: Text(
+          "You still have $_unspentPoints unspent stat point${_unspentPoints > 1 ? 's' : ''}. Are you sure you want to proceed?",
+          style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.playfairDisplay(color: Colors.white24),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _navigateToScene(7);
+            },
+            child: Text(
+              "Proceed",
+              style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -533,10 +782,20 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
           )
         else
           const SizedBox.shrink(),
-        if (_currentScene < 6 &&
+        if (_currentScene < 7 &&
             _currentScene != 1) // Scene 1 requires selection to advance
           TextButton(
-            onPressed: () => _navigateToScene(_currentScene + 1),
+            onPressed: () {
+              if (_currentScene == 6) {
+                if (_unspentPoints > 0) {
+                  _showUnspentPointsWarning(context);
+                } else {
+                  _navigateToScene(7);
+                }
+              } else {
+                _navigateToScene(_currentScene + 1);
+              }
+            },
             child: Text(
               "NEXT",
               style: GoogleFonts.playfairDisplay(
@@ -578,6 +837,7 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
       age: _age,
       gilesTrait: _gilesTrait,
       objective: _objective,
+      customPlayerStats: _playerStats,
     );
     Navigator.pushAndRemoveUntil(
       context,
