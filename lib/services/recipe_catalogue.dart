@@ -1227,6 +1227,17 @@ class RecipeCatalogue {
       minFireSkills: 45,
     ),
     Recipe(
+      id: 'classic_tiramisu',
+      name: 'Classic Tiramisu',
+      ingredients: {'coffee': 1, 'eggs': 1, 'cheese': 1, 'sugar': 1, 'brandy': 1, 'chocolate': 1},
+      sophistication: 5.5,
+      yield: 6,
+      baseQuality: 2.8,
+      durationMinutes: 60,
+      minKnifeSkills: 25,
+      minFireSkills: 15,
+    ),
+    Recipe(
       id: 'foie_gras_terrine',
       name: 'Foie Gras Terrine',
       ingredients: {'foie_gras': 1, 'wine': 1, 'salt': 1, 'pepper': 1},

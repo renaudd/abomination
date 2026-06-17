@@ -18,6 +18,8 @@ import 'package:abomination/models/crop.dart';
 import 'package:abomination/state/game_state.dart';
 import 'package:abomination/services/combat_unit_service.dart';
 import 'package:abomination/models/npc.dart';
+import 'package:abomination/models/game_item.dart';
+import 'package:abomination/services/kitchen_service.dart';
 import 'package:abomination/services/combat_manager.dart';
 import 'package:abomination/services/combat_unit_factory.dart';
 import 'package:abomination/models/combat_stats.dart';
@@ -380,6 +382,45 @@ void main() {
       final compiledCannoneer = playerUnits.firstWhere((u) => u.id.startsWith('cannoneer'));
       expect(compiledCannoneer.combatStats!.distance, 23.0);
       expect(compiledCannoneer.combatStats!.rangedRange, 23.0);
+    });
+
+    test('Culinary: Classic Tiramisu and Genovese Sauce discovery rules verification', () {
+      final tiramisuIngredients = [
+        GameItem.create(name: 'coffee', type: 'coffee', category: ItemCategory.food),
+        GameItem.create(name: 'eggs', type: 'eggs', category: ItemCategory.food),
+        GameItem.create(name: 'cheese', type: 'cheese', category: ItemCategory.food),
+        GameItem.create(name: 'sugar', type: 'sugar', category: ItemCategory.food),
+        GameItem.create(name: 'brandy', type: 'brandy', category: ItemCategory.food),
+        GameItem.create(name: 'chocolate', type: 'chocolate', category: ItemCategory.food),
+      ];
+
+      final discoveredTiramisu = KitchenService.performRecipeDiscovery(tiramisuIngredients, 85);
+      expect(discoveredTiramisu, isNotNull);
+      expect(discoveredTiramisu!.id, equals('classic_tiramisu'));
+
+      // Genovese Sauce discovery verification with white wine
+      final genoveseWithWhiteWine = [
+        GameItem.create(name: 'beef', type: 'meat_beef', category: ItemCategory.food),
+        GameItem.create(name: 'pork', type: 'meat_pork', category: ItemCategory.food),
+        GameItem.create(name: 'onion', type: 'onion', category: ItemCategory.food),
+        GameItem.create(name: 'white wine', type: 'white_wine', category: ItemCategory.food),
+      ];
+
+      final discoveredGenovese = KitchenService.performRecipeDiscovery(genoveseWithWhiteWine, 85);
+      expect(discoveredGenovese, isNotNull);
+      expect(discoveredGenovese!.id, equals('genovese_sauce'));
+
+      // Genovese Sauce should NOT match if red wine is used instead
+      final genoveseWithRedWine = [
+        GameItem.create(name: 'beef', type: 'meat_beef', category: ItemCategory.food),
+        GameItem.create(name: 'pork', type: 'meat_pork', category: ItemCategory.food),
+        GameItem.create(name: 'onion', type: 'onion', category: ItemCategory.food),
+        GameItem.create(name: 'red wine', type: 'red_wine', category: ItemCategory.food),
+      ];
+
+      final discoveredWithRedWine = KitchenService.performRecipeDiscovery(genoveseWithRedWine, 85);
+      // It should not find genovese_sauce because white_wine is strictly required
+      expect(discoveredWithRedWine?.id, isNot(equals('genovese_sauce')));
     });
   });
 }

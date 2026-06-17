@@ -383,7 +383,7 @@ class TaskService {
       'apple_strudel', 'pain_au_chocolat', 'pizza_margherita', 'lasagna_al_forno', 
       'lasagna', 'ravioli', 'tortellini', 'shepherds_pie', 'bread_dough', 
       'sweet_pastry_dough', 'pizza_dough', 'cacio_e_pepe', 'spaghetti_gricia',
-      'spaghetti_amatriciana'
+      'spaghetti_amatriciana', 'classic_tiramisu'
     ];
     final grillingIds = [
       'fried_generic_meat', 'roasted_rat', 'seared_beef', 'gourmet_cheeseburger', 
