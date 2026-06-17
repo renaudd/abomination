@@ -2513,6 +2513,39 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   }).toList();
                   final aiUnits = _generateDiverseSurvivalOpponentDeck(progress.currentTurn);
 
+                  final baseEnemyHero = CombatUnitFactory.createAlphonse().copyWith(
+                    id: 'ai_mirror',
+                    name: 'Bandit Captain',
+                    isPlayer: false,
+                  );
+                  double meanLvl = 1.0;
+                  final turn = progress.currentTurn;
+                  if (turn <= 4) {
+                    meanLvl = 1.0 + (turn - 1) * (2.0 - 1.0) / (4 - 1);
+                  } else if (turn <= 10) {
+                    meanLvl = 2.0 + (turn - 4) * (3.0 - 2.0) / (10 - 4);
+                  } else if (turn <= 22) {
+                    meanLvl = 3.0 + (turn - 10) * (4.0 - 3.0) / (22 - 10);
+                  } else {
+                    meanLvl = min(7.0, 4.0 + (turn - 22) / 12.0);
+                  }
+                  final int enemyLvl = meanLvl.round().clamp(1, 7);
+                  final enemyLvlMult = 1.0 + (enemyLvl - 1) * 0.1;
+
+                  final enemyHero = baseEnemyHero.copyWith(
+                    metadata: {
+                      ...baseEnemyHero.metadata,
+                      'level': enemyLvl,
+                    },
+                    combatStats: baseEnemyHero.combatStats?.copyWith(
+                      health: baseEnemyHero.combatStats!.health * enemyLvlMult,
+                      maxHealth: baseEnemyHero.combatStats!.maxHealth * enemyLvlMult,
+                      attack: baseEnemyHero.combatStats!.attack * enemyLvlMult,
+                      meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
+                      rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
+                    ),
+                  );
+
                   if (!mounted) return;
                   Navigator.push(
                     context,
@@ -2521,6 +2554,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         customPlayerHero: CombatUnitService.createUnit(progress.selectedLeaderId).copyWith(isPlayer: true),
                         customPlayerDeck: playerUnits,
                         customAiDeck: aiUnits,
+                        customEnemyHero: enemyHero,
                         cardUpgrades: progress.cardUpgrades,
                         survivalTurn: progress.currentTurn,
                         survivalDifficulty: progress.difficulty,
@@ -9657,6 +9691,39 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       );
     }).toList();
 
+    final baseEnemyHero = CombatUnitFactory.createAlphonse().copyWith(
+      id: 'ai_mirror',
+      name: 'Bandit Captain',
+      isPlayer: false,
+    );
+    double meanLvl = 1.0;
+    final turn = progress.currentTurn;
+    if (turn <= 4) {
+      meanLvl = 1.0 + (turn - 1) * (2.0 - 1.0) / (4 - 1);
+    } else if (turn <= 10) {
+      meanLvl = 2.0 + (turn - 4) * (3.0 - 2.0) / (10 - 4);
+    } else if (turn <= 22) {
+      meanLvl = 3.0 + (turn - 10) * (4.0 - 3.0) / (22 - 10);
+    } else {
+      meanLvl = min(7.0, 4.0 + (turn - 22) / 12.0);
+    }
+    final int enemyLvl = meanLvl.round().clamp(1, 7);
+    final enemyLvlMult = 1.0 + (enemyLvl - 1) * 0.1;
+
+    final enemyHero = baseEnemyHero.copyWith(
+      metadata: {
+        ...baseEnemyHero.metadata,
+        'level': enemyLvl,
+      },
+      combatStats: baseEnemyHero.combatStats?.copyWith(
+        health: baseEnemyHero.combatStats!.health * enemyLvlMult,
+        maxHealth: baseEnemyHero.combatStats!.maxHealth * enemyLvlMult,
+        attack: baseEnemyHero.combatStats!.attack * enemyLvlMult,
+        meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
+        rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult,
+      ),
+    );
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -9664,6 +9731,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           customPlayerHero: CombatUnitService.createUnit(progress.selectedLeaderId).copyWith(isPlayer: true),
           customPlayerDeck: playerUnits,
           customAiDeck: aiUnits,
+          customEnemyHero: enemyHero,
           cardUpgrades: progress.cardUpgrades,
           survivalTurn: progress.currentTurn,
           survivalDifficulty: progress.difficulty,
@@ -10130,9 +10198,40 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         CombatUnitFactory.createForesterBeastmaster(),
       ],
     ];
+    double meanLevel = 1.0;
+    if (turn <= 4) {
+      meanLevel = 1.0 + (turn - 1) * (2.0 - 1.0) / (4 - 1);
+    } else if (turn <= 10) {
+      meanLevel = 2.0 + (turn - 4) * (3.0 - 2.0) / (10 - 4);
+    } else if (turn <= 22) {
+      meanLevel = 3.0 + (turn - 10) * (4.0 - 3.0) / (22 - 10);
+    } else {
+      meanLevel = min(7.0, 4.0 + (turn - 22) / 12.0);
+    }
+
+    final rand = Random();
     final list = <NPC>[];
     for (int i = 0; i < targetDeckSize; i++) {
-      list.add(pool[i % pool.length]);
+      final baseNpc = pool[i % pool.length];
+      final double offset = (i % 2 == 0) ? -0.4 : 0.4;
+      final double noise = (rand.nextDouble() - 0.5) * 0.4;
+      final int cardLevel = (meanLevel + offset + noise).clamp(1.0, 7.0).round();
+
+      final mult = 1.0 + (cardLevel - 1) * 0.1;
+      final npc = baseNpc.copyWith(
+        metadata: {
+          ...baseNpc.metadata,
+          'level': cardLevel,
+        },
+        combatStats: baseNpc.combatStats?.copyWith(
+          health: baseNpc.combatStats!.health * mult,
+          maxHealth: baseNpc.combatStats!.maxHealth * mult,
+          attack: baseNpc.combatStats!.attack * mult,
+          meleeDamage: (baseNpc.combatStats!.meleeDamage ?? baseNpc.combatStats!.attack) * mult,
+          rangedDamage: (baseNpc.combatStats!.rangedDamage ?? baseNpc.combatStats!.attack) * mult,
+        ),
+      );
+      list.add(npc);
     }
     return list;
   }

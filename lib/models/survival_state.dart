@@ -220,12 +220,12 @@ class SurvivalProgress {
   // Progressive Level milestones
   static int getRequiredXpForLevel(int nextLevel) {
     switch (nextLevel) {
-      case 2: return 10;
-      case 3: return 40;
-      case 4: return 120;
-      case 5: return 300;
-      case 6: return 800;
-      case 7: return 2500;
+      case 2: return 14;
+      case 3: return 70;
+      case 4: return 240;
+      case 5: return 550;
+      case 6: return 1200;
+      case 7: return 3000;
       default: return 9999999;
     }
   }
