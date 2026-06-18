@@ -10299,21 +10299,121 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   void _evaluateDiceOutcome(int total, SurvivalProgress progress, SurvivalService service) {
     final state = Provider.of<GameState>(context, listen: false);
 
-    String logDesc = 'Nothing happens.';
-    if (total == 7) {
-      logDesc = 'Narrative Event triggered.';
-    } else if (total == 12) {
-      logDesc = 'Scientific Discovery check triggered.';
-    } else if (total == 2) {
-      logDesc = 'Disaster check triggered.';
-    } else if (total == 4) {
-      logDesc = 'Bad omen: -1 starting AP next combat.';
-    } else if (total == 10) {
-      logDesc = 'Good omen: +1 starting AP next combat.';
+    String logDesc = 'Fate Event triggered.';
+    switch (total) {
+      case 2:
+        logDesc = 'Disaster check triggered.';
+        break;
+      case 3:
+        logDesc = 'Robbery check triggered.';
+        break;
+      case 4:
+        logDesc = 'Disease check: -2 AP next combat.';
+        break;
+      case 5:
+        logDesc = 'Fire check triggered.';
+        break;
+      case 6:
+        logDesc = 'Crop Blight check triggered.';
+        break;
+      case 7:
+        logDesc = 'Travel Encounter triggered.';
+        break;
+      case 8:
+        logDesc = 'Market discount sale triggered.';
+        break;
+      case 9:
+        logDesc = 'Bounty: Double estate production.';
+        break;
+      case 10:
+        logDesc = 'Rest: +2 AP next combat.';
+        break;
+      case 11:
+        logDesc = 'Volunteer joins army.';
+        break;
+      case 12:
+        logDesc = 'Discovery check triggered.';
+        break;
+      default:
+        logDesc = 'Nothing happens.';
     }
     service.addLog('FATE\'S ROLL: Rolled $total ($_die1 + $_die2). $logDesc');
 
     switch (total) {
+      case 2:
+        _diceOutcomeMessage = "ROLLED A 2!\nA disaster threatens the estate! Acknowledge to resolve.";
+        _diceOutcomeAction = () {
+          _showDisasterOutcome(progress, service);
+        };
+        break;
+
+      case 3:
+        final int lossPercent = _die1 == 2 ? 100 : (_die1 == 1 ? 60 : 0);
+        if (lossPercent > 0) {
+          final lostAmount = (progress.cash * (lossPercent / 100.0)).toInt();
+          _diceOutcomeMessage = "ROLLED A 3! Robbery!\nLeft die rolled $_die1. Lost $lossPercent% of money (-$lostAmount CHF).";
+          _diceOutcomeAction = () {
+            progress.cash = max(0, progress.cash - lostAmount);
+            service.manualSave();
+          };
+          service.addLog('Robbery: Lost $lossPercent% of cash ($lostAmount CHF).');
+        } else {
+          _diceOutcomeMessage = "ROLLED A 3! Robbery!\nLeft die rolled $_die1. Outlaws failed to breach our cashbox. No loss.";
+          _diceOutcomeAction = null;
+        }
+        break;
+
+      case 4:
+        _diceOutcomeMessage = "ROLLED A 4! Disease!\nOutbreak: Starting combat AP is reduced by 2 in the next combat.";
+        _diceOutcomeAction = () {
+          progress.cardUpgrades['next_combat_ap_modifier'] = (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) - 2;
+          service.manualSave();
+        };
+        service.addLog('Disease: -2 starting AP next combat.');
+        break;
+
+      case 5:
+        int metalLossPercent = 0;
+        int woodLossPercent = 0;
+        if (_die1 == 4) {
+          metalLossPercent = 100;
+        } else if (_die1 == 3) {
+          metalLossPercent = 60;
+          woodLossPercent = 40;
+        } else if (_die1 == 2) {
+          metalLossPercent = 40;
+          woodLossPercent = 60;
+        } else if (_die1 == 1) {
+          woodLossPercent = 100;
+        }
+        final lostMetal = (progress.iron * (metalLossPercent / 100.0)).toInt();
+        final lostWood = (progress.wood * (woodLossPercent / 100.0)).toInt();
+        _diceOutcomeMessage = "ROLLED A 5! Fire!\nLeft die rolled $_die1. Lost $metalLossPercent% of Metal (-$lostMetal) and $woodLossPercent% of Wood (-$lostWood).";
+        _diceOutcomeAction = () {
+          progress.iron = max(0, progress.iron - lostMetal);
+          progress.wood = max(0, progress.wood - lostWood);
+          service.manualSave();
+        };
+        service.addLog('Fire: Lost $lostMetal metal, $lostWood wood.');
+        break;
+
+      case 6:
+        int blightPercent = 0;
+        if (_die1 == 5) blightPercent = 90;
+        else if (_die1 == 4) blightPercent = 75;
+        else if (_die1 == 3) blightPercent = 60;
+        else if (_die1 == 2) blightPercent = 45;
+        else if (_die1 == 1) blightPercent = 30;
+
+        final lostFood = (progress.food * (blightPercent / 100.0)).toInt();
+        _diceOutcomeMessage = "ROLLED A 6! Crop Blight!\nLeft die rolled $_die1. Blight consumes $blightPercent% of stored food reserves (-$lostFood food).";
+        _diceOutcomeAction = () {
+          progress.food = max(0, progress.food - lostFood);
+          service.manualSave();
+        };
+        service.addLog('Blight: Lost $blightPercent% food ($lostFood food).');
+        break;
+
       case 7:
         final index = progress.cardUpgrades['next_encounter_index'] ?? 0;
         final encountersList = [
@@ -10354,7 +10454,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
         if (nextEncounterId != null) {
           progress.cardUpgrades['next_encounter_index'] = foundIndex;
-          _diceOutcomeMessage = "ROLLED A 7!\nNarrative event triggered: ${nextEncounterId.replaceAll('_', ' ').toUpperCase()}";
+          _diceOutcomeMessage = "ROLLED A 7!\nTravel Encounter: ${nextEncounterId.replaceAll('_', ' ').toUpperCase()}";
           _diceOutcomeAction = () {
             _showNarrativeEncounter(
               context,
@@ -10365,79 +10465,508 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             );
           };
         } else {
-          _diceOutcomeMessage = "ROLLED A 7!\nHowever, all narrative events in Glarus have been resolved.";
+          _diceOutcomeMessage = "ROLLED A 7!\nHowever, all travel encounters have already been resolved.";
           _diceOutcomeAction = null;
         }
         break;
 
-      case 12:
-        final davosBuilding = progress.buildings.firstWhereOrNull((b) => b.id == 'plot_d');
-        final davosFarmWorking = davosBuilding != null &&
-            davosBuilding.type == SurvivalBuildingType.farm &&
-            davosBuilding.assignedUnitIds.isNotEmpty;
-
-        if (progress.cardUpgrades['encounter_davos_smallpox_vaccine_resolved'] != 1 && davosFarmWorking) {
-          _diceOutcomeMessage = "ROLLED A 12!\nScientific Discovery: Davos Farm workers discover a Smallpox Vaccine!";
-          _diceOutcomeAction = () {
-            _showNarrativeEncounter(
-              context,
-              'davos_smallpox_vaccine',
-              progress,
-              service,
-              state,
-            );
-          };
-        } else {
-          _diceOutcomeMessage = "ROLLED A 12!\nNo scientific discoveries are currently available (requires staffed farm on Davos Plot).";
-          _diceOutcomeAction = null;
-        }
+      case 8:
+        final discountPercent = _die1 * 10;
+        _diceOutcomeMessage = "ROLLED AN 8! Sale!\nTraveling merchants discount all Market purchases by $discountPercent% this turn.";
+        _diceOutcomeAction = () {
+          progress.cardUpgrades['market_temp_discount'] = discountPercent;
+          service.manualSave();
+        };
+        service.addLog('Sale: Unlocked $discountPercent% temporary market discount.');
         break;
 
-      case 2:
-        if (progress.cardUpgrades['encounter_davos_smallpox_vaccine_resolved'] == 1 &&
-            progress.cardUpgrades['encounter_smallpox_outbreak_resolved'] != 1) {
-          _diceOutcomeMessage = "ROLLED A 2!\nDisaster: Smallpox Outbreak strikes Glarus!";
-          _diceOutcomeAction = () {
-            _showNarrativeEncounter(
-              context,
-              'smallpox_outbreak',
-              progress,
-              service,
-              state,
-            );
-          };
-        } else {
-          final factoryBuilding = progress.buildings.firstWhereOrNull(
-            (b) => b.type == SurvivalBuildingType.munitionsFactory,
-          );
-          final factoryWorking = factoryBuilding != null && factoryBuilding.assignedUnitIds.isNotEmpty;
+      case 9:
+        _diceOutcomeMessage = "ROLLED A 9! Bounty!\nDouble all estate facility production this turn!";
+        _diceOutcomeAction = () {
+          progress.cardUpgrades['double_estate_production'] = 1;
+          service.manualSave();
+        };
+        service.addLog('Bounty: Double estate production activated.');
+        break;
 
-          if (factoryWorking) {
-            _diceOutcomeMessage = "ROLLED A 2!\nDisaster: Accident at the Munitions Factory!";
+      case 10:
+        _diceOutcomeMessage = "ROLLED A 10! Rest!\nBarracks rest: All units start the next combat with +2 starting AP.";
+        _diceOutcomeAction = () {
+          progress.cardUpgrades['next_combat_ap_modifier'] = (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 2;
+          service.manualSave();
+        };
+        service.addLog('Rest: +2 AP starting next combat.');
+        break;
+
+      case 11:
+        final possibleVolunteers = [
+          'peasant',
+          'goon',
+          'militia',
+          'samurai',
+          'musketeers',
+          'commandos',
+          'werewolf',
+          'flesh_golem',
+          'chimera',
+          'undead_rats',
+          'cannoneer',
+          'cavalry',
+          'wooden_tank',
+          'marksmen',
+        ];
+        final candidates = possibleVolunteers.where((t) => !progress.playerDeckIds.contains(t)).toList();
+        if (candidates.isEmpty) {
+          _diceOutcomeMessage = "ROLLED AN 11! Volunteer!\nHowever, all possible unit types are already present in your army.";
+          _diceOutcomeAction = null;
+        } else {
+          final candidate = candidates[Random().nextInt(candidates.length)];
+          int totalLevels = 0;
+          for (var cardId in progress.playerDeckIds) {
+            final xp = progress.unitExp[cardId] ?? 0.0;
+            totalLevels += SurvivalProgress.getLevelFromXp(xp);
+          }
+          final meanLevel = progress.playerDeckIds.isNotEmpty ? (totalLevels ~/ progress.playerDeckIds.length).clamp(1, 6) : 1;
+          final targetXp = SurvivalProgress.getRequiredXpForLevel(meanLevel).toDouble();
+
+          if (progress.playerDeckIds.length < 12) {
+            _diceOutcomeMessage = "ROLLED AN 11! Volunteer joins!\nA Level $meanLevel ${candidate.replaceAll('_', ' ').toUpperCase()} offers their blade to your army!";
             _diceOutcomeAction = () {
-              _showMunitionsFactoryExplosionDisaster(progress, service);
+              progress.playerDeckIds.add(candidate);
+              progress.unitExp[candidate] = targetXp;
+              service.manualSave();
             };
+            service.addLog('Volunteer: Level $meanLevel $candidate joined deck.');
           } else {
-            _diceOutcomeMessage = "ROLLED A 2!\nDisaster narrowly avoided (no active high-risk facilities).";
-            _diceOutcomeAction = null;
+            _diceOutcomeMessage = "ROLLED AN 11! Volunteer request!\nA Level $meanLevel ${candidate.replaceAll('_', ' ').toUpperCase()} wants to volunteer, but your army is full (12/12).";
+            _diceOutcomeAction = () {
+              _showVolunteerCapacityDialog(candidate, meanLevel, progress, service);
+            };
           }
         }
         break;
 
-      case 4:
-        _diceOutcomeMessage = "ROLLED A 4!\nBad omen: -1 starting AP in the next combat.";
-        _diceOutcomeAction = () {
-          progress.cardUpgrades['next_combat_ap_modifier'] = -1;
-          service.manualSave();
-        };
-        break;
+      case 12:
+        final List<Map<String, dynamic>> eligibleDiscoveries = [];
 
-      case 10:
-        _diceOutcomeMessage = "ROLLED A 10!\nGood omen: +1 starting AP in the next combat.";
-        _diceOutcomeAction = () {
-          progress.cardUpgrades['next_combat_ap_modifier'] = 1;
-          service.manualSave();
-        };
+        final royalistStanding = progress.factionStandings['Army'] ?? 0;
+        if (royalistStanding > 10) {
+          eligibleDiscoveries.add({
+            'id': 'geneva_diplomatic_gift',
+            'title': 'GENEVA DIPLOMATIC GIFT',
+            'description': 'Due to our strong reputation with the Royalists, Geneva has sent us a diplomatic gift containing +500 CHF and 10 food rations!',
+            'run': () {
+              progress.cash += 500;
+              progress.food += 10;
+            }
+          });
+        }
+
+        final carbStanding = progress.factionStandings['Carbonari'] ?? 0;
+        if (carbStanding > 10) {
+          eligibleDiscoveries.add({
+            'id': 'carbonari_cache',
+            'title': 'CARBONARI CACHE',
+            'description': 'The Carbonari have shared coordinates to a hidden rebel weapons cache. We obtained +100 metal and +50 wood!',
+            'run': () {
+              progress.iron += 100;
+              progress.wood += 50;
+            }
+          });
+        }
+
+        if (royalistStanding > 10) {
+          eligibleDiscoveries.add({
+            'id': 'army_reserve_supplies',
+            'title': 'ARMY RESERVE SUPPLIES',
+            'description': 'The Federal Army has delivered emergency logistics support, granting us +200 food and +50 metal!',
+            'run': () {
+              progress.food += 200;
+              progress.iron += 50;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.mine)) {
+          eligibleDiscoveries.add({
+            'id': 'deep_vein_silver',
+            'title': 'DEEP VEIN SILVER OUTCROP',
+            'description': 'Miners have struck a rich silver vein! We obtained +400 CHF and +50 metal.',
+            'run': () {
+              progress.cash += 400;
+              progress.iron += 50;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm)) {
+          eligibleDiscoveries.add({
+            'id': 'greenhouse_thermal_synergy',
+            'title': 'GREENHOUSE THERMAL SYNERGY',
+            'description': 'Farming optimizations have resulted in a record crop harvest, adding +200 food!',
+            'run': () {
+              progress.food += 200;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.lumberMill)) {
+          eligibleDiscoveries.add({
+            'id': 'workshop_lathe_calibration',
+            'title': 'WORKSHOP LATHE CALIBRATION',
+            'description': 'Lumber Mill adjustments have significantly optimized wood output, yielding +200 wood!',
+            'run': () {
+              progress.wood += 200;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.munitionsFactory)) {
+          eligibleDiscoveries.add({
+            'id': 'munitions_quality_control',
+            'title': 'MUNITIONS QUALITY CONTROL',
+            'description': 'Superb testing yields +100 metal and grants +25 XP to all munitions workers!',
+            'run': () {
+              progress.iron += 100;
+              final factory = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.munitionsFactory);
+              if (factory != null) {
+                for (var cardType in factory.assignedUnitIds) {
+                  progress.unitExp[cardType] = (progress.unitExp[cardType] ?? 0.0) + 25.0;
+                }
+              }
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.arsenal)) {
+          eligibleDiscoveries.add({
+            'id': 'distillery_reserve_vintage',
+            'title': 'DISTILLERY RESERVE VINTAGE',
+            'description': 'Refined tactical training improves tower efficiency, boosting all watchtower attack power by 10% permanently!',
+            'run': () {
+              progress.cardUpgrades['tower_damage_multiplier'] = (progress.cardUpgrades['tower_damage_multiplier'] ?? 100) + 10;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm)) {
+          eligibleDiscoveries.add({
+            'id': 'kitchen_culinary_mastery',
+            'title': 'KITCHEN CULINARY MASTERY',
+            'description': 'A wonderful harvest feast has restored our soldiers! Cured 1 turn of starvation for all units in the deck.',
+            'run': () {
+              for (var t in progress.starvationInfractions.keys) {
+                progress.starvationInfractions[t] = max(0, (progress.starvationInfractions[t] ?? 0) - 1);
+              }
+            }
+          });
+        }
+
+        if (royalistStanding > 10) {
+          eligibleDiscoveries.add({
+            'id': 'library_cataloguing_method',
+            'title': 'LIBRARY CATALOGUING METHOD',
+            'description': 'Intellectual trade records optimize our resource acquisition, reducing all market upgrade costs by 15%.',
+            'run': () {
+              progress.cardUpgrades['market_discount_percent'] = (progress.cardUpgrades['market_discount_percent'] ?? 0) + 15;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm) && progress.currentTurn >= 10) {
+          eligibleDiscoveries.add({
+            'id': 'double_chick_hatching',
+            'title': 'DOUBLE CHICK HATCHING',
+            'description': 'Superb poultry breeding yields a bumper harvest of food reserves (+150 food).',
+            'run': () {
+              progress.food += 150;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.mine)) {
+          eligibleDiscoveries.add({
+            'id': 'excavation_fossil',
+            'title': 'EXCAVATION FOSSIL SPECIMEN',
+            'description': 'Mine workers unearthed a valuable fossil specimen and sold it to the Geneva Museum for +350 CHF!',
+            'run': () {
+              progress.cash += 350;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm) && progress.food > 100) {
+          eligibleDiscoveries.add({
+            'id': 'smoker_perfect_cure',
+            'title': 'SMOKER PERFECT CURE',
+            'description': 'A master wood-smoke cure has increased the preservation value of our larder (+100 food).',
+            'run': () {
+              progress.food += 100;
+            }
+          });
+        }
+
+        if (royalistStanding > 15) {
+          eligibleDiscoveries.add({
+            'id': 'infirmary_sanitation_methods',
+            'title': 'INFIRMARY SANITATION METHODS',
+            'description': 'Advanced hygiene methods successfully remove all illness and combat debuffs from all units in the deck.',
+            'run': () {
+              progress.bondageDebuffCount.clear();
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm)) {
+          eligibleDiscoveries.add({
+            'id': 'well_filtration_system',
+            'title': 'WELL FILTRATION SYSTEM',
+            'description': 'A charcoal filter installation permanently increases watchtower maximum health by 10%!',
+            'run': () {
+              progress.cardUpgrades['tower_health_multiplier'] = (progress.cardUpgrades['tower_health_multiplier'] ?? 100) + 10;
+            }
+          });
+        }
+
+        final glarusPrizeStanding = progress.factionStandings['Glarus'] ?? 0;
+        if (glarusPrizeStanding > 15) {
+          eligibleDiscoveries.add({
+            'id': 'brewery_canton_prize',
+            'title': 'BREWERY CANTON PRIZE',
+            'description': 'Our craft ales won the Canton prize, awarding us +300 CHF and +50 food!',
+            'run': () {
+              progress.cash += 300;
+              progress.food += 50;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.arsenal) && progress.playerDeckIds.contains('artillery_barrage')) {
+          eligibleDiscoveries.add({
+            'id': 'artillery_alignment',
+            'title': 'ARTILLERY ALIGNMENT',
+            'description': 'Advanced optical scopes increase the base damage of the Artillery Barrage support card by 30% permanently.',
+            'run': () {
+              progress.cardUpgrades['artillery_damage_multiplier'] = (progress.cardUpgrades['artillery_damage_multiplier'] ?? 100) + 30;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm)) {
+          eligibleDiscoveries.add({
+            'id': 'faba_nitrogen_absorption',
+            'title': 'FABA NITROGEN ABSORPTION',
+            'description': 'Crop rotation fixes nitrogen in the soil, adding +100 food and +50 wood to our reserves.',
+            'run': () {
+              progress.food += 100;
+              progress.wood += 50;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.mine)) {
+          eligibleDiscoveries.add({
+            'id': 'basement_fungal_growth',
+            'title': 'BASEMENT FUNGAL GROWTH',
+            'description': 'Fungi thrive in the damp subterranean mine shafts, yielding +100 food.',
+            'run': () {
+              progress.food += 100;
+            }
+          });
+        }
+
+        if (progress.buildings.any((b) => b.type == SurvivalBuildingType.munitionsFactory)) {
+          eligibleDiscoveries.add({
+            'id': 'forge_blast_furnace',
+            'title': 'FORGE BLAST FURNACE TECHNIQUE',
+            'description': 'Technique improvements reduce smelting loss, adding +150 metal to our reserves.',
+            'run': () {
+              progress.iron += 150;
+            }
+          });
+        }
+
+        final List<Map<String, dynamic>> genericDiscoveries = [
+          {
+            'id': 'lost_cashbox',
+            'title': 'LOST CASHBOX',
+            'description': 'Unearth a vintage locked lockbox on the border plots! Yields +300 CHF.',
+            'run': () => progress.cash += 300,
+          },
+          {
+            'id': 'ammunition_crate',
+            'title': 'AMBULANT AMMUNITION CRATE',
+            'description': 'A stray supply cart is recovered, yielding +20 food and +50 metal.',
+            'run': () {
+              progress.food += 20;
+              progress.iron += 50;
+            },
+          },
+          {
+            'id': 'abandoned_construction',
+            'title': 'ABANDONED CONSTRUCTION PILE',
+            'description': 'Planks and metal fixtures are scavenged from an abandoned site, yielding +150 wood and +50 metal.',
+            'run': () {
+              progress.wood += 150;
+              progress.iron += 50;
+            },
+          },
+          {
+            'id': 'weather_window',
+            'title': 'WEATHER WINDOW',
+            'description': 'Clear, perfect weather boosts general collection next turn, yielding +100 food and +100 wood.',
+            'run': () {
+              progress.food += 100;
+              progress.wood += 100;
+            },
+          },
+          {
+            'id': 'wild_crop_seedlings',
+            'title': 'WILD CROP SEEDLINGS',
+            'description': 'Find wild edible tubers growing along the riverside, adding +60 food to the pantry.',
+            'run': () => progress.food += 60,
+          },
+          {
+            'id': 'draft_horse_recruit',
+            'title': 'DRAFT HORSE RECRUIT',
+            'description': 'A lost draft horse wanders into our camp! Its labor permanently reduces the wood cost of future facility construction by 10%.',
+            'run': () {
+              progress.cardUpgrades['wood_construction_discount_percent'] = (progress.cardUpgrades['wood_construction_discount_percent'] ?? 0) + 10;
+            },
+          },
+          {
+            'id': 'iron_ore_deposit',
+            'title': 'IRON ORE DEPOSIT',
+            'description': 'Find a shallow surface outcrop of high-grade iron ore, adding +40 metal.',
+            'run': () => progress.iron += 40,
+          },
+          {
+            'id': 'military_logbook',
+            'title': 'MILITARY LOGBOOK',
+            'description': 'Unearth a tactical command manual. A random combat card in your army gains +100 XP.',
+            'run': () {
+              if (progress.playerDeckIds.isNotEmpty) {
+                final randomUnit = progress.playerDeckIds[Random().nextInt(progress.playerDeckIds.length)];
+                progress.unitExp[randomUnit] = (progress.unitExp[randomUnit] ?? 0.0) + 100.0;
+              }
+            },
+          },
+          {
+            'id': 'glarus_trade_voucher',
+            'title': 'GLARUS TRADE VOUCHER',
+            'description': 'Find a trade voucher redeemable at Glarus bank for +150 CHF.',
+            'run': () => progress.cash += 150,
+          },
+          {
+            'id': 'aethelgards_ring',
+            'title': 'AETHELGARD\'S RING',
+            'description': 'Discover a lost royalist ring. Returning it boosts Glarus Canton standing by +10.',
+            'run': () {
+              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+            },
+          },
+          {
+            'id': 'fresh_water_spring',
+            'title': 'FRESH WATER SPRING',
+            'description': 'A clean spring bubble reduces crop dependency, saving food consumption for all units next turn.',
+            'run': () {
+              progress.cardUpgrades['next_turn_food_reduction'] = 20;
+            },
+          },
+          {
+            'id': 'merchants_lost_ledger',
+            'title': 'MERCHANT\'S LOST LEDGER',
+            'description': 'Recover a merchant\'s missing trade index. Unlocks a permanent 10% discount on all upgrades in the Weapon Market.',
+            'run': () {
+              progress.cardUpgrades['market_discount_percent'] = (progress.cardUpgrades['market_discount_percent'] ?? 0) + 10;
+            },
+          },
+          {
+            'id': 'forgotten_gunpowder_stash',
+            'title': 'FORGOTTEN GUNPOWDER STASH',
+            'description': 'A sealed crate yields +30 metal and +30 wood.',
+            'run': () {
+              progress.iron += 30;
+              progress.wood += 30;
+            },
+          },
+          {
+            'id': 'migrating_waterfowl',
+            'title': 'MIGRATING WATERFOWL',
+            'description': 'A massive flock of wild ducks lands in the marsh, allowing our guards to forage +80 food.',
+            'run': () => progress.food += 80,
+          },
+          {
+            'id': 'forge_upgrades_crate',
+            'title': 'FORGE UPGRADES CRATE',
+            'description': 'Casting fixtures are salvaged, reducing the metal cost of our next watchtower upgrade by 25%.',
+            'run': () {
+              progress.cardUpgrades['next_tower_metal_discount_percent'] = 25;
+            },
+          },
+          {
+            'id': 'surplus_medical_crate',
+            'title': 'SURPLUS MEDICAL CRATE',
+            'description': 'Recover a pack of clean field bandages, removing all negative status debuffs from all units in our army.',
+            'run': () => progress.bondageDebuffCount.clear(),
+          },
+          {
+            'id': 'inspiring_mountain_vista',
+            'title': 'INSPIRING MOUNTAIN VISTA',
+            'description': 'Stunning sunrise boosts morale; all cards start the next combat encounter with +1 AP.',
+            'run': () {
+              progress.cardUpgrades['next_combat_ap_modifier'] = (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 1;
+            },
+          },
+          {
+            'id': 'iron_pickaxe_crate',
+            'title': 'IRON PICKAXE CRATE',
+            'description': 'Find a collection of mining picks, yielding +50 metal.',
+            'run': () => progress.iron += 50,
+          },
+          {
+            'id': 'calming_herbage',
+            'title': 'CALMING HERBAGE',
+            'description': 'Soothing wild chamomile immediately cures the starvation stats of one random unit in your deck.',
+            'run': () {
+              if (progress.starvationInfractions.isNotEmpty) {
+                final randomUnit = progress.starvationInfractions.keys.toList()[Random().nextInt(progress.starvationInfractions.length)];
+                progress.starvationInfractions[randomUnit] = 0;
+              }
+            },
+          },
+          {
+            'id': 'subterranean_cave_node',
+            'title': 'SUBTERRANEAN CAVE NODE',
+            'description': 'Excavators reveal a safe cave system. Adds 1 extra building plot to our estate.',
+            'run': () {
+              final nextPlotId = 'plot_${String.fromCharCode(97 + progress.purchasedPlots.length)}';
+              progress.purchasedPlots.add(nextPlotId);
+            },
+          }
+        ];
+
+        final List<Map<String, dynamic>> discoveryPool = [];
+        discoveryPool.addAll(genericDiscoveries);
+        discoveryPool.addAll(eligibleDiscoveries);
+
+        final selected = discoveryPool[Random().nextInt(discoveryPool.length)];
+        final discoveryId = selected['id'] as String;
+        final isAlreadyUnlocked = progress.cardUpgrades['discovery_${discoveryId}_unlocked'] == 1;
+
+        if (isAlreadyUnlocked) {
+          _diceOutcomeMessage = "ROLLED A 12!\nScientific Discovery: Drew already unlocked $discoveryId. You discover nothing this turn.";
+          _diceOutcomeAction = null;
+          service.addLog('Discovery: Drew already unlocked $discoveryId. Nothing discovered.');
+        } else {
+          progress.cardUpgrades['discovery_${discoveryId}_unlocked'] = 1;
+          _diceOutcomeMessage = "ROLLED A 12!\nScientific Discovery: ${selected['title']}\n${selected['description']}";
+          _diceOutcomeAction = () {
+            selected['run']();
+            service.manualSave();
+          };
+          service.addLog('Discovery: Unlocked ${selected['title']}.');
+        }
         break;
 
       default:
@@ -10449,23 +10978,478 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     setState(() {});
   }
 
-  void _showMunitionsFactoryExplosionDisaster(
+  void _showDisasterOutcome(
     SurvivalProgress progress,
     SurvivalService service,
   ) {
-    final factoryBuilding = progress.buildings.firstWhereOrNull(
-      (b) => b.type == SurvivalBuildingType.munitionsFactory,
-    );
-    if (factoryBuilding != null) {
-      if (factoryBuilding.level > 1) {
-        factoryBuilding.level -= 1;
-      } else {
-        progress.buildings.remove(factoryBuilding);
-      }
+    final List<Map<String, dynamic>> eligibleDisasters = [];
+
+    // Munitions Factory Blowout
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.munitionsFactory)) {
+      eligibleDisasters.add({
+        'id': 'munitions_factory_blowout',
+        'title': 'MUNITIONS FACTORY BLOWOUT',
+        'description': 'A massive chemical accident has occurred in the Munitions Factory! The factory is destroyed and a worker assigned to it has been killed.',
+        'run': () {
+          final factory = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.munitionsFactory);
+          if (factory != null) {
+            progress.buildings.remove(factory);
+            if (factory.assignedUnitIds.isNotEmpty) {
+              final killedType = factory.assignedUnitIds.first;
+              progress.playerDeckIds.remove(killedType);
+              service.addLog('Disaster Munitions Factory blowout: Destroyed facility, and killed $killedType.');
+            } else {
+              service.addLog('Disaster Munitions Factory blowout: Destroyed facility.');
+            }
+          }
+        }
+      });
     }
-    progress.wood = max(0, progress.wood - 100);
-    progress.iron = max(0, progress.iron - 50);
-    service.addLog('Disaster: Munitions Factory explosion! Facility damaged, -100 Wood, -50 Iron.');
+
+    // Zoonotic Farm Outbreak
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm)) {
+      eligibleDisasters.add({
+        'id': 'zoonotic_farm_outbreak',
+        'title': 'ZOONOTIC FARM OUTBREAK',
+        'description': 'A severe infection has broken out on the farm! The crop workers have had their XP progress reset to 0 and will start the next combat with a 50% health penalty.',
+        'run': () {
+          final farm = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.farm);
+          if (farm != null) {
+            for (var cardType in farm.assignedUnitIds) {
+              progress.unitExp[cardType] = 0.0;
+              progress.bondageDebuffCount[cardType] = (progress.bondageDebuffCount[cardType] ?? 0) + 1;
+              service.addLog('Disaster Zoonotic Farm Outbreak: Reset XP and applied sick debuff to $cardType.');
+            }
+          }
+        }
+      });
+    }
+
+    // Glarus Peasant Border Raid
+    final glarusStanding = progress.factionStandings['Glarus'] ?? 0;
+    if (glarusStanding < -10) {
+      eligibleDisasters.add({
+        'id': 'glarus_peasant_raid',
+        'title': 'GLARUS PEASANT BORDER RAID',
+        'description': 'Angry Glarus rebels have raided our borders! We lost 50% of our cash, and Tower 1 has been destroyed.',
+        'run': () {
+          progress.cash = (progress.cash * 0.5).toInt();
+          progress.towerDamaged['tower_1'] = 1.0;
+          service.addLog('Disaster Glarus Peasant Raid: Lost 50% cash and destroyed Tower 1.');
+        }
+      });
+    }
+
+    // Royalist Trade Blockade
+    final armyStanding = progress.factionStandings['Army'] ?? 0;
+    if (armyStanding < -10) {
+      eligibleDisasters.add({
+        'id': 'royalist_trade_blockade',
+        'title': 'ROYALIST TRADE BLOCKADE',
+        'description': 'The Royalists have blockaded trade paths. We cannot purchase card upgrades or hire cards from the market for 2 turns.',
+        'run': () {
+          progress.cardUpgrades['market_blockaded_turns'] = 2;
+          service.addLog('Disaster Royalist Trade Blockade: Market blocked for 2 turns.');
+        }
+      });
+    }
+
+    // Carbonari Sabotage
+    final carbonariStanding = progress.factionStandings['Carbonari'] ?? 0;
+    if (carbonariStanding < -10) {
+      eligibleDisasters.add({
+        'id': 'carbonari_sabotage',
+        'title': 'CARBONARI SABOTAGE',
+        'description': 'Carbonari saboteurs blew up one of our constructed facilities!',
+        'run': () {
+          if (progress.buildings.isNotEmpty) {
+            final target = progress.buildings[Random().nextInt(progress.buildings.length)];
+            progress.buildings.remove(target);
+            service.addLog('Disaster Carbonari Sabotage: Destroyed ${target.type.name}.');
+          } else {
+            service.addLog('Disaster Carbonari Sabotage: No facilities available to destroy.');
+          }
+        }
+      });
+    }
+
+    // Mine Shaft Collapse
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.mine)) {
+      eligibleDisasters.add({
+        'id': 'mine_shaft_collapse',
+        'title': 'MINE SHAFT COLLAPSE',
+        'description': 'A mine shaft collapsed, trapping mining workers! They are trapped and cannot participate or work for the next 2 turns.',
+        'run': () {
+          final mine = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.mine);
+          if (mine != null) {
+            for (var cardType in mine.assignedUnitIds) {
+              progress.bondageDebuffCount[cardType] = (progress.bondageDebuffCount[cardType] ?? 0) + 2;
+              service.addLog('Disaster Mine Shaft Collapse: Trapped $cardType for 2 turns.');
+            }
+          }
+        }
+      });
+    }
+
+    // Lumber Mill Boiler Fire
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.lumberMill)) {
+      eligibleDisasters.add({
+        'id': 'lumber_mill_boiler_fire',
+        'title': 'LUMBER MILL BOILER FIRE',
+        'description': 'A fire in the Lumber Mill boiler destroyed the facility and ruined 50% of currently stored wood.',
+        'run': () {
+          final lumber = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.lumberMill);
+          if (lumber != null) {
+            progress.buildings.remove(lumber);
+          }
+          progress.wood = (progress.wood * 0.5).toInt();
+          service.addLog('Disaster Lumber Mill Boiler Fire: Destroyed Lumber Mill and lost 50% wood.');
+        }
+      });
+    }
+
+    // Arsenal Sabotage
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.arsenal)) {
+      eligibleDisasters.add({
+        'id': 'arsenal_sabotage',
+        'title': 'ARSENAL SABOTAGE',
+        'description': 'Arsenal fire destroyed the facility and damaged the weapons of all units assigned to it.',
+        'run': () {
+          final arsenal = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.arsenal);
+          if (arsenal != null) {
+            progress.buildings.remove(arsenal);
+            for (var cardType in arsenal.assignedUnitIds) {
+              progress.bondageDebuffCount[cardType] = (progress.bondageDebuffCount[cardType] ?? 0) + 1;
+            }
+          }
+          service.addLog('Disaster Arsenal Sabotage: Destroyed Arsenal and damaged weapons.');
+        }
+      });
+    }
+
+    // Garage Structural Damage
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.garage)) {
+      eligibleDisasters.add({
+        'id': 'garage_structural_damage',
+        'title': 'GARAGE STRUCTURAL DAMAGE',
+        'description': 'A major structural collapse damaged the Garage, reducing its level by 1 and disabling vehicle support for 2 turns.',
+        'run': () {
+          final garage = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.garage);
+          if (garage != null) {
+            if (garage.level > 1) {
+              garage.level -= 1;
+            } else {
+              progress.buildings.remove(garage);
+            }
+          }
+          progress.cardUpgrades['garage_disabled_turns'] = 2;
+          service.addLog('Disaster Garage Structural Damage: Reduced Garage level and disabled vehicles for 2 turns.');
+        }
+      });
+    }
+
+    // Crop Blight
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.farm)) {
+      eligibleDisasters.add({
+        'id': 'crop_blight',
+        'title': 'CROP BLIGHT',
+        'description': 'Fungal crop blight has destroyed our harvests! We lost 80% of our food reserves, and farm food output is halted for 2 turns.',
+        'run': () {
+          progress.food = (progress.food * 0.2).toInt();
+          progress.cardUpgrades['farm_halted_turns'] = 2;
+          service.addLog('Disaster Crop Blight: Lost 80% food reserves and halted farm output for 2 turns.');
+        }
+      });
+    }
+
+    // Starvation Insubordination
+    final hasStarving = progress.starvationInfractions.entries.any((e) => e.value >= 2);
+    if (hasStarving) {
+      eligibleDisasters.add({
+        'id': 'starvation_insubordination',
+        'title': 'STARVATION INSUBORDINATION',
+        'description': 'Starving units mutinied! They refuse to work next turn and stole 200 CHF to purchase food.',
+        'run': () {
+          progress.cash = max(0, progress.cash - 200);
+          progress.cardUpgrades['units_mutinied'] = 1;
+          service.addLog('Disaster Starvation Insubordination: Mutinied units stole 200 CHF and refused work.');
+        }
+      });
+    }
+
+    // Mine Water Seepage
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.mine)) {
+      eligibleDisasters.add({
+        'id': 'mine_water_seepage',
+        'title': 'MINE WATER SEEPAGE',
+        'description': 'Flooding in the mine has halted work. The mine will produce 0 iron for 3 turns, and mining workers suffer a permanent 20% health penalty.',
+        'run': () {
+          progress.cardUpgrades['mine_flooded_turns'] = 3;
+          final mine = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.mine);
+          if (mine != null) {
+            for (var cardType in mine.assignedUnitIds) {
+              progress.bondageDebuffCount[cardType] = (progress.bondageDebuffCount[cardType] ?? 0) + 1;
+            }
+          }
+          service.addLog('Disaster Mine Water Seepage: Mine flooded for 3 turns, workers health penalized.');
+        }
+      });
+    }
+
+    // Wild Beast Raid
+    final hasNoWalls = !progress.buildings.any((b) => b.type == SurvivalBuildingType.garage);
+    if (hasNoWalls) {
+      eligibleDisasters.add({
+        'id': 'wild_beast_raid',
+        'title': 'WILD BEAST RAID',
+        'description': 'Wild beasts raided the estate, killing a low-level worker card!',
+        'run': () {
+          String? targetCard;
+          for (var t in progress.playerDeckIds) {
+            final xp = progress.unitExp[t] ?? 0.0;
+            final lvl = SurvivalProgress.getLevelFromXp(xp);
+            if (lvl <= 2 && t != progress.selectedLeaderId) {
+              targetCard = t;
+              break;
+            }
+          }
+          if (targetCard != null) {
+            progress.playerDeckIds.remove(targetCard);
+            service.addLog('Disaster Wild Beast Raid: Killed low-level unit $targetCard.');
+          } else {
+            service.addLog('Disaster Wild Beast Raid: No low-level units available.');
+          }
+        }
+      });
+    }
+
+    // Artillery Ammo Dampness
+    final hasArtillery = progress.playerDeckIds.contains('artillery_barrage');
+    if (hasArtillery && progress.buildings.any((b) => b.type == SurvivalBuildingType.arsenal)) {
+      eligibleDisasters.add({
+        'id': 'artillery_ammo_dampness',
+        'title': 'ARTILLERY AMMO DAMPNESS',
+        'description': 'Moisture has ruined the heavy artillery shells. The Artillery Barrage support card cannot be used in combat for the next 3 encounters.',
+        'run': () {
+          progress.cardUpgrades['artillery_disabled_encounters'] = 3;
+          service.addLog('Disaster Artillery Ammo Dampness: Disabled Artillery Barrage for 3 encounters.');
+        }
+      });
+    }
+
+    // Training Accident
+    if (progress.trainingUnitIds.isNotEmpty) {
+      eligibleDisasters.add({
+        'id': 'training_accident',
+        'title': 'TRAINING ACCIDENT',
+        'description': 'A live-fire accident injured a training unit. Their training is cancelled, and they will start the next combat with 10% health.',
+        'run': () {
+          final target = progress.trainingUnitIds.first;
+          progress.trainingUnitIds.remove(target);
+          progress.bondageDebuffCount[target] = (progress.bondageDebuffCount[target] ?? 0) + 1;
+          service.addLog('Disaster Training Accident: Cancelled training for $target and reduced health.');
+        }
+      });
+    }
+
+    // Lumber Mill Machine Failure
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.lumberMill)) {
+      eligibleDisasters.add({
+        'id': 'lumber_mill_machine_failure',
+        'title': 'LUMBER MILL MACHINE FAILURE',
+        'description': 'Main gears broke! Lumber Mill wood production is reduced by 50% for the next 4 turns.',
+        'run': () {
+          progress.cardUpgrades['lumber_mill_fail_turns'] = 4;
+          service.addLog('Disaster Lumber Mill Machine Failure: Production reduced by 50% for 4 turns.');
+        }
+      });
+    }
+
+    // Tool Shed Theft
+    if (progress.cash > 500) {
+      eligibleDisasters.add({
+        'id': 'tool_shed_theft',
+        'title': 'TOOL SHED THEFT',
+        'description': 'Thieves stole our high-grade repair tools! Tower repair and building construction cash costs are increased by 50% for the next 3 turns.',
+        'run': () {
+          progress.cardUpgrades['repair_cost_multiplier_turns'] = 3;
+          service.addLog('Disaster Tool Shed Theft: Costs increased by 50% for 3 turns.');
+        }
+      });
+    }
+
+    // Farmhand Exhaustion
+    final farmWorkersCount = progress.buildings
+        .firstWhereOrNull((b) => b.type == SurvivalBuildingType.farm)
+        ?.assignedUnitIds
+        .length ?? 0;
+    if (farmWorkersCount >= 2) {
+      eligibleDisasters.add({
+        'id': 'farmhand_exhaustion',
+        'title': 'FARMHAND EXHAUSTION',
+        'description': 'Severe physical fatigue among crop workers! Farm workers contract muscle strain debuffs.',
+        'run': () {
+          final farm = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.farm);
+          if (farm != null) {
+            for (var cardType in farm.assignedUnitIds) {
+              progress.bondageDebuffCount[cardType] = (progress.bondageDebuffCount[cardType] ?? 0) + 1;
+            }
+          }
+          service.addLog('Disaster Farmhand Exhaustion: Applied muscle strain debuffs to farm workers.');
+        }
+      });
+    }
+
+    // Munitions Backfire
+    if (progress.buildings.any((b) => b.type == SurvivalBuildingType.munitionsFactory)) {
+      eligibleDisasters.add({
+        'id': 'munitions_backfire',
+        'title': 'MUNITIONS BACKFIRE',
+        'description': 'Nitroglycerin backfire! All watchtowers take 50% structural damage.',
+        'run': () {
+          progress.towerDamaged['tower_1'] = min(1.0, (progress.towerDamaged['tower_1'] ?? 0.0) + 0.5);
+          progress.towerDamaged['tower_2'] = min(1.0, (progress.towerDamaged['tower_2'] ?? 0.0) + 0.5);
+          progress.towerDamaged['tower_3'] = min(1.0, (progress.towerDamaged['tower_3'] ?? 0.0) + 0.5);
+          service.addLog('Disaster Munitions Backfire: All towers took 50% damage.');
+        }
+      });
+    }
+
+    // Canton Tax Levy
+    final glarusTaxStanding = progress.factionStandings['Glarus'] ?? 0;
+    if (glarusTaxStanding < 0) {
+      eligibleDisasters.add({
+        'id': 'canton_tax_levy',
+        'title': 'CANTON TAX LEVY',
+        'description': 'Canton authorities levied a forced war tax, deducting 400 CHF (or all current funds if less).',
+        'run': () {
+          progress.cash = max(0, progress.cash - 400);
+          service.addLog('Disaster Canton Tax Levy: Deducted cash for war taxes.');
+        }
+      });
+    }
+
+    final List<Map<String, dynamic>> genericDisasters = [
+      {
+        'id': 'faultline_rupture',
+        'title': 'FAULTLINE RUPTURE',
+        'description': 'An earthquake strikes Glarus! One of our purchased plots has been lost, and any facility built on it has been destroyed.',
+        'run': () {
+          if (progress.purchasedPlots.isNotEmpty) {
+            final randomPlot = progress.purchasedPlots[Random().nextInt(progress.purchasedPlots.length)];
+            progress.purchasedPlots.remove(randomPlot);
+            final b = progress.buildings.firstWhereOrNull((build) => build.id == randomPlot);
+            if (b != null) {
+              progress.buildings.remove(b);
+              service.addLog('Disaster Faultline Rupture: Lost plot $randomPlot and destroyed facility ${b.type.name}.');
+            } else {
+              service.addLog('Disaster Faultline Rupture: Lost plot $randomPlot.');
+            }
+          }
+        }
+      },
+      {
+        'id': 'structural_conflagration',
+        'title': 'STRUCTURAL CONFLAGRATION',
+        'description': 'Lightning strike! A fire breaks out and completely destroys one of our defensive watchtowers.',
+        'run': () {
+          final towers = ['tower_1', 'tower_2', 'tower_3'];
+          final randomTower = towers[Random().nextInt(towers.length)];
+          progress.towerDamaged[randomTower] = 1.0;
+          service.addLog('Disaster Structural Conflagration: Destroyed $randomTower.');
+        }
+      },
+      {
+        'id': 'wasting_influenza',
+        'title': 'WASTING INFLUENZA',
+        'description': 'Illness sweeps through the barracks. All combat cards have had their experience progress toward the next level reset to 0.',
+        'run': () {
+          for (var t in progress.unitExp.keys) {
+            final xp = progress.unitExp[t] ?? 0.0;
+            final lvl = SurvivalProgress.getLevelFromXp(xp);
+            progress.unitExp[t] = SurvivalProgress.getRequiredXpForLevel(lvl).toDouble();
+          }
+          service.addLog('Disaster Wasting Influenza: Reset XP progress for all combat units to 0.');
+        }
+      },
+      {
+        'id': 'corrosive_damp',
+        'title': 'CORROSIVE DAMP',
+        'description': 'Moisture penetrates the estate storage yards, rotting and completely destroying 100% of our stored wood resources.',
+        'run': () {
+          progress.wood = 0;
+          service.addLog('Disaster Corrosive Damp: Destroyed all stored wood.');
+        }
+      },
+      {
+        'id': 'acid_rain',
+        'title': 'ACID RAIN',
+        'description': 'Corrosive acidic rainfall damages the watchtower structures. All three defensive towers will start the next combat with only 70% durability.',
+        'run': () {
+          progress.cardUpgrades['next_combat_towers_hp_percent'] = 70;
+          service.addLog('Disaster Acid Rain: Tower HP starting next combat reduced to 70%.');
+        }
+      },
+      {
+        'id': 'rat_infestation',
+        'title': 'RAT INFESTATION',
+        'description': 'Rats raid the storage bunkers! We have lost 50% of our stored food, and all units suffer low morale (20% reduced speed next combat).',
+        'run': () {
+          progress.food = (progress.food * 0.5).toInt();
+          progress.cardUpgrades['next_combat_speed_reduction'] = 20;
+          service.addLog('Disaster Rat Infestation: Lost 50% food and low morale speed reduction applied.');
+        }
+      },
+      {
+        'id': 'supply_cost_spike',
+        'title': 'SUPPLY COST SPIKE',
+        'description': 'Inflation hits canton trade networks. Building construction, upgrade, and tower repair cash costs are doubled for the next 2 turns.',
+        'run': () {
+          progress.cardUpgrades['double_construction_costs_turns'] = 2;
+          service.addLog('Disaster Supply Cost Spike: Construction costs doubled for 2 turns.');
+        }
+      },
+      {
+        'id': 'broken_weapons',
+        'title': 'BROKEN WEAPONS',
+        'description': 'Wear and tear takes a toll on weaponry. A random combat unit has their primary weapon broken, reducing their damage by 30% for 3 battles.',
+        'run': () {
+          if (progress.playerDeckIds.isNotEmpty) {
+            final randomUnit = progress.playerDeckIds[Random().nextInt(progress.playerDeckIds.length)];
+            progress.cardUpgrades['broken_weapon_$randomUnit'] = 3;
+            service.addLog('Disaster Broken Weapons: Damaged weapon for $randomUnit for 3 battles.');
+          }
+        }
+      },
+      {
+        'id': 'mental_melancholy',
+        'title': 'MENTAL MELANCHOLY',
+        'description': 'Freezing fog drains the soldiers\' resolve. All combat units will start the next combat with -2 AP.',
+        'run': () {
+          progress.cardUpgrades['next_combat_ap_modifier'] = (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) - 2;
+          service.addLog('Disaster Mental Melancholy: -2 AP starting next combat.');
+        }
+      },
+      {
+        'id': 'alchemical_leak',
+        'title': 'ALCHEMICAL LEAK',
+        'description': 'A toxic gas leak spreads across the barracks training grounds! All units currently in training take 50% damage and are expelled.',
+        'run': () {
+          for (var t in progress.trainingUnitIds) {
+            progress.bondageDebuffCount[t] = (progress.bondageDebuffCount[t] ?? 0) + 1;
+          }
+          progress.trainingUnitIds.clear();
+          service.addLog('Disaster Alchemical Leak: Expelled training units due to injury.');
+        }
+      }
+    ];
+
+    final List<Map<String, dynamic>> disasterPool = [];
+    disasterPool.addAll(genericDisasters);
+    disasterPool.addAll(eligibleDisasters);
+
+    final selected = disasterPool[Random().nextInt(disasterPool.length)];
+    selected['run']();
     service.manualSave();
 
     showDialog(
@@ -10475,7 +11459,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            width: 340,
+            width: 360,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFF1E1A15),
@@ -10496,20 +11480,22 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'MUNITIONS FACTORY EXPLOSION',
+                  selected['title'] as String,
                   style: GoogleFonts.playfairDisplay(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  "A devastating explosion tore through the Munitions Factory today! The facility's level has been reduced by 1, and we have lost 100 Wood and 50 Iron in the ensuing fires.",
+                  selected['description'] as String,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.oldStandardTt(
                     color: Colors.white70,
                     fontSize: 13.5,
+                    height: 1.3,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -10539,6 +11525,153 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         );
       },
     );
+  }
+
+  void _showVolunteerCapacityDialog(
+    String volunteerType,
+    int meanLevel,
+    SurvivalProgress progress,
+    SurvivalService service,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgContext) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                width: 400,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1A15),
+                  border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'ARMY AT FULL CAPACITY',
+                      style: GoogleFonts.oswald(
+                        color: const Color(0xFFD4AF37),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'A level $meanLevel ${volunteerType.replaceAll('_', ' ').toUpperCase()} wants to volunteer. Select an existing card to discard to make room, or refuse the volunteer.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.oldStandardTt(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 220),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: progress.playerDeckIds.length,
+                        itemBuilder: (context, idx) {
+                          final cardId = progress.playerDeckIds[idx];
+                          final npc = CombatUnitService.createUnit(cardId);
+                          final xp = progress.unitExp[cardId] ?? 0.0;
+                          final lvl = SurvivalProgress.getLevelFromXp(xp);
+                          final isLeader = cardId == progress.selectedLeaderId;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.all(6),
+                            color: const Color(0xFF15100B),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    "${npc.name.toUpperCase()} (LVL $lvl)${isLeader ? ' [LEADER]' : ''}",
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: isLeader ? Colors.white30 : Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                if (!isLeader)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
+                                      foregroundColor: Colors.white,
+                                      shape: const RoundedRectangleBorder(),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    ),
+                                    onPressed: () {
+                                      progress.playerDeckIds.remove(cardId);
+                                      progress.playerDeckIds.add(volunteerType);
+                                      progress.unitExp[volunteerType] = SurvivalProgress.getRequiredXpForLevel(meanLevel).toDouble();
+                                      service.addLog('Volunteer: Discarded $cardId and added level $meanLevel $volunteerType.');
+                                      service.manualSave();
+                                      Navigator.pop(dlgContext);
+                                    },
+                                    child: const Text('DISCARD', style: TextStyle(fontSize: 10)),
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 36,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC4B89B),
+                          foregroundColor: Colors.black,
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        onPressed: () {
+                          service.addLog('Volunteer: Refused the volunteer $volunteerType.');
+                          Navigator.pop(dlgContext);
+                        },
+                        child: Text(
+                          'REFUSE VOLUNTEER',
+                          style: GoogleFonts.playfairDisplay(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void setDiceForTest(int die1, int die2) {
+    _die1 = die1;
+    _die2 = die2;
+  }
+
+  void evaluateDiceOutcomeForTest(int total, SurvivalProgress progress, SurvivalService service) {
+    _evaluateDiceOutcome(total, progress, service);
+  }
+
+  VoidCallback? getDiceOutcomeActionForTest() {
+    return _diceOutcomeAction;
+  }
+
+  String getDiceOutcomeMessageForTest() {
+    return _diceOutcomeMessage;
   }
 
   Widget _buildDiceRollOverlay(
