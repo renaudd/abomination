@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../models/npc.dart';
 import '../../services/combat_unit_service.dart';
 import 'character_blob_renderer.dart';
 
 class CombatCardDetailModal {
-  static void show(BuildContext context, String unitType, {int level = 1}) {
-    final npc = CombatUnitService.createUnit(unitType);
+  static void show(BuildContext context, dynamic cardOrNpc, {int level = 1}) {
+    final NPC npc = cardOrNpc is NPC
+        ? cardOrNpc
+        : CombatUnitService.createUnit(cardOrNpc as String);
     final stats = npc.combatStats!;
-    final double mult = 1.0 + (level - 1) * 0.1;
+    final double mult = cardOrNpc is NPC ? 1.0 : (1.0 + (level - 1) * 0.1);
     final int squadSize = stats.unitCount > 0 ? stats.unitCount : 1;
     final bool isMeleeOnly = stats.rangedDamage == 0.0;
 

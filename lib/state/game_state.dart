@@ -3479,6 +3479,7 @@ class GameState extends ChangeNotifier {
         _checkAndProcessBirthdays();
         if (_currentDate.hour == 0) {
           _processMerchantLoanDailyTick();
+          _processDailyRelationshipTick();
         }
       }
 
@@ -12051,6 +12052,74 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _processDailyRelationshipTick() {
+    final playerIdx = _npcs.indexWhere((n) => n.isPlayer);
+    if (playerIdx == -1) return;
+    final player = _npcs[playerIdx];
+
+    for (int i = 0; i < _npcs.length; i++) {
+      final npc = _npcs[i];
+      if (npc.isPlayer) continue;
+
+      Relationship rel = SocialService.getRelationshipBetween(npc, player);
+
+      final bool isCohabiting = rel.stage == RelationshipStage.cohabitation ||
+          rel.stage == RelationshipStage.coercedCohabitation ||
+          rel.stage == RelationshipStage.marriage;
+
+      if (isCohabiting) {
+        // 1. Neglect Check
+        int days = (npc.metadata['days_since_interaction'] as num? ?? 0).toInt();
+        days++;
+        
+        final updatedMetadata = Map<String, dynamic>.from(npc.metadata);
+        updatedMetadata['days_since_interaction'] = days;
+
+        Relationship updatedRel = rel;
+        if (days >= 3) {
+          updatedRel = rel.copyWith(
+            admiration: rel.admiration - 0.3,
+            attraction: rel.attraction - 0.2,
+          );
+          final log = "${npc.name.toUpperCase()} FEELS DEEPLY NEGLECTED BY YOUR CONTINUED SILENCE.";
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+          if (_announcementHistory.length > 50) _announcementHistory.removeLast();
+        }
+
+        // Save updated relationship on npc
+        final newRels = Map<String, Relationship>.from(npc.relationships);
+        newRels[player.id] = updatedRel;
+        _npcs[i] = npc.copyWith(metadata: updatedMetadata, relationships: newRels);
+
+        // 2. Domestic Fatigue
+        double satisfactionDrain = 0.0;
+        final tTem = npc.stats['temperament'] ?? 5;
+        final tHyg = npc.stats['hygiene'] ?? 5;
+
+        // Volatile partner drains sanity
+        if (tTem < 4) {
+          satisfactionDrain += 5.0;
+          final log = "${npc.name.toUpperCase()}'S VOLATILITY DRAINS YOUR MENTAL ACUITY.";
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+          if (_announcementHistory.length > 50) _announcementHistory.removeLast();
+        }
+
+        // Cleanliness critic drains sanity
+        if (tHyg > 7 && player.cleanliness < 30.0) {
+          satisfactionDrain += 3.0;
+          final log = "${npc.name.toUpperCase()} CRITICIZED YOUR LACK OF MANOR CLEANLINESS.";
+          _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+          if (_announcementHistory.length > 50) _announcementHistory.removeLast();
+        }
+
+        if (satisfactionDrain > 0) {
+          final newSatisfaction = (player.satisfaction - satisfactionDrain).clamp(0.0, 100.0);
+          _npcs[playerIdx] = _npcs[playerIdx].copyWith(satisfaction: newSatisfaction);
+        }
+      }
+    }
+  }
+
   String _getPrettyResourceName(String res) {
     if (res == 'shepherds_pie') return "SHEPHERD'S PIE";
     if (res == 'seeds_cabbage') return 'CABBAGE SEEDS';
@@ -14090,8 +14159,11 @@ class GameState extends ChangeNotifier {
       );
       newRels2[npc1.id] = result['targetRelationship'] as Relationship;
 
+      final targetMeta = Map<String, dynamic>.from(_npcs[targetIdx].metadata);
+      targetMeta['days_since_interaction'] = 0;
+
       _npcs[playerIdx] = _npcs[playerIdx].copyWith(relationships: newRels1);
-      _npcs[targetIdx] = _npcs[targetIdx].copyWith(relationships: newRels2);
+      _npcs[targetIdx] = _npcs[targetIdx].copyWith(relationships: newRels2, metadata: targetMeta);
 
       final log = "YOU: ${result['log']}";
       _lastAnnouncement = log;
@@ -14101,6 +14173,148 @@ class GameState extends ChangeNotifier {
       );
       if (_announcementHistory.length > 50) _announcementHistory.removeLast();
 
+      notifyListeners();
+    }
+  }
+
+  void giveGiftToNpc(String npcId, GameItem item) {
+    final targetIdx = _npcs.indexWhere((n) => n.id == npcId);
+    final playerIdx = _npcs.indexWhere((n) => n.isPlayer);
+
+    if (targetIdx != -1 && playerIdx != -1) {
+      final player = _npcs[playerIdx];
+      final target = _npcs[targetIdx];
+
+      final itemIdx = player.inventory.indexWhere((i) => i.id == item.id);
+      if (itemIdx == -1) return;
+
+      final newPlayerInv = List<GameItem>.from(player.inventory)..removeAt(itemIdx);
+      final newTargetInv = List<GameItem>.from(target.inventory)..add(item);
+
+      Relationship rel = SocialService.getRelationshipBetween(target, player);
+
+      double dAttr = 0.25;
+      double dAdmir = 0.35;
+
+      if (target.traits.any((t) => t.id == 'sapiosexual') && (item.id.contains('book') || item.id.contains('document'))) {
+        dAttr += 0.3;
+        dAdmir += 0.3;
+      }
+      if (target.traits.any((t) => t.id == 'medical_fetish') && item.id.contains('alchemical')) {
+        dAttr += 0.3;
+        dAdmir += 0.3;
+      }
+
+      rel = rel.copyWith(
+        attraction: rel.attraction + dAttr,
+        admiration: rel.admiration + dAdmir,
+      );
+
+      rel = SocialService.evolveRelationshipStage(rel, didGiveGift: true);
+
+      final newRels = Map<String, Relationship>.from(target.relationships);
+      newRels[player.id] = rel;
+
+      final targetMeta = Map<String, dynamic>.from(target.metadata);
+      targetMeta['days_since_interaction'] = 0;
+
+      _npcs[playerIdx] = player.copyWith(inventory: newPlayerInv);
+      _npcs[targetIdx] = target.copyWith(inventory: newTargetInv, relationships: newRels, metadata: targetMeta);
+
+      final log = "YOU GAVE ${item.name.toUpperCase()} TO ${target.name.toUpperCase()}. THEIR ATTRACTION AND ADMIRATION INCREASED!";
+      _lastAnnouncement = log;
+      _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+      if (_announcementHistory.length > 50) _announcementHistory.removeLast();
+      notifyListeners();
+    }
+  }
+
+  void proposeCohabitationToNpc(String npcId) {
+    final targetIdx = _npcs.indexWhere((n) => n.id == npcId);
+    final playerIdx = _npcs.indexWhere((n) => n.isPlayer);
+
+    if (targetIdx != -1 && playerIdx != -1) {
+      final player = _npcs[playerIdx];
+      final target = _npcs[targetIdx];
+
+      Relationship rel = SocialService.getRelationshipBetween(target, player);
+
+      if (rel.stage != RelationshipStage.devotion && rel.stage != RelationshipStage.volatileDevotion) {
+        return;
+      }
+
+      final bool isCoerced = rel.fear > 3.8 && rel.respect < 2.0;
+      final bool accepts = rel.attraction > 3.5 || isCoerced;
+
+      if (accepts) {
+        rel = rel.copyWith(
+          stage: isCoerced ? RelationshipStage.coercedCohabitation : RelationshipStage.cohabitation,
+        );
+
+        final newRels = Map<String, Relationship>.from(target.relationships);
+        newRels[player.id] = rel;
+        _npcs[targetIdx] = target.copyWith(relationships: newRels);
+
+        if (player.assignedRoomId != null) {
+          _npcs[targetIdx] = _npcs[targetIdx].copyWith(assignedRoomId: player.assignedRoomId);
+        }
+
+        final log = "${target.name.toUpperCase()} HAS ACCEPTED COHABITATION! ${isCoerced ? 'THEY COWERED AND COMPLIED OUT OF FEAR.' : 'THEY GLADLY MOVED INTO YOUR QUARTERS.'}";
+        _lastAnnouncement = log;
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+      } else {
+        rel = rel.copyWith(admiration: rel.admiration - 0.5);
+        final newRels = Map<String, Relationship>.from(target.relationships);
+        newRels[player.id] = rel;
+        _npcs[targetIdx] = target.copyWith(relationships: newRels);
+
+        final log = "${target.name.toUpperCase()} REJECTED COHABITATION! THE DOMESTIC RELATIONSHIP HAS GROWN STAINED.";
+        _lastAnnouncement = log;
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+      }
+      if (_announcementHistory.length > 50) _announcementHistory.removeLast();
+      notifyListeners();
+    }
+  }
+
+  void proposeMarriageToNpc(String npcId) {
+    final targetIdx = _npcs.indexWhere((n) => n.id == npcId);
+    final playerIdx = _npcs.indexWhere((n) => n.isPlayer);
+
+    if (targetIdx != -1 && playerIdx != -1) {
+      final player = _npcs[playerIdx];
+      final target = _npcs[targetIdx];
+
+      Relationship rel = SocialService.getRelationshipBetween(target, player);
+
+      if (rel.stage != RelationshipStage.cohabitation && rel.stage != RelationshipStage.coercedCohabitation) {
+        return;
+      }
+
+      final bool isCoerced = rel.fear > 4.2 && rel.respect < 2.0;
+      final bool accepts = rel.attraction > 4.0 || isCoerced;
+
+      if (accepts) {
+        rel = rel.copyWith(stage: RelationshipStage.marriage);
+
+        final newRels = Map<String, Relationship>.from(target.relationships);
+        newRels[player.id] = rel;
+        _npcs[targetIdx] = target.copyWith(relationships: newRels);
+
+        final log = "YOU AND ${target.name.toUpperCase()} ARE MARRIED! A SOLEMN VOW OF GOTHIC DEVOTION HANGS OVER THE MANOR.";
+        _lastAnnouncement = log;
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+      } else {
+        rel = rel.copyWith(admiration: rel.admiration - 0.8);
+        final newRels = Map<String, Relationship>.from(target.relationships);
+        newRels[player.id] = rel;
+        _npcs[targetIdx] = target.copyWith(relationships: newRels);
+
+        final log = "${target.name.toUpperCase()} REJECTED YOUR MARRIAGE PROPOSAL! A SHARP SILENCE ECHOES THROUGH THE BEDCHAMBERS.";
+        _lastAnnouncement = log;
+        _announcementHistory.insert(0, "[${_currentDate.formattedTime}] SOCIAL: $log");
+      }
+      if (_announcementHistory.length > 50) _announcementHistory.removeLast();
       notifyListeners();
     }
   }

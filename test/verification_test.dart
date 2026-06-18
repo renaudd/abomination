@@ -13,7 +13,14 @@
 // limitations under the License.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:abomination/models/room.dart';
+import 'package:abomination/models/relationship.dart';
+import 'package:abomination/models/body_part.dart';
+import 'package:abomination/models/schedule.dart';
+import 'package:abomination/models/diet.dart';
+import 'package:abomination/services/social_service.dart';
 import 'package:abomination/models/crop.dart';
 import 'package:abomination/state/game_state.dart';
 import 'package:abomination/services/combat_unit_service.dart';
@@ -23,14 +30,18 @@ import 'package:abomination/services/kitchen_service.dart';
 import 'package:abomination/services/task_service.dart';
 import 'package:abomination/services/combat_manager.dart';
 import 'package:abomination/services/combat_unit_factory.dart';
+import 'package:abomination/services/survival_service.dart';
+import 'package:abomination/services/audio_service.dart';
+import 'package:abomination/ui/screens/survival_estate_map_screen.dart';
+import 'package:abomination/models/survival_state.dart';
 import 'package:abomination/models/combat_stats.dart';
 import 'package:abomination/models/combat_map.dart';
-import 'package:abomination/models/survival_state.dart';
 
 void main() {
   late GameState gameState;
 
   setUp(() {
+    AudioService.isTesting = true;
     gameState = GameState();
     gameState.initializeNewGame(
       firstName: "Test",
@@ -456,6 +467,302 @@ void main() {
       // Verify that the crop IS added now that the task has completed
       final completedCropsCount = gameState.crops.where((c) => c.roomId == field.id).length;
       expect(completedCropsCount, equals(1));
+    });
+
+    testWidgets('Survival Mode: Undead units gain combat XP but cannot be assigned to training grounds', (tester) async {
+      final service = SurvivalService(1);
+      service.initializeNewSurvivalGame('alphonse', SurvivalDifficulty.classic);
+      final progress = service.progress!;
+      
+      progress.playerDeckIds.add('undead_bats');
+      progress.unitExp['undead_bats'] = 0.0;
+      progress.cardUpgrades['level_undead_bats'] = 1;
+
+      final assignSuccess = service.assignTraining('undead_bats');
+      expect(assignSuccess, isFalse);
+      expect(progress.trainingUnitIds.contains('undead_bats'), isFalse);
+
+      service.processCombatOutcome(
+        true,
+        false,
+        {},
+        {'undead_bats': 10.0},
+      );
+      
+      expect(progress.unitExp['undead_bats'], equals(5.0));
+    });
+
+    testWidgets('Survival Mode: Melee-only units like wild_bear or brewers do not have ranged stats', (tester) async {
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = (FlutterErrorDetails details) {
+        if (details.exceptionAsString().contains('overflowed')) {
+          return;
+        }
+        originalOnError?.call(details);
+      };
+      addTearDown(() {
+        FlutterError.onError = originalOnError;
+      });
+
+      final service = SurvivalService(1);
+      service.initializeNewSurvivalGame('alphonse', SurvivalDifficulty.classic);
+      final progress = service.progress!;
+      
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<GameState>.value(value: gameState),
+            ChangeNotifierProvider<SurvivalService>.value(value: service),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SurvivalEstateMapScreen(),
+            ),
+          ),
+        ),
+      );
+
+      final dynamic state = tester.state(
+        find.byType(SurvivalEstateMapScreen),
+      );
+
+      final bearNpc = state.getUpgradedUnitForModal('wild_bear', progress);
+      expect(bearNpc.combatStats!.rangedDamage, equals(0.0));
+      expect(bearNpc.combatStats!.rangedRange, equals(0.0));
+
+      final brewersNpc = state.getUpgradedUnitForModal('brewers', progress);
+      expect(brewersNpc.combatStats!.rangedDamage, equals(0.0));
+      expect(brewersNpc.combatStats!.rangedRange, equals(0.0));
+    });
+
+    test('Courtship: Initial Attraction, Sapiosexuality and Medical Fetish', () {
+      final observer = NPC(
+        id: 'obs',
+        name: 'Obs',
+        role: 'Refugee',
+        age: 25,
+        gender: 'Male',
+        specimenType: 'Human',
+        sexualOrientation: SexualOrientation.straight,
+        traits: [NPCTrait(id: 'sapiosexual', name: 'Sapiosexual', group: 'character')],
+        stats: {'beauty': 5, 'intellect': 5, 'judgment': 5},
+        bodyParts: const [],
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+
+      final smartTarget = NPC(
+        id: 'target',
+        name: 'Target',
+        role: 'Refugee',
+        age: 24,
+        gender: 'Female',
+        specimenType: 'Human',
+        traits: [],
+        stats: {'beauty': 5, 'intellect': 10, 'judgment': 8},
+        bodyParts: const [],
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+
+      final double attr = SocialService.calculateInitialAttraction(observer, smartTarget);
+      expect(attr, greaterThan(3.5));
+
+      final fetishObserver = NPC(
+        id: 'fet_obs',
+        name: 'FetObs',
+        role: 'Refugee',
+        age: 30,
+        gender: 'Female',
+        specimenType: 'Human',
+        sexualOrientation: SexualOrientation.straight,
+        traits: [NPCTrait(id: 'medical_fetish', name: 'Medical Fetish', group: 'character')],
+        stats: {'beauty': 5},
+        bodyParts: const [],
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+
+      final deformedTarget = NPC(
+        id: 'def_target',
+        name: 'DefTarget',
+        role: 'Refugee',
+        age: 32,
+        gender: 'Male',
+        specimenType: 'Human',
+        traits: [],
+        bodyParts: [
+          BodyPart(type: BodyPartType.head, health: 10, maxHealth: 10, isAttached: true),
+          BodyPart(type: BodyPartType.leftArm, health: 10, maxHealth: 10, isAttached: false),
+          BodyPart(type: BodyPartType.rightArm, health: 10, maxHealth: 10, isAttached: false),
+        ],
+        stats: {'beauty': 3},
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+
+      final double fetishAttr = SocialService.calculateInitialAttraction(fetishObserver, deformedTarget);
+      expect(fetishAttr, greaterThan(2.2));
+    });
+
+    test('Courtship: Initial Admiration, Class Standing and Factions', () {
+      final nobleA = NPC(
+        id: 'noble_a',
+        name: 'Noble A',
+        role: 'Noble',
+        age: 30,
+        gender: 'Male',
+        background: 'Noble',
+        specimenType: 'Human',
+        traits: [NPCTrait(id: 'conservative', name: 'Conservative', group: 'association')],
+        bodyParts: const [],
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+
+      final nobleB = NPC(
+        id: 'noble_b',
+        name: 'Noble B',
+        role: 'Noble',
+        age: 28,
+        gender: 'Female',
+        background: 'Noble',
+        specimenType: 'Human',
+        traits: [NPCTrait(id: 'conservative', name: 'Conservative', group: 'association')],
+        bodyParts: const [],
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+
+      final peasant = NPC(
+        id: 'peasant',
+        name: 'Peasant',
+        role: 'Peasant',
+        age: 25,
+        gender: 'Female',
+        background: 'Peasant',
+        specimenType: 'Human',
+        traits: [NPCTrait(id: 'communist', name: 'Communist', group: 'association')],
+        bodyParts: const [],
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+
+      final admNoble = SocialService.calculateInitialAdmiration(nobleA, nobleB);
+      expect(admNoble, equals(4.0));
+
+      final admPeasant = SocialService.calculateInitialAdmiration(nobleA, peasant);
+      expect(admPeasant, equals(0.0));
+    });
+
+    test('Courtship: Stage Evolution, Neglect and Volatile Fatigue', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Flaubert",
+        lastName: "Giles",
+        estateName: "Glarus Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      final player = state.npcs.firstWhere((n) => n.isPlayer);
+      final gift = GameItem(
+        id: 'book_geometry',
+        name: 'Geometry Book',
+        quantity: 1,
+        type: 'book',
+        category: ItemCategory.knowledge,
+        shape: ItemShape.square,
+      );
+      state.updateNpcForTesting(player.copyWith(inventory: [gift]));
+
+      final target = NPC(
+        id: 'partner',
+        name: 'Partner',
+        role: 'Refugee',
+        age: 28,
+        gender: 'Female',
+        background: 'Scholar',
+        specimenType: 'Human',
+        traits: [
+          NPCTrait(id: 'sapiosexual', name: 'Sapiosexual', group: 'character'),
+        ],
+        stats: {
+          'beauty': 5,
+          'intellect': 10,
+          'judgment': 9,
+          'temperament': 2,
+          'hygiene': 8,
+        },
+        bodyParts: const [],
+        schedule: NPCSchedule.defaultButler(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+      );
+      state.addNpcForTesting(target);
+
+      state.giveGiftToNpc(
+        'partner',
+        GameItem(
+          id: 'book_geometry',
+          name: 'Geometry Book',
+          quantity: 1,
+          type: 'book',
+          category: ItemCategory.knowledge,
+          shape: ItemShape.square,
+        ),
+      );
+
+      Relationship partnerToPlayer = SocialService.getRelationshipBetween(
+        state.npcs.firstWhere((n) => n.id == 'partner'),
+        player,
+      );
+      expect(partnerToPlayer.stage, equals(RelationshipStage.intrigue));
+
+      partnerToPlayer = partnerToPlayer.copyWith(
+        attraction: 4.5,
+        admiration: 4.5,
+        respect: 4.0,
+        stage: RelationshipStage.devotion,
+      );
+      
+      final updatedRels = Map<String, Relationship>.from(state.npcs.last.relationships);
+      updatedRels[player.id] = partnerToPlayer;
+      state.updateNpcForTesting(state.npcs.last.copyWith(relationships: updatedRels));
+
+      state.proposeCohabitationToNpc('partner');
+      
+      final finalPartner = state.npcs.firstWhere((n) => n.id == 'partner');
+      final finalRel = SocialService.getRelationshipBetween(finalPartner, player);
+      expect(finalRel.stage, equals(RelationshipStage.cohabitation));
+      expect(finalPartner.assignedRoomId, equals(player.assignedRoomId));
+
+      final initialPlayerSat = player.satisfaction;
+      
+      state.setSpeed(GameSpeed.normal);
+      for (int i = 0; i < 60 * 24; i++) {
+        state.tick();
+      }
+      
+      final playerNpc = state.npcs.firstWhere((n) => n.isPlayer);
+      expect(playerNpc.satisfaction, lessThan(initialPlayerSat));
+
+      for (int i = 0; i < 60 * 24 * 2; i++) {
+        state.tick();
+      }
+      
+      final neglectedPartner = state.npcs.firstWhere((n) => n.id == 'partner');
+      final neglectedRel = SocialService.getRelationshipBetween(neglectedPartner, player);
+      expect(neglectedRel.admiration, lessThan(4.5));
     });
   });
 }

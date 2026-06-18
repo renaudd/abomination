@@ -35,10 +35,8 @@ class SocialService {
     NPC target,
     InteractionType type,
   ) {
-    Relationship actorToTarget =
-        actor.relationships[target.id] ?? Relationship();
-    Relationship targetToActor =
-        target.relationships[actor.id] ?? Relationship();
+    Relationship actorToTarget = getRelationshipBetween(actor, target);
+    Relationship targetToActor = getRelationshipBetween(target, actor);
 
     String log = "";
     String speechQuote = getDialogueQuote(actor, type);
@@ -101,6 +99,9 @@ class SocialService {
       default:
         log = "${actor.name} interacted with ${target.name}.";
     }
+
+    actorToTarget = evolveRelationshipStage(actorToTarget);
+    targetToActor = evolveRelationshipStage(targetToActor);
 
     return {
       'actorRelationship': actorToTarget,
@@ -218,6 +219,53 @@ class SocialService {
     return "\"$speech\"";
   }
 
+  static Relationship evolveRelationshipStage(Relationship rel, {bool didGiveGift = false}) {
+    RelationshipStage current = rel.stage;
+    RelationshipStage next = current;
+
+    final attraction = rel.attraction;
+    final admiration = rel.admiration;
+    final respect = rel.respect;
+
+    switch (current) {
+      case RelationshipStage.acquaintance:
+        if (didGiveGift || attraction > 2.8 || admiration > 3.0) {
+          next = RelationshipStage.intrigue;
+        }
+        break;
+      case RelationshipStage.intrigue:
+        if (attraction > 3.5) {
+          if (respect < 2.0) {
+            next = RelationshipStage.volatileDevotion;
+          } else if (admiration > 3.5) {
+            next = RelationshipStage.devotion;
+          }
+        }
+        break;
+      case RelationshipStage.devotion:
+        break;
+      case RelationshipStage.volatileDevotion:
+        break;
+      case RelationshipStage.cohabitation:
+      case RelationshipStage.coercedCohabitation:
+      case RelationshipStage.marriage:
+        break;
+    }
+
+    return rel.copyWith(stage: next);
+  }
+
+  static Relationship getRelationshipBetween(NPC actor, NPC target) {
+    final existing = actor.relationships[target.id];
+    if (existing != null) return existing;
+    return Relationship(
+      attraction: calculateInitialAttraction(actor, target),
+      admiration: calculateInitialAdmiration(actor, target),
+      fear: calculateInitialFear(actor, target),
+      respect: calculateInitialRespect(actor, target),
+    );
+  }
+
   static double calculateInitialAttraction(NPC observer, NPC target) {
     // 1. Orientation Check
     bool isAttractedByGender = false;
@@ -252,8 +300,8 @@ class SocialService {
     int beauty = target.stats['beauty'] ?? 5;
     int vitality = target.stats['vitality'] ?? 5;
 
-    base += (beauty / 100.0) * 1.5;
-    base += (vitality / 100.0) * 0.2; // Downgraded to tertiary
+    base += (beauty / 10.0) * 1.5;
+    base += (vitality / 10.0) * 0.2;
 
     // 3. Age Factor
     double ageScore = 1.0;
@@ -266,14 +314,137 @@ class SocialService {
     }
     base += ageScore * 0.8;
 
-    // 4. Physical Condition
+    // 4. Physical Condition & Medical Fetish Check
     int missingParts = target.bodyParts.where((bp) => !bp.isAttached).length;
-    base -= missingParts * 0.25;
+    final bool hasMedicalFetish = observer.traits.any((t) => t.id == 'medical_fetish');
+    if (hasMedicalFetish) {
+      base += missingParts * 0.4; // Attraction to physical anomalies/golems
+    } else {
+      base -= missingParts * 0.25;
+    }
 
-    // 5. Random Variance (Reduced for test stability)
+    // 5. Observer Personality Prefs (Sapiosexual, Confidence-Seeker, Well-Mannered, Free-Spirit, Dark Attraction)
+    if (observer.traits.any((t) => t.id == 'sapiosexual')) {
+      final tIntellect = target.stats['intellect'] ?? 5;
+      final tJudgment = target.stats['judgment'] ?? 5;
+      base += (tIntellect / 10.0) * 2.0 + (tJudgment / 10.0) * 1.0;
+    }
+    if (observer.traits.any((t) => t.id == 'confidence_seeker')) {
+      final tConfidence = target.stats['confidence'] ?? 5;
+      base += (tConfidence / 10.0) * 3.0;
+    }
+    if (observer.traits.any((t) => t.id == 'well_mannered_pref')) {
+      final tTemperament = target.stats['temperament'] ?? 5;
+      base += (tTemperament / 10.0) * 3.0;
+    }
+    if (observer.traits.any((t) => t.id == 'free_spirit_pref')) {
+      final tJudgment = target.stats['judgment'] ?? 5;
+      base += (1.0 - (tJudgment / 10.0)) * 3.0;
+    }
+    if (observer.traits.any((t) => t.id == 'dark_attraction')) {
+      // Inherent Fear of target directly boosts attraction
+      final initialFear = calculateInitialFear(observer, target);
+      base += (initialFear / 5.0) * 3.0;
+    }
+
+    // 6. Random Variance
     base += (_random.nextDouble() * 0.2) - 0.1;
 
     return base.clamp(0.0, 5.0);
+  }
+
+  static double calculateInitialAdmiration(NPC observer, NPC target) {
+    double base = 2.5;
+
+    // Class Standing
+    final oClass = observer.biography?.characterClass ?? observer.background;
+    final tClass = target.biography?.characterClass ?? target.background;
+    if (oClass == tClass && oClass != null) {
+      base += 0.5;
+    } else if (oClass == 'Noble' && tClass == 'Peasant') {
+      base -= 1.0;
+    } else if (oClass == 'Peasant' && tClass == 'Noble') {
+      base -= 0.5;
+    }
+
+    // Association / Faction Identity
+    final oAssocs = observer.traits.where((t) => t.group == 'association').map((t) => t.id).toSet();
+    final tAssocs = target.traits.where((t) => t.group == 'association').map((t) => t.id).toSet();
+
+    if (oAssocs.intersection(tAssocs).isNotEmpty) {
+      base += 1.0;
+    }
+    if ((oAssocs.contains('communist') && tAssocs.contains('conservative')) ||
+        (oAssocs.contains('conservative') && tAssocs.contains('communist'))) {
+      base -= 1.5;
+    }
+    if ((oAssocs.contains('liberal') && tAssocs.contains('conservative')) ||
+        (oAssocs.contains('conservative') && tAssocs.contains('liberal'))) {
+      base -= 0.8;
+    }
+
+    return base.clamp(0.0, 5.0);
+  }
+
+  static double calculateInitialFear(NPC observer, NPC target) {
+    double fearVal = 2.5;
+
+    final oStr = observer.stats['strength'] ?? 5;
+    final oEnd = observer.stats['endurance'] ?? 5;
+    final oMor = observer.stats['morality'] ?? 5;
+    final oBty = observer.stats['beauty'] ?? 5;
+
+    final tStr = target.stats['strength'] ?? 5;
+    final tMor = target.stats['morality'] ?? 5;
+    final tBty = target.stats['beauty'] ?? 5;
+    final tInt = target.stats['intellect'] ?? 5;
+    final tTem = target.stats['temperament'] ?? 5;
+
+    double increase = 0.0;
+
+    // 1. Fear of the Grotesque
+    final bool isSensitive = observer.traits.any((t) => t.id == 'sensitive' || t.id == 'artistic');
+    if ((isSensitive || oBty > 7) && tBty < 3) {
+      increase += (3 - tBty) * 0.5;
+    }
+
+    // 2. Fear of the Intimidating (Physical Asymmetry)
+    if (oStr < 4 || oEnd < 4) {
+      if (tStr > 7) {
+        increase += (tStr - oStr) * 0.25;
+      }
+    }
+
+    // 3. Fear of the Depraved
+    if (oMor > 7 && tMor < 3) {
+      increase += (oMor - tMor) * 0.25;
+    }
+
+    // Low Temperament Multiplier
+    if (tTem < 4) {
+      increase *= 1.5;
+    }
+
+    // Cold Scheming (High Intellect + Low Morality)
+    if (tInt > 7 && tMor < 3) {
+      increase += 1.0;
+    }
+
+    fearVal += increase;
+    return fearVal.clamp(0.0, 5.0);
+  }
+
+  static double calculateInitialRespect(NPC observer, NPC target) {
+    double respectVal = 2.5;
+
+    final oMor = observer.stats['morality'] ?? 5;
+    final tJud = target.stats['judgment'] ?? 5;
+
+    if (tJud > 7) respectVal += 0.5;
+    if (oMor > 7) respectVal += 0.5;
+    if (oMor < 3) respectVal -= 0.5;
+
+    return respectVal.clamp(0.0, 5.0);
   }
 
   static InteractionType getRandomInteraction() {

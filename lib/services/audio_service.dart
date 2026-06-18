@@ -9,6 +9,8 @@ class AudioService {
   factory AudioService() => _instance;
   AudioService._internal();
 
+  static bool isTesting = false;
+
   AudioPlayer? _bgmPlayerLazy;
   AudioPlayer? get _bgmPlayer => _bgmPlayerLazy ??= _createPlayer();
 
@@ -33,8 +35,8 @@ class AudioService {
   int _voiceIndex = 0;
 
   AudioPlayer? _createPlayer() {
+    if (isTesting) return null;
     try {
-      if (WidgetsBinding.instance == null) return null;
       return AudioPlayer();
     } catch (_) {
       return null;

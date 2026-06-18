@@ -570,7 +570,6 @@ class SurvivalEstateMapScreen extends StatefulWidget {
 class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   bool _isDrafting = true;
   final List<String> _selectedCart = [];
-  bool _isTransitioningToCombat = false;
 
   String _activeTab =
       'ESTATE'; // 'ESTATE', 'DECK', 'LEADER', 'TOWERS', 'MARKET', 'MANOR_RECORDS'
@@ -1968,6 +1967,73 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
   }
 
+  NPC getUpgradedUnitForModal(String t, SurvivalProgress progress) {
+    final npc = CombatUnitService.createUnit(t);
+    final lvl = progress.getUnitLevel(t);
+    final mult = 1.0 + (lvl - 1) * 0.1;
+    double distance = npc.combatStats!.distance;
+    double rangedRange = npc.combatStats!.rangedRange;
+    double baseAttack = npc.combatStats!.attack.toDouble();
+    double baseSpeed = npc.combatStats!.speed;
+    double baseMovement = npc.combatStats!.movement;
+    int baseCost = npc.combatStats!.cost;
+
+    if (t == 'cannoneer' && lvl >= 6) {
+      distance = 23.0;
+      rangedRange = 23.0;
+    }
+
+    bool hasRanged = npc.combatStats!.rangedDamage > 0.0;
+
+    final int rawWepIdx = progress.cardUpgrades['${t}_equipped_weapon_idx'] ??
+        (t == 'samurai' ? progress.cardUpgrades['samurai_equipped_weapon'] : 0) ??
+        0;
+    if (rawWepIdx > 0) {
+      final int cSamIdx = rawWepIdx.clamp(0, _samuraiUpgrades.length - 1);
+      final int cGenIdx = (rawWepIdx - 1).clamp(0, _generalWeaponMarket.length - 1);
+      final String wepName = t == 'samurai'
+          ? _samuraiUpgrades[cSamIdx].name
+          : _generalWeaponMarket[cGenIdx].name;
+      final wepStats = _getEquippedWeaponStats(t, wepName);
+      final bool isAdvanced = wepStats.damage >= baseAttack * 1.35 ||
+          (t == 'samurai' && rawWepIdx > 1);
+
+      baseAttack = wepStats.damage;
+      distance = wepStats.range;
+      rangedRange = wepStats.range;
+      hasRanged = wepStats.isRanged;
+
+      if (isAdvanced) {
+        if (baseCost <= 3) {
+          baseCost += 2;
+          baseSpeed *= 1.2;
+          baseMovement *= 0.75;
+        } else {
+          baseCost += 1;
+          baseAttack *= 1.15;
+          distance += 1.0;
+          rangedRange += 1.0;
+        }
+      }
+    }
+
+    return npc.copyWith(
+      metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
+      combatStats: npc.combatStats?.copyWith(
+        cost: baseCost,
+        speed: baseSpeed,
+        movement: baseMovement,
+        health: npc.combatStats!.health * mult,
+        maxHealth: npc.combatStats!.maxHealth * mult,
+        attack: baseAttack * mult,
+        meleeDamage: baseAttack * mult,
+        rangedDamage: hasRanged ? baseAttack * mult : 0.0,
+        distance: hasRanged ? distance : npc.combatStats!.distance,
+        rangedRange: hasRanged ? rangedRange : 0.0,
+      ),
+    );
+  }
+
   // DRAWERS & FOOTERS
   Widget _buildSideDeckDrawer(
     SurvivalProgress progress,
@@ -2007,8 +2073,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       }
                     }
 
-                    final exp = progress.unitExp[type] ?? 0.0;
-                    final lvl = SurvivalProgress.getLevelFromXp(exp);
+                    final lvl = progress.getUnitLevel(type);
 
                     return Draggable<String>(
                       data: type,
@@ -2076,7 +2141,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   InkWell(
-                                    onTap: () => CombatCardDetailModal.show(context, type),
+                                    onTap: () {
+                                      final upgradedNpc = getUpgradedUnitForModal(type, progress);
+                                      CombatCardDetailModal.show(context, upgradedNpc, level: lvl);
+                                    },
                                     child: Text(
                                       npc.name.toUpperCase(),
                                       style: GoogleFonts.oldStandardTt(
@@ -2262,19 +2330,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 // Capture levels before turn resolution
                 final Map<String, int> levelsBefore = {};
                 for (var t in progress.playerDeckIds) {
-                  final exp = progress.unitExp[t] ?? 0.0;
-                  levelsBefore[t] = SurvivalProgress.getLevelFromXp(exp);
+                  levelsBefore[t] = progress.getUnitLevel(t);
                 }
 
                 // Trigger turn resolution
-                _isTransitioningToCombat = true;
                 service.endTurn();
 
                 // Check for level-ups
                 final List<Map<String, dynamic>> levelUps = [];
                 for (var t in progress.playerDeckIds) {
-                  final exp = progress.unitExp[t] ?? 0.0;
-                  final currentLvl = SurvivalProgress.getLevelFromXp(exp);
+                  final currentLvl = progress.getUnitLevel(t);
                   final oldLvl = levelsBefore[t] ?? 1;
                   if (currentLvl > oldLvl) {
                     levelUps.add({
@@ -2438,8 +2503,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   // Route straight to Combat stage! Leveled-up stats are dynamically mapped here!
                   final playerUnits = progress.playerDeckIds.map((t) {
                     final npc = CombatUnitService.createUnit(t);
-                    final exp = progress.unitExp[t] ?? 0.0;
-                    final lvl = SurvivalProgress.getLevelFromXp(exp);
+                    final lvl = progress.getUnitLevel(t);
                     final mult = 1.0 + (lvl - 1) * 0.1;
                     double distance = npc.combatStats!.distance;
                     double rangedRange = npc.combatStats!.rangedRange;
@@ -2447,6 +2511,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     double baseSpeed = npc.combatStats!.speed;
                     double baseMovement = npc.combatStats!.movement;
                     int baseCost = npc.combatStats!.cost;
+
+                    bool hasRanged = npc.combatStats!.rangedDamage > 0.0;
 
                     if (t == 'cannoneer' && lvl >= 6) {
                       distance = 23.0;
@@ -2480,6 +2546,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       baseAttack = wepStats.damage;
                       distance = wepStats.range;
                       rangedRange = wepStats.range;
+                      hasRanged = wepStats.isRanged;
 
                       if (isAdvanced) {
                         if (baseCost <= 3) {
@@ -2505,9 +2572,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         maxHealth: npc.combatStats!.maxHealth * mult,
                         attack: baseAttack * mult,
                         meleeDamage: baseAttack * mult,
-                        rangedDamage: baseAttack * mult,
-                        distance: distance,
-                        rangedRange: rangedRange,
+                        rangedDamage: hasRanged ? baseAttack * mult : 0.0,
+                        distance: hasRanged ? distance : npc.combatStats!.distance,
+                        rangedRange: hasRanged ? rangedRange : 0.0,
                       ),
                     );
                   }).toList();
@@ -2540,8 +2607,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       health: baseEnemyHero.combatStats!.health * enemyLvlMult,
                       maxHealth: baseEnemyHero.combatStats!.maxHealth * enemyLvlMult,
                       attack: baseEnemyHero.combatStats!.attack * enemyLvlMult * enemyUpgradeMult,
-                      meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
-                      rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
+                      meleeDamage: baseEnemyHero.combatStats!.meleeDamage * enemyLvlMult * enemyUpgradeMult,
+                      rangedDamage: baseEnemyHero.combatStats!.rangedDamage * enemyLvlMult * enemyUpgradeMult,
                     ),
                   );
 
@@ -4773,8 +4840,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     final cardId = deck[index];
                     final npc = CombatUnitService.createUnit(cardId);
                     final stats = npc.combatStats!;
+                    final lvl = progress.getUnitLevel(cardId);
                     final exp = progress.unitExp[cardId] ?? 0.0;
-                    final lvl = SurvivalProgress.getLevelFromXp(exp);
 
                     return Column(
                       children: [
@@ -7163,7 +7230,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   ) {
     final npc = CombatUnitService.createUnit(cardId);
     final exp = progress.unitExp[cardId] ?? 0.0;
-    final lvl = SurvivalProgress.getLevelFromXp(exp);
+    final lvl = progress.getUnitLevel(cardId);
     var stats = npc.combatStats!;
     if (cardId == 'cannoneer' && lvl >= 6) {
       stats = stats.copyWith(
@@ -7172,9 +7239,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       );
     }
     final nextReq = SurvivalProgress.getRequiredXpForLevel(lvl + 1);
-    final prevReq = lvl == 1 ? 0 : SurvivalProgress.getRequiredXpForLevel(lvl);
-    final range = nextReq - prevReq;
-    final pct = range == 0 ? 1.0 : ((exp - prevReq) / range).clamp(0.0, 1.0);
+    final pct = nextReq == 0 ? 1.0 : (exp / nextReq).clamp(0.0, 1.0);
 
     final bool isMeleeOnly = stats.rangedDamage == 0.0;
     final bool isUndeadUnit = SurvivalService.isUndead(npc);
@@ -7453,23 +7518,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   ),
                                   onPressed: canAffordDrills
                                       ? () {
-                                          final oldExp =
-                                              progress.unitExp[cardId] ?? 0.0;
-                                          final oldLvl =
-                                              SurvivalProgress.getLevelFromXp(
-                                                oldExp,
-                                              );
+                                          final oldLvl = progress.getUnitLevel(cardId);
                                           if (service.buyTrainingPoints(
                                             cardId,
                                             drillXp,
                                             drillCost,
                                           )) {
-                                            final newExp =
-                                                progress.unitExp[cardId] ?? 0.0;
-                                            final newLvl =
-                                                SurvivalProgress.getLevelFromXp(
-                                                  newExp,
-                                                );
+                                            final newLvl = progress.getUnitLevel(cardId);
                                             if (newLvl > oldLvl) {
                                               _showLevelUpDialog(
                                                 context,
@@ -7954,12 +8009,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             final targetTypes = ['marksmen', 'cannoneer', 'artillery_barrage'];
             for (var t in targetTypes) {
               if (progress.playerDeckIds.contains(t)) {
-                final curXp = progress.unitExp[t] ?? 0.0;
-                final curLvl = SurvivalProgress.getLevelFromXp(curXp);
-                progress.unitExp[t] = SurvivalProgress.getRequiredXpForLevel(
-                  curLvl + 1,
-                ).toDouble();
-                service.addLog('Promoted $t by 1 level.');
+                final curLvl = progress.getUnitLevel(t);
+                if (curLvl < 7) {
+                  progress.cardUpgrades['level_$t'] = curLvl + 1;
+                  progress.unitExp[t] = 0.0;
+                  service.addLog('Promoted $t by 1 level.');
+                }
               }
             }
             progress.factionStandings['Gnomes of Zurich'] =
@@ -7975,17 +8030,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'subtitle':
               'Effect: Destroy Glarus village, receive advanced artillery barrage card. (-15 Gnomes, -20 Glarus)',
           'onPress': () {
-            progress.villageHealth = 0;
             int totalLevels = 0;
             for (var t in progress.playerDeckIds) {
-              totalLevels += SurvivalProgress.getLevelFromXp(
-                progress.unitExp[t] ?? 0.0,
-              );
+              totalLevels += progress.getUnitLevel(t);
             }
             final calcLvl = (1 + (totalLevels ~/ 6)).clamp(1, 6);
             progress.playerDeckIds.add('artillery_barrage');
-            progress.unitExp['artillery_barrage'] =
-                SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
+            progress.cardUpgrades['level_artillery_barrage'] = calcLvl;
+            progress.unitExp['artillery_barrage'] = 0.0;
             progress.factionStandings['Gnomes of Zurich'] =
                 (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
             progress.factionStandings['Glarus'] =
@@ -8004,14 +8056,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             progress.cash += 500;
             int totalLevels = 0;
             for (var t in progress.playerDeckIds) {
-              totalLevels += SurvivalProgress.getLevelFromXp(
-                progress.unitExp[t] ?? 0.0,
-              );
+              totalLevels += progress.getUnitLevel(t);
             }
             final calcLvl = (1 + (totalLevels ~/ 6)).clamp(1, 6);
             progress.playerDeckIds.add('tear_gas_grenade');
-            progress.unitExp['tear_gas_grenade'] =
-                SurvivalProgress.getRequiredXpForLevel(calcLvl).toDouble();
+            progress.cardUpgrades['level_tear_gas_grenade'] = calcLvl;
+            progress.unitExp['tear_gas_grenade'] = 0.0;
             progress.factionStandings['Gnomes of Zurich'] =
                 (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
             progress.factionStandings['Glarus'] =
@@ -9619,8 +9669,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }) {
     final playerUnits = progress.playerDeckIds.map((t) {
       final npc = CombatUnitService.createUnit(t);
-      final exp = progress.unitExp[t] ?? 0.0;
-      final lvl = SurvivalProgress.getLevelFromXp(exp);
+      final lvl = progress.getUnitLevel(t);
       final mult = 1.0 + (lvl - 1) * 0.1;
       double distance = npc.combatStats!.distance;
       double rangedRange = npc.combatStats!.rangedRange;
@@ -9717,8 +9766,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         health: baseEnemyHero.combatStats!.health * enemyLvlMult,
         maxHealth: baseEnemyHero.combatStats!.maxHealth * enemyLvlMult,
         attack: baseEnemyHero.combatStats!.attack * enemyLvlMult * enemyUpgradeMult,
-        meleeDamage: (baseEnemyHero.combatStats!.meleeDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
-        rangedDamage: (baseEnemyHero.combatStats!.rangedDamage ?? baseEnemyHero.combatStats!.attack) * enemyLvlMult * enemyUpgradeMult,
+        meleeDamage: baseEnemyHero.combatStats!.meleeDamage * enemyLvlMult * enemyUpgradeMult,
+        rangedDamage: baseEnemyHero.combatStats!.rangedDamage * enemyLvlMult * enemyUpgradeMult,
       ),
     );
 
@@ -10243,8 +10292,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           health: baseNpc.combatStats!.health * mult,
           maxHealth: baseNpc.combatStats!.maxHealth * mult,
           attack: baseNpc.combatStats!.attack * mult * upgradeMult,
-          meleeDamage: (baseNpc.combatStats!.meleeDamage ?? baseNpc.combatStats!.attack) * mult * upgradeMult,
-          rangedDamage: (baseNpc.combatStats!.rangedDamage ?? baseNpc.combatStats!.attack) * mult * upgradeMult,
+          meleeDamage: baseNpc.combatStats!.meleeDamage * mult * upgradeMult,
+          rangedDamage: baseNpc.combatStats!.rangedDamage * mult * upgradeMult,
         ),
       );
       list.add(npc);
@@ -10349,16 +10398,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
       case 3:
         final int lossPercent = _die1 == 2 ? 100 : (_die1 == 1 ? 60 : 0);
-        if (lossPercent > 0) {
+        if (lossPercent > 0 && progress.cash > 0) {
           final lostAmount = (progress.cash * (lossPercent / 100.0)).toInt();
-          _diceOutcomeMessage = "ROLLED A 3! Robbery!\nLeft die rolled $_die1. Lost $lossPercent% of money (-$lostAmount CHF).";
+          _diceOutcomeMessage = "ROLLED A 3! Robbery!\nLost $lostAmount CHF.";
           _diceOutcomeAction = () {
             progress.cash = max(0, progress.cash - lostAmount);
             service.manualSave();
           };
-          service.addLog('Robbery: Lost $lossPercent% of cash ($lostAmount CHF).');
+          service.addLog('Robbery: Lost $lostAmount CHF.');
         } else {
-          _diceOutcomeMessage = "ROLLED A 3! Robbery!\nLeft die rolled $_die1. Outlaws failed to breach our cashbox. No loss.";
+          _diceOutcomeMessage = "ROLLED A 3! Robbery!\nOutlaws failed to breach our cashbox. No loss.";
           _diceOutcomeAction = null;
         }
         break;
@@ -10388,7 +10437,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         }
         final lostMetal = (progress.iron * (metalLossPercent / 100.0)).toInt();
         final lostWood = (progress.wood * (woodLossPercent / 100.0)).toInt();
-        _diceOutcomeMessage = "ROLLED A 5! Fire!\nLeft die rolled $_die1. Lost $metalLossPercent% of Metal (-$lostMetal) and $woodLossPercent% of Wood (-$lostWood).";
+        
+        final List<String> losses = [];
+        if (lostMetal > 0) losses.add('Lost $lostMetal Metal');
+        if (lostWood > 0) losses.add('Lost $lostWood Wood');
+        
+        if (losses.isNotEmpty) {
+          _diceOutcomeMessage = "ROLLED A 5! Fire!\n${losses.join(' and ')}.";
+        } else {
+          _diceOutcomeMessage = "ROLLED A 5! Fire!\nNo resources were lost.";
+        }
+        
         _diceOutcomeAction = () {
           progress.iron = max(0, progress.iron - lostMetal);
           progress.wood = max(0, progress.wood - lostWood);
@@ -10406,12 +10465,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         else if (_die1 == 1) blightPercent = 30;
 
         final lostFood = (progress.food * (blightPercent / 100.0)).toInt();
-        _diceOutcomeMessage = "ROLLED A 6! Crop Blight!\nLeft die rolled $_die1. Blight consumes $blightPercent% of stored food reserves (-$lostFood food).";
-        _diceOutcomeAction = () {
-          progress.food = max(0, progress.food - lostFood);
-          service.manualSave();
-        };
-        service.addLog('Blight: Lost $blightPercent% food ($lostFood food).');
+        if (lostFood > 0) {
+          _diceOutcomeMessage = "ROLLED A 6! Crop Blight!\nLost $lostFood Food.";
+          _diceOutcomeAction = () {
+            progress.food = max(0, progress.food - lostFood);
+            service.manualSave();
+          };
+          service.addLog('Blight: Lost $lostFood food.');
+        } else {
+          _diceOutcomeMessage = "ROLLED A 6! Crop Blight!\nNo food was lost.";
+          _diceOutcomeAction = null;
+        }
         break;
 
       case 7:
@@ -10523,17 +10587,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           final candidate = candidates[Random().nextInt(candidates.length)];
           int totalLevels = 0;
           for (var cardId in progress.playerDeckIds) {
-            final xp = progress.unitExp[cardId] ?? 0.0;
-            totalLevels += SurvivalProgress.getLevelFromXp(xp);
+            totalLevels += progress.getUnitLevel(cardId);
           }
           final meanLevel = progress.playerDeckIds.isNotEmpty ? (totalLevels ~/ progress.playerDeckIds.length).clamp(1, 6) : 1;
-          final targetXp = SurvivalProgress.getRequiredXpForLevel(meanLevel).toDouble();
 
           if (progress.playerDeckIds.length < 12) {
             _diceOutcomeMessage = "ROLLED AN 11! Volunteer joins!\nA Level $meanLevel ${candidate.replaceAll('_', ' ').toUpperCase()} offers their blade to your army!";
             _diceOutcomeAction = () {
               progress.playerDeckIds.add(candidate);
-              progress.unitExp[candidate] = targetXp;
+              progress.cardUpgrades['level_$candidate'] = meanLevel;
+              progress.unitExp[candidate] = 0.0;
               service.manualSave();
             };
             service.addLog('Volunteer: Level $meanLevel $candidate joined deck.');
@@ -11206,8 +11269,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         'run': () {
           String? targetCard;
           for (var t in progress.playerDeckIds) {
-            final xp = progress.unitExp[t] ?? 0.0;
-            final lvl = SurvivalProgress.getLevelFromXp(xp);
+            final lvl = progress.getUnitLevel(t);
             if (lvl <= 2 && t != progress.selectedLeaderId) {
               targetCard = t;
               break;
@@ -11365,9 +11427,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         'description': 'Illness sweeps through the barracks. All combat cards have had their experience progress toward the next level reset to 0.',
         'run': () {
           for (var t in progress.unitExp.keys) {
-            final xp = progress.unitExp[t] ?? 0.0;
-            final lvl = SurvivalProgress.getLevelFromXp(xp);
-            progress.unitExp[t] = SurvivalProgress.getRequiredXpForLevel(lvl).toDouble();
+            progress.unitExp[t] = 0.0;
           }
           service.addLog('Disaster Wasting Influenza: Reset XP progress for all combat units to 0.');
         }
@@ -11580,8 +11640,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                         itemBuilder: (context, idx) {
                           final cardId = progress.playerDeckIds[idx];
                           final npc = CombatUnitService.createUnit(cardId);
-                          final xp = progress.unitExp[cardId] ?? 0.0;
-                          final lvl = SurvivalProgress.getLevelFromXp(xp);
+                          final lvl = progress.getUnitLevel(cardId);
                           final isLeader = cardId == progress.selectedLeaderId;
 
                           return Container(
@@ -11611,7 +11670,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     onPressed: () {
                                       progress.playerDeckIds.remove(cardId);
                                       progress.playerDeckIds.add(volunteerType);
-                                      progress.unitExp[volunteerType] = SurvivalProgress.getRequiredXpForLevel(meanLevel).toDouble();
+                                      progress.cardUpgrades['level_$volunteerType'] = meanLevel;
+                                      progress.unitExp[volunteerType] = 0.0;
                                       service.addLog('Volunteer: Discarded $cardId and added level $meanLevel $volunteerType.');
                                       service.manualSave();
                                       Navigator.pop(dlgContext);

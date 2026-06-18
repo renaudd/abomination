@@ -220,6 +220,7 @@ class SurvivalProgress {
   // Progressive Level milestones
   static int getRequiredXpForLevel(int nextLevel) {
     switch (nextLevel) {
+      case 1: return 0;
       case 2: return 14;
       case 3: return 70;
       case 4: return 240;
@@ -242,6 +243,38 @@ class SurvivalProgress {
       }
     }
     return lvl;
+  }
+
+  int getUnitLevel(String cardType) {
+    final stored = cardUpgrades['level_$cardType'];
+    if (stored != null) return stored;
+    // Lazy migration from legacy cumulative XP
+    final oldXp = unitExp[cardType] ?? 0.0;
+    final derivedLvl = getLevelFromXp(oldXp);
+    cardUpgrades['level_$cardType'] = derivedLvl;
+    final baseForCurrent = getRequiredXpForLevel(derivedLvl);
+    unitExp[cardType] = (oldXp - baseForCurrent).clamp(0.0, double.infinity);
+    return derivedLvl;
+  }
+
+  bool addXpToUnit(String cardType, double xpGained) {
+    final currentLvl = getUnitLevel(cardType);
+    if (currentLvl >= 7) {
+      unitExp[cardType] = 0.0;
+      return false;
+    }
+    final currentXp = unitExp[cardType] ?? 0.0;
+    final nextXp = currentXp + xpGained;
+    final reqForNext = getRequiredXpForLevel(currentLvl + 1);
+
+    if (nextXp >= reqForNext) {
+      cardUpgrades['level_$cardType'] = currentLvl + 1;
+      unitExp[cardType] = 0.0; // Consumed XP returns to 0
+      return true;
+    } else {
+      unitExp[cardType] = nextXp;
+      return false;
+    }
   }
 
   int getTowerLevel(String towerId) {

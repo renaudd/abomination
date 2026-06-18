@@ -416,7 +416,7 @@ class CharacterPortraitDialog extends StatelessWidget {
         _sectionHeader("OTHER BONDS"),
         const SizedBox(height: 12),
         ...state.npcs.where((n) => n.id != liveNpc.id && !n.isPlayer).map((n) {
-          final rel = liveNpc.relationships[n.id] ?? Relationship();
+          final rel = SocialService.getRelationshipBetween(liveNpc, n);
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Column(
@@ -455,7 +455,7 @@ class CharacterPortraitDialog extends StatelessWidget {
     GameState state,
   ) {
     final player = state.npcs.firstWhere((n) => n.isPlayer);
-    final rel = liveNpc.relationships[player.id] ?? Relationship();
+    final rel = SocialService.getRelationshipBetween(liveNpc, player);
 
     // Only allow interaction if they are in the same room
     final bool canInteract = player.currentRoomId == liveNpc.currentRoomId;
@@ -463,14 +463,30 @@ class CharacterPortraitDialog extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "RELATIONSHIP: ${(rel.loyalty * 20).toStringAsFixed(0)}% LOYALTY",
-          style: GoogleFonts.outfit(
-            color: const Color(0xFFC4B89B),
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "RELATIONSHIP: ${(rel.loyalty * 20).toStringAsFixed(0)}% LOYALTY",
+              style: GoogleFonts.outfit(
+                color: const Color(0xFFC4B89B),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
+            ),
+            Text(
+              rel.stage.name.toUpperCase().replaceAll('VOLATILEDEVOTION', 'VOLATILE DEVOTION').replaceAll('COERCEDCOHABITATION', 'COERCED COHABITATION'),
+              style: GoogleFonts.outfit(
+                color: rel.stage == RelationshipStage.marriage 
+                    ? Colors.amber 
+                    : const Color(0xFFC4B89B).withValues(alpha: 0.7),
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         LinearProgressIndicator(
@@ -490,6 +506,20 @@ class CharacterPortraitDialog extends StatelessWidget {
               _buildInteractButton(state, liveNpc, InteractionType.argument, Icons.gavel_outlined),
               _buildInteractButton(state, liveNpc, InteractionType.threaten, Icons.security),
               _buildInteractButton(state, liveNpc, InteractionType.workTogether, Icons.handshake_outlined),
+              if (player.inventory.isNotEmpty)
+                _buildGiftButton(context, state, liveNpc, player),
+              if (rel.stage == RelationshipStage.devotion || rel.stage == RelationshipStage.volatileDevotion)
+                _buildActionButton(
+                  "COHABIT",
+                  () => state.proposeCohabitationToNpc(liveNpc.id),
+                  Icons.home_outlined,
+                ),
+              if (rel.stage == RelationshipStage.cohabitation || rel.stage == RelationshipStage.coercedCohabitation)
+                _buildActionButton(
+                  "MARRY",
+                  () => state.proposeMarriageToNpc(liveNpc.id),
+                  Icons.favorite_outline,
+                ),
             ],
           )
         else
@@ -502,6 +532,91 @@ class CharacterPortraitDialog extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildGiftButton(
+    BuildContext context,
+    GameState state,
+    NPC liveNpc,
+    NPC player,
+  ) {
+    return InkWell(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E1A1D),
+              title: Text(
+                "SELECT A GIFT FOR ${liveNpc.name.toUpperCase()}",
+                style: GoogleFonts.playfairDisplay(color: const Color(0xFFC4B89B), fontSize: 12),
+              ),
+              content: SizedBox(
+                width: 300,
+                height: 200,
+                child: ListView(
+                  children: player.inventory.map((item) {
+                    return ListTile(
+                      title: Text(item.name.toUpperCase(), style: GoogleFonts.outfit(color: Colors.white, fontSize: 11)),
+                      trailing: Text("${item.quantity}", style: GoogleFonts.outfit(color: const Color(0xFFC4B89B), fontSize: 10)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        state.giveGiftToNpc(liveNpc.id, item);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            );
+          },
+        );
+      },
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.card_giftcard, color: Colors.pinkAccent, size: 18),
+            const SizedBox(height: 4),
+            Text(
+              "GIVE GIFT",
+              style: GoogleFonts.outfit(fontSize: 8, color: Colors.pinkAccent),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(
+    String label,
+    VoidCallback onTap,
+    IconData icon,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.amber, size: 18),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(fontSize: 8, color: Colors.amber),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

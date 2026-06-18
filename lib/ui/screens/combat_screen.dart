@@ -6137,7 +6137,8 @@ class _OpponentDeckInspectorScreenState
                             return GestureDetector(
                               onTap: () => CombatCardDetailModal.show(
                                 context,
-                                _extractBaseCardKey(npc),
+                                npc,
+                                level: npc.metadata['level'] as int? ?? 1,
                               ),
                               child: Container(
                                 decoration: BoxDecoration(

@@ -218,13 +218,10 @@ class SurvivalService extends ChangeNotifier {
     final tempNpc = CombatUnitService.createUnit(cardId);
     if (isUndead(tempNpc)) return false;
     _progress!.cash -= cashCost;
-    final currentXp = _progress!.unitExp[cardId] ?? 0.0;
-    final nextXp = currentXp + xpAmount;
-    _progress!.unitExp[cardId] = nextXp;
     
-    final oldLvl = SurvivalProgress.getLevelFromXp(currentXp);
-    final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
-    if (newLvl > oldLvl) {
+    final leveledUp = _progress!.addXpToUnit(cardId, xpAmount.toDouble());
+    final newLvl = _progress!.getUnitLevel(cardId);
+    if (leveledUp) {
       addLog('LEVEL UP! Bought training points for ${cardId.replaceAll('_', ' ').toUpperCase()} promoting to Level $newLvl!');
     } else {
       addLog('Bought +$xpAmount XP for ${cardId.replaceAll('_', ' ').toUpperCase()} for $cashCost CHF.');
@@ -433,6 +430,10 @@ class SurvivalService extends ChangeNotifier {
     }
     if (isChimera(npc)) {
       addLog('Chimera cannot be assigned to work or training.');
+      return false;
+    }
+    if (isUndead(npc)) {
+      addLog('Undead units cannot be assigned to the Training Yard.');
       return false;
     }
 
@@ -811,18 +812,16 @@ class SurvivalService extends ChangeNotifier {
       }
     }
 
-    // 3. Apply Training XP
     for (var t in _progress!.trainingUnitIds) {
-      final currentXp = _progress!.unitExp[t] ?? 0.0;
-      final oldLvl = SurvivalProgress.getLevelFromXp(currentXp);
+      final oldLvl = _progress!.getUnitLevel(t);
       final gainedXp = 1.0 + oldLvl;
-      final nextXp = currentXp + gainedXp;
-      _progress!.unitExp[t] = nextXp;
-      final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
-      if (newLvl > oldLvl) {
+      final leveledUp = _progress!.addXpToUnit(t, gainedXp);
+      final newLvl = _progress!.getUnitLevel(t);
+      if (leveledUp) {
         addLog('LEVEL UP! Trained ${t.replaceAll('_', ' ').toUpperCase()} has promoted to Level $newLvl!');
       } else {
-        addLog('Trained ${t.replaceAll('_', ' ').toUpperCase()} gained +${gainedXp.toInt()} XP (Current: ${nextXp.toInt()} XP).');
+        final currentXp = _progress!.unitExp[t] ?? 0.0;
+        addLog('Trained ${t.replaceAll('_', ' ').toUpperCase()} gained +${gainedXp.toInt()} XP (Current: ${currentXp.toInt()} XP).');
       }
     }
 
@@ -901,35 +900,24 @@ class SurvivalService extends ChangeNotifier {
       }
     }
 
-    // Apply Combat XP
     for (var entry in combatExpAwarded.entries) {
-      final current = _progress!.unitExp[entry.key] ?? 0.0;
-      final npc = CombatUnitService.createUnit(entry.key);
+      double finalXp = entry.value * 0.5; // Halved combat XP
       
-      double finalXp = entry.value;
-      if (isUndead(npc)) {
-        finalXp = 0.0; // Undead get no experience
-      }
-      
-      final oldLvl = SurvivalProgress.getLevelFromXp(current);
-      final maxAllowedLvl = oldLvl + 1;
-      final maxAllowedXp = maxAllowedLvl < 7
-          ? SurvivalProgress.getRequiredXpForLevel(maxAllowedLvl + 1) - 0.01
-          : double.infinity;
-
-      final nextXp = min(maxAllowedXp, max(0.0, current + finalXp));
-      _progress!.unitExp[entry.key] = nextXp;
-      
-      final newLvl = SurvivalProgress.getLevelFromXp(nextXp);
+      final oldLvl = _progress!.getUnitLevel(entry.key);
       
       if (finalXp > 0) {
-        if (newLvl > oldLvl) {
+        final leveledUp = _progress!.addXpToUnit(entry.key, finalXp);
+        final newLvl = _progress!.getUnitLevel(entry.key);
+        if (leveledUp) {
           addLog('LEVEL UP! ${entry.key.replaceAll('_', ' ').toUpperCase()} reached Level $newLvl in battle!');
           levelUps[entry.key] = [oldLvl, newLvl];
         } else {
-          addLog('${entry.key.replaceAll('_', ' ').toUpperCase()} gained +${finalXp.toInt()} XP in combat.');
+          final currentXp = _progress!.unitExp[entry.key] ?? 0.0;
+          addLog('${entry.key.replaceAll('_', ' ').toUpperCase()} gained +${finalXp.toInt()} XP in combat (Current: ${currentXp.toInt()} XP).');
         }
       } else if (finalXp < 0) {
+        final currentXp = _progress!.unitExp[entry.key] ?? 0.0;
+        _progress!.unitExp[entry.key] = max(0.0, currentXp + finalXp);
         addLog('${entry.key.replaceAll('_', ' ').toUpperCase()} suffered -${(-finalXp).toInt()} XP demerits.');
       }
     }

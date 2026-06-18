@@ -12,17 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+enum RelationshipStage {
+  acquaintance,
+  intrigue,
+  devotion,
+  volatileDevotion,
+  cohabitation,
+  coercedCohabitation,
+  marriage,
+}
+
 class Relationship {
   final double admiration; // 0.0 to 5.0
   final double respect; // 0.0 to 5.0
   final double fear; // 0.0 to 5.0
   final double attraction; // 0.0 to 5.0
+  final RelationshipStage stage;
 
   Relationship({
     this.admiration = 2.5,
     this.respect = 2.5,
     this.fear = 2.5,
     this.attraction = 2.5,
+    this.stage = RelationshipStage.acquaintance,
   });
 
   double get loyalty => (admiration + respect + fear) / 3.0;
@@ -32,12 +44,14 @@ class Relationship {
     double? respect,
     double? fear,
     double? attraction,
+    RelationshipStage? stage,
   }) {
     return Relationship(
       admiration: (admiration ?? this.admiration).clamp(0.0, 5.0),
       respect: (respect ?? this.respect).clamp(0.0, 5.0),
       fear: (fear ?? this.fear).clamp(0.0, 5.0),
       attraction: (attraction ?? this.attraction).clamp(0.0, 5.0),
+      stage: stage ?? this.stage,
     );
   }
 
@@ -84,6 +98,7 @@ class Relationship {
     'respect': respect,
     'fear': fear,
     'attraction': attraction,
+    'stage': stage.name,
   };
 
   factory Relationship.fromJson(Map<String, dynamic> json) => Relationship(
@@ -91,5 +106,9 @@ class Relationship {
     respect: (json['respect'] as num?)?.toDouble() ?? 2.5,
     fear: (json['fear'] as num?)?.toDouble() ?? 2.5,
     attraction: (json['attraction'] as num?)?.toDouble() ?? 2.5,
+    stage: RelationshipStage.values.firstWhere(
+      (e) => e.name == json['stage'],
+      orElse: () => RelationshipStage.acquaintance,
+    ),
   );
 }
