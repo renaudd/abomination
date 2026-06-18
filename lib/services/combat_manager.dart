@@ -295,11 +295,11 @@ class CombatManager extends ChangeNotifier {
   
   double getBaseMovementMultiplier(Combatant c) {
     if (c.npc.isPlayer || c.isAiLeader || c.npc.role == 'Leader' || c.npc.role == 'Master') {
-      return 22.0 * 1.4; // Leaders move at 30.8 base
+      return 30.0; // Leaders move at 30.0 base
     } else if (c.isStampedeHorse) {
-      return 24.0; // Stampede horses (support unit, no speed reduction)
+      return 24.0; // Stampede horses move at 24.0 base
     } else {
-      return 22.0 * 0.9; // 10% reduction for all other units
+      return 18.0; // Non-player, non-master, non-stampede horse units move at 18.0
     }
   }
 
