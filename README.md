@@ -1,6 +1,6 @@
 # Abomination
 
-**Abomination** is a mad scientist management simulator built with Flutter. Set in a rural Swiss manor in the 1860s, the game challenges players to balance traditional manor management with dark, experimental science. 
+**Abomination** is a mad scientist management simulator built with Flutter. Set in a rural Swiss manor in the 1800s, the game challenges players to balance traditional manor management with dark, experimental science. 
 
 ## 🦇 Game Overview
 
@@ -54,4 +54,6 @@ Contributions are welcome! Whether it's fixing NPC pathfinding bugs, adding new 
 
 This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for more information.
 
-The game is inspired by Mary Shelley's Frankenstein (1818) and includes Carl Spitzweg's "Der Maler im Garten" (1860).
+## 🙏 Credits
+
+The game is inspired by Mary Shelley's Frankenstein (1818). It includes Carl Spitzweg's "Der Maler im Garten" (1860) as menu artwork and uses arrangements of Antonio Vivaldi's "The Four Seasons" (1723) as performed by John Harrison with the Wichita State University Chamber Players under the CC BY-SA 4.0 license. 

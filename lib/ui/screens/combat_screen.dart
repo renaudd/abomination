@@ -691,7 +691,11 @@ class _CombatScreenState extends State<CombatScreen>
                 if (_combatManager.isDefeat) {
                   final state = Provider.of<GameState>(context, listen: false);
                   state.clearEncounterState();
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  state.quitGame();
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+                    (route) => false,
+                  );
                 }
               }
             }
@@ -1453,6 +1457,7 @@ class _CombatScreenState extends State<CombatScreen>
                   onPressed: () {
                     final state = Provider.of<GameState>(context, listen: false);
                     state.clearEncounterState();
+                    state.quitGame();
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (context) => const MainMenuScreen()),
                       (route) => false,
@@ -5170,7 +5175,11 @@ void _showCombatMenuDialog(BuildContext context) {
                 onPressed: () {
                   Navigator.of(context).pop(); // close dialog
                   gameState.clearEncounterState();
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  gameState.quitGame();
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+                    (route) => false,
+                  );
                 },
               ),
             ],

@@ -881,6 +881,10 @@ class TaskService {
     _activeTasks.add(task);
   }
 
+  void clear() {
+    _activeTasks.clear();
+  }
+
   void removeTask(String taskId) {
     _activeTasks.removeWhere((t) => t.id == taskId);
   }

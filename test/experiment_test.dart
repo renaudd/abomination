@@ -18,6 +18,7 @@ import 'package:abomination/models/experiment.dart';
 import 'package:abomination/models/objective.dart';
 import 'package:abomination/services/task_service.dart';
 import 'package:abomination/models/room.dart';
+import 'package:abomination/models/game_item.dart';
 
 void main() {
   test('Experiment progress decrements during GameState tick', () {
@@ -80,6 +81,28 @@ void main() {
     final labRoom = firstRoom.copyWith(
       type: RoomType.laboratory,
       isRestored: true,
+      inventory: [
+        GameItem(
+          id: 'principles_of_galvanism',
+          type: 'principles_of_galvanism',
+          name: 'Principles of Galvanism',
+          category: ItemCategory.knowledge,
+          quantity: 1,
+          quality: 1.0,
+          shape: ItemShape.pill,
+          metadata: {'discipline': 'Alchemy'},
+        ),
+        GameItem(
+          id: 'alchemy_textbook',
+          type: 'research_book',
+          name: 'Alchemy Textbook',
+          category: ItemCategory.knowledge,
+          quantity: 1,
+          quality: 1.0,
+          shape: ItemShape.pill,
+          metadata: {'discipline': 'Alchemy'},
+        ),
+      ],
     );
     state.updateRoom(labRoom);
 

@@ -156,6 +156,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
               } else if (value == 'cheat_codes') {
                 _showCheatCodesDialog(context, state);
               } else if (value == 'quit') {
+                state.quitGame();
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(

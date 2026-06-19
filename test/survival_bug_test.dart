@@ -152,6 +152,7 @@ void main() {
     expect(service.progress!.unitExp['footman'], 2.0);
 
     // Level 2 footman (XP = 14.0, Level = 2) -> gains 1 + 2 = 3 XP
+    service.progress!.cardUpgrades['level_footman'] = 2;
     service.progress!.unitExp['footman'] = 14.0;
     service.endTurn();
     expect(service.progress!.unitExp['footman'], 17.0);

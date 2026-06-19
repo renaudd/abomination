@@ -2706,6 +2706,166 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _resetState() {
+    _currentDate = GameDate.initial();
+    _speed = GameSpeed.paused;
+    _npcs.clear();
+    _availableHamletNpcs.clear();
+    _rooms.clear();
+    _butlerRoomId = null;
+    _activeConstruction.clear();
+    _activeExperiments.clear();
+    _lastAnnouncement = null;
+    _announcementHistory.clear();
+    _objectives.clear();
+    _contracts.clear();
+    _completedTaskTypes.clear();
+    _taskCompletionCounts.clear();
+    _unlockedDiscoveries.clear();
+    _performedExperiments.clear();
+    _pendingNavigationTarget = null;
+    _pantry.clear();
+    _cookingQueue.clear();
+    _researchQueue.clear();
+    _laboratoryQueue.clear();
+    _unreadObjectiveCount = 0;
+    _pendingCombatEncounter = false;
+    _playerDistanceSinceEncounter = 0.0;
+    _riverBridgeBuilt = false;
+    _activeBirthdayNpcId = null;
+    _pendingEncounterData = null;
+    _pendingEncounterEnemies = null;
+    _taskStagnationCounters.clear();
+    _chickens.clear();
+    _lastProductionText.clear();
+    _lastProductionTime.clear();
+    _npcDialogueCooldown.clear();
+    _manorVenture = ManorVenture.standard;
+    _activeBusinesses.clear();
+    _conferredGraduateDegrees.clear();
+    _playerAcademicSpecialization = null;
+    _veterinaryExperience = 0;
+    _trainedBatsCount = 0;
+    _unlockedCombatCards.clear();
+    _dissectionsPerformed = 0;
+    _vivisectionsPerformed = 0;
+    _puzzleStudiesPerformed = 0;
+    _labExperimentsPerformed = 0;
+    _unlockedLabActivities = {'small_dissection', 'large_dissection'};
+    _pendingMobileNotification = null;
+    _activeDentalLoan = 0;
+    _activeMerchantLoan = 0;
+    _merchantLoanInterestRate = 0.05;
+    _merchantLoanDaysUnpaid = 0;
+    _merchantLoanProvider = null;
+    _dentalCriticReviewState = null;
+    _dentalCriticReviewTriggerTime = 0;
+    _dentalMalpracticePending = false;
+    _dentalMalpracticeTriggerTime = 0;
+    _bistroProfitModifier = 1.0;
+    _bistroNextWeekBonus = 0.0;
+    _restaurantTablesServedTonight = 0;
+    _restaurantQueueCount = 0;
+    _restaurantActiveTables = 0;
+    _restaurantTableFinishMinutes.clear();
+    _restaurantExtendedHoursActive = false;
+    _restaurantPricePromptTriggered = false;
+    _bistroPriceLevel = 1.0;
+    _restaurantMenuIds = [
+      'protein_mistery_stew',
+      'boiled_cabbage',
+      'scrambled_eggs',
+    ];
+    _restaurantMenuPrices = {
+      'protein_mistery_stew': 35.0,
+      'boiled_cabbage': 15.0,
+      'scrambled_eggs': 20.0,
+    };
+    _restaurantOperatingDays = [5, 6, 7];
+    _restaurantOperatingHourStart = 17;
+    _restaurantOperatingHourEnd = 22;
+    _restaurantEmployeeCount = 2;
+    _restaurantEmployeeWages = 50.0;
+    _restaurantSupplierContract = 'standard';
+    
+    _crops.clear();
+    _gardenPlants.clear();
+    _butlerDisposition = ButlerDisposition.neutral;
+    _isGameOver = false;
+    _gameOverReason = null;
+    _crises.clear();
+    _knownRecipes = {
+      'staple_bread',
+      'bean_stew',
+      'omelette',
+      'roast_chicken',
+      'beef_root_stew',
+      'protein_mistery_stew',
+      'fried_generic_meat',
+    };
+    _discoveries.clear();
+    _researchPoints.clear();
+    _customTaskCounts.clear();
+    _factionStandings.clear();
+    _factionStandings.addAll({
+      'Glarus': 1.0,
+      'Chevaliers de la foi': 1.0,
+      'Gnomes of Zurich': 1.0,
+      'Rosicrucians': 1.0,
+      'Fenian Brotherhood': 1.0,
+      'Ancient Order of Foresters': 1.0,
+      'Carbonari': 1.0,
+      'Knights Templar': 1.0,
+      'Golden Dawn': 1.0,
+      'Freemasons': 1.0,
+      'Army': 1.0,
+    });
+    _smokerItem = null;
+    _smokerMinutesRemaining = 0;
+    _smokerProgress = 0.0;
+    _restaurantStartHours = {
+      1: 17, 2: 17, 3: 17, 4: 17, 5: 17, 6: 17, 7: 17,
+    };
+    _restaurantEndHours = {
+      1: 22, 2: 22, 3: 22, 4: 22, 5: 22, 6: 22, 7: 22,
+    };
+    _restaurantNewRecipeAttempts = 0;
+    _restaurantAmbiance = 'rustic';
+    _restaurantEntertainment = 'none';
+    _barStockedDrinks = ['small_beer'];
+    _barDrinkPrices = {
+      'small_beer': 10.0,
+      'golden_ale': 25.0,
+      'clear_spirits': 20.0,
+      'barrel_aged_brandy': 50.0,
+    };
+    _hasFoodDropTriggered = false;
+    _foodDropTriggerTime = null;
+    _lastMerchantSpawnMinutes = 0;
+    _pendingGuestConversation = false;
+    _conversationGreeter = null;
+    _conversationGuest = null;
+    _activeLanguageEncounter = null;
+    _isLanguageEncounterTranslated = false;
+    _pendingNpcRemovals.clear();
+    
+    _taskService.clear();
+    _categoryPriorities.clear();
+    _categoryDividers.clear();
+    _initializeResponsibilityDefaults();
+    
+    _speedBeforePause = null;
+    _isTicking = false;
+    
+    AudioService().stopActionSound();
+    AudioService().stopBGM();
+  }
+
+  void quitGame() {
+    _resetState();
+    notifyListeners();
+  }
+
   void initializeNewGame({
     required String firstName,
     required String lastName,
@@ -2716,6 +2876,7 @@ class GameState extends ChangeNotifier {
     required LifeObjective objective,
     Map<String, int>? customPlayerStats,
   }) {
+    _resetState();
     _playerFirstName = firstName;
     _playerLastName = lastName;
     _estateName = estateName;
@@ -10933,34 +11094,65 @@ class GameState extends ChangeNotifier {
     bool isMaster = npc.role == 'Scientist' || npc.role == 'Master';
     bool isButler = npc.role == 'Butler';
 
+    double baseRoleMultiplier = 1.0;
+
     switch (type) {
       case TaskType.cleanRoom:
       case TaskType.restoreRoom:
       case TaskType.collectEggs:
       case TaskType.harvestCabbage:
-        return isMaster ? 0.5 : (isButler ? 1.2 : 1.0);
+        baseRoleMultiplier = isMaster ? 0.5 : (isButler ? 1.2 : 1.0);
+        break;
       case TaskType.research:
       case TaskType.dissect:
       case TaskType.transcribeNotes:
       case TaskType.observeExperiment:
-        return isMaster ? 1.5 : (isButler ? 0.6 : 0.8);
+        baseRoleMultiplier = isMaster ? 1.5 : (isButler ? 0.6 : 0.8);
+        break;
       case TaskType.hunt:
-        return isButler ? 1.3 : 1.0;
+        baseRoleMultiplier = isButler ? 1.3 : 1.0;
+        break;
       case TaskType.brew:
       case TaskType.setupBrewery:
-        return npc.role == 'Brewer' ? 2.0 : 0.5;
+        baseRoleMultiplier = npc.role == 'Brewer' ? 2.0 : 0.5;
+        break;
       case TaskType.distill:
       case TaskType.setupDistillery:
-        return npc.role == 'Distiller' ? 2.0 : 0.3;
+        baseRoleMultiplier = npc.role == 'Distiller' ? 2.0 : 0.3;
+        break;
       case TaskType.processTimber:
       case TaskType.setupWorkshop:
-        return npc.role == 'Carpenter' ? 2.0 : 0.5;
+        baseRoleMultiplier = npc.role == 'Carpenter' ? 2.0 : 0.5;
+        break;
       case TaskType.harvestGrain:
       case TaskType.setupGranary:
-        return npc.role == 'Farmer' ? 1.5 : 0.8;
+        baseRoleMultiplier = npc.role == 'Farmer' ? 1.5 : 0.8;
+        break;
       default:
-        return 1.0;
+        baseRoleMultiplier = 1.0;
+        break;
     }
+
+    final attrs = TaskService.getRelevantAttributes(type);
+    double statMultiplier = 1.0;
+    if (attrs.isNotEmpty) {
+      double sum = 0.0;
+      for (var attr in attrs) {
+        sum += npc.stats[attr] ?? 5;
+      }
+      double avgStat = sum / attrs.length;
+      // Scale avgStat (0.0 to 10.0) to a multiplier (0.2 to 1.8)
+      statMultiplier = 0.2 + (avgStat / 5.0) * 0.8;
+    }
+
+    final proficiency = TaskService.getProficiency(type);
+    double proficiencyMultiplier = 1.0;
+    if (proficiency != null) {
+      final level = npc.metadata['proficiency_level_$proficiency'] as int? ?? 0;
+      proficiencyMultiplier = 1.0 + (level * 0.05);
+    }
+
+    return baseRoleMultiplier * statMultiplier * proficiencyMultiplier;
   }
 
   int getEstimatedTaskMinutes(NPC npc, TaskType type, [String? targetId]) {
@@ -14513,7 +14705,7 @@ class GameState extends ChangeNotifier {
           r.isRestored &&
           (r.type == RoomType.library ||
               r.type == RoomType.bedroom ||
-              r.id == 'garden_lot' ||
+              r.id == 'lot_garden' ||
               r.id == 'vegetable_garden'),
     )) {
       weights[TaskType.readBook] = (stats['intellect'] ?? 1).toDouble();
@@ -14621,7 +14813,7 @@ class GameState extends ChangeNotifier {
     } else if (chosenTask == TaskType.goForWalk ||
         chosenTask == TaskType.cardio ||
         chosenTask == TaskType.weights) {
-      targetRoom = 'garden_lot';
+      targetRoom = 'lot_garden';
     } else if (chosenTask == TaskType.paint) {
       final opts = _rooms
           .where((r) => r.isRestored && r.type == RoomType.study)

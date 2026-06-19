@@ -14,8 +14,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../models/survival_state.dart';
 import '../widgets/save_load_dialogs.dart';
+import '../../state/game_state.dart';
 
 class GameOverScreen extends StatelessWidget {
   final String reason;
@@ -139,6 +141,7 @@ class GameOverScreen extends StatelessWidget {
                 const SizedBox(height: 16),
               ],
               _buildActionButton(context, 'START ANONYMOUS NEW LIFE', () {
+                context.read<GameState>().quitGame();
                 Navigator.pushNamedAndRemoveUntil(
                   context,
                   '/',

@@ -216,6 +216,7 @@ class _DestinationScreenState extends State<DestinationScreen> {
   }
 
   Widget _buildReturnSection(BuildContext context, GameState state) {
+    if (state.npcs.isEmpty) return const SizedBox.shrink();
     final traveler = state.npcs.firstWhere(
       (n) => n.worldDestinationId == widget.destinationId && n.worldTravelProgress >= 1.0,
       orElse: () => state.npcs.first, // Fallback

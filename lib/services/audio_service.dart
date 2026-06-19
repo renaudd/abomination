@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../state/game_state.dart';
@@ -7,7 +9,11 @@ import '../services/task_service.dart';
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
-  AudioService._internal();
+  AudioService._internal() {
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      isTesting = true;
+    }
+  }
 
   static bool isTesting = false;
 

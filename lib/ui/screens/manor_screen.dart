@@ -652,6 +652,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                 } else if (value == 'cheat_codes') {
                   _showCheatCodesDialog(context, state);
                 } else if (value == 'quit') {
+                  state.quitGame();
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(
