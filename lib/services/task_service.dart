@@ -104,6 +104,9 @@ enum TaskType {
   relax,
   collectPayment,
   dentalWork,
+  pharmaceuticalCrafting,
+  legalServices,
+  clearField,
 }
 
 
@@ -284,6 +287,12 @@ extension TaskTypeExtensions on TaskType {
         return 'Collect Wages';
       case TaskType.dentalWork:
         return 'Dental Work';
+      case TaskType.pharmaceuticalCrafting:
+        return 'Pharmaceutical Crafting';
+      case TaskType.legalServices:
+        return 'Legal Services';
+      case TaskType.clearField:
+        return 'Clear Field';
     }
   }
 }
@@ -421,6 +430,7 @@ class TaskService {
       case TaskType.harvestCrops:
       case TaskType.harvestCabbage:
       case TaskType.harvestGrain:
+      case TaskType.clearField:
         return 'Farming';
       case TaskType.surgery:
       case TaskType.surgicalOperation:
@@ -461,7 +471,10 @@ class TaskService {
       case TaskType.checkBedridden:
       case TaskType.clinicalTrial:
       case TaskType.dentalWork:
+      case TaskType.pharmaceuticalCrafting:
         return 'Medicine';
+      case TaskType.legalServices:
+        return 'Accounting';
       case TaskType.paint:
         return 'Painting';
       case TaskType.writeNovel:
@@ -840,6 +853,13 @@ class TaskService {
           relevantAttributes: [],
           possibleOutcomes: ["Received salary", "Reduced funds"],
         );
+      case TaskType.clearField:
+        return const TaskMetadata(
+          explanation: "Clear dead crops from the field to prepare the soil for replanting.",
+          typicalDuration: "40-60 Minutes",
+          relevantAttributes: ['endurance', 'temperament'],
+          possibleOutcomes: ["Fallow field ready for tilling", "Clean field"],
+        );
       // Fallback for others
       default:
         return const TaskMetadata(
@@ -1098,6 +1118,12 @@ class TaskService {
         return "Collect wages from the Study";
       case TaskType.dentalWork:
         return "Perform dental work";
+      case TaskType.pharmaceuticalCrafting:
+        return "Craft pharmaceuticals and reagents";
+      case TaskType.legalServices:
+        return "Perform legal services and draft contracts";
+      case TaskType.clearField:
+        return "Clear dead crops from the field";
     }
   }
 }

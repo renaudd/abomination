@@ -6296,31 +6296,55 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
     final List<Map<String, dynamic>> availableHires = [];
     if (progress.villageHealth <= 0) {
-      // Village is fallow/destroyed. No human units available, only beasts, chimeras, or constructs
-      availableHires.addAll([
+      // Village is fallow/destroyed. Only one beast unit is available, alternating based on turn.
+      final index = (progress.currentTurn) % 3;
+      final choices = [
         {'type': 'undead_rats', 'cost': 190},
         {'type': 'werewolf', 'cost': 350},
         {'type': 'flesh_golem', 'cost': 320},
-      ]);
+      ];
+      availableHires.add(choices[index]);
     } else {
-      if (progress.currentTurn <= 3) {
+      final resettlement = progress.cardUpgrades['glarus_resettlement_type'] ?? 0;
+      if (resettlement == 1) { // refugees
         availableHires.addAll([
-          {'type': 'peasant', 'cost': 150},
-          {'type': 'goon', 'cost': 200},
-          {'type': 'militia', 'cost': 220},
+          {'type': 'peasant', 'cost': 120},
+          {'type': 'militia', 'cost': 180},
         ]);
-      } else if (progress.currentTurn <= 7) {
+      } else if (resettlement == 2) { // caravan
         availableHires.addAll([
           {'type': 'samurai', 'cost': 250},
-          {'type': 'musketeers', 'cost': 260},
           {'type': 'commandos', 'cost': 300},
         ]);
-      } else {
+      } else if (resettlement == 3) { // missionaries
         availableHires.addAll([
-          {'type': 'werewolf', 'cost': 350},
-          {'type': 'flesh_golem', 'cost': 320},
-          {'type': 'chimera', 'cost': 500},
+          {'type': 'musketeers', 'cost': 220},
         ]);
+      } else if (resettlement == 4) { // farmers
+        availableHires.addAll([
+          {'type': 'peasant', 'cost': 100},
+          {'type': 'goon', 'cost': 160},
+        ]);
+      } else {
+        if (progress.currentTurn <= 3) {
+          availableHires.addAll([
+            {'type': 'peasant', 'cost': 150},
+            {'type': 'goon', 'cost': 200},
+            {'type': 'militia', 'cost': 220},
+          ]);
+        } else if (progress.currentTurn <= 7) {
+          availableHires.addAll([
+            {'type': 'samurai', 'cost': 250},
+            {'type': 'musketeers', 'cost': 260},
+            {'type': 'commandos', 'cost': 300},
+          ]);
+        } else {
+          availableHires.addAll([
+            {'type': 'werewolf', 'cost': 350},
+            {'type': 'flesh_golem', 'cost': 320},
+            {'type': 'chimera', 'cost': 500},
+          ]);
+        }
       }
     }
 
@@ -6568,7 +6592,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     int cost,
     IconData icon,
   ) {
-    final canAfford = progress.cash >= cost;
+    final bool isDestroyed = progress.villageHealth <= 0;
+    final canAfford = progress.cash >= cost && !isDestroyed;
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -6600,7 +6625,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
-                  '+$amount $res\n$cost CHF',
+                  isDestroyed ? 'N/A' : '+$amount $res\n$cost CHF',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.playfairDisplay(
                     color: canAfford ? const Color(0xFFE5D5B0) : Colors.white24,
@@ -7068,6 +7093,24 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     SurvivalProgress progress,
     SurvivalService service,
   ) {
+    if (progress.villageHealth <= 0) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 20.0),
+          child: Text(
+            'ARMORY DEPLETED\n(The Village of Glarus lies in ruins. Weapon requisition is unavailable.)',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.oldStandardTt(
+              color: Colors.redAccent.withValues(alpha: 0.6),
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
     final deck = progress.playerDeckIds;
 
     final List<String> nonBeastSquads = deck.where((cardId) {
@@ -7895,6 +7938,119 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final List<Map<String, dynamic>> options = [];
 
     switch (encounterId) {
+      case 'glarus_refugees_resettle':
+        title = "GLARUS REFUGEES RESETTLEMENT OPPORTUNITY";
+        faction = "Glarus Refugees";
+        story = "A group of wandering Glarus refugees has returned, looking to resettle the ruins. They request resources to rebuild.";
+        options.add({
+          'title': 'A) "Provide 300 food and 200 wood to help them rebuild."',
+          'subtitle': 'Effect: Rebuild Glarus village, set Glarus to refugees faction, gain +20 Glarus standing.',
+          'onPress': () {
+            if (progress.food >= 300 && progress.wood >= 200) {
+              progress.food -= 300;
+              progress.wood -= 200;
+              progress.villageHealth = 100;
+              progress.cardUpgrades['glarus_resettlement_type'] = 1;
+              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+              service.addLog('Refugees resettled Glarus. Human units unlocked in market.');
+            } else {
+              service.addLog('Insufficient food or wood to support resettlement.');
+            }
+          },
+        });
+        options.add({
+          'title': 'B) "Turn them away. (Glarus remains in ruins)."',
+          'subtitle': 'Effect: Lose -10 Glarus standing.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 10;
+            service.addLog('Turned away refugees. Glarus remains fallow.');
+          },
+        });
+        break;
+
+      case 'glarus_caravan_stay':
+        title = "VISITING CARAVAN PROPOSAL";
+        faction = "Traveling Merchants";
+        story = "A wealthy merchant caravan asks if they can establish a temporary trading hub in Glarus ruins. They offer a buyout payment.";
+        options.add({
+          'title': 'A) "Accept their proposal (Pay 500 CHF for security, they pay 1000 CHF upfront)."',
+          'subtitle': 'Effect: Rebuild Glarus village, set Glarus to caravan faction, +500 CHF net gain, +10 Gnomes standing.',
+          'onPress': () {
+            if (progress.cash >= 500) {
+              progress.cash += 500; // -500 + 1000 = +500 net
+              progress.villageHealth = 100;
+              progress.cardUpgrades['glarus_resettlement_type'] = 2;
+              progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+              service.addLog('Caravan established in Glarus. Exotic units unlocked.');
+            } else {
+              service.addLog('Insufficient cash to secure the caravan.');
+            }
+          },
+        });
+        options.add({
+          'title': 'B) "Decline their proposal."',
+          'subtitle': 'Effect: No effect. Glarus remains in ruins.',
+          'onPress': () {
+            service.addLog('Declined caravan. Glarus remains fallow.');
+          },
+        });
+        break;
+
+      case 'glarus_missionaries_buy':
+        title = "MISSIONARY PURCHASE ORDER";
+        faction = "Order of Saint Leopold";
+        story = "Zealous missionaries offer to purchase the Glarus ruins to build a holy chapel. They demand we keep our army free of abominations.";
+        options.add({
+          'title': 'A) "Sell them the land for 800 CHF."',
+          'subtitle': 'Effect: Rebuild Glarus village, set Glarus to missionaries faction, gain +800 CHF, gain +15 Glarus standing.',
+          'onPress': () {
+            progress.cash += 800;
+            progress.villageHealth = 100;
+            progress.cardUpgrades['glarus_resettlement_type'] = 3;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            service.addLog('Sold Glarus to holy Order. Watch out for supernatural unit penalties!');
+          },
+        });
+        options.add({
+          'title': 'B) "We reject their religious fanaticism."',
+          'subtitle': 'Effect: Lose -15 Glarus standing.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 15;
+            service.addLog('Rejected missionaries. Glarus remains fallow.');
+          },
+        });
+        break;
+
+      case 'glarus_farmers_grant':
+        title = "CONSEIL D'ETAT LAND DECREE";
+        faction = "displaced Farmers";
+        story = "The Canton Conseil d'Etat has granted Glarus lands to displaced Swiss farmers. They offer to supply crops in exchange for protection.";
+        options.add({
+          'title': 'A) "Accept Canton decree (Provide 150 iron for protection watchtowers)."',
+          'subtitle': 'Effect: Rebuild Glarus, set Glarus to farmers faction, gain +200 food, gain +15 Glarus standing.',
+          'onPress': () {
+            if (progress.iron >= 150) {
+              progress.iron -= 150;
+              progress.food += 200;
+              progress.villageHealth = 100;
+              progress.cardUpgrades['glarus_resettlement_type'] = 4;
+              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+              service.addLog('Displaced farmers resettled Glarus under Canton protection.');
+            } else {
+              service.addLog('Insufficient iron to construct watchtower protection.');
+            }
+          },
+        });
+        options.add({
+          'title': 'B) "Ignore the decree. Glarus belongs to no one."',
+          'subtitle': 'Effect: Lose -10 Glarus standing with Canton.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 10;
+            service.addLog('Ignored decree. Glarus remains fallow.');
+          },
+        });
+        break;
+
       case 'davos_smallpox_vaccine':
         title = "THE DAVOS VACCINE DISCOVERY";
         faction = "Davos Farm workers";
@@ -8030,6 +8186,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'subtitle':
               'Effect: Destroy Glarus village, receive advanced artillery barrage card. (-15 Gnomes, -20 Glarus)',
           'onPress': () {
+            progress.villageHealth = 0;
             int totalLevels = 0;
             for (var t in progress.playerDeckIds) {
               totalLevels += progress.getUnitLevel(t);
@@ -10504,6 +10661,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'grenadier_sabotage',
         ];
 
+        if (progress.villageHealth <= 0) {
+          encountersList.addAll([
+            'glarus_refugees_resettle',
+            'glarus_caravan_stay',
+            'glarus_missionaries_buy',
+            'glarus_farmers_grant',
+          ]);
+        }
+
         String? nextEncounterId;
         int foundIndex = index;
         for (int i = 0; i < encountersList.length; i++) {
@@ -10611,6 +10777,20 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
       case 12:
         final List<Map<String, dynamic>> eligibleDiscoveries = [];
+
+        // Glarus Ruins Scavenge (Conditional Discovery when Glarus is destroyed)
+        if (progress.villageHealth <= 0) {
+          eligibleDiscoveries.add({
+            'id': 'glarus_ruins_scavenge',
+            'title': 'GLARUS RUINS SCAVENGE',
+            'description': 'Scavengers searching the abandoned ruins of Glarus village have recovered a hidden stash of supplies! We obtained +400 CHF, +100 wood, and +100 iron!',
+            'run': () {
+              progress.cash += 400;
+              progress.wood += 100;
+              progress.iron += 100;
+            }
+          });
+        }
 
         final royalistStanding = progress.factionStandings['Army'] ?? 0;
         if (royalistStanding > 10) {
@@ -11046,6 +11226,20 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     SurvivalService service,
   ) {
     final List<Map<String, dynamic>> eligibleDisasters = [];
+
+    // Glarus Fallow Outlaw Raiders (Conditional Disaster when Glarus is destroyed)
+    if (progress.villageHealth <= 0) {
+      eligibleDisasters.add({
+        'id': 'glarus_fallow_outlaw_raiders',
+        'title': 'GLARUS FALLOW OUTLAW RAIDERS',
+        'description': 'Glarus village lies in ruins, attracting lawless bandits to nest there. Raiders stormed our estate, stealing 300 CHF and 150 food reserves!',
+        'run': () {
+          progress.cash = max(0, progress.cash - 300);
+          progress.food = max(0, progress.food - 150);
+          service.addLog('Disaster Glarus Outlaw Raiders: Stole 300 CHF and 150 Food.');
+        }
+      });
+    }
 
     // Munitions Factory Blowout
     if (progress.buildings.any((b) => b.type == SurvivalBuildingType.munitionsFactory)) {

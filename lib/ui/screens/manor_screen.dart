@@ -1120,7 +1120,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                   ),
 
                 // Restored Attic or Basement Room Conversion (Hidden once converted into an advanced workshop/facility)
-                if ((liveRoom.floor == Floor.attic || liveRoom.floor == Floor.basement) &&
+                if ((liveRoom.floor == Floor.attic || liveRoom.floor == Floor.basement || (liveRoom.floor == Floor.ground && liveRoom.type == RoomType.unused)) &&
                     (liveRoom.type == RoomType.unused || liveRoom.type == RoomType.attic || liveRoom.type == RoomType.basement || liveRoom.isUnderConstruction))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
@@ -1642,26 +1642,38 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _statusRow("SOIL TILLING:", room.tilledAmount),
-          const SizedBox(height: 4),
-          _statusRow("FERTILIZATION:", room.fertilizedAmount),
+          if (roomCrops.isEmpty) ...[
+            _statusRow("SOIL TILLING:", room.tilledAmount),
+            const SizedBox(height: 4),
+            _statusRow("FERTILIZATION:", room.fertilizedAmount),
+          ],
           if (roomCrops.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 6.0),
               child: Divider(color: Colors.white10),
             ),
             Text(
-              "ACTIVE CROPS:",
+              roomCrops[0].isDead ? "CROPS DIED:" : "ACTIVE CROPS:",
               style: GoogleFonts.oswald(
                 fontSize: 9,
-                color: const Color(0xFFC4B89B),
+                color: roomCrops[0].isDead ? Colors.redAccent : const Color(0xFFC4B89B),
                 letterSpacing: 1,
               ),
             ),
             const SizedBox(height: 4),
-            _statusRow("GROWTH PROGRESS:", roomCrops[0].growthProgress),
-            const SizedBox(height: 4),
-            _statusRow("MOISTURE LEVEL:", roomCrops[0].moistureLevel),
+            if (roomCrops[0].isDead)
+              Text(
+                "Crops have withered completely from lack of moisture. Clear the field to replant.",
+                style: GoogleFonts.oswald(
+                  fontSize: 10,
+                  color: Colors.white60,
+                ),
+              )
+            else ...[
+              _statusRow("GROWTH PROGRESS:", roomCrops[0].growthProgress),
+              const SizedBox(height: 4),
+              _statusRow("MOISTURE LEVEL:", roomCrops[0].moistureLevel),
+            ]
           ] else ...[
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 6.0),
@@ -1810,13 +1822,26 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         return state.laboratoryQueue.any((qId) => qId.contains('vivisect') || qId.contains('vivisection'));
       case TaskType.experiment:
         return state.getFirstUnassignedLaboratoryTask() != null;
+      case TaskType.tillSoil:
+        final hasActiveCrops = state.crops.any((c) => c.roomId == room.id);
+        return !hasActiveCrops && !room.isTilled;
+      case TaskType.fertilizeSoil:
+        final hasActiveCrops = state.crops.any((c) => c.roomId == room.id);
+        return !hasActiveCrops && room.fertilizedAmount < 1.0;
       case TaskType.plantCrops:
-        return room.isTilled;
+        final hasActiveCrops = state.crops.any((c) => c.roomId == room.id);
+        return !hasActiveCrops && room.isTilled;
       case TaskType.waterCrops:
       case TaskType.careForCrops:
+        final roomCrops = state.crops.where((c) => c.roomId == room.id).toList();
+        return roomCrops.isNotEmpty && roomCrops.any((c) => !c.isDead);
       case TaskType.harvestCabbage:
       case TaskType.harvestCrops:
-        return state.crops.any((c) => c.roomId == room.id);
+        final roomCrops = state.crops.where((c) => c.roomId == room.id).toList();
+        return roomCrops.isNotEmpty && roomCrops.any((c) => c.isHarvestable && !c.isDead);
+      case TaskType.clearField:
+        final roomCrops = state.crops.where((c) => c.roomId == room.id).toList();
+        return roomCrops.isNotEmpty && roomCrops.every((c) => c.isDead);
       case TaskType.collectEggs:
         if (room.inventory
             .where((i) => i.type == 'eggs' || i.type == 'fertilized_egg')
@@ -2666,33 +2691,90 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
             child: ListView(
               shrinkWrap: true,
               children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
-                  ),
-                  child: ListTile(
-                    onTap: () {
-                      Navigator.pop(context);
-                      _selectedRoomForDetails = null;
-                      state.convertRoomToLaboratory(room.id);
-                    },
-                    leading: const Icon(Icons.biotech, color: Color(0xFFC4B89B)),
-                    title: Text(
-                      "ALCHEMICAL LABORATORY",
-                      style: GoogleFonts.playfairDisplay(
-                        color: const Color(0xFFE5D5B0),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                if (room.floor == Floor.attic || room.floor == Floor.basement)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                    ),
+                    child: ListTile(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _selectedRoomForDetails = null;
+                        state.convertRoomToLaboratory(room.id);
+                      },
+                      leading: const Icon(Icons.biotech, color: Color(0xFFC4B89B)),
+                      title: Text(
+                        "ALCHEMICAL LABORATORY",
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "Outfit this secluded room for experimentation.\nCost: 1000 CHF, 100 Wood.",
+                        style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
                       ),
                     ),
-                    subtitle: Text(
-                      "Outfit this secluded room for experimentation.\nCost: 1000 CHF, 100 Wood.",
-                      style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
+                  ),
+                if (room.floor == Floor.ground && room.type == RoomType.unused) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                    ),
+                    child: ListTile(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _selectedRoomForDetails = null;
+                        state.convertUnusedToBedroom(room.id);
+                      },
+                      leading: const Icon(Icons.bed, color: Color(0xFFC4B89B)),
+                      title: Text(
+                        "SPARE BEDROOM",
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "Convert to a bedroom with a Queen bed.\nCost: 500 CHF, 250 Wood.",
+                        style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
+                      ),
                     ),
                   ),
-                ),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                    ),
+                    child: ListTile(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _selectedRoomForDetails = null;
+                        state.convertUnusedToBallroom(room.id);
+                      },
+                      leading: const Icon(Icons.celebration, color: Color(0xFFC4B89B)),
+                      title: Text(
+                        "BALLROOM",
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFE5D5B0),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "A magnificent hall for hosting events and socializing.\nCost: 1500 CHF, 500 Wood.",
+                        style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

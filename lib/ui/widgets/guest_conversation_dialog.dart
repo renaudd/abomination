@@ -21,6 +21,7 @@ import '../../models/active_business.dart';
 import '../../models/npc.dart';
 import '../../models/visitor_quest.dart';
 import 'visiting_merchant_trade_dialog.dart';
+import '../../models/language_encounter.dart';
 
 class GuestConversationDialog extends StatelessWidget {
   const GuestConversationDialog({super.key});
@@ -40,6 +41,11 @@ class GuestConversationDialog extends StatelessWidget {
         final bool isMerchant = guestType == 'merchant';
         final bool isProposer = guestType.endsWith('_proposer');
         final hasSpirits = (state.resources['spirits'] ?? 0) >= 1;
+
+        final encounter = state.activeLanguageEncounter;
+        if (encounter != null) {
+          return _buildLanguageEncounterDialog(context, state, greeter, guest, encounter);
+        }
 
         return Dialog(
           backgroundColor: const Color(0xFF1E1A15),
@@ -540,6 +546,183 @@ class GuestConversationDialog extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLanguageEncounterDialog(
+    BuildContext context,
+    GameState state,
+    NPC greeter,
+    NPC guest,
+    LanguageEncounter encounter,
+  ) {
+    final hasTranslator = state.anyResidentSpeaksLanguage(encounter.languageCode);
+    final isTranslated = state.isLanguageEncounterTranslated;
+
+    return Dialog(
+      backgroundColor: const Color(0xFF1E1A15),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+      ),
+      child: Container(
+        width: 600,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "FOREIGN CUSTOMER INQUIRY",
+                    style: GoogleFonts.playfairDisplay(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 20),
+                    onPressed: () {
+                      state.clearGuestConversation();
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white10, height: 24),
+
+              // Description
+              Text(
+                "A customer from the ${encounter.faction} has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}.",
+                style: GoogleFonts.oldStandardTt(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 13,
+                  height: 1.4,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Prompt Bubble (Foreign or English depending on Translate flag)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  border: Border.all(color: const Color(0xFFC4B89B).withOpacity(0.3)),
+                ),
+                child: Text(
+                  isTranslated
+                      ? 'Translated:\n"${encounter.promptEnglish}"'
+                      : '"${encounter.promptForeign}"',
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 14,
+                    height: 1.5,
+                    fontWeight: isTranslated ? FontWeight.normal : FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Translate Option (if not yet translated)
+              if (!isTranslated) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hasTranslator
+                            ? "A resident speaks ${encounter.languageName} and can translate."
+                            : "No resident at the Manor speaks ${encounter.languageName}.",
+                        style: GoogleFonts.oldStandardTt(
+                          color: hasTranslator ? Colors.green[300] : Colors.red[300],
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF382F24),
+                        foregroundColor: const Color(0xFFE5D5B0),
+                        shape: const RoundedRectangleBorder(),
+                        side: const BorderSide(color: Color(0xFFC4B89B)),
+                      ),
+                      icon: const Icon(Icons.translate, size: 14),
+                      label: Text(
+                        "TRANSLATE (+10 mins)",
+                        style: GoogleFonts.playfairDisplay(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: hasTranslator
+                          ? () {
+                              state.translateActiveEncounter();
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // Response Options Headers
+              Text(
+                "SELECT RESPONSE:",
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Shuffled Options A-D
+              ...List.generate(encounter.options.length, (idx) {
+                final option = encounter.options[idx];
+                final prefix = String.fromCharCode(65 + idx); // A, B, C, D
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _dialogOption(
+                    context: context,
+                    title: 'Option $prefix',
+                    description: option.text,
+                    icon: Icons.chat_bubble_outline,
+                    onTap: () {
+                      state.resolveLanguageEncounter(option);
+                      Navigator.pop(context);
+                    },
+                  ),
+                );
+              }),
+
+              // Option E (Hostile Rebuff) anchored at bottom
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: _dialogOption(
+                  context: context,
+                  title: 'Option E (HOSTILE REBUFF)',
+                  description: '"${encounter.hostileOption.text}"',
+                  icon: Icons.gavel,
+                  isRed: true,
+                  onTap: () {
+                    state.resolveLanguageEncounter(encounter.hostileOption);
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

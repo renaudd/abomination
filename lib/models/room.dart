@@ -44,6 +44,10 @@ enum RoomType {
   dentalClinic,
   mine,
   oilWell,
+  ballroom,
+  clinic,
+  pharmacy,
+  lawFirm,
 }
 
 enum Floor { basement, ground, second, attic }
@@ -280,6 +284,7 @@ class Room {
     double? restorationProgress,
     bool? isUnderConstruction,
     String? constructionTarget,
+    bool clearConstructionTarget = false,
     Map<String, dynamic>? metadata,
   }) {
     return Room(
@@ -307,7 +312,9 @@ class Room {
           hasBeenTilledForReward ?? this.hasBeenTilledForReward,
       restorationProgress: restorationProgress ?? this.restorationProgress,
       isUnderConstruction: isUnderConstruction ?? this.isUnderConstruction,
-      constructionTarget: constructionTarget ?? this.constructionTarget,
+      constructionTarget: clearConstructionTarget
+          ? null
+          : (constructionTarget ?? this.constructionTarget),
       metadata: metadata ?? this.metadata,
     );
   }
@@ -473,6 +480,7 @@ class Room {
           task_service.TaskType.fertilizeSoil,
           task_service.TaskType.careForCrops,
           task_service.TaskType.harvestCrops,
+          task_service.TaskType.clearField,
         ]);
         break;
 
@@ -545,6 +553,23 @@ class Room {
         break;
       case RoomType.dentalClinic:
         tasks.add(task_service.TaskType.dentalWork);
+        break;
+      case RoomType.ballroom:
+        tasks.add(task_service.TaskType.relax);
+        break;
+      case RoomType.clinic:
+        tasks.addAll([
+          task_service.TaskType.careForSick,
+          task_service.TaskType.careForInjured,
+          task_service.TaskType.diagnoseIllness,
+          task_service.TaskType.treatIllness,
+        ]);
+        break;
+      case RoomType.pharmacy:
+        tasks.add(task_service.TaskType.pharmaceuticalCrafting);
+        break;
+      case RoomType.lawFirm:
+        tasks.add(task_service.TaskType.legalServices);
         break;
     }
 
@@ -749,6 +774,10 @@ class Room {
         baseDesc = "A spotless, sanitised clinic featuring a hydraulic chair, glass cuspidor, and sets of steel scalpels, forceps, and drills.";
         capabilities =
             "A dedicated dental facility where Alphonse Giles performs tooth extractions, cleanings, and advanced oral care on Glarus citizens and visiting patients.";
+        break;
+      case RoomType.ballroom:
+        baseDesc = "A magnificent hall with polished wood floors, towering mirrors, and crystal chandeliers.";
+        capabilities = "A grand space for hosting formal events, socializing, and boosting morale.";
         break;
       default:
         baseDesc = description.isNotEmpty

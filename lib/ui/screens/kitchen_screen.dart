@@ -455,7 +455,7 @@ class KitchenScreen extends StatelessWidget {
               GestureDetector(
                 onTap: () => state.removeFromCookingQueue(index),
                 child: const Padding(
-                  padding: EdgeInsets.all(2.0),
+                  padding: EdgeInsets.only(right: 12.0, left: 2.0, top: 2.0, bottom: 2.0),
                   child: Icon(Icons.close, size: 10, color: Colors.white24),
                 ),
               ),

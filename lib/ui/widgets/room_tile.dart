@@ -399,6 +399,14 @@ class RoomTile extends StatelessWidget {
         return Icons.construction;
       case RoomType.oilWell:
         return Icons.oil_barrel;
+      case RoomType.ballroom:
+        return Icons.celebration;
+      case RoomType.clinic:
+        return Icons.local_hospital;
+      case RoomType.pharmacy:
+        return Icons.medication;
+      case RoomType.lawFirm:
+        return Icons.gavel;
     }
   }
 
@@ -432,6 +440,8 @@ class RoomTile extends StatelessWidget {
         return const Color(0xFF1A2218); // Modern glass/green
       case RoomType.tenement:
         return const Color(0xFF1E1612); // Brick/Wood
+      case RoomType.ballroom:
+        return const Color(0xFF241920); // Velvet purple
       default:
         return const Color(0xFF1A1D21);
     }

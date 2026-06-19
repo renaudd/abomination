@@ -84,6 +84,7 @@ class Combatant {
   double? detourX;
   double? detourY;
   bool isAiLeader = false;
+  final Set<String> aiTraits = {};
 
   // Regiment/Squad Fields
   String? squadId;
@@ -1044,9 +1045,32 @@ class CombatManager extends ChangeNotifier {
         if (i == 0) spawnedLeader = horse;
       }
     } else {
+      final Set<String> assignedTraits = {};
+      CombatStats leaderStats = finalStats;
+      if (isAiLeader) {
+        final possibleTraits = [
+          'deprive_healing',
+          'block_cauldron',
+          'block_retreat',
+          'use_specials_efficiently',
+          'burst_summon_tower',
+          'feint_and_anti_tower',
+          'bait_and_shoot',
+        ];
+        // Pick a random mix of 2 to 4 traits
+        final numTraits = 2 + Random().nextInt(3);
+        possibleTraits.shuffle();
+        assignedTraits.addAll(possibleTraits.take(numTraits));
+        debugPrint("ENEMY LEADER SPAWNED WITH TRAITS: $assignedTraits");
+
+        if (assignedTraits.contains('bait_and_shoot')) {
+          leaderStats = leaderStats.copyWith(distance: 8.0);
+        }
+      }
+
       // Spawn the Leader
       final leader = Combatant(
-        npc: npc.copyWith(combatStats: finalStats),
+        npc: npc.copyWith(combatStats: leaderStats),
         side: side,
         x: spawnX,
         y: finalSpawnY,
@@ -1055,7 +1079,7 @@ class CombatManager extends ChangeNotifier {
         isAiLeader: isAiLeader,
         squadId: squadId,
         isSquadLeader: true,
-        activeDeploymentTimer: finalStats.deploymentTime,
+        activeDeploymentTimer: leaderStats.deploymentTime,
         originCardName: npc.name,
       )
         ..supportDurationRemaining = initialSupportDuration
@@ -1067,6 +1091,7 @@ class CombatManager extends ChangeNotifier {
         ..judgmentFactor = judFactor
         ..confidenceFactor = confFactor;
 
+      leader.aiTraits.addAll(assignedTraits);
       _combatants.add(leader);
       spawnedLeader = leader;
     }
@@ -1494,18 +1519,15 @@ class CombatManager extends ChangeNotifier {
       final rateMultiplier = (_combatTimeRemaining <= 60.0) ? 2.0 : 1.0;
       _aiActionPoints = min(maxAP, _aiActionPoints + apPerSecond * rateMultiplier * dt);
 
-      // AI Spawning Strategy: Spawn the most expensive thing we can afford from hand
+      // AI Spawning Strategy
       if (_aiHand.isNotEmpty) {
-        _aiHand.sort(
-          (a, b) =>
-              (b.combatStats?.cost ?? 0).compareTo(a.combatStats?.cost ?? 0),
+        // Find the active AI Leader if alive
+        final aiLeader = _combatants.firstWhereOrNull(
+          (c) => c.side == CombatSide.enemy && c.isAiLeader && !c.isDead
         );
-        for (var i = 0; i < _aiHand.length; i++) {
-          final unit = _aiHand[i];
 
-          // Prevent the NPC opponent from summoning a unit that is already on the board.
-          // If a card/unit is already in play, it cannot be summoned again until all active instances are eliminated.
-          final bool isAlreadyOnBoard = _combatants.any((c) {
+        bool isAlreadyOnBoard(NPC unit) {
+          return _combatants.any((c) {
             if (c.side != CombatSide.enemy ||
                 c.isDead ||
                 c.isTower ||
@@ -1537,34 +1559,170 @@ class CombatManager extends ChangeNotifier {
                 (unit.name.contains('Stampede') && (oName.contains('stampede') || cName.contains('stampede'))) ||
                 (unit.name == 'Butler' && (oName.contains('butler') || cName.contains('musketeer')));
           });
+        }
 
-          if (isAlreadyOnBoard) continue;
+        bool processedSpawn = false;
 
-          final cost = unit.combatStats?.cost ?? 0;
-          if (_aiActionPoints >= cost) {
-            _aiActionPoints -= cost;
-            _aiHand.removeAt(i);
-            
-            // Pick a random lane Y coordinate to spawn
-            final lane = Random().nextInt(_map.laneCenters.length);
-            final spawnYs = _map.laneCenters;
-            
-            // Find the active AI Leader if alive
-            final aiLeader = _combatants.firstWhereOrNull(
-              (c) => c.side == CombatSide.enemy && c.isAiLeader && !c.isDead
-            );
-            
-            // If AI Leader is alive, spawn slightly behind them (to their right, since they march left).
-            // Otherwise, spawn near the enemy base/corner tower.
-            final double spawnX;
-            if (aiLeader != null) {
-              spawnX = (aiLeader.x + 25.0).clamp(_map.enemyBackFieldLimit, _map.width - 15.0);
-            } else {
-              spawnX = (_map.enemyCornerTowerX - 20.0).clamp(_map.enemyBackFieldLimit, _map.width - 15.0);
+        if (aiLeader != null) {
+          final hasBurst = aiLeader.aiTraits.contains('burst_summon_tower');
+          final hasFeint = aiLeader.aiTraits.contains('feint_and_anti_tower');
+          final hasBlockCauldron = aiLeader.aiTraits.contains('block_cauldron');
+          final hasBlockRetreat = aiLeader.aiTraits.contains('block_retreat');
+
+          final playerLeader = _combatants.firstWhereOrNull(
+            (c) => c.side == CombatSide.player && c.npc.isPlayer && !c.isDead
+          );
+
+          // 1. Block Cauldron or Block Retreat intervention
+          if (playerLeader != null) {
+            if (hasBlockCauldron) {
+              HealingCauldron? targetCaul;
+              for (final caul in _cauldrons) {
+                if (caul.isAvailable) {
+                  final dist = sqrt(pow(caul.x - playerLeader.x, 2) + pow(caul.y - playerLeader.y, 2));
+                  if (dist < 60.0) {
+                    targetCaul = caul;
+                    break;
+                  }
+                }
+              }
+              if (targetCaul != null) {
+                final unit = _aiHand.firstWhereOrNull((u) => !isAlreadyOnBoard(u));
+                if (unit != null) {
+                  final cost = unit.combatStats?.cost ?? 0;
+                  if (_aiActionPoints >= cost) {
+                    _aiActionPoints -= cost;
+                    _aiHand.remove(unit);
+                    final double spawnLimitLeft = aiLeader.x;
+                    final double spawnX = targetCaul.x.clamp(spawnLimitLeft, _map.width - 15.0);
+                    spawnUnit(unit, CombatSide.enemy, x: spawnX, y: targetCaul.y);
+                    processedSpawn = true;
+                  }
+                }
+              }
             }
-            
-            spawnUnit(unit, CombatSide.enemy, x: spawnX, y: spawnYs[lane]);
-            break; // One per tick
+
+            if (!processedSpawn && hasBlockRetreat && playerLeader.moveDirX < 0) {
+              final double healthRatio = playerLeader.npc.combatStats!.health / playerLeader.npc.combatStats!.maxHealth;
+              if (healthRatio < 0.6) {
+                final unit = _aiHand.firstWhereOrNull((u) => !isAlreadyOnBoard(u));
+                if (unit != null) {
+                  final cost = unit.combatStats?.cost ?? 0;
+                  if (_aiActionPoints >= cost) {
+                    _aiActionPoints -= cost;
+                    _aiHand.remove(unit);
+                    final double spawnLimitLeft = aiLeader.x;
+                    final double spawnX = (playerLeader.x - 30.0).clamp(spawnLimitLeft, _map.width - 15.0);
+                    spawnUnit(unit, CombatSide.enemy, x: spawnX, y: playerLeader.y);
+                    processedSpawn = true;
+                  }
+                }
+              }
+            }
+          }
+
+          // 2. Feint and Anti-Tower Strategy
+          if (!processedSpawn && hasFeint && _aiHand.length >= 2) {
+            final playerTowers = _combatants.where((other) =>
+                other.side == CombatSide.player &&
+                other.isTower &&
+                !other.isDead &&
+                other.npc.id != 'keep'
+            ).toList();
+
+            if (playerTowers.isNotEmpty) {
+              final tower = playerTowers.first;
+              final antiTowerLaneY = tower.y;
+              final feintLaneY = _map.laneCenters.firstWhere((ly) => (ly - antiTowerLaneY).abs() > 10.0, orElse: () => _map.laneCenters.last);
+
+              _aiHand.sort((a, b) => (a.combatStats?.cost ?? 0).compareTo(b.combatStats?.cost ?? 0));
+              final cheapUnit = _aiHand.firstWhereOrNull((u) => !isAlreadyOnBoard(u));
+              final expensiveUnit = _aiHand.lastWhereOrNull((u) => !isAlreadyOnBoard(u) && u != cheapUnit);
+
+              if (cheapUnit != null && expensiveUnit != null) {
+                final costCheap = cheapUnit.combatStats?.cost ?? 0;
+                final costExpensive = expensiveUnit.combatStats?.cost ?? 0;
+                if (_aiActionPoints >= (costCheap + costExpensive)) {
+                  _aiActionPoints -= (costCheap + costExpensive);
+                  _aiHand.remove(cheapUnit);
+                  _aiHand.remove(expensiveUnit);
+
+                  final double spawnLimitLeft = aiLeader.x;
+                  final double spawnXCheap = (aiLeader.x + 25.0).clamp(spawnLimitLeft, _map.width - 15.0);
+                  final double spawnXExpensive = (aiLeader.x + 25.0).clamp(spawnLimitLeft, _map.width - 15.0);
+
+                  spawnUnit(cheapUnit, CombatSide.enemy, x: spawnXCheap, y: feintLaneY);
+                  spawnUnit(expensiveUnit, CombatSide.enemy, x: spawnXExpensive, y: antiTowerLaneY);
+                  processedSpawn = true;
+                }
+              }
+            }
+          }
+
+          // 3. Burst Summon Tower Strategy
+          if (!processedSpawn && hasBurst) {
+            if (_aiActionPoints < 13.0 && _aiHand.length >= 2) {
+              processedSpawn = true; // Wait to accumulate AP
+            } else if (_aiActionPoints >= 13.0) {
+              final playerTowers = _combatants.where((other) =>
+                  other.side == CombatSide.player &&
+                  other.isTower &&
+                  !other.isDead &&
+                  other.npc.id != 'keep'
+              ).toList();
+
+              final targetTower = playerTowers.isNotEmpty ? playerTowers.first : null;
+              final double spawnLimitLeft = aiLeader.x;
+              final double spawnX = targetTower != null
+                  ? (targetTower.x + 30.0).clamp(spawnLimitLeft, _map.width - 15.0)
+                  : (aiLeader.x + 25.0).clamp(spawnLimitLeft, _map.width - 15.0);
+              final double spawnY = targetTower != null ? targetTower.y : _map.laneCenters[Random().nextInt(_map.laneCenters.length)];
+
+              int spawnedCount = 0;
+              final listToSpawn = _aiHand.where((u) => !isAlreadyOnBoard(u)).toList();
+              for (var unit in listToSpawn) {
+                final cost = unit.combatStats?.cost ?? 0;
+                if (_aiActionPoints >= cost && spawnedCount < 3) {
+                  _aiActionPoints -= cost;
+                  _aiHand.remove(unit);
+                  spawnUnit(unit, CombatSide.enemy, x: spawnX + spawnedCount * 5.0, y: spawnY);
+                  spawnedCount++;
+                }
+              }
+              if (spawnedCount > 0) processedSpawn = true;
+            }
+          }
+        }
+
+        // Default Spawning Strategy fallback
+        if (!processedSpawn) {
+          _aiHand.sort(
+            (a, b) =>
+                (b.combatStats?.cost ?? 0).compareTo(a.combatStats?.cost ?? 0),
+          );
+          for (var i = 0; i < _aiHand.length; i++) {
+            final unit = _aiHand[i];
+
+            if (isAlreadyOnBoard(unit)) continue;
+
+            final cost = unit.combatStats?.cost ?? 0;
+            if (_aiActionPoints >= cost) {
+              _aiActionPoints -= cost;
+              _aiHand.removeAt(i);
+              
+              final lane = Random().nextInt(_map.laneCenters.length);
+              final spawnYs = _map.laneCenters;
+              
+              final double spawnX;
+              if (aiLeader != null) {
+                spawnX = (aiLeader.x + 25.0).clamp(_map.enemyBackFieldLimit, _map.width - 15.0);
+              } else {
+                spawnX = (_map.enemyCornerTowerX - 20.0).clamp(_map.enemyBackFieldLimit, _map.width - 15.0);
+              }
+              
+              spawnUnit(unit, CombatSide.enemy, x: spawnX, y: spawnYs[lane]);
+              break;
+            }
           }
         }
       }
@@ -1731,6 +1889,86 @@ class CombatManager extends ChangeNotifier {
       }
     }
     return false;
+  }
+
+  List<double> getMapGaps(CombatMap map) {
+    final sortedWalls = List<Rect>.from(map.walls)..sort((a, b) => a.left.compareTo(b.left));
+    final List<List<double>> columns = [];
+    for (final rect in sortedWalls) {
+      if (columns.isEmpty) {
+        columns.add([rect.left, rect.right]);
+      } else {
+        final last = columns.last;
+        if (rect.left <= last[1] + 1.0) {
+          last[1] = max(last[1], rect.right);
+        } else {
+          columns.add([rect.left, rect.right]);
+        }
+      }
+    }
+
+    final List<double> gaps = [];
+    double current = 0.0;
+    for (final col in columns) {
+      gaps.add((current + col[0]) / 2.0);
+      current = col[1];
+    }
+    gaps.add((current + map.width) / 2.0);
+    return gaps;
+  }
+
+  double findBestGapX(double startX, double targetX) {
+    final gaps = getMapGaps(_map);
+    if (gaps.isEmpty) return (startX + targetX) / 2.0;
+
+    double bestGap = gaps.first;
+    double minDist = 999999.0;
+    for (final g in gaps) {
+      final d = (startX - g).abs() + (g - targetX).abs();
+      if (d < minDist) {
+        minDist = d;
+        bestGap = g;
+      }
+    }
+    return bestGap;
+  }
+
+  Offset getNextWaypoint(Combatant c, double targetX, double targetY) {
+    if (!isPathObstructed(c.x, c.y, targetX, targetY)) {
+      return Offset(targetX, targetY);
+    }
+
+    double minDist = 99999.0;
+    double myLaneY = _map.laneCenters.first;
+    for (final ly in _map.laneCenters) {
+      final dist = (c.y - ly).abs();
+      if (dist < minDist) {
+        minDist = dist;
+        myLaneY = ly;
+      }
+    }
+
+    final double bestGapX = findBestGapX(c.x, targetX);
+
+    if ((c.x - bestGapX).abs() > 4.0) {
+      return Offset(bestGapX, myLaneY);
+    } else {
+      double targetLaneY = _map.laneCenters.first;
+      double minTargetLaneDist = 99999.0;
+      for (final ly in _map.laneCenters) {
+        final dist = (targetY - ly).abs();
+        if (dist < minTargetLaneDist) {
+          minTargetLaneDist = dist;
+          targetLaneY = ly;
+        }
+      }
+
+      if ((c.y - targetLaneY).abs() > 4.0) {
+        return Offset(c.x, targetLaneY);
+      } else {
+        return Offset(targetX, targetLaneY);
+      }
+    }
   }
 
   void enforceUnitBoundaries(Combatant unit) {
@@ -2202,7 +2440,10 @@ class CombatManager extends ChangeNotifier {
         c.specialCharge2 = min(1.0, c.specialCharge2 + secChargeInc);
         if (c.specialCharge2 >= 1.0 && (c.side == CombatSide.enemy || (isSurvivalMode && !c.npc.isPlayer))) {
           if (canExecuteSpecial2(c.npc.id)) {
-            executeSpecial2(c.npc.id);
+            final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+            if (specials.length >= 2 && _shouldAiLeaderUseAbility(c, specials[1])) {
+              executeSpecial2(c.npc.id);
+            }
           }
         }
       }
@@ -2246,7 +2487,9 @@ class CombatManager extends ChangeNotifier {
     List<Combatant> targets = _combatants.where((other) {
       if (other.side == c.side || other.isDead || other.isNonPhysicalSupport) return false;
       final int otherSector = (other.x / sectorWidth).floor().clamp(0, 4);
-      return (otherSector - mySector).abs() <= 1; // same or adjacent sector
+      if ((otherSector - mySector).abs() > 1) return false;
+      final double dist = sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2));
+      return dist <= 80.0;
     }).toList();
     
     // Fallback to all targets if adjacent sectors are empty to preserve baseline reactivity
@@ -2467,7 +2710,8 @@ class CombatManager extends ChangeNotifier {
     if (isAutonomousLeader) {
       final double healthRatio = stats.health / stats.maxHealth;
       HealingCauldron? targetCauldron;
-      if (healthRatio < 0.70) {
+      final bool wantsToDeprive = c.aiTraits.contains('deprive_healing');
+      if (healthRatio < 0.70 || wantsToDeprive) {
         double minCauldronDist = 99999.0;
         for (final caul in _cauldrons) {
           if (caul.isAvailable) {
@@ -2482,26 +2726,9 @@ class CombatManager extends ChangeNotifier {
 
       if (targetCauldron != null) {
         // Move towards the healing cauldron instead of attacking or following normal targets
-        double tx = targetCauldron.x;
-        double ty = targetCauldron.y;
-
-        if (isPathObstructed(c.x, c.y, tx, ty)) {
-          double minDist = 99999.0;
-          double myLaneY = _map.laneCenters.first;
-          for (final ly in _map.laneCenters) {
-            final dist = (c.y - ly).abs();
-            if (dist < minDist) {
-              minDist = dist;
-              myLaneY = ly;
-            }
-          }
-          if ((c.y - myLaneY).abs() > 4.0) {
-            tx = c.x;
-            ty = myLaneY; // Seek vertical lane center exclusively to avoid wall!
-          } else {
-            ty = myLaneY;
-          }
-        }
+        final waypoint = getNextWaypoint(c, targetCauldron.x, targetCauldron.y);
+        double tx = waypoint.dx;
+        double ty = waypoint.dy;
 
         final dx = tx - c.x;
         final dy = ty - c.y;
@@ -2546,11 +2773,14 @@ class CombatManager extends ChangeNotifier {
         final targetRadius = target.npc.combatStats?.radius ?? 1.0;
 
         if (distToTarget - myRadius - targetRadius > rangeInFeet) {
-          // Approach target (+50% speed boost), prioritizing combat channels if path is obstructed by walls!
           double tx = target.x;
           double ty = target.y;
 
-          if (isPathObstructed(c.x, c.y, target.x, target.y)) {
+          final bool hasBaitAndShoot = c.aiTraits.contains('bait_and_shoot');
+          final bool isTargetMelee = target.npc.combatStats != null && target.npc.combatStats!.distance < 3.0;
+          if (hasBaitAndShoot && isTargetMelee && distToTarget < 50.0) {
+            final double moveAwayDirX = c.side == CombatSide.enemy ? 1.0 : -1.0;
+            tx = c.x + moveAwayDirX * 30.0;
             double minDist = 99999.0;
             double myLaneY = _map.laneCenters.first;
             for (final ly in _map.laneCenters) {
@@ -2560,13 +2790,11 @@ class CombatManager extends ChangeNotifier {
                 myLaneY = ly;
               }
             }
-            if ((c.y - myLaneY).abs() > 4.0) {
-              tx = c.x;
-              ty = myLaneY; // Navigate straight vertically to channel entrance first!
-            } else {
-              tx = target.x;
-              ty = myLaneY; // Safely inside channel! Advance straight toward target X!
-            }
+            ty = myLaneY;
+          } else {
+            final waypoint = getNextWaypoint(c, target.x, target.y);
+            tx = waypoint.dx;
+            ty = waypoint.dy;
           }
 
           final dx = tx - c.x;
@@ -2603,7 +2831,10 @@ class CombatManager extends ChangeNotifier {
             c.attackCooldown = stats.speed * 1.2;
           }
           if (c.npc.specialCharge >= 1.0) {
-            executeSpecial(c.npc.id);
+            final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
+            if (specials.isNotEmpty && _shouldAiLeaderUseAbility(c, specials[0])) {
+              executeSpecial(c.npc.id);
+            }
           }
         }
       } else {
@@ -2751,22 +2982,9 @@ class CombatManager extends ChangeNotifier {
       }
 
       if (isPathObstructed(c.x, c.y, target.x, target.y)) {
-        double minDist = 99999.0;
-        double myLaneY = _map.laneCenters.first;
-        for (final ly in _map.laneCenters) {
-          final dist = (c.y - ly).abs();
-          if (dist < minDist) {
-            minDist = dist;
-            myLaneY = ly;
-          }
-        }
-        if ((c.y - myLaneY).abs() > 4.0) {
-          tx = c.x;
-          ty = myLaneY; // Phase 1: Seek strict vertical lane alignment first to bypass barrier corners!
-        } else {
-          tx = target.x;
-          ty = myLaneY; // Phase 2: Safely inside channel! Advance straight toward target X!
-        }
+        final waypoint = getNextWaypoint(c, target.x, target.y);
+        tx = waypoint.dx;
+        ty = waypoint.dy;
       }
 
       final dx = tx - c.x;
@@ -3647,6 +3865,63 @@ class CombatManager extends ChangeNotifier {
       _applyAbilityEffect(c, specials[1]);
       c.specialCharge2 = 0.0;
       notifyListeners();
+    }
+  }
+
+  bool _shouldAiLeaderUseAbility(Combatant c, Ability ability) {
+    if (!c.aiTraits.contains('use_specials_efficiently')) {
+      return true; // Default behavior: use immediately when available
+    }
+
+    final double healthRatio = c.npc.combatStats!.health / c.npc.combatStats!.maxHealth;
+
+    switch (ability.id) {
+      case 'whirlwind_melee':
+      case 'vampiric_drain':
+      case 'quake_push':
+      case 'push_back':
+      case 'captain_strike':
+      case 'golem_slam':
+        // Close range offensive specials: need an enemy nearby
+        return _combatants.any((other) =>
+            other.side != c.side &&
+            !other.isDead &&
+            sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= 25.0);
+
+      case 'freeze_all':
+      case 'tight_slow':
+      case 'mind_control_nearest':
+      case 'attack_debuff':
+      case 'freeze_line':
+      case 'ap_steal':
+      case 'undead_rot':
+        // Mid range offensive/disabling specials: need an enemy in range
+        return _combatants.any((other) =>
+            other.side != c.side &&
+            !other.isDead &&
+            sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= 45.0);
+
+      case 'captain_rally':
+      case 'monk_chant':
+      case 'aoe_invulnerability':
+      case 'range_buff':
+      case 'attack_buff':
+      case 'aoe_heal':
+      case 'witch_charge_heal':
+        // Friendly buffs/heals: need at least 2 allies nearby
+        final nearbyAllies = _combatants.where((other) =>
+            other.side == c.side &&
+            other != c &&
+            !other.isDead &&
+            (other.x - c.x).abs() <= 40.0);
+        return nearbyAllies.length >= 2 || (ability.id.contains('heal') && healthRatio < 0.6);
+
+      case 'self_invulnerability':
+        // Only use self-invuln if health is low
+        return healthRatio < 0.4;
+
+      default:
+        return true;
     }
   }
 

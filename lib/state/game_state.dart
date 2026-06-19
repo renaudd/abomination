@@ -33,6 +33,7 @@ import '../models/responsibility.dart';
 import '../models/body_part.dart';
 import '../models/chicken.dart';
 import '../models/discovery.dart';
+import '../models/language_encounter.dart';
 import '../models/dish.dart';
 import '../models/fox.dart';
 import '../models/objective.dart';
@@ -641,6 +642,19 @@ class GameState extends ChangeNotifier {
   final List<Discovery> _discoveries = [];
   final Map<String, double> _researchPoints = {};
   final Map<String, int> _customTaskCounts = {};
+  final Map<String, double> _factionStandings = {
+    'Glarus': 1.0,
+    'Chevaliers de la foi': 1.0,
+    'Gnomes of Zurich': 1.0,
+    'Rosicrucians': 1.0,
+    'Fenian Brotherhood': 1.0,
+    'Ancient Order of Foresters': 1.0,
+    'Carbonari': 1.0,
+    'Knights Templar': 1.0,
+    'Golden Dawn': 1.0,
+    'Freemasons': 1.0,
+    'Army': 1.0,
+  };
 
   // --- NEW BISTRO TYCOON STATE FIELDS ---
   String? _smokerItem;
@@ -702,19 +716,214 @@ class GameState extends ChangeNotifier {
   NPC? _conversationGreeter;
   NPC? _conversationGuest;
   GameSpeed? _speedBeforePause;
+  LanguageEncounter? _activeLanguageEncounter;
+  bool _isLanguageEncounterTranslated = false;
 
   bool get pendingGuestConversation => _pendingGuestConversation;
   NPC? get conversationGreeter => _conversationGreeter;
   NPC? get conversationGuest => _conversationGuest;
+  LanguageEncounter? get activeLanguageEncounter => _activeLanguageEncounter;
+  bool get isLanguageEncounterTranslated => _isLanguageEncounterTranslated;
 
   void clearGuestConversation() {
     _pendingGuestConversation = false;
     _conversationGreeter = null;
     _conversationGuest = null;
+    _activeLanguageEncounter = null;
+    _isLanguageEncounterTranslated = false;
     if (_speedBeforePause != null) {
       setSpeed(_speedBeforePause!);
       _speedBeforePause = null;
     }
+    notifyListeners();
+  }
+
+  double getFactionStanding(String faction) => _factionStandings[faction] ?? 0.0;
+
+  void adjustFactionStanding(String faction, double amount) {
+    if (_factionStandings.containsKey(faction)) {
+      _factionStandings[faction] = (_factionStandings[faction]! + amount).clamp(0.0, 5.0);
+      notifyListeners();
+    }
+  }
+
+  List<String> getActiveFacilities() {
+    final List<String> facilities = [];
+    // Tavern/Hotel
+    if (_rooms.any((r) => r.type == RoomType.bedroom && r.isRestored)) {
+      facilities.add('Hotel');
+    }
+    // Infirmary/Clinic
+    if (_rooms.any((r) => r.type == RoomType.operatingRoom && r.isRestored) ||
+        _activeBusinesses.any((b) => b.type == BusinessType.medicalPractice && b.status == 'active')) {
+      facilities.add('Infirmary');
+    }
+    // Dentistry
+    if (_rooms.any((r) => r.type == RoomType.dentalClinic && r.isRestored)) {
+      facilities.add('Dentistry');
+    }
+    // Dining Hall/Restaurant
+    if (_rooms.any((r) => r.type == RoomType.diningRoom && r.isRestored) ||
+        _activeBusinesses.any((b) => b.type == BusinessType.bistro && b.status == 'active')) {
+      facilities.add('Restaurant');
+    }
+    // Distillery
+    if (_rooms.any((r) => (r.type == RoomType.distillery || r.type == RoomType.brewery) && r.isRestored)) {
+      facilities.add('Distillery');
+    }
+    return facilities;
+  }
+
+  bool doesResidentSpeakLanguage(NPC resident, String langCode) {
+    final nat = resident.nationality.toLowerCase();
+    if (langCode == 'FR' && nat == 'french') return true;
+    if (langCode == 'DE' && (nat == 'german' || nat == 'austrian')) return true;
+    if (langCode == 'IT' && nat == 'italian') return true;
+    if (langCode == 'ES' && nat == 'spanish') return true;
+
+    for (final trait in resident.traits) {
+      final traitId = trait.id.toLowerCase();
+      if (langCode == 'FR' && (traitId == 'fluent_french' || traitId == 'french')) return true;
+      if (langCode == 'DE' && (traitId == 'fluent_german' || traitId == 'german')) return true;
+      if (langCode == 'IT' && (traitId == 'fluent_italian' || traitId == 'italian')) return true;
+      if (langCode == 'ES' && (traitId == 'fluent_spanish' || traitId == 'spanish')) return true;
+    }
+
+    if (langCode == 'FR' && resident.name.contains('Giles')) return true;
+    return false;
+  }
+
+  bool anyResidentSpeaksLanguage(String langCode) {
+    return _npcs.any((n) => n.isResident && doesResidentSpeakLanguage(n, langCode));
+  }
+
+  void translateActiveEncounter() {
+    if (_activeLanguageEncounter == null) return;
+    advanceTime(10);
+    _isLanguageEncounterTranslated = true;
+    notifyListeners();
+  }
+
+  void advanceTime(int minutes) {
+    for (int i = 0; i < minutes; i++) {
+      _currentDate = _currentDate.addMinute();
+    }
+    notifyListeners();
+  }
+
+  void resolveLanguageEncounter(LanguageOption option) {
+    if (_activeLanguageEncounter == null) return;
+    final encounter = _activeLanguageEncounter!;
+    final faction = encounter.faction;
+
+    if (option.grade == 1) {
+      adjustFactionStanding(faction, 0.5);
+      _lastAnnouncement = "Politely resolved ${encounter.languageName} customer request. Standing with $faction increased by 0.5.";
+    } else if (option.grade == 2) {
+      adjustFactionStanding(faction, -0.2);
+      advanceTime(15);
+      _lastAnnouncement = "Confused ${encounter.languageName} customer request. Standing with $faction decreased by 0.2. Wasted 15 minutes.";
+    } else if (option.grade == 3) {
+      adjustFactionStanding(faction, -0.5);
+      _lastAnnouncement = "Offended ${encounter.languageName} customer. Standing with $faction decreased by 0.5.";
+    } else if (option.grade == 4) {
+      adjustFactionStanding(faction, -1.0);
+
+      switch (encounter.id) {
+        case 1:
+          updateResource('funds', -100);
+          _lastAnnouncement = "Customer slipped in cellar, destroying 100 CHF worth of alchemical equipment!";
+          break;
+        case 2:
+          _lastAnnouncement = "Customer reported us for trespassing and safety violations!";
+          adjustFactionStanding('Army', -0.5);
+          break;
+        case 3:
+          _lastAnnouncement = "Catastrophic response triggered a brawl in the entryway!";
+          break;
+        case 4:
+          _lastAnnouncement = "Customer was fired upon at the military guard post! Canton standing decreased.";
+          adjustFactionStanding('Army', -1.5);
+          break;
+        case 5:
+          _lastAnnouncement = "Flesh golem frightened customer! Witnesses gained Fear.";
+          for (int i = 0; i < _npcs.length; i++) {
+            if (_npcs[i].isResident) {
+              _npcs[i] = _npcs[i].copyWith(
+                satisfaction: (_npcs[i].satisfaction - 10).clamp(0, 100),
+              );
+            }
+          }
+          break;
+        case 6:
+          _lastAnnouncement = "Grave secrets leaked! Army is investigating the Manor.";
+          adjustFactionStanding('Army', -1.0);
+          break;
+        case 7:
+          updateResource('funds', -150);
+          _lastAnnouncement = "Customer poisoned by experimental fungus! Paid 150 CHF in legal settlement.";
+          break;
+        case 8:
+          updateResource('funds', -400);
+          _lastAnnouncement = "Signed a fraudulent extended carriage warranty, losing 400 CHF!";
+          break;
+        case 9:
+          _lastAnnouncement = "Customer fled in terror, yelling about human experimentation!";
+          adjustFactionStanding('Glarus', -1.0);
+          break;
+        case 11:
+          _lastAnnouncement = "Room rental catastrophy! Standing decreased.";
+          break;
+        case 12:
+          _lastAnnouncement = "Malpractice lawsuit threat initiated!";
+          updateResource('funds', -200);
+          break;
+        case 14:
+          _lastAnnouncement = "Insulted local peasants! Respect decreased.";
+          break;
+        case 15:
+          _lastAnnouncement = "Police inspection triggered due to bootlegging inquiry!";
+          adjustFactionStanding('Army', -0.5);
+          break;
+        default:
+          break;
+      }
+    } else if (option.grade == 5) {
+      final roll = Random().nextDouble();
+      if (roll < 0.30) {
+        adjustFactionStanding(faction, -0.2);
+        _lastAnnouncement = "Hostile Rebuff: Turned away customer. Minor respect loss with $faction.";
+      } else if (roll < 0.70) {
+        adjustFactionStanding(faction, -0.4);
+        _lastAnnouncement = "Hostile Rebuff: Turned away customer. Admiration loss with $faction.";
+      } else {
+        adjustFactionStanding(faction, -0.8);
+        _lastAnnouncement = "Hostile Rebuff: Turned away customer. Large admiration loss with $faction.";
+      }
+
+      for (int i = 0; i < _npcs.length; i++) {
+        if (_npcs[i].isResident && _npcs[i].currentRoomId == 'entryway') {
+          _npcs[i] = _npcs[i].copyWith(
+            satisfaction: (_npcs[i].satisfaction - 5).clamp(0, 100),
+          );
+        }
+      }
+    }
+
+    _announcementHistory.insert(
+      0,
+      "[${_currentDate.formattedTime}] LANGUAGE EVENT: $_lastAnnouncement",
+    );
+
+    dismissGuest(conversationGuest!.id);
+    clearGuestConversation();
+  }
+
+  void triggerLanguageEncounterForTesting(LanguageEncounter encounter, NPC greeter, NPC guest) {
+    _activeLanguageEncounter = encounter;
+    _isLanguageEncounterTranslated = false;
+    _conversationGreeter = greeter;
+    _conversationGuest = guest;
     notifyListeners();
   }
 
@@ -732,6 +941,16 @@ class GameState extends ChangeNotifier {
       final customizedAgreement = quest.agreement!.copyWith(npcId: guestName);
       if (!_contracts.any((c) => c.id == customizedAgreement.id)) {
         _contracts.add(customizedAgreement);
+      }
+    }
+    if (quest.id == 'quest_fugitive_sanctuary') {
+      final guestIdx = _npcs.indexWhere((n) => n.name == guestName);
+      if (guestIdx != -1) {
+        final guestNpc = _npcs[guestIdx];
+        _npcs[guestIdx] = guestNpc.copyWith(
+          isResident: true,
+          role: 'Manor Resident',
+        );
       }
     }
     _lastAnnouncement = "${guestName.toUpperCase()}: ${quest.acceptMessage}";
@@ -886,6 +1105,7 @@ class GameState extends ChangeNotifier {
     'crops': _crops.map((c) => c.toJson()).toList(),
     'gardenPlants': _gardenPlants.map((p) => p.toJson()).toList(),
     'customTaskCounts': _customTaskCounts,
+    'factionStandings': _factionStandings,
     'taskCompletionCounts': _taskCompletionCounts.map((k, v) => MapEntry(k.name, v)),
     'butlerDisposition': _butlerDisposition.index,
     'crises': _crises.map((c) => c.toJson()).toList(),
@@ -1087,6 +1307,15 @@ class GameState extends ChangeNotifier {
     _researchPoints.clear();
     final resPoints = json['researchPoints'] as Map<String, dynamic>? ?? {};
     resPoints.forEach((k, v) => _researchPoints[k] = (v as num).toDouble());
+
+    final savedStandings = json['factionStandings'] as Map<String, dynamic>?;
+    if (savedStandings != null) {
+      savedStandings.forEach((k, v) {
+        if (_factionStandings.containsKey(k)) {
+          _factionStandings[k] = (v as num).toDouble();
+        }
+      });
+    }
 
     _unreadObjectiveCount = json['unreadObjectiveCount'] as int? ?? 0;
     _manorVenture = ManorVenture
@@ -1437,6 +1666,36 @@ class GameState extends ChangeNotifier {
   List<Room> get rooms => List.unmodifiable(_rooms);
   void addRoomForTesting(Room room) {
     _rooms.add(room);
+    notifyListeners();
+  }
+
+  void setRoomForTesting(Room room) {
+    final idx = _rooms.indexWhere((r) => r.id == room.id);
+    if (idx != -1) {
+      _rooms[idx] = room;
+    } else {
+      _rooms.add(room);
+    }
+    notifyListeners();
+  }
+
+  void setNpcForTesting(NPC npc) {
+    final idx = _npcs.indexWhere((n) => n.id == npc.id);
+    if (idx != -1) {
+      _npcs[idx] = npc;
+    } else {
+      _npcs.add(npc);
+    }
+    notifyListeners();
+  }
+
+  void addCropForTesting(Crop crop) {
+    _crops.add(crop);
+    notifyListeners();
+  }
+
+  void clearCropsForTesting() {
+    _crops.clear();
     notifyListeners();
   }
 
@@ -3110,6 +3369,30 @@ class GameState extends ChangeNotifier {
           (playerProficiencies[entry.key] ?? 0.0) + entry.value;
     }
 
+    // Apply death cause consequence starting bonus
+    switch (_deathCause) {
+      case DeathCause.disease:
+        playerProficiencies['Medicine'] = (playerProficiencies['Medicine'] ?? 0.0) + 15.0;
+        playerProficiencies['Research'] = (playerProficiencies['Research'] ?? 0.0) + 5.0;
+        basePlayerStats['hygiene'] = (basePlayerStats['hygiene']! + 2).clamp(0, 10);
+        break;
+      case DeathCause.trainCrash:
+        playerProficiencies['Construction'] = (playerProficiencies['Construction'] ?? 0.0) + 15.0;
+        basePlayerStats['endurance'] = (basePlayerStats['endurance']! + 2).clamp(0, 10);
+        break;
+      case DeathCause.murderSuicide:
+        playerProficiencies['Research'] = (playerProficiencies['Research'] ?? 0.0) + 10.0;
+        basePlayerStats['confidence'] = (basePlayerStats['confidence']! + 2).clamp(0, 10);
+        basePlayerStats['intellect'] = (basePlayerStats['intellect']! + 1).clamp(0, 10);
+        break;
+      case DeathCause.misunderstanding:
+        playerProficiencies['Writing'] = (playerProficiencies['Writing'] ?? 0.0) + 15.0;
+        basePlayerStats['adaptability'] = (basePlayerStats['adaptability']! + 2).clamp(0, 10);
+        break;
+      default:
+        break;
+    }
+
     final player = NPC(
       id: 'player',
       name: '$_playerFirstName $_playerLastName',
@@ -3480,6 +3763,7 @@ class GameState extends ChangeNotifier {
         if (_currentDate.hour == 0) {
           _processMerchantLoanDailyTick();
           _processDailyRelationshipTick();
+          _processAnimalFoodConsumption();
         }
       }
 
@@ -4526,6 +4810,7 @@ class GameState extends ChangeNotifier {
   void _processCrops() {
     for (int i = 0; i < _crops.length; i++) {
       var crop = _crops[i];
+      if (crop.isDead) continue;
       if (!crop.isHarvestable) {
         final room = _rooms.firstWhereOrNull((r) => r.id == crop.roomId);
         final isGreenhouse = room?.type == RoomType.greenhouse;
@@ -4588,13 +4873,15 @@ class GameState extends ChangeNotifier {
         }
 
         final finalGrowthRate = growthRate * growMultiplier;
+        final nextMoisture = (crop.moistureLevel - moistureDecay).clamp(0.0, 1.0);
 
         _crops[i] = crop.copyWith(
           growthProgress: (crop.growthProgress + finalGrowthRate).clamp(
             0.0,
             1.0,
           ),
-          moistureLevel: (crop.moistureLevel - moistureDecay).clamp(0.0, 1.0),
+          moistureLevel: nextMoisture,
+          isDead: nextMoisture <= 0.0,
         );
       }
     }
@@ -5365,7 +5652,7 @@ class GameState extends ChangeNotifier {
     _rooms[index] = r.copyWith(
       type: revertedType,
       isUnderConstruction: false,
-      constructionTarget: null,
+      clearConstructionTarget: true,
       inventory: [],
     );
 
@@ -5394,6 +5681,19 @@ class GameState extends ChangeNotifier {
       return;
     }
 
+    // Restriction: Zoology level 1 and possession of 'Laboratory Schematics' (blueprint)
+    if (getKnowledgeLevel('Zoology') < 1) {
+      _lastAnnouncement = "Requires Zoology Level 1 knowledge to convert a room to a Laboratory.";
+      notifyListeners();
+      return;
+    }
+
+    if (!hasItemInManor('lab_schematics')) {
+      _lastAnnouncement = "Requires 'Laboratory Schematics' physical blueprint in the manor.";
+      notifyListeners();
+      return;
+    }
+
     const costFunds = 1000.0;
     const costWood = 100.0;
     if ((resources['funds'] ?? 0) >= costFunds &&
@@ -5410,6 +5710,168 @@ class GameState extends ChangeNotifier {
     } else {
       _lastAnnouncement =
           "Insufficient resources for Laboratory conversion (Need 1000 Funds, 100 Wood).";
+      notifyListeners();
+    }
+  }
+
+  void convertRoomToClinic(String roomId) {
+    final index = _rooms.indexWhere((r) => r.id == roomId);
+    if (index == -1) return;
+    final r = _rooms[index];
+
+    if (!r.isRestored) {
+      _lastAnnouncement = "The room must be restored before it can be converted.";
+      notifyListeners();
+      return;
+    }
+
+    if (_playerAcademicSpecialization != 'Medicine') {
+      _lastAnnouncement = "Requires graduation with a Medicine specialization to establish a Clinic.";
+      notifyListeners();
+      return;
+    }
+
+    const costFunds = 1200.0;
+    const costWood = 80.0;
+    if ((resources['funds'] ?? 0) >= costFunds &&
+        (resources['wood'] ?? 0) >= costWood) {
+      updateResource('funds', -costFunds);
+      updateResource('wood', -costWood);
+
+      _rooms[index] = r.copyWith(
+         isUnderConstruction: true,
+         constructionTarget: 'clinic',
+      );
+      _lastAnnouncement = "Clinic construction project started!";
+      notifyListeners();
+    } else {
+      _lastAnnouncement = "Insufficient resources for Clinic conversion (Need 1200 Funds, 80 Wood).";
+      notifyListeners();
+    }
+  }
+
+  void convertRoomToPharmacy(String roomId) {
+    final index = _rooms.indexWhere((r) => r.id == roomId);
+    if (index == -1) return;
+    final r = _rooms[index];
+
+    if (!r.isRestored) {
+      _lastAnnouncement = "The room must be restored before it can be converted.";
+      notifyListeners();
+      return;
+    }
+
+    if (_playerAcademicSpecialization != 'Pharmacy' && _playerAcademicSpecialization != 'Chemistry') {
+      _lastAnnouncement = "Requires graduation with a Pharmacy or Chemistry specialization to establish a Pharmacy.";
+      notifyListeners();
+      return;
+    }
+
+    const costFunds = 1500.0;
+    const costWood = 100.0;
+    const costBricks = 50.0;
+    if ((resources['funds'] ?? 0) >= costFunds &&
+        (resources['wood'] ?? 0) >= costWood &&
+        (resources['bricks'] ?? 0) >= costBricks) {
+      updateResource('funds', -costFunds);
+      updateResource('wood', -costWood);
+      updateResource('bricks', -costBricks);
+
+      _rooms[index] = r.copyWith(
+         isUnderConstruction: true,
+         constructionTarget: 'pharmacy',
+      );
+      _lastAnnouncement = "Pharmacy construction project started!";
+      notifyListeners();
+    } else {
+      _lastAnnouncement = "Insufficient resources for Pharmacy conversion (Need 1500 Funds, 100 Wood, 50 Bricks).";
+      notifyListeners();
+    }
+  }
+
+  void convertRoomToLawFirm(String roomId) {
+    final index = _rooms.indexWhere((r) => r.id == roomId);
+    if (index == -1) return;
+    final r = _rooms[index];
+
+    if (!r.isRestored) {
+      _lastAnnouncement = "The room must be restored before it can be converted.";
+      notifyListeners();
+      return;
+    }
+
+    if (_playerAcademicSpecialization != 'Law') {
+      _lastAnnouncement = "Requires graduation with a Law specialization to establish a Law Firm.";
+      notifyListeners();
+      return;
+    }
+
+    const costFunds = 2000.0;
+    const costWood = 120.0;
+    if ((resources['funds'] ?? 0) >= costFunds &&
+        (resources['wood'] ?? 0) >= costWood) {
+      updateResource('funds', -costFunds);
+      updateResource('wood', -costWood);
+
+      _rooms[index] = r.copyWith(
+         isUnderConstruction: true,
+         constructionTarget: 'lawFirm',
+      );
+      _lastAnnouncement = "Law Firm construction project started!";
+      notifyListeners();
+    } else {
+      _lastAnnouncement = "Insufficient resources for Law Firm conversion (Need 2000 Funds, 120 Wood).";
+      notifyListeners();
+    }
+  }
+
+  void convertRoomToOperatingRoom(String roomId) {
+    final index = _rooms.indexWhere((r) => r.id == roomId);
+    if (index == -1) return;
+    final r = _rooms[index];
+
+    if (!r.isRestored) {
+      _lastAnnouncement = "The room must be restored before it can be converted.";
+      notifyListeners();
+      return;
+    }
+
+    // Requirement: Surgery level 3, Medicine level 2, and physical blueprint 'surgical_theater_blueprint'
+    if (getKnowledgeLevel('Surgery') < 3) {
+      _lastAnnouncement = "Requires Surgery Level 3 knowledge to convert a room to an Operating Room.";
+      notifyListeners();
+      return;
+    }
+    if (getKnowledgeLevel('Medicine') < 2) {
+      _lastAnnouncement = "Requires Medicine Level 2 knowledge to convert a room to an Operating Room.";
+      notifyListeners();
+      return;
+    }
+    if (!hasItemInManor('surgical_theater_blueprint')) {
+      _lastAnnouncement = "Requires 'Surgical Theater Blueprint' physical blueprint in the manor.";
+      notifyListeners();
+      return;
+    }
+
+    const costFunds = 2000.0;
+    const costWood = 150.0;
+    const costBricks = 100.0;
+    if ((resources['funds'] ?? 0) >= costFunds &&
+        (resources['wood'] ?? 0) >= costWood &&
+        (resources['bricks'] ?? 0) >= costBricks) {
+      updateResource('funds', -costFunds);
+      updateResource('wood', -costWood);
+      updateResource('bricks', -costBricks);
+
+      _rooms[index] = r.copyWith(
+        isUnderConstruction: true,
+        constructionTarget: 'operatingRoom',
+      );
+      _lastAnnouncement = "Operating Room construction project started!";
+      notifyListeners();
+    } else {
+      _lastAnnouncement =
+          "Insufficient resources (Need 2000 Funds, 150 Wood, 100 Bricks).";
       notifyListeners();
     }
   }
@@ -5568,11 +6030,13 @@ class GameState extends ChangeNotifier {
 
     // Also search enqueued intent queue for any npcs enqueued to construct
     for (int i = 0; i < _npcs.length; i++) {
-      _npcs[i].intentQueue.removeWhere(
+      final newQueue = List<NPCIntent>.from(_npcs[i].intentQueue);
+      newQueue.removeWhere(
         (intent) =>
             intent.action == TaskType.construction &&
             intent.targetRoomId == roomId,
       );
+      _npcs[i] = _npcs[i].copyWith(intentQueue: newQueue);
     }
 
     // Recover costs
@@ -5582,6 +6046,18 @@ class GameState extends ChangeNotifier {
     if (r.constructionTarget == 'laboratory') {
       refundFunds = 1000.0 * refundRatio;
       refundWood = 50.0 * refundRatio;
+    } else if (r.constructionTarget == 'clinic') {
+      refundFunds = 1200.0 * refundRatio;
+      refundWood = 80.0 * refundRatio;
+    } else if (r.constructionTarget == 'pharmacy') {
+      refundFunds = 1500.0 * refundRatio;
+      refundWood = 100.0 * refundRatio;
+    } else if (r.constructionTarget == 'lawFirm') {
+      refundFunds = 2000.0 * refundRatio;
+      refundWood = 120.0 * refundRatio;
+    } else if (r.constructionTarget == 'operatingRoom') {
+      refundFunds = 2000.0 * refundRatio;
+      refundWood = 150.0 * refundRatio;
     } else if (r.constructionTarget == 'mine') {
       final resType = r.metadata['resourceType'] as String?;
       final costMap = getMineConstructionCost(
@@ -5593,6 +6069,12 @@ class GameState extends ChangeNotifier {
     } else if (r.constructionTarget == 'oil_well') {
       refundFunds = 1500.0 * refundRatio;
       refundWood = 300.0 * refundRatio;
+    } else if (r.constructionTarget == 'bedroom') {
+      refundFunds = 500.0 * refundRatio;
+      refundWood = 250.0 * refundRatio;
+    } else if (r.constructionTarget == 'ballroom') {
+      refundFunds = 1500.0 * refundRatio;
+      refundWood = 500.0 * refundRatio;
     }
 
     updateResource('funds', refundFunds);
@@ -5601,7 +6083,7 @@ class GameState extends ChangeNotifier {
     // Revert room status
     _rooms[index] = r.copyWith(
       isUnderConstruction: false,
-      constructionTarget: null,
+      clearConstructionTarget: true,
     );
 
     _lastAnnouncement =
@@ -5644,6 +6126,45 @@ class GameState extends ChangeNotifier {
     } else {
       _lastAnnouncement =
           "Insufficient resources to convert to Bedroom (Need 500 Funds, 250 Wood).";
+      notifyListeners();
+    }
+  }
+
+  void convertUnusedToBallroom(String roomId) {
+    final index = _rooms.indexWhere((r) => r.id == roomId);
+    if (index == -1) return;
+    final r = _rooms[index];
+
+    if (!r.isRestored) {
+      _lastAnnouncement =
+          "The room must be restored before it can be converted.";
+      notifyListeners();
+      return;
+    }
+
+    if (r.type != RoomType.unused || r.floor != Floor.ground) {
+      _lastAnnouncement =
+          "Only the ground floor unused wing can be converted into a ballroom.";
+      notifyListeners();
+      return;
+    }
+
+    const costFunds = 1500.0;
+    const costWood = 500.0;
+    if ((resources['funds'] ?? 0) >= costFunds &&
+        (resources['wood'] ?? 0) >= costWood) {
+      updateResource('funds', -(costFunds));
+      updateResource('wood', -(costWood));
+
+      _rooms[index] = r.copyWith(
+        isUnderConstruction: true,
+        constructionTarget: 'ballroom',
+      );
+      _lastAnnouncement = "Ballroom construction project started!";
+      notifyListeners();
+    } else {
+      _lastAnnouncement =
+          "Insufficient resources to convert to Ballroom (Need 1500 Funds, 500 Wood).";
       notifyListeners();
     }
   }
@@ -5983,6 +6504,17 @@ class GameState extends ChangeNotifier {
         if (_researchPoints.values.where((pts) => pts >= 20.0).length < count)
           completed = false;
       }
+      if (reqs.containsKey('research_level')) {
+        final targetLevels = reqs['research_level'] as Map<String, dynamic>;
+        for (var entry in targetLevels.entries) {
+          final discipline = entry.key;
+          final requiredLevel = (entry.value as num).toDouble();
+          if (getKnowledgeLevel(discipline) < requiredLevel) {
+            completed = false;
+            break;
+          }
+        }
+      }
       if (reqs.containsKey('new_recipes_unlocked')) {
         final count = reqs['new_recipes_unlocked'] as int;
         if (_knownRecipes.length < count) completed = false;
@@ -6073,32 +6605,7 @@ class GameState extends ChangeNotifier {
         }
 
         // Handle follow-up objectives
-        if (objective.id == 'manor_restoration') {
-          nextObjectives.add(
-            Objective(
-              id: 'zoology_curiosity',
-              title: 'Zoological Curiosity',
-              description: 'Reach Zoology Level 1 to unlock advanced study.',
-              type: ObjectiveType.science,
-              requirements: {
-                'research_level': {'Zoology': 1},
-              },
-            ),
-          );
-        } else if (objective.id == 'zoology_curiosity') {
-          nextObjectives.add(
-            Objective(
-              id: 'the_spark',
-              title: 'The Spark',
-              description:
-                  'Reach Alchemy Level 2 to discover reanimation principles.',
-              type: ObjectiveType.science,
-              requirements: {
-                'research_level': {'Alchemy': 2},
-              },
-            ),
-          );
-        } else if (objective.id == 'farming_tutorial_1') {
+        if (objective.id == 'farming_tutorial_1') {
           nextObjectives.add(
             Objective(
               id: 'farming_tutorial_2',
@@ -6158,18 +6665,6 @@ class GameState extends ChangeNotifier {
               type: ObjectiveType.tutorial,
               requirements: {
                 'tasks_performed': ['harvestCrops'],
-              },
-            ),
-          );
-        } else if (objective.id == 'build_laboratory') {
-          nextObjectives.add(
-            Objective(
-              id: 'zoology_curiosity',
-              title: 'Zoological Curiosity',
-              description: 'Reach Zoology Level 1 to unlock advanced study.',
-              type: ObjectiveType.science,
-              requirements: {
-                'research_level': {'Zoology': 1},
               },
             ),
           );
@@ -6790,11 +7285,8 @@ class GameState extends ChangeNotifier {
               item.category == ItemCategory.corpse) {
             if (item.creationDate != null &&
                 item.metadata['spoilWarned'] != true) {
-              double shelfLifeDays =
-                  (item.metadata['shelfLifeDays'] as num? ?? 10).toDouble();
-              if (item.type == 'eggs' || item.type == 'fertilized_egg') {
-                shelfLifeDays = 30.0;
-              }
+              if (_isItemNonPerishable(item.type, item.category)) continue;
+              double shelfLifeDays = _getItemShelfLifeDays(item.type, item.category, item.metadata);
               final elapsedDays = _currentDate.differenceInDays(
                 item.creationDate!,
               );
@@ -6838,11 +7330,8 @@ class GameState extends ChangeNotifier {
               item.category == ItemCategory.specimen ||
               item.category == ItemCategory.corpse) {
             if (item.creationDate != null) {
-              double shelfLifeDays =
-                  (item.metadata['shelfLifeDays'] as num? ?? 10).toDouble();
-              if (item.type == 'eggs' || item.type == 'fertilized_egg') {
-                shelfLifeDays = 30.0;
-              }
+              if (_isItemNonPerishable(item.type, item.category)) return false;
+              double shelfLifeDays = _getItemShelfLifeDays(item.type, item.category, item.metadata);
               if (_currentDate.differenceInDays(item.creationDate!) >=
                   shelfLifeDays) {
                 _lastAnnouncement = "${item.name} has spoiled.";
@@ -6863,6 +7352,109 @@ class GameState extends ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  bool _isItemNonPerishable(String type, ItemCategory category) {
+    if (type == 'salt' || type == 'pepper' || type == 'sugar') {
+      return true;
+    }
+    if (type == 'chicken' ||
+        type == 'rooster' ||
+        type == 'rat' ||
+        type == 'bat' ||
+        category == ItemCategory.specimen) {
+      return true;
+    }
+    return false;
+  }
+
+  double _getItemShelfLifeDays(String type, ItemCategory category, Map<String, dynamic> metadata) {
+    if (type == 'eggs' || type == 'fertilized_egg') {
+      return 30.0;
+    }
+    if (type.contains('grain') ||
+        type.contains('cereal') ||
+        type.contains('flour') ||
+        type.contains('chocolate') ||
+        type.contains('coffee') ||
+        type.contains('yeast')) {
+      return 180.0;
+    }
+    return (metadata['shelfLifeDays'] as num? ?? 10).toDouble();
+  }
+
+  void _processAnimalFoodConsumption() {
+    // 1. Process Large Animals Daily
+    int largeAnimalCount = 0;
+    for (final npc in _npcs) {
+      if (npc.status != NPCStatus.dead &&
+          npc.role == 'Creature' &&
+          npc.currentRoomId != 'grounds') {
+        largeAnimalCount++;
+      }
+    }
+
+    int largeStarving = 0;
+    for (int count = 0; count < largeAnimalCount; count++) {
+      final success = _consumeRawIngredient();
+      if (!success) {
+        largeStarving = largeAnimalCount - count;
+        break;
+      }
+    }
+
+    if (largeStarving > 0) {
+      _announcementHistory.insert(
+        0,
+        "[${_currentDate.formattedTime}] WARNING: Food deficit! $largeStarving large animal(s) are starving due to lack of raw ingredients.",
+      );
+    }
+
+    // 2. Process Small Animals Weekly (on day 1, 8, 15, 22, 29, etc. at hour 0)
+    if (((_currentDate.day - 1) % 7) == 0) {
+      int smallAnimalCount = _chickens.length;
+      
+      // Also count small animal items (specimens) in room inventories
+      for (final room in _rooms) {
+        for (final item in room.inventory) {
+          if (item.type == 'chicken' ||
+              item.type == 'rooster' ||
+              item.type == 'rat' ||
+              item.type == 'bat' ||
+              item.category == ItemCategory.specimen) {
+            smallAnimalCount += item.quantity;
+          }
+        }
+      }
+
+      int smallStarving = 0;
+      for (int count = 0; count < smallAnimalCount; count++) {
+        final success = _consumeRawIngredient();
+        if (!success) {
+          smallStarving = smallAnimalCount - count;
+          break;
+        }
+      }
+
+      if (smallStarving > 0) {
+        _announcementHistory.insert(
+          0,
+          "[${_currentDate.formattedTime}] WARNING: Food deficit! $smallStarving small animal(s) are starving due to lack of raw ingredients.",
+        );
+      }
+    }
+  }
+
+  bool _consumeRawIngredient() {
+    const rawIngredients = ['grain', 'potato', 'cabbage', 'beets', 'carrots'];
+    for (final ingredient in rawIngredients) {
+      final qty = resources[ingredient] ?? 0;
+      if (qty >= 1) {
+        updateResource(ingredient, -1);
+        return true;
+      }
+    }
+    return false;
   }
 
   void _processNpcNeeds(int index) {
@@ -7376,6 +7968,13 @@ class GameState extends ChangeNotifier {
           _pendingGuestConversation = true;
           _conversationGreeter = _npcs[index];
           _conversationGuest = guest;
+
+          final roll = Random().nextDouble();
+          if (roll < 0.35) {
+            final activeFacilities = getActiveFacilities();
+            _activeLanguageEncounter = LanguageEncounter.generate(Random(), activeFacilities);
+            _isLanguageEncounterTranslated = false;
+          }
 
           // Pause game
           _speedBeforePause = _speed;
@@ -7913,6 +8512,7 @@ class GameState extends ChangeNotifier {
         final ready = _crops
             .where(
               (c) =>
+                  c.roomId == task.targetId &&
                   (c.type == CropType.cabbage ||
                       c.type == CropType.carrot ||
                       c.type == CropType.potato ||
@@ -7942,6 +8542,19 @@ class GameState extends ChangeNotifier {
               updateResource(resId, y);
             }
           }
+
+          // Reset the field to fallow if all crops have been harvested/removed
+          final remainingCrops = _crops.where((c) => c.roomId == task.targetId).toList();
+          if (remainingCrops.isEmpty) {
+            final roomIdx = _rooms.indexWhere((r) => r.id == task.targetId);
+            if (roomIdx != -1) {
+              _rooms[roomIdx] = _rooms[roomIdx].copyWith(
+                tilledAmount: 0.0,
+                fertilizedAmount: 0.0,
+              );
+            }
+          }
+
           notifyRoomProduction(task.targetId!, '+$total');
           _lastAnnouncement = "${worker.name} harvested crops from the garden.";
         } else {
@@ -7949,6 +8562,16 @@ class GameState extends ChangeNotifier {
               "${worker.name} found no crops ready for harvest.";
         }
       }
+    } else if (task.type == TaskType.clearField) {
+      _crops.removeWhere((c) => c.roomId == task.targetId);
+      final roomIdx = _rooms.indexWhere((r) => r.id == task.targetId);
+      if (roomIdx != -1) {
+        _rooms[roomIdx] = _rooms[roomIdx].copyWith(
+          tilledAmount: 0.0,
+          fertilizedAmount: 0.0,
+        );
+      }
+      _lastAnnouncement = "${worker.name} cleared the dead crops from the field.";
     } else if (task.type == TaskType.butcherAnimals) {
       if (task.targetId == 'rat_specimen' || task.targetId == 'bat_specimen') {
         updateResource(task.targetId!, -(1));
@@ -8071,23 +8694,30 @@ class GameState extends ChangeNotifier {
     } else if (task.type == TaskType.eat) {
       // 1. Try to find a dish in the pantry first (high quality satisfaction)
       int? bestDishIndex;
-      if (task.targetName != null) {
-        for (int j = 0; j < _pantry.length; j++) {
-          if (_pantry[j].name.toLowerCase() == task.targetName!.toLowerCase()) {
-            bestDishIndex = j;
-            break;
+      final bool isHuman = worker.specimenType.toLowerCase() == 'human';
+      final currentRoom = _rooms.firstWhereOrNull((r) => r.id == worker.currentRoomId);
+      final bool isPenOrPasture = currentRoom != null &&
+          (currentRoom.type == RoomType.pigPen || currentRoom.type == RoomType.cattlePasture);
+
+      if (isHuman && !isPenOrPasture) {
+        if (task.targetName != null) {
+          for (int j = 0; j < _pantry.length; j++) {
+            if (_pantry[j].name.toLowerCase() == task.targetName!.toLowerCase()) {
+              bestDishIndex = j;
+              break;
+            }
           }
         }
-      }
-      if (bestDishIndex == null) {
-        final neededTypes = worker.diet.dailyRequirements.keys.toList();
-        for (int j = 0; j < _pantry.length; j++) {
-          final dish = _pantry[j];
-          if (neededTypes.contains(dish.type)) {
-            if (bestDishIndex == null ||
-                dish.expirationMinutes <
-                    _pantry[bestDishIndex].expirationMinutes) {
-              bestDishIndex = j;
+        if (bestDishIndex == null) {
+          final neededTypes = worker.diet.dailyRequirements.keys.toList();
+          for (int j = 0; j < _pantry.length; j++) {
+            final dish = _pantry[j];
+            if (neededTypes.contains(dish.type)) {
+              if (bestDishIndex == null ||
+                  dish.expirationMinutes <
+                      _pantry[bestDishIndex].expirationMinutes) {
+                bestDishIndex = j;
+              }
             }
           }
         }
@@ -8107,21 +8737,27 @@ class GameState extends ChangeNotifier {
         hungerRestore = 60.0; // 60% fullness for prepared meals
         mealConsumed = true;
       } else {
-        // Scavenge raw ingredients: vegetables > eggs > raw meat > flour
-        final priorityKeys = [
-          'cabbage',
-          'potato',
-          'carrots',
-          'beets',
-          'green_beans',
-          'faba_beans',
-          'eggs',
-          'meat_beef',
-          'meat_chicken',
-          'meat_generic',
-          'flour_spelt',
-          'flour_durum',
-        ];
+        // Scavenge raw ingredients
+        List<String> priorityKeys;
+        if (isPenOrPasture || !isHuman) {
+          priorityKeys = ['grain', 'potato', 'cabbage', 'beets', 'carrots'];
+        } else {
+          priorityKeys = [
+            'cabbage',
+            'potato',
+            'carrots',
+            'beets',
+            'green_beans',
+            'faba_beans',
+            'eggs',
+            'meat_beef',
+            'meat_chicken',
+            'meat_generic',
+            'flour_spelt',
+            'flour_durum',
+          ];
+        }
+
         String? foundKey;
         for (var key in priorityKeys) {
           if ((resources[key] ?? 0) > 0) {
@@ -8134,51 +8770,59 @@ class GameState extends ChangeNotifier {
           _consumeSingleItem(
             foundKey,
           ); // Deducts it globally across room inventories
-          mealSource = "raw ingredients";
+          mealSource = isPenOrPasture || !isHuman ? "feed trough" : "raw ingredients";
           mealName = "raw $foundKey".replaceAll('_', ' ');
-          hungerRestore = 30.0;
+          hungerRestore = isPenOrPasture || !isHuman ? 45.0 : 30.0;
           mealConsumed = true;
-          if (worker.isResident) {
+          if (worker.isResident && isHuman) {
             AudioService().playDispleased();
           }
         } else {
           // Nothing to eat!!
-          if (worker.isResident) {
+          if (worker.isResident && isHuman) {
             AudioService().playDispleased();
           }
           _announcementHistory.insert(
             0,
             "[${_currentDate.formattedTime}] SURVIVAL: ${worker.name} found nothing to eat in the manor!",
           );
-          newThought =
-              "There is literally no food left in this manor. We will starve.";
+          newThought = isPenOrPasture || !isHuman
+              ? "The feed trough is empty. We are starving."
+              : "There is literally no food left in this manor. We will starve.";
           newSatisfaction = (newSatisfaction - 15.0).clamp(0.0, 100.0);
         }
       }
 
       List<Map<String, dynamic>>? newLog;
       if (mealConsumed) {
-        AudioService().playMealCompleted();
-        // Dietary modifiers
-        final lowerMealName = mealName.toLowerCase();
-        if (worker.diet.favoriteFoods.any(
-          (f) => f.toLowerCase() == lowerMealName,
-        )) {
-          satBonus += 15.0;
-          if (worker.isResident && Random().nextDouble() < 0.4) {
-            AudioService().playPleased();
+        if (isHuman) {
+          AudioService().playMealCompleted();
+        }
+        // Dietary modifiers (only for humans)
+        if (isHuman) {
+          final lowerMealName = mealName.toLowerCase();
+          if (worker.diet.favoriteFoods.any(
+            (f) => f.toLowerCase() == lowerMealName,
+          )) {
+            satBonus += 15.0;
+            if (worker.isResident && Random().nextDouble() < 0.4) {
+              AudioService().playPleased();
+            }
           }
         }
 
-        // Repetition penalty
-        int repeatCount = worker.consumedDishes
-            .where((f) => f.toLowerCase() == lowerMealName)
-            .length;
-        if (repeatCount >= 2) {
-          satBonus -=
-              15.0; // Heavily penalize eating the exact same thing continuously
-        } else if (repeatCount == 1) {
-          satBonus -= 5.0; // Slight penalty for eating it recently
+        // Repetition penalty (only for humans)
+        if (isHuman) {
+          final lowerMealName = mealName.toLowerCase();
+          int repeatCount = worker.consumedDishes
+              .where((f) => f.toLowerCase() == lowerMealName)
+              .length;
+          if (repeatCount >= 2) {
+            satBonus -=
+                15.0; // Heavily penalize eating the exact same thing continuously
+          } else if (repeatCount == 1) {
+            satBonus -= 5.0; // Slight penalty for eating it recently
+          }
         }
 
         final logEntry = {
@@ -8196,9 +8840,10 @@ class GameState extends ChangeNotifier {
 
         newHunger = (newHunger - hungerRestore).clamp(0.0, 100.0);
         newSatisfaction = (newSatisfaction + satBonus).clamp(0.0, 100.0);
-        newThought =
-            "That $mealName from $mealSource was exactly what I needed.";
-        if (hungerRestore > 40.0) {
+        newThought = isPenOrPasture || !isHuman
+            ? "Successfully consumed feed from $mealSource."
+            : "That $mealName from $mealSource was exactly what I needed.";
+        if (hungerRestore > 40.0 && isHuman && !isPenOrPasture) {
           addItemToRoom(
             worker.currentRoomId ?? 'dining_hall',
             GameItem.create(
@@ -9849,6 +10494,26 @@ class GameState extends ChangeNotifier {
               upgradedName = 'Laboratory';
               upgradeDesc =
                   'A specialized room for scientific research and experimentation.';
+            } else if (r.constructionTarget == 'clinic') {
+              upgradedType = RoomType.clinic;
+              upgradedName = 'Clinic';
+              upgradeDesc =
+                  'A clean medical facility for treating sickness and minor injuries.';
+            } else if (r.constructionTarget == 'pharmacy') {
+              upgradedType = RoomType.pharmacy;
+              upgradedName = 'Pharmacy';
+              upgradeDesc =
+                  'An apothecary and laboratory for crafting chemical reagents and compounding medicine.';
+            } else if (r.constructionTarget == 'lawFirm') {
+              upgradedType = RoomType.lawFirm;
+              upgradedName = 'Law Firm';
+              upgradeDesc =
+                  'A respectable legal practice to manage patents, litigation, and canton contracts.';
+            } else if (r.constructionTarget == 'operatingRoom') {
+              upgradedType = RoomType.operatingRoom;
+              upgradedName = 'Operating Room';
+              upgradeDesc =
+                  'An advanced surgical theater equipped with sterilizing boilers and premium operating tables.';
             } else if (r.constructionTarget == 'bedroom') {
               upgradedType = RoomType.bedroom;
               upgradedName = 'Spare Bedroom';
@@ -9868,6 +10533,11 @@ class GameState extends ChangeNotifier {
               upgradedName = 'OIL WELL';
               upgradeDesc =
                   'A sturdy pumping rig designed to extract subterranean oil deposits.';
+            } else if (r.constructionTarget == 'ballroom') {
+              upgradedType = RoomType.ballroom;
+              upgradedName = 'Ballroom';
+              upgradeDesc =
+                  'A magnificent hall with polished wood floors, towering mirrors, and crystal chandeliers.';
             }
 
             r = r.copyWith(
@@ -9876,7 +10546,7 @@ class GameState extends ChangeNotifier {
               description: upgradeDesc,
               isRestored: true,
               isUnderConstruction: false,
-              constructionTarget: null,
+              clearConstructionTarget: true,
               beds: newBeds,
             );
             _rooms[roomIdx] = r;
@@ -10549,6 +11219,89 @@ class GameState extends ChangeNotifier {
       }
     }
 
+    // Laboratory procedure checks when assigned directly
+    if (recipeId == 'reanimation_procedure') {
+      if (getKnowledgeLevel('Alchemy') < 2) {
+        _lastAnnouncement = "Requires Alchemy Level 2 knowledge to perform Reanimation.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+      if (!hasItemInManor('principles_of_galvanism')) {
+        _lastAnnouncement = "Requires 'Principles of Galvanism' book in the manor.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+    } else if (recipeId == 'transmutation') {
+      if (getKnowledgeLevel('Alchemy') < 5 || getKnowledgeLevel('Chemistry') < 3) {
+        _lastAnnouncement = "Requires Alchemy Level 5 and Chemistry Level 3 knowledge to perform Transmutation.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+      if (!hasItemInManor('lemegeton_alchymia')) {
+        _lastAnnouncement = "Requires 'Lemegeton Alchymia' book in the manor.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+    }
+
+    if (type == TaskType.tillSoil && targetId != null) {
+      final hasActiveCrops = _crops.any((c) => c.roomId == targetId);
+      if (hasActiveCrops) {
+        _lastAnnouncement = "Cannot till soil while crops are growing.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+      final room = _rooms.firstWhereOrNull((r) => r.id == targetId);
+      if (room != null && room.isTilled) {
+        _lastAnnouncement = "Soil is already fully tilled.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+    }
+
+    if (type == TaskType.fertilizeSoil && targetId != null) {
+      final hasActiveCrops = _crops.any((c) => c.roomId == targetId);
+      if (hasActiveCrops) {
+        _lastAnnouncement = "Cannot fertilize soil while crops are growing.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+      final room = _rooms.firstWhereOrNull((r) => r.id == targetId);
+      if (room != null && room.fertilizedAmount >= 1.0) {
+        _lastAnnouncement = "Soil is already fully fertilized.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+    }
+
+    if (type == TaskType.clearField && targetId != null) {
+      final roomCrops = _crops.where((c) => c.roomId == targetId).toList();
+      if (roomCrops.isEmpty) {
+        _lastAnnouncement = "No crops to clear.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+      if (!roomCrops.every((c) => c.isDead)) {
+        _lastAnnouncement = "Cannot clear field with live crops growing.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+    }
+
+    if ((type == TaskType.waterCrops || type == TaskType.careForCrops || type == TaskType.harvestCrops) && targetId != null) {
+      final roomCrops = _crops.where((c) => c.roomId == targetId).toList();
+      if (roomCrops.isEmpty) {
+        _lastAnnouncement = "No crops planted in this field.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+      if (roomCrops.every((c) => c.isDead)) {
+        _lastAnnouncement = "Crops are dead and must be cleared.";
+        if (!silent) notifyListeners();
+        return false;
+      }
+    }
+
     if (type == TaskType.plantCrops) {
       CropType cropType = CropType.cabbage;
       if (recipeId != null) {
@@ -10928,6 +11681,31 @@ class GameState extends ChangeNotifier {
             }
             final activity = ScienceService.getActivityById(cleanActivityId);
             if (activity != null) {
+              // Enforce hybrid/dual requirement checks
+              if (cleanActivityId == 'reanimation_procedure') {
+                if (getKnowledgeLevel('Alchemy') < 2) {
+                  _lastAnnouncement = "Requires Alchemy Level 2 knowledge to perform Reanimation.";
+                  if (!silent) notifyListeners();
+                  return false;
+                }
+                if (!hasItemInManor('principles_of_galvanism')) {
+                  _lastAnnouncement = "Requires 'Principles of Galvanism' book in the manor.";
+                  if (!silent) notifyListeners();
+                  return false;
+                }
+              } else if (cleanActivityId == 'transmutation') {
+                if (getKnowledgeLevel('Alchemy') < 5 || getKnowledgeLevel('Chemistry') < 3) {
+                  _lastAnnouncement = "Requires Alchemy Level 5 and Chemistry Level 3 knowledge to perform Transmutation.";
+                  if (!silent) notifyListeners();
+                  return false;
+                }
+                if (!hasItemInManor('lemegeton_alchymia')) {
+                  _lastAnnouncement = "Requires 'Lemegeton Alchymia' book in the manor.";
+                  if (!silent) notifyListeners();
+                  return false;
+                }
+              }
+
               assignedType = activity.type;
               assignedRecipeId = cleanActivityId;
               duration = activity.baseDurationMinutes;
@@ -12154,7 +12932,9 @@ class GameState extends ChangeNotifier {
               'fertilizer': 5,
               'seeds_cabbage': 8,
               'seeds_potato': 8,
-              'meat': 10,
+              'meat_beef': 5,
+              'meat_chicken': 5,
+              'meat_pork': 5,
               'cabbage': 12,
               'salt': 15,
               'simple_shovel': 1,
@@ -12194,7 +12974,9 @@ class GameState extends ChangeNotifier {
             'arrivalTime': _currentDate.totalMinutes,
             'isGreeted': false,
             'merchantStock': {
-              'meat': 30,
+              'meat_beef': 15,
+              'meat_chicken': 15,
+              'meat_pork': 15,
               'cabbage': 40,
               'potato': 40,
               'carrots': 40,
@@ -13217,7 +13999,6 @@ class GameState extends ChangeNotifier {
         priority: intent.priority,
         silent: true,
       );
-
       if (success) {
         var freshNpc = _npcs[index];
         if (!freshNpc.intentQueue.any((i) => i.id == intent.id)) {
@@ -13247,6 +14028,11 @@ class GameState extends ChangeNotifier {
         }
         return false;
       }
+    }
+
+    bool tryAssignWithCooldown(NPCIntent freshIntent) {
+      final existing = npc.intentQueue.firstWhereOrNull((i) => i.id == freshIntent.id);
+      return tryAssign(existing ?? freshIntent);
     }
 
     // --- STEP 0: Eating a Meal ---
@@ -13297,7 +14083,7 @@ class GameState extends ChangeNotifier {
         priority: IntentPriority.emergency,
         expectedDurationMin: crisis.type == ManorCrisisType.fire ? 15 : 30,
       );
-      if (tryAssign(eIntent)) return;
+      if (tryAssignWithCooldown(eIntent)) return;
     }
 
     // --- STEP 3 & 4: HIGH PRIORITY PIPELINE ---
@@ -13490,28 +14276,31 @@ class GameState extends ChangeNotifier {
     final activity = npc.schedule.getActivityForHour(hourIndex);
 
     if (activity == ScheduleActivity.sleep) {
-      // SLEEP BLOCK
-      int checkHour = hourIndex;
-      int safetyCap = 0;
-      while (npc.schedule.getActivityForHour(checkHour % 168) ==
-              ScheduleActivity.sleep &&
-          safetyCap < 168) {
-        checkHour++;
-        safetyCap++;
-      }
-      int durationHours = checkHour - hourIndex;
-      int sleepDurationMin = (durationHours * 60) - _currentDate.minute;
-      if (sleepDurationMin <= 0) sleepDurationMin = 60; // Fallback
+      final isAlreadyResting = currentTask?.type == TaskType.rest;
+      if (isAlreadyResting || npc.energy < 95.0) {
+        // SLEEP BLOCK
+        int checkHour = hourIndex;
+        int safetyCap = 0;
+        while (npc.schedule.getActivityForHour(checkHour % 168) ==
+                ScheduleActivity.sleep &&
+            safetyCap < 168) {
+          checkHour++;
+          safetyCap++;
+        }
+        int durationHours = checkHour - hourIndex;
+        int sleepDurationMin = (durationHours * 60) - _currentDate.minute;
+        if (sleepDurationMin <= 0) sleepDurationMin = 60; // Fallback
 
-      final sleepIntent = NPCIntent(
-        id: 'sched_sleep_${npc.id}_$hourIndex',
-        action: TaskType.rest,
-        targetRoomId: npc.assignedRoomId ?? 'entryway',
-        priority: IntentPriority.high,
-        expectedDurationMin: sleepDurationMin,
-      );
-      tryAssign(sleepIntent);
-      return;
+        final sleepIntent = NPCIntent(
+          id: 'sched_sleep_${npc.id}_$hourIndex',
+          action: TaskType.rest,
+          targetRoomId: npc.assignedRoomId ?? 'entryway',
+          priority: IntentPriority.high,
+          expectedDurationMin: sleepDurationMin,
+        );
+        tryAssignWithCooldown(sleepIntent);
+        return;
+      }
     }
 
     if (activity == ScheduleActivity.eat) {
@@ -13606,7 +14395,7 @@ class GameState extends ChangeNotifier {
         expectedDurationMin: expectedDur,
         targetName: mealName,
       );
-      tryAssign(eatIntent);
+      tryAssignWithCooldown(eatIntent);
       return;
     }
 
@@ -13671,18 +14460,18 @@ class GameState extends ChangeNotifier {
       }
 
       if (chosenTask == null) {
-        tryAssign(
+        tryAssignWithCooldown(
           NPCIntent(
             id: 'sched_idle_w_${npc.id}',
             action: TaskType.idle,
             targetRoomId:
-                _getPersonalityIdleTarget(index, activity) ?? 'entryway',
+                 _getPersonalityIdleTarget(index, activity) ?? 'entryway',
             priority: IntentPriority.low,
             expectedDurationMin: 60,
           ),
         );
       } else {
-        tryAssign(
+        tryAssignWithCooldown(
           NPCIntent(
             id: 'low_pri_${npc.id}_${chosenTask.name}_${chosenTargetId ?? 'none'}',
             action: chosenTask,
@@ -16507,7 +17296,9 @@ class GameState extends ChangeNotifier {
             'merchantStock': {
               'shepherds_pie': 999999,
               'wood': 999999,
-              'meat': 999999,
+              'meat_beef': 999999,
+              'meat_chicken': 999999,
+              'meat_pork': 999999,
               'eggs': 999999,
               'cabbage': 999999,
               'grain': 999999,

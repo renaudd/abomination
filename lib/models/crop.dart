@@ -27,6 +27,7 @@ class Crop {
   final double moistureLevel; // 0.0 to 1.0
   final DateTime? lastCaredForAt;
   final String? roomId;
+  final bool isDead;
 
   Crop({
     required this.id,
@@ -39,9 +40,10 @@ class Crop {
     this.moistureLevel = 1.0,
     this.lastCaredForAt,
     this.roomId,
+    this.isDead = false,
   });
 
-  bool get isHarvestable => growthProgress >= 1.0;
+  bool get isHarvestable => growthProgress >= 1.0 && !isDead;
 
   Crop copyWith({
     double? growthProgress,
@@ -51,6 +53,7 @@ class Crop {
     double? moistureLevel,
     DateTime? lastCaredForAt,
     String? roomId,
+    bool? isDead,
   }) {
     return Crop(
       id: id,
@@ -63,6 +66,7 @@ class Crop {
       moistureLevel: moistureLevel ?? this.moistureLevel,
       lastCaredForAt: lastCaredForAt ?? this.lastCaredForAt,
       roomId: roomId ?? this.roomId,
+      isDead: isDead ?? this.isDead,
     );
   }
 
@@ -86,6 +90,7 @@ class Crop {
     'moistureLevel': moistureLevel,
     'lastCaredForAt': lastCaredForAt?.toIso8601String(),
     'roomId': roomId,
+    'isDead': isDead,
   };
 
   factory Crop.fromJson(Map<String, dynamic> json) => Crop(
@@ -101,5 +106,6 @@ class Crop {
         ? DateTime.parse(json['lastCaredForAt'] as String)
         : null,
     roomId: json['roomId'] as String?,
+    isDead: json['isDead'] as bool? ?? false,
   );
 }

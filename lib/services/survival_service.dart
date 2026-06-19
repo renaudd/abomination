@@ -825,6 +825,60 @@ class SurvivalService extends ChangeNotifier {
       }
     }
 
+    // Apply Glarus resettlement turn tick effects
+    final resettlement = _progress!.cardUpgrades['glarus_resettlement_type'];
+    if (_progress!.villageHealth > 0 && resettlement != null) {
+      if (resettlement == 1) { // refugees
+        if (_progress!.food < 50) {
+          _progress!.factionStandings['Glarus'] = (_progress!.factionStandings['Glarus'] ?? 0) - 2;
+          addLog('Wandering Refugees at Glarus are hungry! Standing with Glarus decreased by 2.');
+        } else {
+          _progress!.factionStandings['Glarus'] = (_progress!.factionStandings['Glarus'] ?? 0) + 1;
+        }
+      } else if (resettlement == 2) { // caravan
+        if (_progress!.cash >= 30) {
+          _progress!.cash -= 30;
+          _progress!.wood += 10;
+          _progress!.iron += 10;
+          addLog('Visiting Caravan trade: Paid 30 CHF, obtained +10 Wood and +10 Iron.');
+        } else {
+          _progress!.factionStandings['Gnomes of Zurich'] = (_progress!.factionStandings['Gnomes of Zurich'] ?? 0) - 2;
+          addLog('Could not afford caravan trade fee! Standing with Gnomes of Zurich decreased by 2.');
+        }
+      } else if (resettlement == 3) { // missionaries
+        int supernaturalCount = 0;
+        for (var t in _progress!.playerDeckIds) {
+          final npc = CombatUnitService.createUnit(t);
+          if (isUndead(npc) || isWildAnimal(npc) || isChimera(npc) || isConstruct(npc)) {
+            supernaturalCount++;
+          }
+        }
+        if (supernaturalCount > 0) {
+          final penalty = supernaturalCount * 2;
+          _progress!.factionStandings['Glarus'] = (_progress!.factionStandings['Glarus'] ?? 0) - penalty;
+          addLog('Zealous Missionaries are angered by $supernaturalCount supernatural units in our deck! Standing with Glarus decreased by $penalty.');
+          
+          final standing = _progress!.factionStandings['Glarus'] ?? 0;
+          if (standing < -15) {
+            _progress!.towerDamaged['tower_1'] = min(1.0, (_progress!.towerDamaged['tower_1'] ?? 0.0) + 0.3);
+            _progress!.towerDamaged['tower_2'] = min(1.0, (_progress!.towerDamaged['tower_2'] ?? 0.0) + 0.3);
+            _progress!.towerDamaged['tower_3'] = min(1.0, (_progress!.towerDamaged['tower_3'] ?? 0.0) + 0.3);
+            addLog('Zealous Missionaries launched a Holy Crusade against the Manor! All watchtowers took 30% structural damage!');
+          }
+        }
+      } else if (resettlement == 4) { // farmers
+        _progress!.food += 25;
+        addLog('Displaced Farmers supplied the estate with +25 Food.');
+        
+        final cantonStanding = _progress!.factionStandings['Glarus'] ?? 0;
+        if (cantonStanding < 0) {
+          final tax = min(50, _progress!.cash);
+          _progress!.cash -= tax;
+          addLog('Canton tax authorities confiscated $tax CHF from our reserves.');
+        }
+      }
+    }
+
     // Increment Turn Counter
     _progress!.currentTurn += 1;
     _save();

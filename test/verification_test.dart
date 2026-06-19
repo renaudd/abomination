@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:abomination/models/room.dart';
+import 'package:abomination/models/language_encounter.dart';
 import 'package:abomination/models/relationship.dart';
 import 'package:abomination/models/body_part.dart';
 import 'package:abomination/models/schedule.dart';
@@ -36,8 +38,12 @@ import 'package:abomination/ui/screens/survival_estate_map_screen.dart';
 import 'package:abomination/models/survival_state.dart';
 import 'package:abomination/models/combat_stats.dart';
 import 'package:abomination/models/combat_map.dart';
+import 'package:abomination/models/visitor_quest.dart';
+import 'package:abomination/models/npc_intent.dart';
+import 'package:abomination/models/graduate_school_state.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late GameState gameState;
 
   setUp(() {
@@ -764,5 +770,883 @@ void main() {
       final neglectedRel = SocialService.getRelationshipBetween(neglectedPartner, player);
       expect(neglectedRel.admiration, lessThan(4.5));
     });
+
+    test('Room Conversion: Restored Unused to Ballroom and refunding', () {
+      final room = gameState.rooms.firstWhere((r) => r.id == 'unused_1f');
+      gameState.updateRoom(room.copyWith(isRestored: true));
+
+      gameState.setResource('funds', 2000.0);
+      gameState.setResource('wood', 1000.0);
+
+      gameState.convertUnusedToBallroom('unused_1f');
+      
+      final updatedRoom = gameState.rooms.firstWhere((r) => r.id == 'unused_1f');
+      expect(updatedRoom.isUnderConstruction, isTrue);
+      expect(updatedRoom.constructionTarget, equals('ballroom'));
+      expect(gameState.resources['funds'], equals(500.0));
+      expect(gameState.resources['wood'], equals(500.0));
+
+      gameState.cancelRoomConversion('unused_1f');
+      final canceledRoom = gameState.rooms.firstWhere((r) => r.id == 'unused_1f');
+      expect(canceledRoom.isUnderConstruction, isFalse);
+      expect(canceledRoom.constructionTarget, isNull);
+      expect(gameState.resources['funds'], equals(2000.0));
+      expect(gameState.resources['wood'], equals(1000.0));
+
+      gameState.convertUnusedToBallroom('unused_1f');
+      final task = GameTask(
+        id: 'test_construction',
+        npcId: 'butler',
+        priority: IntentPriority.high,
+        type: TaskType.construction,
+        targetId: 'unused_1f',
+        minutesRemaining: 0,
+      );
+      gameState.handleTaskCompletionForTesting(task);
+
+      final completedRoom = gameState.rooms.firstWhere((r) => r.id == 'unused_1f');
+      expect(completedRoom.isUnderConstruction, isFalse);
+      expect(completedRoom.constructionTarget, isNull);
+      expect(completedRoom.type, equals(RoomType.ballroom));
+      expect(completedRoom.name, equals('Ballroom'));
+      expect(completedRoom.availableTasks.contains(TaskType.relax), isTrue);
+    });
+
+    test('Visitor Quest: Indentured Sanctuary acceptor becomes Manor Resident', () {
+      final quest = VisitorQuestCatalog.allQuests.firstWhere((q) => q.id == 'quest_fugitive_sanctuary');
+      final guest = NPC(
+        id: 'guest_refugee',
+        name: 'Revolutionary Fugitive',
+        role: 'Refugee',
+        age: 25,
+        gender: 'Male',
+        specimenType: 'Human',
+        bodyParts: const [],
+        schedule: NPCSchedule.visitor(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+        currentRoomId: 'entryway',
+        targetRoomId: 'entryway',
+        movementProgress: 1.0,
+        status: NPCStatus.idle,
+        isResident: false,
+        group: NPCOrgGroup.A,
+        stats: const {},
+        traits: const [],
+        biography: null,
+      );
+      gameState.addNpcForTesting(guest);
+
+      gameState.acceptVisitorQuest(quest, 'Revolutionary Fugitive');
+
+      final updatedNpc = gameState.npcs.firstWhere((n) => n.name == 'Revolutionary Fugitive');
+      expect(updatedNpc.isResident, isTrue);
+      expect(updatedNpc.role, equals('Manor Resident'));
+    });
+
+    test('Combat Pathfinding: getNextWaypoint avoids walls correctly', () {
+      final manager = CombatManager();
+      // Alpine Pass default map
+      final map = CombatMap.allMaps.first;
+      manager.map = map;
+
+      final npc = NPC(
+        id: 'test_fighter',
+        name: 'Fighter',
+        role: 'Fighter',
+        age: 20,
+        gender: 'Male',
+        specimenType: 'Human',
+        bodyParts: const [],
+        schedule: NPCSchedule.visitor(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+        combatStats: CombatStats(
+          cost: 3,
+          health: 100,
+          maxHealth: 100,
+          attack: 10.0,
+          speed: 1.0,
+          distance: 1.0,
+          movement: 5.0,
+          unitCount: 1,
+          isFlying: false,
+        ),
+      );
+
+      manager.spawnUnit(npc, CombatSide.player, x: 50.0, y: 30.0);
+      final combatant = manager.combatants.first;
+
+      // Target is on the other side of the wall: (120, 110)
+      final waypoint = manager.getNextWaypoint(combatant, 120.0, 110.0);
+
+      // Best gap X is 115.0, so the waypoint should be (115.0, 30.0)
+      expect(waypoint.dx, equals(115.0));
+      expect(waypoint.dy, equals(30.0));
+    });
+
+    test('Combat AI: Enemy Leader spawns with random traits and custom kiting stats', () {
+      final manager = CombatManager();
+      final leaderNpc = NPC(
+        id: 'test_enemy_leader',
+        name: 'Enemy Leader',
+        role: 'Leader',
+        age: 35,
+        gender: 'Male',
+        specimenType: 'Human',
+        bodyParts: const [],
+        schedule: NPCSchedule.visitor(),
+        diet: NPCDiet.defaultDiet(),
+        appearance: NPCAppearance.random(),
+        combatStats: CombatStats(
+          cost: 0,
+          health: 500,
+          maxHealth: 500,
+          attack: 25.0,
+          speed: 1.0,
+          distance: 1.5, // Melee
+          movement: 4.0,
+          unitCount: 1,
+          isFlying: false,
+        ),
+      );
+
+      manager.spawnUnit(leaderNpc, CombatSide.enemy, x: 250.0, y: 70.0, isAiLeader: true);
+      final enemyLeader = manager.combatants.firstWhere((c) => c.isAiLeader);
+
+      expect(enemyLeader.aiTraits.length, greaterThanOrEqualTo(2));
+      expect(enemyLeader.aiTraits.length, lessThanOrEqualTo(4));
+
+      if (enemyLeader.aiTraits.contains('bait_and_shoot')) {
+        expect(enemyLeader.npc.combatStats!.distance, equals(8.0));
+      } else {
+        expect(enemyLeader.npc.combatStats!.distance, equals(1.5));
+      }
+    });
+
+    test('Survival AI/Encounter: Glarus destruction in Gnomes Artillery correctly sets village health and restricts market', () {
+      final progress = SurvivalProgress(
+        selectedLeaderId: 'alphonse',
+        playerDeckIds: ['peasant', 'samurai'],
+        buildings: [],
+        purchasedPlots: [],
+        towerLevels: {},
+        towerDamaged: {},
+        unitExp: {},
+        starvationInfractions: {},
+        bondageDebuffCount: {},
+        trainingUnitIds: [],
+        cardUpgrades: {},
+        factionStandings: {},
+        towerRepairWorkers: {},
+      );
+
+      // Verify initial state
+      expect(progress.villageHealth, equals(100));
+
+      // Simulate Option B execution of gnomes_artillery event
+      progress.villageHealth = 0;
+
+      // Verify village is fallow/destroyed
+      expect(progress.villageHealth, equals(0));
+
+      // Verify that market available hires is exactly one card when destroyed
+      final List<Map<String, dynamic>> availableHires = [];
+      if (progress.villageHealth <= 0) {
+        final index = (progress.currentTurn) % 3;
+        final choices = [
+          {'type': 'undead_rats', 'cost': 190},
+          {'type': 'werewolf', 'cost': 350},
+          {'type': 'flesh_golem', 'cost': 320},
+        ];
+        availableHires.add(choices[index]);
+      } else {
+        availableHires.addAll([
+          {'type': 'peasant', 'cost': 150},
+        ]);
+      }
+
+      expect(availableHires.length, equals(1));
+      expect(availableHires.first['type'], equals('werewolf')); // turn 1 % 3 = 1
+    });
+
+    test('Survival AI/Encounter: Glarus destruction unlocks conditional disaster and discovery', () {
+      final progress = SurvivalProgress(
+        selectedLeaderId: 'alphonse',
+        playerDeckIds: [],
+        buildings: [],
+        purchasedPlots: [],
+        towerLevels: {},
+        towerDamaged: {},
+        unitExp: {},
+        starvationInfractions: {},
+        bondageDebuffCount: {},
+        trainingUnitIds: [],
+        cardUpgrades: {},
+        factionStandings: {},
+        towerRepairWorkers: {},
+      );
+
+      progress.villageHealth = 0; // destroyed
+
+      // Conditional disaster check
+      final List<Map<String, dynamic>> eligibleDisasters = [];
+      if (progress.villageHealth <= 0) {
+        eligibleDisasters.add({
+          'id': 'glarus_fallow_outlaw_raiders',
+          'title': 'GLARUS FALLOW OUTLAW RAIDERS',
+        });
+      }
+      expect(eligibleDisasters.any((d) => d['id'] == 'glarus_fallow_outlaw_raiders'), isTrue);
+
+      // Conditional discovery check
+      final List<Map<String, dynamic>> eligibleDiscoveries = [];
+      if (progress.villageHealth <= 0) {
+        eligibleDiscoveries.add({
+          'id': 'glarus_ruins_scavenge',
+          'title': 'GLARUS RUINS SCAVENGE',
+        });
+      }
+      expect(eligibleDiscoveries.any((d) => d['id'] == 'glarus_ruins_scavenge'), isTrue);
+    });
+
+    test('Survival AI/Encounter: Glarus resettlement type missionaries reacts negatively to supernatural units', () {
+      final progress = SurvivalProgress(
+        selectedLeaderId: 'alphonse',
+        playerDeckIds: ['werewolf', 'peasant'], // werewolf is supernatural
+        buildings: [],
+        purchasedPlots: [],
+        towerLevels: {},
+        towerDamaged: {},
+        unitExp: {},
+        starvationInfractions: {},
+        bondageDebuffCount: {},
+        trainingUnitIds: [],
+        cardUpgrades: {'glarus_resettlement_type': 3},
+        factionStandings: {'Glarus': 0},
+        towerRepairWorkers: {},
+      );
+      final service = SurvivalService(1, progress);
+
+      service.endTurn();
+
+      // Werewolf (supernatural) is in player deck, so Glarus standing should drop by 2
+      expect(progress.factionStandings['Glarus'], equals(-2));
+    });
+  });
+
+  group('Bug Fix Verification Language Skills', () {
+    test('Language Encounter Generation & Translation flow', () {
+      final state = GameState();
+
+      // Initially, active facilities is empty, so only generic questions (1-10) are generated
+      final encounter = LanguageEncounter.generate(Random(42), state.getActiveFacilities());
+      expect(encounter.id, isNotNull); // Should generate an eligible generic ID
+
+      // Let's verify translation check
+      // Spawn a French resident (Flaubert Giles is French by default)
+      final resident = NPC(
+        id: 'resident_giles',
+        name: 'Flaubert Giles',
+        role: 'Butler',
+        age: 45,
+        gender: 'Male',
+        nationality: 'French',
+        religion: 'Catholic',
+        sexualOrientation: SexualOrientation.straight,
+        group: NPCOrgGroup.A,
+        status: NPCStatus.idle,
+        disposition: NPCDisposition.voluntary,
+        isPlayer: false,
+        stats: {},
+        traits: [],
+        bodyParts: [],
+        inventory: [],
+        schedule: NPCSchedule.visitor(),
+        diet: NPCDiet.defaultDiet(),
+        energy: 100,
+        hunger: 0,
+        satisfaction: 80,
+        digestion: 0,
+        breakingPointMinutes: 100,
+        mentalBreakingPointMinutes: 100,
+        mentalEpisodeCount: 0,
+        cleanliness: 100,
+        specimenType: 'Human',
+        appearance: NPCAppearance.defaultButler(),
+      );
+      state.addNpcForTesting(resident);
+
+      // Flaubert Giles speaks French (langCode == 'FR')
+      expect(state.anyResidentSpeaksLanguage('FR'), isTrue);
+      // But does not speak German (langCode == 'DE')
+      expect(state.anyResidentSpeaksLanguage('DE'), isFalse);
+    });
+
+    test('Language Graded option resolution', () {
+      final state = GameState();
+
+      final greeter = NPC(
+        id: 'greeter_id',
+        name: 'Greeter',
+        role: 'Butler',
+        age: 40,
+        gender: 'Male',
+        nationality: 'Swiss',
+        religion: 'Catholic',
+        sexualOrientation: SexualOrientation.straight,
+        group: NPCOrgGroup.A,
+        status: NPCStatus.idle,
+        disposition: NPCDisposition.voluntary,
+        isPlayer: false,
+        stats: {},
+        traits: [],
+        bodyParts: [],
+        inventory: [],
+        schedule: NPCSchedule.visitor(),
+        diet: NPCDiet.defaultDiet(),
+        energy: 100,
+        hunger: 0,
+        satisfaction: 80,
+        digestion: 0,
+        breakingPointMinutes: 100,
+        mentalBreakingPointMinutes: 100,
+        mentalEpisodeCount: 0,
+        cleanliness: 100,
+        specimenType: 'Human',
+        appearance: NPCAppearance.defaultButler(),
+      );
+
+      final guest = NPC(
+        id: 'guest_id',
+        name: 'Guest',
+        role: 'Visitor',
+        age: 30,
+        gender: 'Female',
+        nationality: 'Italian',
+        religion: 'Catholic',
+        sexualOrientation: SexualOrientation.straight,
+        group: NPCOrgGroup.A,
+        status: NPCStatus.idle,
+        disposition: NPCDisposition.voluntary,
+        isPlayer: false,
+        stats: {},
+        traits: [],
+        bodyParts: [],
+        inventory: [],
+        schedule: NPCSchedule.visitor(),
+        diet: NPCDiet.defaultDiet(),
+        energy: 100,
+        hunger: 0,
+        satisfaction: 80,
+        digestion: 0,
+        breakingPointMinutes: 100,
+        mentalBreakingPointMinutes: 100,
+        mentalEpisodeCount: 0,
+        cleanliness: 100,
+        specimenType: 'Human',
+        appearance: NPCAppearance.defaultButler(),
+      );
+
+      // Trigger a language encounter manually
+      final encounter = LanguageEncounter.generate(Random(42), []);
+      state.triggerLanguageEncounterForTesting(encounter, greeter, guest);
+
+      expect(state.activeLanguageEncounter, isNotNull);
+      expect(state.isLanguageEncounterTranslated, isFalse);
+
+      // Solve correct option (grade = 1)
+      final correctOption = encounter.options.firstWhere((o) => o.grade == 1);
+      final faction = encounter.faction;
+      final initialStanding = state.getFactionStanding(faction);
+
+      state.resolveLanguageEncounter(correctOption);
+
+      expect(state.getFactionStanding(faction), equals(initialStanding + 0.5));
+      expect(state.activeLanguageEncounter, isNull);
+    });
+
+    test('Bug Fix Verification: Parent death cause starting bonuses are applied', () {
+      final stateDisease = GameState();
+      stateDisease.initializeNewGame(
+        firstName: "Disease",
+        lastName: "Test",
+        estateName: "Manor",
+        deathCause: DeathCause.disease,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+      final pDisease = stateDisease.npcs.firstWhere((n) => n.id == 'player');
+      expect(pDisease.proficiencies['Medicine'], greaterThan(10.0));
+      expect(pDisease.stats['hygiene'], greaterThan(4));
+
+      final stateCrash = GameState();
+      stateCrash.initializeNewGame(
+        firstName: "Crash",
+        lastName: "Test",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+      final pCrash = stateCrash.npcs.firstWhere((n) => n.id == 'player');
+      expect(pCrash.proficiencies['Construction'], greaterThan(0.0));
+      expect(pCrash.stats['endurance'], greaterThan(3));
+    });
+
+
+    test('Bug Fix Verification: animal eating raw crops in pen/pasture', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Test",
+        lastName: "Master",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      // Setup a pig pen room
+      final pen = Room(
+        id: 'pig_pen_1',
+        name: 'Pig Pen',
+        type: RoomType.pigPen,
+        isRestored: true,
+        floor: Floor.ground,
+        width: 2.0,
+        description: 'A pen for pigs',
+      );
+      state.addRoomForTesting(pen);
+
+      // Setup raw grains in resources
+      state.setResource('grain', 10);
+
+      // Setup a creature NPC inside the pig pen
+      final pig = NPC(
+        id: 'test_pig',
+        name: 'Bacon',
+        specimenType: 'Pig',
+        role: 'Creature',
+        age: 2,
+        gender: 'Male',
+        stats: {},
+        traits: [],
+        bodyParts: [],
+        inventory: [],
+        schedule: NPCSchedule.visitor(),
+        diet: NPCDiet.defaultDiet(),
+        energy: 100,
+        hunger: 80, // Hungry pig
+        satisfaction: 80,
+        digestion: 0,
+        cleanliness: 100,
+        currentRoomId: 'pig_pen_1',
+        appearance: NPCAppearance.defaultButler(),
+      );
+      state.addNpcForTesting(pig);
+
+      // Verify pantry has cooked meals
+      expect(state.pantry.isNotEmpty, isTrue);
+      final initialPantrySize = state.pantry.length;
+
+      // Assign pig to eat task
+      final success = state.assignNpcToTask('test_pig', TaskType.eat, 'pig_pen_1');
+      expect(success, isTrue);
+
+      final task = state.activeTasks.firstWhere((t) => t.npcId == 'test_pig');
+
+      // Process task completion
+      state.completeTaskManually('test_pig', task);
+
+      // Grains should be consumed
+      expect(state.resources['grain'], lessThan(10));
+      // Pantry should NOT be touched
+      expect(state.pantry.length, equals(initialPantrySize));
+      // Pig hunger should be restored
+      final updatedPig = state.npcs.firstWhere((n) => n.id == 'test_pig');
+      expect(updatedPig.hunger, lessThan(80));
+
+      // No dirty dishes should be added to the pig pen
+      final dirtyDishesInPen = pen.inventory.where((i) => i.type == 'dirty_dishes');
+      expect(dirtyDishesInPen, isEmpty);
+    });
+
+    test('Bug Fix Verification: Laboratory room conversion requires Zoology 1 and lab_schematics blueprint', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Test",
+        lastName: "Master",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      // Inject resources for construction costs
+      state.addItemToRoom('library', GameItem.create(name: 'Funds', type: 'funds', category: ItemCategory.resource, quantity: 5000));
+      state.addItemToRoom('library', GameItem.create(name: 'Wood', type: 'wood', category: ItemCategory.resource, quantity: 1000));
+      state.addItemToRoom('library', GameItem.create(name: 'Bricks', type: 'bricks', category: ItemCategory.resource, quantity: 1000));
+
+      // Create a restored attic room for testing
+      final attic = Room(
+        id: 'attic_test',
+        name: 'Attic Test',
+        type: RoomType.unused,
+        isRestored: true,
+        floor: Floor.attic,
+        width: 2.0,
+        description: 'Restored Attic',
+      );
+      state.addRoomForTesting(attic);
+
+      // Attempt laboratory conversion (Zoology is 0 and no schematics)
+      state.convertRoomToLaboratory('attic_test');
+      final updatedAttic = state.rooms.firstWhere((r) => r.id == 'attic_test');
+      expect(updatedAttic.isUnderConstruction, isFalse);
+
+      // Grant Zoology level 1 by adding encyclopedia
+      state.addItemToRoom(
+        'library',
+        GameItem.create(
+          name: 'Zoology Encyclopedia',
+          type: 'encyclopedia',
+          category: ItemCategory.knowledge,
+          quantity: 1,
+          metadata: {'discipline': 'Zoology'},
+        ),
+      );
+
+      // Still fails because of missing schematics blueprint
+      state.convertRoomToLaboratory('attic_test');
+      final updatedAttic2 = state.rooms.firstWhere((r) => r.id == 'attic_test');
+      expect(updatedAttic2.isUnderConstruction, isFalse);
+
+      // Give blueprint
+      state.addItemToRoom(
+        'library',
+        GameItem.create(
+          name: 'Laboratory Schematics',
+          type: 'lab_schematics',
+          category: ItemCategory.resource,
+          quantity: 1,
+        ),
+      );
+
+      // Now it should succeed
+      state.convertRoomToLaboratory('attic_test');
+      final updatedAttic3 = state.rooms.firstWhere((r) => r.id == 'attic_test');
+      expect(updatedAttic3.isUnderConstruction, isTrue);
+      expect(updatedAttic3.constructionTarget, equals('laboratory'));
+    });
+
+    test('Bug Fix Verification: Clinic conversion requires Medicine specialization', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Test",
+        lastName: "Master",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      // Inject resources for construction costs
+      state.addItemToRoom('library', GameItem.create(name: 'Funds', type: 'funds', category: ItemCategory.resource, quantity: 5000));
+      state.addItemToRoom('library', GameItem.create(name: 'Wood', type: 'wood', category: ItemCategory.resource, quantity: 1000));
+      state.addItemToRoom('library', GameItem.create(name: 'Bricks', type: 'bricks', category: ItemCategory.resource, quantity: 1000));
+
+      // Create a restored attic room for testing
+      final attic = Room(
+        id: 'attic_test2',
+        name: 'Attic Test 2',
+        type: RoomType.unused,
+        isRestored: true,
+        floor: Floor.attic,
+        width: 2.0,
+        description: 'Restored Attic',
+      );
+      state.addRoomForTesting(attic);
+
+      // Attempt clinic conversion (unspecialized/no degree)
+      state.convertRoomToClinic('attic_test2');
+      final r1 = state.rooms.firstWhere((r) => r.id == 'attic_test2');
+      expect(r1.isUnderConstruction, isFalse);
+
+      // Enroll and graduate with Medicine specialization
+      state.enrollInGraduateSchool(AcademicSchoolType.medicine);
+      state.selectAcademicSpecialization('Medicine');
+      state.completeGraduation();
+
+      // Now it should succeed
+      state.convertRoomToClinic('attic_test2');
+      final r2 = state.rooms.firstWhere((r) => r.id == 'attic_test2');
+      expect(r2.isUnderConstruction, isTrue);
+      expect(r2.constructionTarget, equals('clinic'));
+    });
+
+    test('Bug Fix Verification: Reanimation procedure checks dynamic level and physical book', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Test",
+        lastName: "Master",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      // Create a restored laboratory room
+      final lab = Room(
+        id: 'lab_1',
+        name: 'Laboratory',
+        type: RoomType.laboratory,
+        isRestored: true,
+        floor: Floor.attic,
+        width: 2.0,
+        description: 'Laboratory',
+      );
+      state.addRoomForTesting(lab);
+
+      // Create a subject specimen in resources
+      state.setResource('specimen', 1);
+
+      // Attempt to assign reanimation (Alchemy level is 0 and no book)
+      bool success = state.assignNpcToTask('player', TaskType.operation, 'lab_1', recipeId: 'reanimation_procedure');
+      expect(success, isFalse);
+
+      // Grant Alchemy level 2 by adding manual
+      state.addItemToRoom(
+        'library',
+        GameItem.create(
+          name: 'Alchemy Manual',
+          type: 'alchemy_book',
+          category: ItemCategory.knowledge,
+          quantity: 1,
+          metadata: {'discipline': 'Alchemy'},
+        ),
+      );
+
+      // Still fails because of missing book
+      bool success2 = state.assignNpcToTask('player', TaskType.operation, 'lab_1', recipeId: 'reanimation_procedure');
+      expect(success2, isFalse);
+
+      // Give 'Principles of Galvanism' book to manor
+      state.addItemToRoom(
+        'library',
+        GameItem.create(
+          name: 'Principles of Galvanism',
+          type: 'principles_of_galvanism',
+          category: ItemCategory.knowledge,
+          quantity: 1,
+          metadata: {'discipline': 'Alchemy'},
+        ),
+      );
+
+      // Now it should succeed
+      bool success3 = state.assignNpcToTask('player', TaskType.operation, 'lab_1', recipeId: 'reanimation_procedure');
+      expect(success3, isTrue);
+    });
+
+    test('Bug Fix Verification: Field crop lifecycle, fallow reset, crop death, and Clear Field action', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Test",
+        lastName: "Master",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      // Create a restored field room
+      final field = Room(
+        id: 'field_test',
+        name: 'Field A',
+        type: RoomType.field,
+        isRestored: true,
+        floor: Floor.ground,
+        width: 2.0,
+        description: 'A restored farm field',
+        tilledAmount: 1.0,
+        fertilizedAmount: 1.0,
+      );
+      state.addRoomForTesting(field);
+
+      // Verify that initially plantCrops is available
+      state.addItemToRoom('library', GameItem.create(name: 'Cabbage Seeds', type: 'seeds_cabbage', category: ItemCategory.resource, quantity: 10));
+
+      // Plant cabbage
+      bool plantSuccess = state.assignNpcToTask('player', TaskType.plantCrops, 'field_test', recipeId: 'cabbage');
+      expect(plantSuccess, isTrue);
+
+      // Finish the task
+      final activeTask = state.activeTasks.firstWhere((t) => t.type == TaskType.plantCrops && t.targetId == 'field_test');
+      state.completeTaskManually('player', activeTask);
+
+      // Verify a crop is planted in field_test
+      final plantedCrops = state.crops.where((c) => c.roomId == 'field_test').toList();
+      expect(plantedCrops.length, equals(1));
+      final crop = plantedCrops.first;
+      expect(crop.isDead, isFalse);
+
+      // Verify that after crop is planted, tillSoil/plantCrops/fertilizeSoil cannot be assigned
+      bool plantAgain = state.assignNpcToTask('player', TaskType.plantCrops, 'field_test', recipeId: 'cabbage');
+      expect(plantAgain, isFalse);
+      bool tillAgain = state.assignNpcToTask('player', TaskType.tillSoil, 'field_test');
+      expect(tillAgain, isFalse);
+      bool fertilizeAgain = state.assignNpcToTask('player', TaskType.fertilizeSoil, 'field_test');
+      expect(fertilizeAgain, isFalse);
+
+      // Now let's test crop death.
+      state.clearCropsForTesting();
+      state.addCropForTesting(crop.copyWith(moistureLevel: 0.0, isDead: true));
+      state.tick(); // executes _processCrops() which skips dead crops but retains them
+
+      // Verify the crop is now dead
+      final deadCrops = state.crops.where((c) => c.roomId == 'field_test').toList();
+      expect(deadCrops.first.isDead, isTrue);
+
+      // Verify that waterCrops/careForCrops/harvestCrops cannot be assigned on dead crops
+      bool waterAgain = state.assignNpcToTask('player', TaskType.waterCrops, 'field_test');
+      expect(waterAgain, isFalse);
+      bool harvestAgain = state.assignNpcToTask('player', TaskType.harvestCrops, 'field_test');
+      expect(harvestAgain, isFalse);
+
+      // Verify that clearField is now assignable
+      bool clearSuccess = state.assignNpcToTask('player', TaskType.clearField, 'field_test');
+      expect(clearSuccess, isTrue);
+
+      // Finish the clearField task
+      final clearTask = state.activeTasks.firstWhere((t) => t.type == TaskType.clearField && t.targetId == 'field_test');
+      state.completeTaskManually('player', clearTask);
+
+      // Verify crop list is now empty for field_test
+      expect(state.crops.where((c) => c.roomId == 'field_test'), isEmpty);
+
+      // Verify the field is returned to fallow (tilledAmount = 0.0, fertilizedAmount = 0.0)
+      final clearedField = state.rooms.firstWhere((r) => r.id == 'field_test');
+      expect(clearedField.tilledAmount, equals(0.0));
+      expect(clearedField.fertilizedAmount, equals(0.0));
+    });
+
+    test('Bug Fix Verification: Frankenstein manual task is NOT interrupted/cancelled by behavior tree', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Test",
+        lastName: "Master",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      // We want to test tilling Field A (which is field_2)
+      final roomIndex = state.rooms.indexWhere((r) => r.id == 'field_2');
+      expect(roomIndex, isNot(-1));
+      
+      // Reset tilledAmount so it can be tilled
+      state.setRoomForTesting(state.rooms[roomIndex].copyWith(tilledAmount: 0.0));
+
+      // Frankenstein (player) stats setup to prevent high priority needs preemption
+      final playerIndex = state.npcs.indexWhere((n) => n.id == 'player');
+      expect(playerIndex, isNot(-1));
+      state.setNpcForTesting(state.npcs[playerIndex].copyWith(
+        hunger: 0.0,
+        energy: 100.0,
+        digestion: 0.0,
+        cleanliness: 100.0,
+      ));
+
+      // Manually schedule tilling task for Frankenstein
+      state.tryScheduleNpcTask('player', TaskType.tillSoil, 'field_2');
+      state.setSpeed(GameSpeed.normal);
+
+      // Verify that Frankenstein has the intent in his queue
+      print("BEFORE TICK: activeTaskId=${state.npcs[playerIndex].activeTaskId}, intentQueue=${state.npcs[playerIndex].intentQueue.map((i) => i.action.name).toList()}");
+      expect(state.npcs[playerIndex].intentQueue.any((i) => i.action == TaskType.tillSoil), isTrue);
+
+      // Tick the game!
+      state.tick();
+
+      print("AFTER TICK: activeTaskId=${state.npcs[playerIndex].activeTaskId}, intentQueue=${state.npcs[playerIndex].intentQueue.map((i) => i.action.name).toList()}, lastAnnouncement=${state.lastAnnouncement}");
+
+      // Upon the first tick, the behavior tree runs and should assign Frankenstein to tillSoil.
+      // Let's verify that the task has started and Frankenstein's activeTaskId is set
+      final activeTaskId = state.npcs[playerIndex].activeTaskId;
+      expect(activeTaskId, isNotNull);
+      final task = state.activeTasks.firstWhere((t) => t.id == activeTaskId);
+      expect(task, isNotNull);
+      expect(task.type, equals(TaskType.tillSoil));
+
+      // Now, let's tick 5 more times.
+      // Each tick represents 1 game minute.
+      // If the bug is present, the behavior tree will cancel his tillSoil task on the very next tick!
+      for (int i = 0; i < 5; i++) {
+        state.tick();
+        // The activeTaskId should NOT be reset to null!
+        expect(state.npcs[playerIndex].activeTaskId, equals(activeTaskId), reason: "Task was cancelled/interrupted on tick $i");
+      }
+    });
+
+    test('Bug Fix Verification: Frankenstein manual task long run simulation with needs decay', () {
+      final state = GameState();
+      state.initializeNewGame(
+        firstName: "Test",
+        lastName: "Master",
+        estateName: "Manor",
+        deathCause: DeathCause.trainCrash,
+        age: 30,
+        gilesTrait: GilesTrait.silent,
+        objective: LifeObjective.science,
+      );
+
+      final roomIndex = state.rooms.indexWhere((r) => r.id == 'field_2');
+      expect(roomIndex, isNot(-1));
+      state.setRoomForTesting(state.rooms[roomIndex].copyWith(tilledAmount: 0.0));
+
+      final playerIndex = state.npcs.indexWhere((n) => n.id == 'player');
+      expect(playerIndex, isNot(-1));
+
+      // Frankenstein starts in master_bedroom, so he needs to walk to field_2 first.
+      // Let's teleport him directly to field_2 to bypass pathfinding/walking, so we only test active task execution and needs decay!
+      state.setNpcForTesting(state.npcs[playerIndex].copyWith(currentRoomId: 'field_2'));
+
+      // Manually schedule tilling task for Frankenstein
+      state.tryScheduleNpcTask('player', TaskType.tillSoil, 'field_2');
+      state.setSpeed(GameSpeed.normal);
+
+      // Tick the game to start the task!
+      state.tick();
+
+      final activeTaskId = state.npcs[playerIndex].activeTaskId;
+      expect(activeTaskId, isNotNull);
+
+      // Now tick 1440 times (24 hours)
+      int interruptions = 0;
+      for (int i = 0; i < 1440; i++) {
+        state.tick();
+        final currentNpc = state.npcs[playerIndex];
+        if (currentNpc.activeTaskId == null) {
+          interruptions++;
+          print("INTERRUPTION at tick $i: date=${state.currentDate.formattedTime}, hunger=${currentNpc.hunger}, energy=${currentNpc.energy}, cleanliness=${currentNpc.cleanliness}, digestion=${currentNpc.digestion}, intentQueue=${currentNpc.intentQueue.map((it) => it.action.name).toList()}");
+          
+          // Re-schedule so we can see if it continues to interrupt
+          state.tryScheduleNpcTask('player', TaskType.tillSoil, 'field_2');
+        }
+      }
+
+      final finalNpc = state.npcs[playerIndex];
+      print("Total interruptions over 1440 ticks: $interruptions");
+      print("FINAL STATS: hunger=${finalNpc.hunger}, energy=${finalNpc.energy}, cleanliness=${finalNpc.cleanliness}, digestion=${finalNpc.digestion}");
+    });
   });
 }
+

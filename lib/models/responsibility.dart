@@ -65,6 +65,7 @@ class TaskCategoryMapping {
       case TaskType.careForCrops:
       case TaskType.harvestCrops:
       case TaskType.refinePlantFungus:
+      case TaskType.clearField:
         return ResponsibilityCategory.farming;
 
       case TaskType.research:
@@ -104,6 +105,7 @@ class TaskCategoryMapping {
       case TaskType.blacksmithing:
       case TaskType.manufacturing:
       case TaskType.refineNonLiving:
+      case TaskType.pharmaceuticalCrafting:
         return ResponsibilityCategory.crafting;
 
       case TaskType.hunt:
@@ -127,6 +129,7 @@ class TaskCategoryMapping {
       case TaskType.extinguishFire:
       case TaskType.recombineSpecimen:
       case TaskType.defendManor:
+      case TaskType.legalServices:
         return ResponsibilityCategory.labor;
 
       case TaskType.study:

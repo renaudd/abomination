@@ -134,6 +134,9 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
           'wood',
           'timber',
           'meat',
+          'meat_beef',
+          'meat_chicken',
+          'meat_pork',
           'eggs',
           'cabbage',
           'grain',
@@ -483,226 +486,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                 Expanded(
                   child: Row(
                     children: [
-                      // Left Column: Merchant's Inventory (BUY)
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            border: Border.all(color: Colors.white10),
-                          ),
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "MERCHANT STOCK (TO BUY)",
-                                style: GoogleFonts.oswald(
-                                  color: const Color(0xFFC4B89B),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              // Buy Sorting Row
-                              Row(
-                                children: [
-                                  _buildSortHeaderCell(
-                                    label: "NAME",
-                                    field: 'name',
-                                    activeField: _sortBuyField,
-                                    isAscending: _isBuyAscending,
-                                    onTap: () => _setBuySort('name'),
-                                    flex: 3,
-                                  ),
-                                  _buildSortHeaderCell(
-                                    label: "TYPE",
-                                    field: 'type',
-                                    activeField: _sortBuyField,
-                                    isAscending: _isBuyAscending,
-                                    onTap: () => _setBuySort('type'),
-                                    flex: 2,
-                                  ),
-                                  _buildSortHeaderCell(
-                                    label: "PRICE",
-                                    field: 'price',
-                                    activeField: _sortBuyField,
-                                    isAscending: _isBuyAscending,
-                                    onTap: () => _setBuySort('price'),
-                                    flex: 2,
-                                  ),
-                                  _buildSortHeaderCell(
-                                    label: "WT",
-                                    field: 'weight',
-                                    activeField: _sortBuyField,
-                                    isAscending: _isBuyAscending,
-                                    onTap: () => _setBuySort('weight'),
-                                    flex: 2,
-                                  ),
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(
-                                      "ORDER QTY",
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.oswald(color: Colors.white38, fontSize: 8.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Divider(color: Colors.white10),
-                              Expanded(
-                                child: ListView.builder(
-                                  itemCount: sortedBuy.length,
-                                  itemBuilder: (context, index) {
-                                    final entry = sortedBuy[index];
-                                    final id = entry.key;
-                                    final stockQty = entry.value;
-                                    final price = (state.marketService.getBuyPrice(id) * currentMarkup).round().clamp(1, 9999);
-                                    final info = getItemInfo(id);
-                                    final cartQty = _itemsToBuy[id] ?? 0;
-
-                                    return Container(
-                                      padding: EdgeInsets.symmetric(vertical: isShort ? 2 : 6),
-                                      decoration: const BoxDecoration(
-                                        border: Border(bottom: BorderSide(color: Colors.white10, width: 0.5)),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          // Name
-                                          Expanded(
-                                            flex: 3,
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  info.name,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: GoogleFonts.playfairDisplay(
-                                                    color: const Color(0xFFE5D5B0),
-                                                    fontSize: 10.5,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  isSuperMerchant ? "Stock: ∞" : "Stock: $stockQty",
-                                                  style: GoogleFonts.oldStandardTt(
-                                                    color: Colors.white30,
-                                                    fontSize: 8,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          // Type (Icon)
-                                          Expanded(
-                                            flex: 2,
-                                            child: Row(
-                                              children: [
-                                                Icon(info.icon, color: const Color(0xFFC4B89B), size: 11),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  info.type.toUpperCase(),
-                                                  style: GoogleFonts.oldStandardTt(
-                                                    color: Colors.white54,
-                                                    fontSize: 8,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          // Price
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              "$price CHF",
-                                              style: GoogleFonts.oswald(color: Colors.white70, fontSize: 9.5),
-                                            ),
-                                          ),
-                                          // Weight
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              "${info.weight} kg",
-                                              style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 9),
-                                            ),
-                                          ),
-                                          // Qty Input
-                                          Expanded(
-                                            flex: 3,
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                IconButton(
-                                                  icon: const Icon(Icons.remove, color: Colors.white54, size: 12),
-                                                  padding: EdgeInsets.zero,
-                                                  constraints: const BoxConstraints(),
-                                                  onPressed: cartQty > 0
-                                                      ? () {
-                                                          final newVal = cartQty - 1;
-                                                          _getBuyController(id, newVal).text = newVal > 0 ? newVal.toString() : "";
-                                                          setState(() {
-                                                            _itemsToBuy[id] = newVal;
-                                                          });
-                                                        }
-                                                      : null,
-                                                ),
-                                                Container(
-                                                  width: 35,
-                                                  height: 22,
-                                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                                  child: TextField(
-                                                    controller: _getBuyController(id, cartQty),
-                                                    keyboardType: TextInputType.number,
-                                                    textAlign: TextAlign.center,
-                                                    style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 10.5),
-                                                    decoration: InputDecoration(
-                                                      contentPadding: EdgeInsets.zero,
-                                                      filled: true,
-                                                      fillColor: Colors.black38,
-                                                      enabledBorder: OutlineInputBorder(
-                                                        borderSide: BorderSide(
-                                                          color: cartQty > 0 ? const Color(0xFFC4B89B) : Colors.white10,
-                                                        ),
-                                                        borderRadius: BorderRadius.zero,
-                                                      ),
-                                                      focusedBorder: const OutlineInputBorder(
-                                                        borderSide: BorderSide(color: Color(0xFFE5D5B0)),
-                                                        borderRadius: BorderRadius.zero,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(Icons.add, color: Colors.white54, size: 12),
-                                                  padding: EdgeInsets.zero,
-                                                  constraints: const BoxConstraints(),
-                                                  onPressed: isSuperMerchant || cartQty < stockQty
-                                                      ? () {
-                                                          final newVal = cartQty + 1;
-                                                          _getBuyController(id, newVal).text = newVal.toString();
-                                                          setState(() {
-                                                            _itemsToBuy[id] = newVal;
-                                                          });
-                                                        }
-                                                      : null,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 16),
-
-                      // Right Column: Manor's Inventory (SELL)
+                      // Left Column: Manor's Inventory (SELL)
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
@@ -901,6 +685,225 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
                                                           _getSellController(id, newVal).text = newVal.toString();
                                                           setState(() {
                                                             _itemsToSell[id] = newVal;
+                                                          });
+                                                        }
+                                                      : null,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      // Right Column: Merchant's Inventory (BUY)
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "MERCHANT STOCK (TO BUY)",
+                                style: GoogleFonts.oswald(
+                                  color: const Color(0xFFC4B89B),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Buy Sorting Row
+                              Row(
+                                children: [
+                                  _buildSortHeaderCell(
+                                    label: "NAME",
+                                    field: 'name',
+                                    activeField: _sortBuyField,
+                                    isAscending: _isBuyAscending,
+                                    onTap: () => _setBuySort('name'),
+                                    flex: 3,
+                                  ),
+                                  _buildSortHeaderCell(
+                                    label: "TYPE",
+                                    field: 'type',
+                                    activeField: _sortBuyField,
+                                    isAscending: _isBuyAscending,
+                                    onTap: () => _setBuySort('type'),
+                                    flex: 2,
+                                  ),
+                                  _buildSortHeaderCell(
+                                    label: "PRICE",
+                                    field: 'price',
+                                    activeField: _sortBuyField,
+                                    isAscending: _isBuyAscending,
+                                    onTap: () => _setBuySort('price'),
+                                    flex: 2,
+                                  ),
+                                  _buildSortHeaderCell(
+                                    label: "WT",
+                                    field: 'weight',
+                                    activeField: _sortBuyField,
+                                    isAscending: _isBuyAscending,
+                                    onTap: () => _setBuySort('weight'),
+                                    flex: 2,
+                                  ),
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text(
+                                      "ORDER QTY",
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.oswald(color: Colors.white38, fontSize: 8.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(color: Colors.white10),
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: sortedBuy.length,
+                                  itemBuilder: (context, index) {
+                                    final entry = sortedBuy[index];
+                                    final id = entry.key;
+                                    final stockQty = entry.value;
+                                    final price = (state.marketService.getBuyPrice(id) * currentMarkup).round().clamp(1, 9999);
+                                    final info = getItemInfo(id);
+                                    final cartQty = _itemsToBuy[id] ?? 0;
+
+                                    return Container(
+                                      padding: EdgeInsets.symmetric(vertical: isShort ? 2 : 6),
+                                      decoration: const BoxDecoration(
+                                        border: Border(bottom: BorderSide(color: Colors.white10, width: 0.5)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // Name
+                                          Expanded(
+                                            flex: 3,
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  info.name,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: GoogleFonts.playfairDisplay(
+                                                    color: const Color(0xFFE5D5B0),
+                                                    fontSize: 10.5,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  isSuperMerchant ? "Stock: ∞" : "Stock: $stockQty",
+                                                  style: GoogleFonts.oldStandardTt(
+                                                    color: Colors.white30,
+                                                    fontSize: 8,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Type (Icon)
+                                          Expanded(
+                                            flex: 2,
+                                            child: Row(
+                                              children: [
+                                                Icon(info.icon, color: const Color(0xFFC4B89B), size: 11),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  info.type.toUpperCase(),
+                                                  style: GoogleFonts.oldStandardTt(
+                                                    color: Colors.white54,
+                                                    fontSize: 8,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Price
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              "$price CHF",
+                                              style: GoogleFonts.oswald(color: Colors.white70, fontSize: 9.5),
+                                            ),
+                                          ),
+                                          // Weight
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              "${info.weight} kg",
+                                              style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 9),
+                                            ),
+                                          ),
+                                          // Qty Input
+                                          Expanded(
+                                            flex: 3,
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                IconButton(
+                                                  icon: const Icon(Icons.remove, color: Colors.white54, size: 12),
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                  onPressed: cartQty > 0
+                                                      ? () {
+                                                          final newVal = cartQty - 1;
+                                                          _getBuyController(id, newVal).text = newVal > 0 ? newVal.toString() : "";
+                                                          setState(() {
+                                                            _itemsToBuy[id] = newVal;
+                                                          });
+                                                        }
+                                                      : null,
+                                                ),
+                                                Container(
+                                                  width: 35,
+                                                  height: 22,
+                                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                                  child: TextField(
+                                                    controller: _getBuyController(id, cartQty),
+                                                    keyboardType: TextInputType.number,
+                                                    textAlign: TextAlign.center,
+                                                    style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0), fontSize: 10.5),
+                                                    decoration: InputDecoration(
+                                                      contentPadding: EdgeInsets.zero,
+                                                      filled: true,
+                                                      fillColor: Colors.black38,
+                                                      enabledBorder: OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: cartQty > 0 ? const Color(0xFFC4B89B) : Colors.white10,
+                                                        ),
+                                                        borderRadius: BorderRadius.zero,
+                                                      ),
+                                                      focusedBorder: const OutlineInputBorder(
+                                                        borderSide: BorderSide(color: Color(0xFFE5D5B0)),
+                                                        borderRadius: BorderRadius.zero,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(Icons.add, color: Colors.white54, size: 12),
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                  onPressed: isSuperMerchant || cartQty < stockQty
+                                                      ? () {
+                                                          final newVal = cartQty + 1;
+                                                          _getBuyController(id, newVal).text = newVal.toString();
+                                                          setState(() {
+                                                            _itemsToBuy[id] = newVal;
                                                           });
                                                         }
                                                       : null,
@@ -1245,7 +1248,7 @@ class _VisitingMerchantTradeDialogState extends State<VisitingMerchantTradeDialo
       weight = id == 'wood' ? 1.0 : 3.0;
       type = 'material';
       icon = Icons.forest;
-    } else if (id == 'meat' || id == 'eggs' || id == 'cabbage' || id == 'grain' || id == 'ale' || id == 'spirits' || id == 'potato' || id == 'carrots' || id == 'beets' || id == 'shepherds_pie' || id == 'boiled_cabbage' || id == 'scrambled_eggs' || id == 'protein_mistery_stew') {
+    } else if (id == 'meat' || id == 'meat_beef' || id == 'meat_chicken' || id == 'meat_pork' || id == 'eggs' || id == 'cabbage' || id == 'grain' || id == 'ale' || id == 'spirits' || id == 'potato' || id == 'carrots' || id == 'beets' || id == 'shepherds_pie' || id == 'boiled_cabbage' || id == 'scrambled_eggs' || id == 'protein_mistery_stew') {
       weight = 0.5;
       type = 'food';
       icon = Icons.restaurant;

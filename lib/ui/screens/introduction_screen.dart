@@ -642,17 +642,47 @@ class _IntroductionScreenState extends State<IntroductionScreen> {
 
     final str = _getDesc('strength', ["a weakling", "not very strong", "of average build", "fairly strong"]);
     final end = _getDesc('endurance', ["frail and sickly", "of moderate stamina", "sturdy and resilient", "exceptionally hardy"]);
-    final dex = _getDesc('dexterity', ["quite clumsy", "reasonably coordinated", "nimble-fingered", "astonishingly swift"]);
-    final intel = _getDesc('intellect', ["slow-witted", "of average intelligence", "highly intellectual", "quite smart"]);
-    final per = _getDesc('perception', ["half-blind to detail", "observant enough", "sharp-eyed", "uncannily perceptive"]);
-    final jud = _getDesc('judgment', ["rash and foolish", "somewhat naive", "prudent and sensible", "wise beyond his years"]);
+    final dex = _getDesc('dexterity', [
+      "quite clumsy",
+      "reasonably coordinated",
+      "nimble-fingered",
+      "deftly precise",
+    ]);
+    final intel = _getDesc('intellect', [
+      "slow-witted",
+      "of average intelligence",
+      "bright",
+      "quite smart",
+    ]);
+    final per = _getDesc('perception', [
+      "half-blind to detail",
+      "competent",
+      "sharp",
+      "preternaturally perceptive",
+    ]);
+    final jud = _getDesc('judgment', [
+      "rash and foolish",
+      "irrational and impulsive",
+      "somewhat naive",
+      "prudent and sensible",
+    ]);
     final tem = _getDesc('temperament', ["short-tempered and volatile", "prone to moodiness", "calm and collected", "supremely even-tempered"]);
     final conf = _getDesc('confidence', ["a timid and self-doubting", "a moderately self-assured", "a bold and assertive", "a supremely confident"]);
-    final bea = _getDesc('beauty', ["unremarkable, even plain", "of passable appearance", "strikingly handsome", "breathtakingly beautiful"]);
+    final bea = _getDesc('beauty', [
+      "ugly",
+      "unremarkable, even plain",
+      "of passable appearance",
+      "strikingly handsome",
+    ]);
     final hyg = _getDesc('hygiene', ["untidy and disheveled", "presentable and clean", "immaculately groomed", "obsessively neat"]);
-    final mor = _getDesc('morality', ["morally flexible", "of decent character", "highly principled", "virtuous to a fault"]);
+    final mor = _getDesc('morality', [
+      "devoid of a moral compass",
+      "morally flexible",
+      "of decent character",
+      "highly principled",
+    ]);
 
-    return "And how to describe Master $fn $ln. Well, you could say that he is $str and $end, with a $dex hand. Intellectually, he is $intel, though $jud and $tem, possessing a $per eye. He carries himself in $conf manner. To the eye, he is $bea, always $hyg and $mor.";
+    return "And how to describe Master $fn $ln. Well, you could say that he is $mor, $str, $end, with a $dex hand. Intellectually, he is $intel, yet $jud. He is $tem, possessing a $per eye. He carries himself in $conf manner. To the eye, he is $bea, and always $hyg.";
   }
 
   void _showUnspentPointsWarning(BuildContext context) {

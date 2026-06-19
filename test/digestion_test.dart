@@ -18,6 +18,7 @@ import 'package:abomination/state/game_state.dart';
 import 'package:abomination/services/task_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late GameState gameState;
 
   setUp(() {
