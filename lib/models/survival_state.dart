@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:collection';
+import '../main.dart' show globalGameState;
+
 enum SurvivalBuildingType {
   farm,
   lumberMill,
@@ -105,23 +108,32 @@ class SurvivalProgress {
     this.wood = 200,
     this.iron = 30,
     this.selectedLeaderId = 'alphonse',
-    required this.playerDeckIds,
-    required this.buildings,
-    required this.purchasedPlots,
-    required this.towerLevels,
-    required this.towerDamaged,
-    required this.unitExp,
-    required this.starvationInfractions,
-    required this.bondageDebuffCount,
-    this.trainingUnitIds = const [],
+    required List<String> playerDeckIds,
+    required List<SurvivalBuilding> buildings,
+    required List<String> purchasedPlots,
+    required Map<String, int> towerLevels,
+    required Map<String, double> towerDamaged,
+    required Map<String, double> unitExp,
+    required Map<String, int> starvationInfractions,
+    required Map<String, int> bondageDebuffCount,
+    List<String> trainingUnitIds = const [],
     Map<String, int>? cardUpgrades,
     this.villageHealth = 100,
     this.difficulty = SurvivalDifficulty.classic,
     this.autoSaveEnabled = true,
     Map<String, int>? factionStandings,
     Map<String, List<String>>? towerRepairWorkers,
-  }) : cardUpgrades = cardUpgrades ?? {},
-       factionStandings = factionStandings ?? {
+  }) : playerDeckIds = List<String>.from(playerDeckIds),
+       buildings = List<SurvivalBuilding>.from(buildings),
+       purchasedPlots = List<String>.from(purchasedPlots),
+       towerLevels = Map<String, int>.from(towerLevels),
+       towerDamaged = Map<String, double>.from(towerDamaged),
+       unitExp = Map<String, double>.from(unitExp),
+       starvationInfractions = Map<String, int>.from(starvationInfractions),
+       bondageDebuffCount = Map<String, int>.from(bondageDebuffCount),
+       trainingUnitIds = List<String>.from(trainingUnitIds),
+       cardUpgrades = Map<String, int>.from(cardUpgrades ?? {}),
+       factionStandings = FactionStandingsMap(factionStandings ?? {
          'Freemasons': 0,
          'Rosicrucians': 0,
          'Knights Templar': 0,
@@ -131,9 +143,10 @@ class SurvivalProgress {
          'Fenian Brotherhood': 0,
          'Chevaliers de la foi': 0,
          'Ancient Order of Foresters': 0,
+         'Bavarian Illuminati': 0,
          'Glarus': 10,
          'Army': 40,
-       },
+       }),
        towerRepairWorkers = towerRepairWorkers ?? {
          'tower_1': [],
          'tower_2': [],
@@ -197,7 +210,7 @@ class SurvivalProgress {
           );
         }(),
         autoSaveEnabled: json['autoSaveEnabled'] as bool? ?? true,
-        factionStandings: Map<String, int>.from(json['factionStandings'] as Map? ?? {
+        factionStandings: FactionStandingsMap(Map<String, int>.from(json['factionStandings'] as Map? ?? {
           'Freemasons': 0,
           'Rosicrucians': 0,
           'Knights Templar': 0,
@@ -207,9 +220,10 @@ class SurvivalProgress {
           'Fenian Brotherhood': 0,
           'Chevaliers de la foi': 0,
           'Ancient Order of Foresters': 0,
+          'Bavarian Illuminati': 0,
           'Glarus': 10,
           'Army': 40,
-        }),
+        })),
         towerRepairWorkers: (json['towerRepairWorkers'] as Map? ?? {}).map(
           (k, v) => MapEntry(k as String, List<String>.from(v as List? ?? [])),
         ),
@@ -327,4 +341,36 @@ extension SurvivalBuildingTypeExtension on SurvivalBuildingType {
         return 'Munitions Factory';
     }
   }
+}
+
+class FactionStandingsMap extends MapBase<String, int> {
+  final Map<String, int> _inner;
+  FactionStandingsMap(this._inner);
+
+  @override
+  int? operator [](Object? key) => _inner[key];
+
+  @override
+  void operator []=(String key, int value) {
+    final oldVal = _inner[key] ?? 0;
+    if (value > oldVal) {
+      final delta = value - oldVal;
+      final hasAvian = globalGameState?.unlockedDiscoveries.contains('avian_carrier_scouting') ?? false;
+      if (hasAvian) {
+        final boostedDelta = (delta * 1.20).round();
+        _inner[key] = oldVal + boostedDelta;
+        return;
+      }
+    }
+    _inner[key] = value;
+  }
+
+  @override
+  void clear() => _inner.clear();
+
+  @override
+  Iterable<String> get keys => _inner.keys;
+
+  @override
+  int? remove(Object? key) => _inner.remove(key);
 }

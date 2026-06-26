@@ -154,5 +154,51 @@ void main() {
     if (finalMessage.contains('already unlocked')) {
       expect(state.getDiceOutcomeActionForTest(), isNull);
     }
+
+    // --- TEST CASE 8: Roll = 8 (Market Discount = 40% when Left Die = 4) ---
+    service.progress!.cardUpgrades.clear();
+    service.progress!.cash = 1000;
+    state.setDiceForTest(4, 4); // Left die = 4, Right die = 4 -> Total = 8 -> 40% discount
+    state.evaluateDiceOutcomeForTest(8, service.progress!, service);
+    expect(state.getDiceOutcomeActionForTest(), isNotNull);
+    state.getDiceOutcomeActionForTest()!();
+    expect(service.progress!.cardUpgrades['market_temp_discount'], equals(40));
+
+    // Verify that navigating to the MARKET tab renders the discounted prices
+    // At Turn 1, factor is 1.0. Base food cost is 40. With 40% discount, foodPackCost should be 24 CHF.
+    state.activeTab = 'MARKET';
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.textContaining('24 CHF'), findsAtLeast(1));
+
+    // --- TEST CASE 9: Roll = 9 (Bounty: Double Estate Production) ---
+    service.progress!.cardUpgrades.clear();
+    service.progress!.buildings.clear();
+    service.progress!.buildings.add(SurvivalBuilding(
+      id: 'farm_1',
+      type: SurvivalBuildingType.farm,
+      level: 1,
+      assignedUnitIds: ['peasant'],
+    ));
+    // Roll a 9
+    state.setDiceForTest(3, 6); // Left = 3, Right = 6 -> Total = 9
+    state.evaluateDiceOutcomeForTest(9, service.progress!, service);
+    expect(state.getDiceOutcomeActionForTest(), isNotNull);
+    state.getDiceOutcomeActionForTest()!();
+    expect(service.progress!.cardUpgrades['double_estate_production'], equals(1));
+
+    // Resolve turn and verify production is doubled and temporary upgrades are cleared
+    final initialFood = service.progress!.food;
+    service.endTurn();
+    
+    // Normal level 1 farm with 1 worker produces 10 food (getFarmOutput(1, 1)).
+    // Starvation feed cost for alphonse, giles, peasant, and recruited unit (about 7+ food total).
+    // Doubled production should produce 20 food, leading to a higher net food gain!
+    final netFoodGained = service.progress!.food - initialFood;
+    expect(netFoodGained, greaterThan(5)); // Confirms it was doubled!
+
+    // Verify both temporary upgrades are cleared after endTurn
+    expect(service.progress!.cardUpgrades['market_temp_discount'], isNull);
+    expect(service.progress!.cardUpgrades['double_estate_production'], isNull);
   });
 }

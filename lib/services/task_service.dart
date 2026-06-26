@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math' show Random;
 import '../models/game_item.dart';
 import '../models/npc_intent.dart';
+import '../main.dart' show globalGameState;
 
 enum TaskType {
   cleanRoom,
@@ -933,7 +935,38 @@ class TaskService {
           activeTaskIds.contains(task.id)) {
         // Task duration is already adjusted for character efficiency and role when created in GameState.
         // Decrement exactly 1 task minute for every 1 game minute to keep task speed perfectly synchronized with game clock speed.
-        task.minutesRemaining--;
+        int decrement = 1;
+
+        // Apply specialized resident work speed multipliers
+        final gState = globalGameState;
+        final npc = gState?.getNpcById(task.npcId);
+        if (npc != null) {
+          if (npc.name == 'Jacob Landolt') {
+            decrement = 2; // Works at 2x speed!
+          } else if (npc.name == 'Illuminati Automaton') {
+            decrement = 3; // Works at 3x speed, never tires!
+          }
+        }
+
+        // Glarus Labor Strike Penalty: -30% work speed Manor-wide
+        if (gState != null &&
+            gState.isGlarusStrikeActive &&
+            Random().nextDouble() < 0.30) {
+          decrement = 0; // Stagnate task progress 30% of the time
+        }
+
+        if (task.type == TaskType.research ||
+            task.type == TaskType.transcribeNotes ||
+            task.type == TaskType.archiveResearch ||
+            task.type == TaskType.deprivationStudy) {
+          final hasCalculator = globalGameState?.unlockedDiscoveries.contains('clockwork_calculator') ?? false;
+          if (hasCalculator && Random().nextDouble() < 0.30) {
+            if (decrement > 0) {
+              decrement += 1;
+            }
+          }
+        }
+        task.minutesRemaining -= decrement;
         if (task.minutesRemaining <= 0) {
           task.isCompleted = true;
           completed.add(task);

@@ -1066,7 +1066,15 @@ class _HamletScreenState extends State<HamletScreen> {
     List<BusinessType> options = [];
     
     if (guestType == 'cook_proposer') {
-      options = [BusinessType.bistro, BusinessType.bakery, BusinessType.pizzeria, BusinessType.cafe];
+      options = [
+        BusinessType.bistro,
+        BusinessType.bakery,
+        BusinessType.pizzeria,
+        BusinessType.cafe,
+        BusinessType.steakhouse,
+        BusinessType.bar,
+        BusinessType.nightClub,
+      ];
     } else if (guestType == 'chemist_proposer') {
       options = [BusinessType.opiateLab];
     } else if (guestType == 'lawyer_proposer') {

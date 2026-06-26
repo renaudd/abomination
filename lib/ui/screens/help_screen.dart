@@ -685,32 +685,32 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
       {
         'title': 'Archive Forbidden Scrolls',
         'category': 'Assignable Task',
-        'desc': 'Systematic consolidation of occult literature.\n\n'
+        'desc': 'Systematic consolidation of loose knowledge items into the library.\n\n'
                 '• Assignment Location: Enqueued and assigned within The Library interface.\n'
-                '• Driving Attributes: Intellect, Willpower.\n'
-                '• Activity Duration: Typical procedure requires precisely 60 minutes.\n'
-                '• Required Resources: Precisely 1 Unreviewed Document or Loose Esoteric Scroll from inventory.\n'
-                '• Mechanical Outcome: Consolidates esoteric loose scrolls into bound master tomes, generating precisely +10 Research Points in Philosophy & Esoteric Lore and improving library academic standing by +15 points.'
+                '• Driving Attributes: Intellect.\n'
+                '• Activity Duration: Typical procedure requires precisely 45 minutes.\n'
+                '• Required Resources: Loose knowledge items (Research Notes or Studies) in worker inventory or manor storage.\n'
+                '• Mechanical Outcome: Consolidates loose records, archiving them directly into the Library. Storing these volumes in the Library dynamically increases the Manor\'s overall scientific knowledge levels (Anatomy, Zoology, Medicine, Chemistry, Psychology, Surgery, and Alchemy), which are vital to unlocking advanced room installations and experimental procedures.'
       },
       {
         'title': 'Catalog Specimen Notes',
         'category': 'Assignable Task',
-        'desc': 'Systematic indexing of anatomical cross-references.\n\n'
-                '• Assignment Location: Enqueued and assigned within The Library or Laboratory interface.\n'
+        'desc': 'Systematic indexing of anatomical and scientific observations.\n\n'
+                '• Assignment Location: Enqueued and assigned within The Library interface.\n'
                 '• Driving Attributes: Precision, Intellect.\n'
-                '• Activity Duration: Typical procedure requires precisely 45 minutes.\n'
-                '• Required Resources: Precisely 1 Loose Specimen Record or Rough Anatomy Notes from inventory.\n'
-                '• Mechanical Outcome: Systematically organizes biological observations, converting raw records into precisely +8 Small Creature Anatomy points and +5 Zoology points.'
+                '• Activity Duration: Typical procedure requires precisely 60 minutes.\n'
+                '• Required Resources: Raw Research Notes in worker inventory or Library shelves.\n'
+                '• Mechanical Outcome: Transcribes and refines raw Research Notes into structured Research Studies, increasing their quality by +0.2 and their knowledge multiplier from 1.0x to 5.0x. This significantly boosts the Manor\'s overall knowledge level in the associated scientific disciplines.'
       },
       {
         'title': 'Fundamental Research',
         'category': 'Assignable Task',
-        'desc': 'Theoretical reading and primary literature review.\n\n'
-                '• Assignment Location: Assigned within The Study or formal Library interface.\n'
+        'desc': 'Theoretical reading, primary literature review, and synthesis of new insights.\n\n'
+                '• Assignment Location: Assigned within The Study interface.\n'
                 '• Driving Attributes: Intellect.\n'
-                '• Activity Duration: Baseline procedure requires precisely 15 minutes.\n'
-                '• Required Resources: Hired thinkers utilize available library seating (No consumable reagents required).\n'
-                '• Mechanical Outcome: Generates a continuous flow of Universal Research Points, accelerating Discovery unlock thresholds and raising personal academic qualification.'
+                '• Activity Duration: Typical procedure requires precisely 45 minutes.\n'
+                '• Required Resources: Hired thinkers utilize available study seating (No consumable items required).\n'
+                '• Mechanical Outcome: Synthesizes new insights, generating raw Research Notes in a random scientific discipline (Anatomy, Zoology, Medicine, Chemistry, Psychology, Surgery, or Alchemy). Storing these notes in the Study immediately raises the Manor\'s overall knowledge level in that discipline, and they can later be cataloged and refined into high-value Research Studies.'
       },
       {
         'title': 'Small Specimen Dissection',
@@ -1001,6 +1001,111 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                 '• Activity Duration: Master prototype drafting requires precisely 180 minutes (3 hours).\n'
                 '• Required Resources: Precisely 2 Academic Research Notes and blank architectural parchment drafts.\n'
                 '• Mechanical Outcome: Solves complex engineering bottlenecks, yielding cutting-edge technological schematic diagrams (Automated Steam Turrets, Subterranean Excavators).'
+      },
+
+      // SCIENTIFIC DISCIPLINES
+      {
+        'title': 'Astronomy',
+        'category': 'Scientific Discipline',
+        'desc': 'Esoteric study of planetary motions, stellar alignments, and cosmic geometry.\n\n'
+                '• Gameplay Function: Raised by studying physical books and manuscripts. Provides the theoretical foundations for celestial charting, reducing travel delays and unlocking navigation traits.'
+      },
+      {
+        'title': 'Meteorology',
+        'category': 'Scientific Discipline',
+        'desc': 'Climatic analysis of atmospheric pressure systems, wind velocities, and lightning storms.\n\n'
+                '• Gameplay Function: Raised by studying physical books in the Study. Vital for wind-resistant watchtower ballistic range calculations and high-pressure abyssal navigation.'
+      },
+      {
+        'title': 'Pharmacology',
+        'category': 'Scientific Discipline',
+        'desc': 'Chemical analysis of organic medicines, biological vectors, and surgical anesthetics.\n\n'
+                '• Gameplay Function: Raised by studying physical books in the Study. Powers advanced medical procedures, eliminating surgical panic and reducing estate contagion rates.'
+      },
+      {
+        'title': 'Mathematics',
+        'category': 'Scientific Discipline',
+        'desc': 'Pure study of geometry, algebraic equations, and statistical probability.\n\n'
+                '• Gameplay Function: Raised by studying physical books in the Study. Essential for Difference Engine automation, celestial triangulation, and actuarial yield calculations.'
+      },
+
+      // SCIENTIFIC DISCOVERIES
+      {
+        'title': 'Submersible Design',
+        'category': 'Scientific Discovery',
+        'desc': 'Structural blueprint for deep-lake exploration vessels.\n\n'
+                '• Unlocked By: Physics Level 3 and Engineering Level 3.\n'
+                '• Mechanical Benefit: Unlocks the construction of a Submarine in the dry dock of the Survival Mode Garage, costing 250 wood, 150 iron, and 200 CHF.'
+      },
+      {
+        'title': 'Abyssal Navigation',
+        'category': 'Scientific Discovery',
+        'desc': 'Acoustic and pressure-resistant ballast systems for navigating underwater currents.\n\n'
+                '• Unlocked By: Physics Level 5 and Meteorology Level 3.\n'
+                '• Mechanical Benefit: Allows upgrading the Submarine to Level 2 to safely dive into the Mid-Depths for high-tier specimens and alchemical reagents.'
+      },
+      {
+        'title': 'Celestial Triangulation',
+        'category': 'Scientific Discovery',
+        'desc': 'Stellar navigation using precise geometric alignments.\n\n'
+                '• Unlocked By: Astronomy Level 3 and Mathematics Level 3.\n'
+                '• Mechanical Benefit: Optimizes estate travel routes, boosting NPC world travel speed by +25% (reducing world map transit times by 20%).'
+      },
+      {
+        'title': 'Barometric Targeting',
+        'category': 'Scientific Discovery',
+        'desc': 'Missile trajectory calculation based on real-time atmospheric pressure.\n\n'
+                '• Unlocked By: Physics Level 2 and Meteorology Level 2.\n'
+                '• Mechanical Benefit: Dramatically hones artillery, granting player watchtowers +25% attack range during Survival Mode defense combats.'
+      },
+      {
+        'title': 'Ether Anesthetic',
+        'category': 'Scientific Discovery',
+        'desc': 'Synthesis of a highly potent, volatile surgical ether compound.\n\n'
+                '• Unlocked By: Anatomy Level 3 and Pharmacology Level 3.\n'
+                '• Mechanical Benefit: Completely eliminates sanity decay, burden of guilt, and temporary insanity triggers for all resident workers during operating room and laboratory procedures.'
+      },
+      {
+        'title': 'Immunological Vectors',
+        'category': 'Scientific Discovery',
+        'desc': 'Attenuated microbial vectors engineered to deliver therapeutic antibodies.\n\n'
+                '• Unlocked By: Microbiology Level 4 and Pharmacology Level 4.\n'
+                '• Mechanical Benefit: Renders all estate crop workers completely immune to Zoonotic Outbreak disasters on the farm, preventing unit XP resets and sick debuffs.'
+      },
+      {
+        'title': 'Actuarial Probability',
+        'category': 'Scientific Discovery',
+        'desc': 'Rigorous statistical analysis of market volatilities and yields.\n\n'
+                '• Unlocked By: Administration Level 3 and Mathematics Level 3.\n'
+                '• Mechanical Benefit: Optimizes commercial bookkeeping, boosting weekly cash yields from all advanced survival buildings (Arsenal, Garage, Munitions Factory) by +20%.'
+      },
+      {
+        'title': 'Difference Engine Calculation',
+        'category': 'Scientific Discovery',
+        'desc': 'Clockwork mechanical automation of complex algebraic and transcription equations.\n\n'
+                '• Unlocked By: Software Engineering Level 4 and Mathematics Level 4.\n'
+                '• Mechanical Benefit: Streamlines all mental labor in the Study and Library, granting a +30% speed boost to active research, transcription, and study tasks.'
+      },
+      {
+        'title': 'Abyssal Bio-Sonar',
+        'category': 'Scientific Discovery',
+        'desc': 'Electro-acoustic sonar suite modeled on deep-sea biological resonators.\n\n'
+                '• Unlocked By: Electrical Engineering Level 4 and Zoology: Fish Level 3.\n'
+                '• Mechanical Benefit: Allows upgrading the Submarine to Level 3 (Abyssal Trenches) and detects sunken treasures, yielding an extra +200 CHF on successful deep dives.'
+      },
+      {
+        'title': 'Avian Scout Network',
+        'category': 'Scientific Discovery',
+        'desc': 'Training network of carrier raptors to map border crossings and dispatch messages.\n\n'
+                '• Unlocked By: Zoology: Birds Level 3 and Political Level 3.\n'
+                '• Mechanical Benefit: Streamlines diplomatic communication, increasing all faction standing gains across the board by +20%.'
+      },
+      {
+        'title': 'Bio-Composite Insect Silk',
+        'category': 'Scientific Discovery',
+        'desc': 'High-tensile composite plating woven from spider-silk filaments.\n\n'
+                '• Unlocked By: Zoology: Insects Level 4 and Composites Level 3.\n'
+                '• Mechanical Benefit: Unlocks Arachnid Plate Armor, bolstering player combat units with a massive +25% maximum health and +5 flat defense in all battles.'
       },
     ];
 

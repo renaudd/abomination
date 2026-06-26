@@ -209,12 +209,12 @@ void main() {
     // Let's set footman selected for requisition
     screenState.selectedWepCardId = 'footman';
     
-    // We set cash to 150 CHF.
+    // We set cash to 175 CHF.
     // Weapons on market for sale:
-    // - iron-tipped spear (cost 30). Cost for squad = 150 CHF. Affordable!
-    // - heavy spiked mace (cost 35). Cost for squad = 175 CHF. Unaffordable!
-    // - flintlock rifle (cost 40). Cost for squad = 200 CHF. Unaffordable!
-    service.progress!.cash = 150;
+    // - iron-tipped spear (cost 35). Cost for squad = 175 CHF. Affordable!
+    // - heavy spiked mace (cost 45). Cost for squad = 225 CHF. Unaffordable!
+    // - flintlock rifle (cost 65). Cost for squad = 325 CHF. Unaffordable!
+    service.progress!.cash = 175;
     service.progress!.currentTurn = 5;
     service.progress!.cardUpgrades['next_encounter_turn'] = 99;
     
@@ -362,6 +362,111 @@ void main() {
 
     state.clearEncounterState();
     expect(state.simulationPlayerDeck, null);
+  });
+
+  test('Test survival mode food consumption and production balancing', () {
+    // 1. Verify getFoodCost calculations for different unit types and levels
+    final undeadRats = CombatUnitService.createUnit('undead_rats');
+    final golem = CombatUnitService.createUnit('flesh_golem');
+    final bear = CombatUnitService.createUnit('wild_bear');
+    final wolves = CombatUnitService.createUnit('wild_wolves');
+    final bats = CombatUnitService.createUnit('bats');
+    final sniper = CombatUnitService.createUnit('sniper');
+    final brewers = CombatUnitService.createUnit('brewers');
+    final mob = CombatUnitService.createUnit('villager_mob');
+
+    // Undead and constructs always consume 0
+    expect(SurvivalService.getFoodCost(undeadRats, level: 1), 0);
+    expect(SurvivalService.getFoodCost(undeadRats, level: 5), 0);
+    expect(SurvivalService.getFoodCost(golem, level: 1), 0);
+    expect(SurvivalService.getFoodCost(golem, level: 7), 0);
+
+    // Wild animals
+    expect(SurvivalService.getFoodCost(bear, level: 1), 4); // Bear base is 4
+    expect(SurvivalService.getFoodCost(bear, level: 3), 6); // Bear at Lvl 3: 4 + 2 = 6
+    expect(SurvivalService.getFoodCost(wolves, level: 1), 2); // Wolves base is 2
+    expect(SurvivalService.getFoodCost(wolves, level: 4), 5); // Wolves at Lvl 4: 2 + 3 = 5
+    expect(SurvivalService.getFoodCost(bats, level: 1), 1); // Bats base is 1
+    expect(SurvivalService.getFoodCost(bats, level: 2), 2); // Bats at Lvl 2: 1 + 1 = 2
+
+    // Humanoids
+    expect(SurvivalService.getFoodCost(sniper, level: 1), 2); // Singleton base is 2
+    expect(SurvivalService.getFoodCost(sniper, level: 3), 4); // Singleton at Lvl 3: 2 + 2 = 4
+    expect(SurvivalService.getFoodCost(brewers, level: 1), 4); // Brewers base is count + 1 = 3 + 1 = 4
+    expect(SurvivalService.getFoodCost(brewers, level: 5), 8); // Brewers at Lvl 5: 4 + 4 = 8
+    expect(SurvivalService.getFoodCost(mob, level: 1), 7); // Mob base is count + 1 = 6 + 1 = 7
+
+    // 2. Verify farm production yields are nerfed by 1/3 (10 per worker per level)
+    final service = SurvivalService(1);
+    expect(service.getFarmOutput(1, 2), 20); // Lvl 1, 2 workers: 2 * 10 * 1 = 20 (was 30)
+    expect(service.getFarmOutput(2, 3), 60); // Lvl 2, 3 workers: 3 * 10 * 2 = 60 (was 90)
+
+    // 3. Verify End Turn consumption (Leader = 3, plus army cards at their respective levels)
+    service.initializeNewSurvivalGame('alphonse', SurvivalDifficulty.classic);
+    service.progress!.food = 100;
+    service.progress!.playerDeckIds.clear();
+    service.progress!.playerDeckIds.addAll(['footman', 'bats']); // Add two cards
+
+    // Level 1 Footman (squad of 5 -> base 6)
+    // Level 1 Bats (beast -> base 1)
+    // Total cost: Leader (3) + Footman (6) + Bats (1) = 10 food.
+    service.endTurn();
+
+    // 100 food - 10 consumed = 90 food remaining.
+    expect(service.progress!.food, 90);
+  });
+
+  testWidgets('Test Samurai weapon upgrades integration, AP cost, and stats trade-offs', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final gameState = GameState();
+    final service = SurvivalService(1);
+    service.initializeNewSurvivalGame('alphonse', SurvivalDifficulty.classic);
+
+    // Add Samurai to player's deck and give plenty of money
+    service.progress!.playerDeckIds.add('samurai');
+    service.progress!.cash = 1000;
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<GameState>.value(value: gameState),
+          ChangeNotifierProvider<SurvivalService>.value(value: service),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SurvivalEstateMapScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // 1. Open Samurai card inspector
+    final dynamic screenState = tester.state(find.byType(SurvivalEstateMapScreen));
+    screenState.selectedInspectorCardId = 'samurai';
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // The purchase button should be visible for the Demon-Forged Odachi
+    // Cost: 180 cash per member * 3 squad size = 540 CHF
+    expect(find.textContaining('PURCHASE WEAPON UPGRADE FOR 540 CHF'), findsOneWidget);
+
+    // 2. Buy the Demon-Forged Odachi upgrade
+    await tester.tap(find.textContaining('PURCHASE WEAPON UPGRADE FOR 540 CHF'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Verify upgrade is recorded in progress state
+    expect(service.progress!.cardUpgrades['samurai_equipped_weapon'], equals(1));
+    expect(service.progress!.cash, equals(460)); // 1000 - 540 = 460
   });
 }
 

@@ -6,6 +6,14 @@ import 'package:audioplayers/audioplayers.dart';
 import '../state/game_state.dart';
 import '../services/task_service.dart';
 
+enum BgmMode {
+  manor,
+  laboratory,
+  combat,
+  bistroLutist,
+  bistroOpera,
+}
+
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
@@ -58,6 +66,11 @@ class AudioService {
   double _sfxVolume = 0.7;
 
   bool _initialized = false;
+ 
+  final List<BgmMode> _bgmStack = [BgmMode.manor];
+  BgmMode _currentBgmMode = BgmMode.manor;
+  BgmMode get currentBgmMode => _currentBgmMode;
+  bool _isTransitioning = false;
 
   Future<void> ensureInitialized() async {
     if (_initialized) return;
@@ -87,15 +100,23 @@ class AudioService {
       } else {
         _bgmPlayer?.setVolume(_bgmVolume);
         if (_bgmPlayer?.state != PlayerState.playing) {
-          playBGM('audio/vivaldi_winter.m4a', isAsset: true);
+          _updateBgmFromStack();
         }
       }
 
       if (!_soundEnabled || !_sfxEnabled) {
-        for (var p in _sfxPool) { p.setVolume(0); }
-        for (var p in _voicePool) { p.setVolume(0); }
+        for (var p in _sfxPool) {
+          p.setVolume(0);
+          p.stop();
+        }
+        for (var p in _voicePool) {
+          p.setVolume(0);
+          p.stop();
+        }
         _actionPlayer?.setVolume(0);
+        _actionPlayer?.stop();
         _footstepPlayer?.setVolume(0);
+        _footstepPlayer?.stop();
       } else {
         for (var p in _sfxPool) { p.setVolume(_sfxVolume); }
         for (var p in _voicePool) { p.setVolume(_sfxVolume); }
@@ -104,6 +125,96 @@ class AudioService {
       }
     } catch (e) {
       debugPrint("AudioService applySettings error: $e");
+    }
+  }
+
+  void resetBgmStack() {
+    _bgmStack.clear();
+    _bgmStack.add(BgmMode.manor);
+  }
+
+  Future<void> pushBgmMode(BgmMode mode) async {
+    _bgmStack.add(mode);
+    await _updateBgmFromStack();
+  }
+
+  Future<void> popBgmMode() async {
+    if (_bgmStack.length > 1) {
+      _bgmStack.removeLast();
+    }
+    await _updateBgmFromStack();
+  }
+
+  Future<void> _updateBgmFromStack() async {
+    final targetMode = _bgmStack.last;
+    await setBgmMode(targetMode);
+  }
+
+  Future<void> setBgmMode(BgmMode mode) async {
+    await ensureInitialized();
+    if (isTesting || _bgmPlayer == null) {
+      _currentBgmMode = mode;
+      return;
+    }
+    if (!_soundEnabled || !_musicEnabled) {
+      _currentBgmMode = mode;
+      return;
+    }
+    if (_currentBgmMode == mode && _bgmPlayer?.state == PlayerState.playing) {
+      return;
+    }
+    if (_isTransitioning) return;
+    _isTransitioning = true;
+
+    try {
+      final targetVolume = _bgmVolume;
+      // 1. Fade out current BGM smoothly
+      if (_bgmPlayer?.state == PlayerState.playing) {
+        for (int i = 10; i >= 0; i--) {
+          await _bgmPlayer?.setVolume(targetVolume * (i / 10));
+          await Future.delayed(const Duration(milliseconds: 25));
+        }
+        await _bgmPlayer?.stop();
+      }
+
+      _currentBgmMode = mode;
+
+      // 2. Select track URL
+      String url;
+      switch (mode) {
+        case BgmMode.manor:
+          url = 'audio/vivaldi_winter.m4a';
+          break;
+        case BgmMode.laboratory:
+          url = 'audio/gloop.wav';
+          break;
+        case BgmMode.combat:
+          url = 'audio/dloop.wav';
+          break;
+        case BgmMode.bistroLutist:
+          url = 'audio/aloop.wav';
+          break;
+        case BgmMode.bistroOpera:
+          url = 'audio/eloop.wav';
+          break;
+      }
+
+      // 3. Start new BGM at volume 0
+      final cleanPath = url.startsWith('assets/') ? url.substring(7) : url;
+      final source = AssetSource(cleanPath);
+      
+      await _bgmPlayer?.setVolume(0);
+      await _bgmPlayer?.play(source);
+
+      // 4. Fade in new BGM smoothly
+      for (int i = 1; i <= 10; i++) {
+        await _bgmPlayer?.setVolume(targetVolume * (i / 10));
+        await Future.delayed(const Duration(milliseconds: 25));
+      }
+    } catch (e) {
+      debugPrint("AudioService setBgmMode error: $e");
+    } finally {
+      _isTransitioning = false;
     }
   }
 
@@ -279,10 +390,18 @@ class AudioService {
     _soundEnabled = false;
     try {
       _bgmPlayer?.setVolume(0);
-      for (var p in _sfxPool) { p.setVolume(0); }
-      for (var p in _voicePool) { p.setVolume(0); }
+      for (var p in _sfxPool) {
+        p.setVolume(0);
+        p.stop();
+      }
+      for (var p in _voicePool) {
+        p.setVolume(0);
+        p.stop();
+      }
       _actionPlayer?.setVolume(0);
+      _actionPlayer?.stop();
       _footstepPlayer?.setVolume(0);
+      _footstepPlayer?.stop();
     } catch (e) {
       debugPrint("AudioService mute error: $e");
     }
@@ -300,6 +419,22 @@ class AudioService {
       }
     } catch (e) {
       debugPrint("AudioService unmute error: $e");
+    }
+  }
+
+  Future<void> unblockAudio() async {
+    await ensureInitialized();
+    if (!_soundEnabled || !_musicEnabled) return;
+    try {
+      if (_bgmPlayer != null) {
+        if (_bgmPlayer?.state == PlayerState.playing) {
+          await _bgmPlayer?.resume();
+        } else {
+          await _updateBgmFromStack();
+        }
+      }
+    } catch (e) {
+      debugPrint("AudioService unblockAudio error: $e");
     }
   }
 }

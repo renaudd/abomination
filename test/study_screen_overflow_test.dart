@@ -31,9 +31,10 @@ void main() {
     for (int i = 0; i < 20; i++) {
       items.add(
         GameItem.create(
-          name: 'Specimen $i',
-          type: 'specimen',
-          category: ItemCategory.specimen,
+          name: 'Notes $i',
+          type: 'research_notes',
+          category: ItemCategory.knowledge,
+          metadata: {'discipline': 'Discipline $i'},
         ),
       );
     }
@@ -56,6 +57,6 @@ void main() {
     expect(tester.takeException(), isNull);
 
     // Verify we can find some of the items (scrolling might be needed to see all, but here we just check render)
-    expect(find.text('SPECIMEN 1'), findsOneWidget);
+    expect(find.text('DISCIPLINE 1 NOTES'), findsOneWidget);
   });
 }

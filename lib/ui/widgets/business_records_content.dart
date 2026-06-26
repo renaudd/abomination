@@ -18,6 +18,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import '../../models/active_business.dart';
+import '../../models/patron.dart';
 import '../../services/recipe_catalogue.dart';
 import '../../services/kitchen_service.dart';
 
@@ -34,12 +35,12 @@ class _BusinessRecordsContentState extends State<BusinessRecordsContent> {
   @override
   Widget build(BuildContext context) {
     final state = Provider.of<GameState>(context);
-    final isBistro = widget.business.type == BusinessType.bistro;
+    final isFoodService = widget.business.type.isFoodOrDrinkService;
 
     return Container(
       color: const Color(0xFF241F1A),
       child: DefaultTabController(
-        length: isBistro ? 7 : 5,
+        length: isFoodService ? 8 : 5,
         child: Column(
           children: [
             // Business Header Panel
@@ -127,8 +128,9 @@ class _BusinessRecordsContentState extends State<BusinessRecordsContent> {
                 const Tab(text: "HOLDINGS"),
                 const Tab(text: "AGREEMENTS"),
                 const Tab(text: "EMPLOYEES"),
-                if (isBistro) const Tab(text: "BISTRO MANAGEMENT"),
-                if (isBistro) const Tab(text: "BAR & CELLAR"),
+                if (isFoodService) const Tab(text: "ACTIVE PATRONS"),
+                if (isFoodService) const Tab(text: "MENU & PRICING"),
+                if (isFoodService) const Tab(text: "BAR & CELLAR"),
                 const Tab(text: "CHRONICLE LOG"),
                 const Tab(text: "LEDGER"),
               ],
@@ -141,8 +143,9 @@ class _BusinessRecordsContentState extends State<BusinessRecordsContent> {
                   _buildHoldingsTab(context, state),
                   _buildAgreementsTab(context),
                   _buildEmployeesTab(context, state),
-                  if (isBistro) _buildBistroManagementTab(context, state),
-                  if (isBistro) _buildBarCellarTab(context, state),
+                  if (isFoodService) _buildActivePatronsTab(context, state),
+                  if (isFoodService) _buildBistroManagementTab(context, state),
+                  if (isFoodService) _buildBarCellarTab(context, state),
                   _buildLogsTab(context),
                   _buildLedgerTab(context),
                 ],
@@ -152,6 +155,694 @@ class _BusinessRecordsContentState extends State<BusinessRecordsContent> {
         ),
       ),
     );
+  }
+
+  Widget _buildActivePatronsTab(BuildContext context, GameState state) {
+    final patrons = state.activePatrons;
+    if (patrons.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.group_off, color: Color(0xFFC4B89B), size: 48),
+              const SizedBox(height: 16),
+              Text(
+                "NO ACTIVE CLIENTELE IN THE FOYER OR DINING ROOM.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Establishment is either closed or awaiting arrivals. Check operating hours and marketing covenants.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.oldStandardTt(
+                  color: Colors.white38,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final waiting = patrons.where((p) => !p.isSeated && !p.isUnderOperation).toList();
+    final seated = patrons.where((p) => p.isSeated && !p.isUnderOperation).toList();
+    final underOperation = patrons.where((p) => p.isUnderOperation).toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: ListView(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "FOYER LOBBY (WAITING SERVICE)",
+                style: GoogleFonts.oswald(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                color: Colors.black38,
+                child: Text(
+                  "${waiting.length} QUEUED",
+                  style: GoogleFonts.oswald(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 9,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (waiting.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Center(
+                child: Text(
+                  "NO CUSTOMERS CURRENTLY WAITING IN THE FOYER.",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white24,
+                    fontSize: 10,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...waiting.map((patron) => _buildPatronCard(context, state, patron)),
+
+          const SizedBox(height: 32),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "DINING HALL (ACTIVE DINERS)",
+                style: GoogleFonts.oswald(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                color: Colors.black38,
+                child: Text(
+                  "${seated.length} / 4 TABLES OCCUPIED",
+                  style: GoogleFonts.oswald(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 9,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (seated.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Center(
+                child: Text(
+                  "NO CUSTOMERS SEATED AT THE DINING TABLES.",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white24,
+                    fontSize: 10,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...seated.map((patron) => _buildPatronCard(context, state, patron)),
+
+          const SizedBox(height: 32),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "BASEMENT OPERATING THEATER (SURGERY)",
+                style: GoogleFonts.oswald(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                color: Colors.black38,
+                child: Text(
+                  "${underOperation.length} SUBJECTS",
+                  style: GoogleFonts.oswald(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 9,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (underOperation.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Center(
+                child: Text(
+                  "NO SUBJECTS CURRENTLY ON THE OPERATING TABLE.",
+                  style: GoogleFonts.oldStandardTt(
+                    color: Colors.white24,
+                    fontSize: 10,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...underOperation.map((patron) => _buildPatronCard(context, state, patron)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPatronCard(BuildContext context, GameState state, Patron patron) {
+    final isSeated = patron.isSeated;
+    final isUnderOperation = patron.isUnderOperation;
+    final isCollapsed = patron.isCollapsed;
+    final isDrugged = patron.isDrugged;
+    final hint = _getBehaviorHint(patron.faction);
+
+    Color cardBgColor = Colors.black12;
+    Color borderColor = Colors.white10;
+    if (isUnderOperation) {
+      cardBgColor = const Color(0xFF1D291F);
+      borderColor = const Color(0xFF4C6B4F).withValues(alpha: 0.5);
+    } else if (isCollapsed) {
+      cardBgColor = const Color(0xFF2C1F1F);
+      borderColor = const Color(0xFF8C2D19).withValues(alpha: 0.5);
+    } else if (isSeated) {
+      cardBgColor = const Color(0xFF2C241E);
+      borderColor = const Color(0xFFC4B89B).withValues(alpha: 0.3);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBgColor,
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      patron.name.toUpperCase(),
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFE5D5B0),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (isUnderOperation)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        color: const Color(0xFF4C6B4F).withValues(alpha: 0.1),
+                        child: Text(
+                          "OPERATING TABLE",
+                          style: GoogleFonts.oswald(color: const Color(0xFFF5D5B0), fontSize: 8, fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    else if (isCollapsed)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        color: const Color(0xFF8C2D19).withValues(alpha: 0.1),
+                        child: Text(
+                          "UNCONSCIOUS",
+                          style: GoogleFonts.oswald(color: const Color(0xFFFFA8A8), fontSize: 8, fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    else if (isSeated)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        color: const Color(0xFFC4B89B).withValues(alpha: 0.1),
+                        child: Text(
+                          patron.seatedTableId ?? "SEATED",
+                          style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 8, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "OBSERVED ACTION: $hint",
+                  style: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: patron.traits.map((trait) {
+                    final isPositive = _isPositiveTrait(trait);
+                    final color = isPositive ? const Color(0xFF4C6B4F) : const Color(0xFF8C2D19);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        border: Border.all(color: color, width: 1),
+                      ),
+                      child: Text(
+                        trait.displayName.toUpperCase(),
+                        style: GoogleFonts.oswald(
+                          color: isPositive ? const Color(0xFFA8DDAA) : const Color(0xFFFFA8A8),
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                if (isUnderOperation)
+                  Text(
+                    "SUBJECT STATE: Lying completely limp. Respiration is steady but shallow. Perfect for extraction.",
+                    style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 10),
+                  )
+                else if (isCollapsed)
+                  Text(
+                    "SUBJECT STATE: Collapsed at ${patron.seatedTableId ?? 'their table'}. Completely unresponsive to shaking.",
+                    style: GoogleFonts.oldStandardTt(color: Colors.white54, fontSize: 10),
+                  )
+                else if (isDrugged)
+                  Text(
+                    "STATUS: DRUGGED & DROWSY (Laced meal consumed; collapse imminent...)",
+                    style: GoogleFonts.oswald(color: const Color(0xFFC4B89B), fontSize: 9, fontWeight: FontWeight.bold),
+                  )
+                else if (!isSeated)
+                  Row(
+                    children: [
+                      Text("PATIENCE: ", style: GoogleFonts.oswald(color: Colors.white38, fontSize: 9, letterSpacing: 1.0)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(1),
+                          child: LinearProgressIndicator(
+                            value: patron.patience,
+                            backgroundColor: Colors.white10,
+                            color: _getProgressColor(patron.patience),
+                            minHeight: 4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text("${(patron.patience * 100).round()}%", style: GoogleFonts.oswald(color: _getProgressColor(patron.patience), fontSize: 9)),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Text("SATISFACTION: ", style: GoogleFonts.oswald(color: Colors.white38, fontSize: 9, letterSpacing: 1.0)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(1),
+                          child: LinearProgressIndicator(
+                            value: patron.satisfaction / 100.0,
+                            backgroundColor: Colors.white10,
+                            color: _getProgressColor(patron.satisfaction / 100.0),
+                            minHeight: 4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text("${patron.satisfaction.round()}%", style: GoogleFonts.oswald(color: _getProgressColor(patron.satisfaction / 100.0), fontSize: 9)),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            children: [
+              if (isUnderOperation)
+                ElevatedButton(
+                  onPressed: () {
+                    _showSurgicalHarvestDialogue(context, state, patron);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4C6B4F),
+                    foregroundColor: Colors.black,
+                    shape: const RoundedRectangleBorder(),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: Text(
+                    "EXTRACT ORGANS",
+                    style: GoogleFonts.playfairDisplay(fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                )
+              else if (isCollapsed)
+                ElevatedButton(
+                  onPressed: () {
+                    state.carryPatronToOperatingRoom(patron.id);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC4B89B),
+                    foregroundColor: Colors.black,
+                    shape: const RoundedRectangleBorder(),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: Text(
+                    "CARRY TO BASEMENT",
+                    style: GoogleFonts.playfairDisplay(fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                )
+              else if (isDrugged)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  color: Colors.white10,
+                  child: Text(
+                    "DROWSY...",
+                    style: GoogleFonts.playfairDisplay(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                )
+              else if (!isSeated)
+                ElevatedButton(
+                  onPressed: () {
+                    state.refusePatron(patron.id);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5A1E15),
+                    foregroundColor: const Color(0xFFFFA8A8),
+                    shape: const RoundedRectangleBorder(),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: Text(
+                    "REFUSE ENTRY",
+                    style: GoogleFonts.playfairDisplay(fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                )
+              else ...[
+                ElevatedButton(
+                  onPressed: () {
+                    _showSpikeOrderDialogue(context, state, patron);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC4B89B),
+                    foregroundColor: Colors.black,
+                    shape: const RoundedRectangleBorder(),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: Text(
+                    "SPIKE MEAL",
+                    style: GoogleFonts.playfairDisplay(fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: const Color(0xFF1E1A15),
+                        title: Text(
+                          "EXPEL ${patron.name.toUpperCase()}?",
+                          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
+                        ),
+                        content: Text(
+                          "This will forcibly eject this customer from Glarus Manor. Doing so will create a dramatic scene, reducing the satisfaction of all other seated diners by 15.0%. Proceed?",
+                          style: GoogleFonts.oldStandardTt(color: Colors.white70),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text("CANCEL", style: GoogleFonts.oldStandardTt(color: Colors.white24)),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              state.expelPatron(patron.id);
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8C2D19)),
+                            child: Text("EXPEL FORCIBLY", style: GoogleFonts.playfairDisplay(color: Colors.black)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8C2D19),
+                    foregroundColor: Colors.black,
+                    shape: const RoundedRectangleBorder(),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: Text(
+                    "EXPEL GUEST",
+                    style: GoogleFonts.playfairDisplay(fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ]
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSpikeOrderDialogue(BuildContext context, GameState state, Patron patron) {
+    final sedatives = state.inventory.where((item) =>
+      item.type == 'soporific_draft' ||
+      item.type == 'liquid_belladonna' ||
+      item.type == 'sleeping_nightshade'
+    ).toList();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1A15),
+        title: Text(
+          "SPIKE ${patron.name.toUpperCase()}'S ORDER",
+          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Select an alchemical sedative to slip into their dinner. Once consumed, the subject will grow drowsy and collapse shortly.",
+              style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 11),
+            ),
+            const SizedBox(height: 16),
+            if (sedatives.isEmpty) ...[
+              Text(
+                "NO ALCHEMICAL SEDATIVES FOUND IN MANOR ROOM INVENTORIES.",
+                style: GoogleFonts.oswald(color: const Color(0xFF8C2D19), fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Brew Soporific Draft, Liquid Belladonna, or Sleeping Nightshade in the laboratory or greenhouse first.",
+                style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 10),
+              ),
+            ] else
+              ...sedatives.map((item) {
+                final disp = _getSedativeNameLabel(item.type);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  color: Colors.black26,
+                  child: ListTile(
+                    title: Text(disp.toUpperCase(), style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 12, fontWeight: FontWeight.bold)),
+                    subtitle: Text("Available: ${item.quantity} units", style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9)),
+                    trailing: ElevatedButton(
+                      onPressed: () {
+                        state.spikePatronOrder(patron.id, item.type);
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: const Color(0xFF2C241E),
+                            content: Text("Laced meal served to ${patron.name}.", style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0))),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC4B89B)),
+                      child: Text("INFUSE", style: GoogleFonts.playfairDisplay(color: Colors.black, fontSize: 10)),
+                    ),
+                  ),
+                );
+              }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("CLOSE", style: GoogleFonts.oldStandardTt(color: Colors.white24)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getSedativeNameLabel(String type) {
+    if (type == 'soporific_draft') return "Soporific Draft";
+    if (type == 'liquid_belladonna') return "Liquid Belladonna";
+    if (type == 'sleeping_nightshade') return "Sleeping Nightshade";
+    return "Alchemical Sedative";
+  }
+
+  void _showSurgicalHarvestDialogue(BuildContext context, GameState state, Patron patron) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1A15),
+        title: Text(
+          "SURGICAL HARVEST: ${patron.name.toUpperCase()}",
+          style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0)),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Select the biological specimen or organ to extract from the unconscious subject. The operation is fatal and the remains will be cleanly dissolved in alchemical acid.",
+              style: GoogleFonts.oldStandardTt(color: Colors.white70, fontSize: 11),
+            ),
+            const SizedBox(height: 16),
+            
+            _buildHarvestOption(
+              context,
+              title: "HARVEST BLACK-MARKET ORGANS (KIDNEY/LIVER)",
+              description: "Extract high-demand organs to sell to Zürich contacts (+250 CHF).",
+              onTap: () {
+                state.performSurgicalHarvest(patron.id, harvestedOrgan: 'kidney');
+                Navigator.pop(context);
+              },
+            ),
+            _buildHarvestOption(
+              context,
+              title: "HARVEST GOLEMIC HEART (SPECIMEN)",
+              description: "Extract a beating heart required for advanced Golem assembly.",
+              onTap: () {
+                state.performSurgicalHarvest(patron.id, harvestedOrgan: 'heart');
+                Navigator.pop(context);
+              },
+            ),
+            _buildHarvestOption(
+              context,
+              title: "HARVEST GOLEMIC BRAIN (SPECIMEN)",
+              description: "Extract the neural center required for advanced Golem assembly.",
+              onTap: () {
+                state.performSurgicalHarvest(patron.id, harvestedOrgan: 'brain');
+                Navigator.pop(context);
+              },
+            ),
+            _buildHarvestOption(
+              context,
+              title: "HARVEST RAW MUSCLE & FLESH",
+              description: "Extract muscles and limbs to stitch together patchwork servants (+3 Flesh).",
+              onTap: () {
+                state.performSurgicalHarvest(patron.id, harvestedOrgan: 'flesh');
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("ABANDON OPERATION", style: GoogleFonts.oldStandardTt(color: Colors.white24)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHarvestOption(BuildContext context, {required String title, required String description, required VoidCallback onTap}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.1)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: GoogleFonts.oldStandardTt(color: Colors.white38, fontSize: 9),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _isPositiveTrait(PatronTrait trait) {
+    return trait == PatronTrait.easyRegular ||
+        trait == PatronTrait.bigTipper ||
+        trait == PatronTrait.promoter ||
+        trait == PatronTrait.generousPatron ||
+        trait == PatronTrait.glutton;
+  }
+
+  Color _getProgressColor(double val) {
+    if (val > 0.6) return const Color(0xFF4C6B4F);
+    if (val > 0.3) return const Color(0xFFC4B89B);
+    return const Color(0xFF8C2D19);
+  }
+
+  String _getBehaviorHint(String faction) {
+    if (faction == 'Gnomes of Zurich') return "Inquires about coinage purity and vault keys.";
+    if (faction == 'Carbonari') return "Smells faintly of coal dust and speaks of liberation.";
+    if (faction == 'Rosicrucians') return "Wears a rose emblem and asks about botany labs.";
+    if (faction == 'Chevaliers de la foi') return "Exhibits highly formal aristocratic etiquette.";
+    if (faction == 'Freemasons') return "Uses precise geometric terminology and handshakes.";
+    if (faction == 'Ancient Order of Foresters') return "Wears rustic forest green wool.";
+    if (faction == 'Knights Templar') return "Highly militant stance; talks about holy relics.";
+    if (faction == 'Golden Dawn') return "Speaks of cosmic hierarchies and astral planes.";
+    if (faction == 'Fenian Brotherhood') return "Whispers of night raids and rebellions.";
+    if (faction == 'Glarus') return "Mentions local municipal codes and Canton taxes.";
+    if (faction == 'Army') return "Loud, demanding military soldier wearing canton insignia.";
+    return "Quiet, observant traveler.";
   }
 
   Widget _buildBistroManagementTab(BuildContext context, GameState state) {

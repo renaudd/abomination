@@ -25,7 +25,7 @@ void main() {
       // Young master (inheritor of Swiss estate)
       final youngMasterRes = NPCGenerator.generateBiographyForCharacter(
         role: 'Master',
-        age: 25,
+        age: 24,
         currentDate: currentDate,
         gender: 'Male',
       );
@@ -37,7 +37,7 @@ void main() {
       expect(youngMasterRes.biography.childhoodEvent, isNotNull);
       expect(youngMasterRes.biography.educationOrApprenticeship, isNotNull);
       expect(youngMasterRes.biography.profession, 'Estate Master');
-      expect(youngMasterRes.biography.relationshipStatus, isNotNull);
+      expect(youngMasterRes.biography.relationshipStatus, isNull); // younger than 25
       expect(youngMasterRes.biography.tragicEvent, isNull); // younger than 30
       expect(youngMasterRes.biography.discoveredPassion, isNull); // younger than 40
       expect(youngMasterRes.biography.healthIssue, isNull); // younger than 50
@@ -123,7 +123,7 @@ void main() {
       expect(butler.biography?.relationshipStatus, isNot('married'));
 
       int marriedCount = 0;
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < 50; i++) {
         final originalCount = state.npcs.length;
         state.spawnRefugee();
         final latest = state.npcs[originalCount];

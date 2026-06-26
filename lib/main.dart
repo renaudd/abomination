@@ -176,35 +176,45 @@ class _AbominationAppState extends State<AbominationApp> {
     return false;
   }
 
+  bool _audioUnblocked = false;
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'Abomination',
-      theme: _isFullyLoaded
-          ? ThemeData(
-              brightness: Brightness.dark,
-              scaffoldBackgroundColor: const Color(0xFF1A1612), // Deep wood shadow
-              textTheme: GoogleFonts.playfairDisplayTextTheme(
-                ThemeData.dark().textTheme,
-              ).copyWith(
-                bodyMedium: GoogleFonts.oldStandardTt(
-                  color: const Color(0xFFC4B89B),
-                ),
-              ),
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: const Color(0xFF3B2F21), // Mahogany
+    return Listener(
+      onPointerDown: (_) {
+        if (!_audioUnblocked) {
+          _audioUnblocked = true;
+          AudioService().unblockAudio();
+        }
+      },
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        title: 'Abomination',
+        theme: _isFullyLoaded
+            ? ThemeData(
                 brightness: Brightness.dark,
-                surface: const Color.fromARGB(255, 250, 238, 226),
-                primary: const Color(0xFFC4B89B), // Brass/Parchment
+                scaffoldBackgroundColor: const Color(0xFF1A1612), // Deep wood shadow
+                textTheme: GoogleFonts.playfairDisplayTextTheme(
+                  ThemeData.dark().textTheme,
+                ).copyWith(
+                  bodyMedium: GoogleFonts.oldStandardTt(
+                    color: const Color(0xFFC4B89B),
+                  ),
+                ),
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF3B2F21), // Mahogany
+                  brightness: Brightness.dark,
+                  surface: const Color.fromARGB(255, 250, 238, 226),
+                  primary: const Color(0xFFC4B89B), // Brass/Parchment
+                ),
+                useMaterial3: true,
+              )
+            : ThemeData(
+                brightness: Brightness.dark,
+                scaffoldBackgroundColor: const Color(0xFF1A1612),
               ),
-              useMaterial3: true,
-            )
-          : ThemeData(
-              brightness: Brightness.dark,
-              scaffoldBackgroundColor: const Color(0xFF1A1612),
-            ),
-      home: LoadingScreen(onCompleted: _onGameLoadingComplete),
+        home: LoadingScreen(onCompleted: _onGameLoadingComplete),
+      ),
     );
   }
 }

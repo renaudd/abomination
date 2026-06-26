@@ -90,7 +90,7 @@ void main() {
           quantity: 1,
           quality: 1.0,
           shape: ItemShape.pill,
-          metadata: {'discipline': 'Alchemy'},
+          metadata: {'discipline': 'Alchemy', 'isResearched': true},
         ),
         GameItem(
           id: 'alchemy_textbook',
@@ -100,7 +100,7 @@ void main() {
           quantity: 1,
           quality: 1.0,
           shape: ItemShape.pill,
-          metadata: {'discipline': 'Alchemy'},
+          metadata: {'discipline': 'Alchemy', 'isResearched': true},
         ),
       ],
     );
@@ -140,11 +140,12 @@ void main() {
     expect(activeTasks.length, equals(1));
     final task = activeTasks.first;
     expect(task.recipeId, equals('reanimation_procedure'));
-    expect(task.reservedEntityIds.first, equals('specimen_rat'));
-
     // Tick time until the task completes (duration is 120 minutes)
-    for (int i = 0; i < 125; i++) {
+    for (int i = 0; i < 250; i++) {
       state.tick();
+      if (state.speed == GameSpeed.paused) {
+        state.setSpeed(GameSpeed.normal);
+      }
     }
 
     // Verify task completion

@@ -15,6 +15,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:abomination/services/combat_manager.dart';
 import 'package:abomination/services/combat_unit_factory.dart';
+import 'package:abomination/models/combat_stats.dart';
 
 void main() {
   group('Giles Execute Ability Tests', () {
@@ -344,6 +345,172 @@ void main() {
       expect(manager.deck.length, 0);
       expect(manager.hand.length, 1);
       expect(manager.hand.first.id, 'rats_unit');
+    });
+  });
+
+  group('Combat Card and Ability Rebalancing Tests', () {
+    late CombatManager manager;
+
+    setUp(() {
+      manager = CombatManager();
+      manager.startCombat();
+    });
+
+    test('Magus Rosenkreuz special ability charge times are balanced', () {
+      final rosen = CombatUnitFactory.createChristianRosenkreuz();
+      final aoeHeal = rosen.abilities.firstWhere((a) => a.id == 'aoe_heal');
+      final transmute = rosen.abilities.firstWhere((a) => a.id == 'health_transmute');
+
+      expect(aoeHeal.chargeTime, 20.0);
+      expect(transmute.chargeTime, 25.0);
+    });
+
+    test('General Rudolf Shield Wall grants complete damage immunity to self and allies', () {
+      final rudolf = CombatUnitFactory.createBossRudolf().copyWith(specialCharge: 1.0);
+      final ally = CombatUnitFactory.createGoon();
+
+      manager.spawnUnit(rudolf, CombatSide.player, x: 50.0, y: 50.0);
+      manager.spawnUnit(ally, CombatSide.player, x: 55.0, y: 50.0); // Within 30ft
+
+      expect(manager.canExecuteSpecial('boss_rudolf'), isTrue);
+      manager.executeSpecial('boss_rudolf');
+
+      final rCombatant = manager.combatants.firstWhere((c) => c.npc.id == 'boss_rudolf');
+      final aCombatant = manager.combatants.firstWhere((c) => c.npc.id.contains('goons'));
+
+      expect(rCombatant.isInvulnerable, isTrue);
+      expect(rCombatant.invulnerableDurationRemaining, 6.0);
+      expect(aCombatant.isInvulnerable, isTrue);
+      expect(aCombatant.invulnerableDurationRemaining, 6.0);
+    });
+
+    test('General Rudolf Battle Cry boosts self and allies attack by 25', () {
+      final rudolf = CombatUnitFactory.createBossRudolf();
+      // Let's force execution by simulating battle_cry as the first special
+      final mockRudolf = rudolf.copyWith(
+        specialCharge: 1.0,
+        abilities: [
+          const Ability(id: 'battle_cry', name: 'Battle Cry', type: AbilityType.special, chargeTime: 22.0, description: 'Battle Cry'),
+          const Ability(id: 'shield_wall', name: 'Shield Wall', type: AbilityType.special, chargeTime: 15.0, description: 'Shield Wall'),
+        ],
+      );
+
+      final ally = CombatUnitFactory.createGoon();
+
+      manager.spawnUnit(mockRudolf, CombatSide.player, x: 50.0, y: 50.0);
+      manager.spawnUnit(ally, CombatSide.player, x: 55.0, y: 50.0); // Within 30ft
+
+      manager.executeSpecial('boss_rudolf');
+
+      final rCombatant = manager.combatants.firstWhere((c) => c.npc.id == 'boss_rudolf');
+      final aCombatant = manager.combatants.firstWhere((c) => c.npc.id.contains('goons'));
+
+      expect(rCombatant.flatAttackBuff, 25.0);
+      expect(rCombatant.flatAttackBuffDurationRemaining, 8.0);
+      expect(aCombatant.flatAttackBuff, 25.0);
+      expect(aCombatant.flatAttackBuffDurationRemaining, 8.0);
+    });
+
+    test('Warlock Lightning Strike deals 150 damage and stuns for 4 seconds', () {
+      final warlock = CombatUnitFactory.createWarlock().copyWith(specialCharge: 1.0);
+      final enemy = CombatUnitFactory.createGoon().copyWith(
+        id: 'target_enemy',
+        combatStats: CombatUnitFactory.createGoon().combatStats!.copyWith(health: 200, maxHealth: 200, defense: 0),
+      );
+
+      manager.spawnUnit(warlock, CombatSide.player, x: 50.0, y: 50.0);
+      manager.spawnUnit(enemy, CombatSide.enemy, x: 55.0, y: 50.0);
+
+      expect(manager.canExecuteSpecial(warlock.id), isTrue);
+      manager.executeSpecial(warlock.id);
+
+      final enemyCombatant = manager.combatants.firstWhere((c) => c.npc.id == 'target_enemy');
+      // 200 health - 150 damage = 50 health remaining
+      expect(enemyCombatant.npc.combatStats!.health, 50.0);
+      expect(enemyCombatant.freezeTimer, 4.0);
+    });
+
+    test('Alphonse Frankenstein Lightning Strike (Special 2) deals 150 damage and stuns', () {
+      final alphonse = CombatUnitFactory.createAlphonse();
+      final enemy = CombatUnitFactory.createGoon().copyWith(
+        id: 'target_enemy',
+        combatStats: CombatUnitFactory.createGoon().combatStats!.copyWith(health: 200, maxHealth: 200, defense: 0),
+      );
+
+      manager.spawnUnit(alphonse, CombatSide.player, x: 50.0, y: 50.0);
+      manager.spawnUnit(enemy, CombatSide.enemy, x: 55.0, y: 50.0);
+
+      final alphonseCombatant = manager.combatants.firstWhere((c) => c.npc.id == alphonse.id);
+      alphonseCombatant.specialCharge2 = 1.0; // Charge his second special
+
+      expect(manager.canExecuteSpecial2(alphonse.id), isTrue);
+      manager.executeSpecial2(alphonse.id);
+
+      final enemyCombatant = manager.combatants.firstWhere((c) => c.npc.id == 'target_enemy');
+      expect(enemyCombatant.npc.combatStats!.health, 50.0); // 200 - 150 = 50
+      expect(enemyCombatant.freezeTimer, 4.0); // 4.0s stun
+    });
+
+    test('Undead Bats Vampiric Screech drains nearby enemies and heals allies', () {
+      final bats = CombatUnitFactory.createUndeadBats().copyWith(specialCharge: 1.0);
+      final enemy = CombatUnitFactory.createGoon().copyWith(
+        id: 'target_enemy',
+        combatStats: CombatUnitFactory.createGoon().combatStats!.copyWith(health: 100, maxHealth: 100, defense: 0),
+      );
+
+      manager.spawnUnit(bats, CombatSide.player, x: 50.0, y: 50.0);
+      manager.spawnUnit(enemy, CombatSide.enemy, x: 55.0, y: 50.0); // Within 20ft
+
+      final batsCombatant = manager.combatants.firstWhere((c) => c.npc.id == bats.id);
+      // Set initial health to 30/55 to verify healing
+      batsCombatant.npc = batsCombatant.npc.copyWith(
+        combatStats: batsCombatant.npc.combatStats!.copyWith(health: 30),
+      );
+
+      manager.executeSpecial(bats.id);
+
+      final enemyCombatant = manager.combatants.firstWhere((c) => c.npc.id == 'target_enemy');
+      // Enemy: 100 health - 35 drain = 65 remaining
+      expect(enemyCombatant.npc.combatStats!.health, 65.0);
+      // Bats: healed by 20 -> 30 + 20 = 50
+      expect(batsCombatant.npc.combatStats!.health, 50.0);
+    });
+
+    test('Witch Coven Restoration heals allies within 7 ft (14 units) but not beyond', () {
+      manager.actionPoints = 10.0;
+      final witch = CombatUnitFactory.createWitch().copyWith(specialCharge: 1.0);
+      final ally1 = CombatUnitFactory.createGoon().copyWith(
+        id: 'ally_near',
+        combatStats: CombatUnitFactory.createGoon().combatStats!.copyWith(health: 50.0, maxHealth: 100.0),
+      );
+      final ally2 = CombatUnitFactory.createGoon().copyWith(
+        id: 'ally_far',
+        combatStats: CombatUnitFactory.createGoon().combatStats!.copyWith(health: 50.0, maxHealth: 100.0),
+      );
+
+      manager.spawnUnit(witch, CombatSide.player, x: 50.0, y: 50.0);
+      manager.spawnUnit(ally1, CombatSide.player, x: 38.0, y: 50.0); // 12 units away (within 14)
+      manager.spawnUnit(ally2, CombatSide.player, x: 34.0, y: 50.0); // 16 units away (outside 14)
+
+      manager.executeSpecial(witch.id);
+
+      final allyNearCombatant = manager.combatants.firstWhere((c) => c.npc.id == 'ally_near');
+      final allyFarCombatant = manager.combatants.firstWhere((c) => c.npc.id == 'ally_far');
+
+      expect(allyNearCombatant.npc.combatStats!.health, 100.0); // Healed +50
+      expect(allyFarCombatant.npc.combatStats!.health, 50.0); // Not healed
+    });
+
+    test('Card balance stats are correct', () {
+      final bats = CombatUnitFactory.createBats();
+      expect(bats.combatStats!.cost, 3); // Bats cost 3 AP now
+
+      final sniper = CombatUnitFactory.createSniper();
+      expect(sniper.combatStats!.health, 160); // Sniper health is 160
+
+      final brewers = CombatUnitFactory.createBrewers();
+      expect(brewers.combatStats!.health, 110); // Brewers health nerfed to 110
+      expect(brewers.combatStats!.meleeDamage, 18); // Brewers attack nerfed to 18
     });
   });
 }

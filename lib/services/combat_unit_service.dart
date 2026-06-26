@@ -224,6 +224,13 @@ class CombatUnitService {
         return CombatUnitFactory.createForesterHerbalist();
       case 'forester_beastmaster':
         return CombatUnitFactory.createForesterBeastmaster();
+      // Bavarian Illuminati
+      case 'adam_weishaupt':
+        return CombatUnitFactory.createAdamWeishaupt();
+      case 'illuminati_infiltrator':
+        return CombatUnitFactory.createIlluminatiInfiltrator();
+      case 'rationalist_propaganda':
+        return CombatUnitFactory.createRationalistPropaganda();
       default:
         return CombatUnitFactory.createVillagerMob();
     }

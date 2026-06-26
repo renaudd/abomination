@@ -20,10 +20,29 @@ import '../../services/kitchen_service.dart';
 import '../../services/science_service.dart';
 import '../../services/task_service.dart';
 import '../../models/game_item.dart';
+import '../../models/science_discipline.dart';
 import '../widgets/game_item_renderer.dart';
+import '../../services/audio_service.dart';
 
-class StudyScreen extends StatelessWidget {
+class StudyScreen extends StatefulWidget {
   const StudyScreen({super.key});
+
+  @override
+  State<StudyScreen> createState() => _StudyScreenState();
+}
+
+class _StudyScreenState extends State<StudyScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AudioService().pushBgmMode(BgmMode.laboratory);
+  }
+
+  @override
+  void dispose() {
+    AudioService().popBgmMode();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +71,8 @@ class StudyScreen extends StatelessWidget {
               .where(
                 (item) =>
                     item.category == ItemCategory.knowledge ||
-                    item.category == ItemCategory.specimen ||
                     item.type == 'unreviewed_document' ||
-                    item.name == 'Old Notes' ||
-                    item.name == 'Live Rat',
+                    item.name == 'Old Notes',
               )
               .toList();
 
@@ -77,7 +94,8 @@ class StudyScreen extends StatelessWidget {
                 // Left Panel: Stats & Tiers
                 Expanded(
                   flex: 1,
-                  child: SingleChildScrollView(
+                  child: DefaultTabController(
+                    length: 4,
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -93,13 +111,37 @@ class StudyScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildSectionTitle('COLLECTED KNOWLEDGE'),
+                          const SizedBox(height: 16),
+                          TabBar(
+                            isScrollable: true,
+                            tabAlignment: TabAlignment.start,
+                            indicatorColor: const Color(0xFFC4B89B),
+                            dividerColor: Colors.white10,
+                            labelColor: const Color(0xFFE5D5B0),
+                            unselectedLabelColor: Colors.white38,
+                            labelStyle: GoogleFonts.playfairDisplay(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            tabs: const [
+                              Tab(text: 'PHYSICAL'),
+                              Tab(text: 'BIOLOGY'),
+                              Tab(text: 'OCCULT'),
+                              Tab(text: 'METAPHYSICAL'),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: TabBarView(
+                              children: [
+                                _buildBranchList(context, state, DisciplineBranch.physical),
+                                _buildBranchList(context, state, DisciplineBranch.biology),
+                                _buildBranchList(context, state, DisciplineBranch.occult),
+                                _buildBranchList(context, state, DisciplineBranch.metaphysical),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 24),
-                          _buildKnowledgeItem(context, state, 'Anatomy'),
-                          _buildKnowledgeItem(context, state, 'Zoology'),
-                          _buildKnowledgeItem(context, state, 'Medicine'),
-                          _buildKnowledgeItem(context, state, 'Chemistry'),
-                          _buildKnowledgeItem(context, state, 'Psychology'),
-                          const SizedBox(height: 32),
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -127,7 +169,8 @@ class StudyScreen extends StatelessWidget {
                                       .where(
                                         (i) =>
                                             i.name.contains('Note') ||
-                                            i.name.contains('Book'),
+                                            i.name.contains('Book') ||
+                                            i.type == 'research_study',
                                       )
                                       .length
                                       .toString(),
@@ -155,10 +198,6 @@ class StudyScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionTitle('SCIENCE ACTIVITIES'),
-                          const SizedBox(height: 16),
-                          _buildScienceActivities(context, state),
-                          const SizedBox(height: 32),
                           _buildSectionTitle('AVAILABLE MATERIALS'),
                           const SizedBox(height: 24),
                           if (researchItems.isEmpty)
@@ -229,39 +268,103 @@ class StudyScreen extends StatelessWidget {
     String discipline,
   ) {
     final level = state.getKnowledgeLevel(discipline);
+    final registryId = discipline.toLowerCase().replaceAll(':', '').replaceAll(' ', '_');
+    final disc = ScienceRegistry.disciplines[registryId];
+    
+    bool isLocked = false;
+    String lockReason = '';
+    
+    if (disc != null) {
+      for (var entry in disc.gatewayDependencies.entries) {
+        final parentId = entry.key;
+        final reqLevel = entry.value;
+        final parentDisc = ScienceRegistry.disciplines[parentId];
+        final parentName = parentDisc?.name ?? parentId;
+        if (state.getKnowledgeLevel(parentName) < reqLevel) {
+          isLocked = true;
+          lockReason = 'Requires $parentName Lv. $reqLevel';
+          break;
+        }
+      }
+    }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
+      padding: const EdgeInsets.only(bottom: 20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                discipline.toUpperCase(),
-                style: GoogleFonts.oldStandardTt(
-                  color: const Color(0xFFC4B89B),
-                  fontSize: 14,
+              Expanded(
+                child: Row(
+                  children: [
+                    if (isLocked)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6.0),
+                        child: Icon(Icons.lock_outline, color: Colors.white24, size: 12),
+                      ),
+                    Expanded(
+                      child: Text(
+                        discipline.toUpperCase(),
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.oldStandardTt(
+                          color: isLocked ? Colors.white24 : const Color(0xFFC4B89B),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Text(
-                level.toStringAsFixed(1),
+                isLocked ? 'LOCKED' : level.toStringAsFixed(1),
                 style: GoogleFonts.oldStandardTt(
-                  color: const Color(0xFFE5D5B0),
-                  fontSize: 14,
+                  color: isLocked ? Colors.white24 : const Color(0xFFE5D5B0),
+                  fontSize: 13,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           LinearProgressIndicator(
-            value: (level / 100).clamp(0.0, 1.0),
+            value: isLocked ? 0.0 : (level / 100).clamp(0.0, 1.0),
             backgroundColor: Colors.white10,
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFC4B89B)),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isLocked ? Colors.white24 : const Color(0xFFC4B89B),
+            ),
             minHeight: 2,
           ),
+          if (isLocked && lockReason.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                lockReason,
+                style: GoogleFonts.oldStandardTt(
+                  color: const Color(0xFFD27D2D).withValues(alpha: 0.7),
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBranchList(
+    BuildContext context,
+    GameState state,
+    DisciplineBranch branch,
+  ) {
+    final disciplines = ScienceRegistry.disciplines.values
+        .where((d) => d.branch == branch)
+        .toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Column(
+        children: disciplines.map((d) => _buildKnowledgeItem(context, state, d.name)).toList(),
       ),
     );
   }
@@ -280,33 +383,25 @@ class StudyScreen extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          if (item.category == ItemCategory.knowledge) {
-            state.addScienceActivityToQueue(
-              'generic_research',
-              reservedEntityIds: [item.id],
-            );
+          if (item.type == 'research_study') {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('FUNDAMENTAL RESEARCH ENQUEUED'),
-                backgroundColor: Color(0xFFC4B89B),
-                duration: Duration(seconds: 1),
+              SnackBar(
+                content: Text('${item.name.toUpperCase()} HAS ALREADY BEEN FULLY COMPILED'),
+                backgroundColor: const Color(0xFFC4B89B),
+                duration: const Duration(seconds: 2),
               ),
             );
-          } else if (item.category == ItemCategory.specimen) {
-            state.addScienceActivityToQueue(
-              'small_dissection',
-              reservedEntityIds: [item.id],
-            );
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('DISSECTION ENQUEUED'),
-                backgroundColor: Color(0xFFC4B89B),
-                duration: Duration(seconds: 1),
-              ),
-            );
+            return;
           }
+          state.addResearchToQueue(item.id);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('SECONDARY STUDY ENQUEUED'),
+              backgroundColor: Color(0xFFC4B89B),
+              duration: Duration(seconds: 1),
+            ),
+          );
         },
-
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
@@ -351,222 +446,7 @@ class StudyScreen extends StatelessWidget {
 
 
 
-  Widget _buildScienceActivities(BuildContext context, GameState state) {
-    // 1. Move dissection, vivisection, puzzle, deprivation, clinical trials entirely to Laboratory.
-    // Study exclusively retains Fundamental Research.
-    final activities = ScienceService.getAvailableActivities()
-        .where((a) => a.id == 'generic_research')
-        .toList();
 
-    return Column(
-      children: activities.map<Widget>((activity) {
-        bool canStart = true;
-        activity.ingredients.forEach((ing, count) {
-          num available =
-              state.inventory
-                  .where((i) {
-                    if (ing == 'meat') {
-                      return i.type.contains('meat') ||
-                          i.category == ItemCategory.specimen;
-                    }
-                    if (ing == 'specimen' || ing == 'rat_specimen') {
-                      return i.type == 'rat' ||
-                          i.type == 'bat' ||
-                          i.type == 'chicken' ||
-                          i.category == ItemCategory.specimen;
-                    }
-                    if (ing == 'unreviewed_document') {
-                      return i.type == 'unreviewed_document' || i.category == ItemCategory.knowledge;
-                    }
-                    return i.type == ing;
-                  })
-                  .fold(0, (sum, i) => sum + i.quantity) +
-              ((ing == 'specimen' || ing == 'rat_specimen')
-                  ? (state.resources['rat'] ?? 0) +
-                        (state.resources['bat'] ?? 0) +
-                        (state.resources['chicken'] ?? 0)
-                  : (state.resources[ing] ?? 0));
-          if (available < count) canStart = false;
-        });
-
-        final metadata = TaskService.getMetadata(activity.type);
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-            ),
-            color: Colors.black.withValues(alpha: 0.3),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        activity.name.toUpperCase(),
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      "${activity.baseDurationMinutes ~/ 60}H ${activity.baseDurationMinutes % 60}M",
-                      style: GoogleFonts.oldStandardTt(
-                        color: const Color(0xFFC4B89B),
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  activity.outcomeDescription,
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFC4B89B).withValues(alpha: 0.7),
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'REQUIRED MATERIALS',
-                            style: GoogleFonts.oswald(
-                              fontSize: 9,
-                              color: const Color(
-                                0xFFE5D5B0,
-                              ).withValues(alpha: 0.5),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 8,
-                            children: activity.ingredients.entries.map<Widget>((
-                              e,
-                            ) {
-                              final ing = e.key;
-                              final count = e.value;
-                              num available =
-                                  state.inventory
-                                      .where((i) {
-                                        if (ing == 'meat') {
-                                          return i.type.contains('meat') ||
-                                              i.category ==
-                                                  ItemCategory.specimen;
-                                        }
-                                        if (ing == 'specimen' ||
-                                            ing == 'rat_specimen') {
-                                          return i.type == 'rat' ||
-                                              i.type == 'bat' ||
-                                              i.type == 'chicken' ||
-                                              i.category ==
-                                                  ItemCategory.specimen;
-                                        }
-                                        return i.type == ing;
-                                      })
-                                      .fold(0, (sum, i) => sum + i.quantity) +
-                                  ((ing == 'specimen' || ing == 'rat_specimen')
-                                      ? (state.resources['rat'] ?? 0) +
-                                            (state.resources['bat'] ?? 0) +
-                                            (state.resources['chicken'] ?? 0)
-                                      : (state.resources[ing] ?? 0));
-                              final hasEnough = available.round() >= count.round();
-
-                              return Text(
-                                '${_getPrettyTypeName(e.key)}: ${e.value.round()}',
-                                style: GoogleFonts.oldStandardTt(
-                                  color: hasEnough
-                                      ? const Color(0xFFC4B89B)
-                                      : Colors.redAccent,
-                                  fontSize: 10,
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'EFFICIENCY STATS',
-                            style: GoogleFonts.oswald(
-                              fontSize: 9,
-                              color: const Color(
-                                0xFFE5D5B0,
-                              ).withValues(alpha: 0.5),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            metadata.relevantAttributes
-                                .join(", ")
-                                .toUpperCase(),
-                            style: GoogleFonts.oldStandardTt(
-                              fontSize: 10,
-                              color: const Color(0xFFC4B89B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: canStart
-                        ? () => _showScienceActivityTargetDialog(context, state, activity)
-                        : null,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: canStart
-                            ? const Color(0xFFC4B89B)
-                            : Colors.white10,
-                      ),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.zero,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: Text(
-                      'COMMENCE STUDY',
-                      style: GoogleFonts.playfairDisplay(
-                        color: canStart
-                            ? const Color(0xFFE5D5B0)
-                            : Colors.white12,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
 
   void _showScienceActivityTargetDialog(
     BuildContext context,
@@ -741,6 +621,7 @@ class StudyScreen extends StatelessWidget {
       children: state.researchQueue.map((queueId) {
         final index = state.researchQueue.indexOf(queueId);
         final parts = queueId.split(':');
+        final firstPart = parts[0];
         final category = parts[0];
         final activityId = parts.length > 1 ? parts[1] : null;
         final isActivity = category == 'activity';
@@ -755,9 +636,21 @@ class StudyScreen extends StatelessWidget {
                   .firstOrNull
             : null;
 
-        final item = (!isActivity && !isRecipe)
-            ? state.inventory.where((i) => i.id == queueId).firstOrNull
-            : null;
+        GameItem? item;
+        if (!isActivity && !isRecipe) {
+          // Check personal inventory first
+          item = state.inventory.where((i) => i.id == firstPart).firstOrNull;
+          if (item == null) {
+            // Check across all rooms' inventories
+            for (var room in state.rooms) {
+              final found = room.inventory.where((i) => i.id == firstPart).firstOrNull;
+              if (found != null) {
+                item = found;
+                break;
+              }
+            }
+          }
+        }
 
         // Find assigned NPC
         final assignedNpc = state.npcs.where((n) {

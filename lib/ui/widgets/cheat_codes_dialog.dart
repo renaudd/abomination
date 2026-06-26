@@ -15,13 +15,25 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import '../../state/game_state.dart';
 import '../../models/active_business.dart';
 import '../../models/graduate_school_state.dart';
 import '../../services/academic_exam_service.dart';
+import '../../models/npc.dart';
+import '../../models/language_encounter.dart';
+import '../../models/schedule.dart';
+import '../../models/diet.dart';
 
-class CheatCodesDialog extends StatelessWidget {
+class CheatCodesDialog extends StatefulWidget {
   const CheatCodesDialog({super.key});
+
+  @override
+  State<CheatCodesDialog> createState() => _CheatCodesDialogState();
+}
+
+class _CheatCodesDialogState extends State<CheatCodesDialog> {
+  String _selectedLanguageCode = 'FR'; // Default to French
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +101,30 @@ class CheatCodesDialog extends StatelessWidget {
                             side: const BorderSide(color: Color(0xFFC4B89B)),
                             shape: const RoundedRectangleBorder(),
                           ),
-                          icon: const Icon(Icons.payments, size: 14),
-                          label: Text("ADD 1,000 CHF", style: GoogleFonts.oswald(fontSize: 10)),
+                          icon: const Icon(Icons.payments, size: 12),
+                          label: Text("ADD 1,000 CHF", style: GoogleFonts.oswald(fontSize: 9)),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            state.cheatAddWood();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Added 100 Wood to manor inventory.")),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF241F1A),
+                            foregroundColor: const Color(0xFFE5D5B0),
+                            side: const BorderSide(color: Color(0xFFC4B89B)),
+                            shape: const RoundedRectangleBorder(),
+                          ),
+                          icon: const Icon(Icons.forest, size: 12),
+                          label: Text("ADD 100 WOOD", style: GoogleFonts.oswald(fontSize: 9)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
@@ -108,8 +139,8 @@ class CheatCodesDialog extends StatelessWidget {
                             side: const BorderSide(color: Color(0xFFC4B89B)),
                             shape: const RoundedRectangleBorder(),
                           ),
-                          icon: const Icon(Icons.restaurant, size: 14),
-                          label: Text("ADD 20 PIES", style: GoogleFonts.oswald(fontSize: 10)),
+                          icon: const Icon(Icons.restaurant, size: 12),
+                          label: Text("ADD 20 PIES", style: GoogleFonts.oswald(fontSize: 9)),
                         ),
                       ),
                     ],
@@ -154,6 +185,27 @@ class CheatCodesDialog extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.storefront, size: 14),
                       label: Text("SEND SUPER MERCHANT", style: GoogleFonts.oswald(fontSize: 10)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        state.cheatPrepareAtticForLab();
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Prepared East Attic and granted Zoology 1 + Lab Schematics!")),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF241F1A),
+                        foregroundColor: const Color(0xFFE5D5B0),
+                        side: const BorderSide(color: Color(0xFFC4B89B)),
+                        shape: const RoundedRectangleBorder(),
+                      ),
+                      icon: const Icon(Icons.build_circle, size: 14),
+                      label: Text("PREPARE EAST ATTIC FOR LAB", style: GoogleFonts.oswald(fontSize: 10)),
                     ),
                   ),
 
@@ -319,11 +371,244 @@ class CheatCodesDialog extends StatelessWidget {
                       ),
                     ],
                   ),
+
+                  // Language Dialogue Debugger Section
+                  const SizedBox(height: 24),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 16),
+
+                  Text(
+                    "LAUNCH LANGUAGE DIALOGUE DEBUGGER",
+                    style: GoogleFonts.oswald(
+                      color: const Color(0xFFC4B89B),
+                      fontSize: 11,
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "SELECT LANGUAGE AND OPERATION TYPE TO INSTANTLY TRIGGER THE GUEST DIALOGUE IN-GAME:",
+                    style: GoogleFonts.oldStandardTt(
+                      color: Colors.white38,
+                      fontSize: 9,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Language Tabs (FR, DE, IT, ES)
+                  Row(
+                    children: [
+                      _languageTabButton('FR', 'FRENCH'),
+                      const SizedBox(width: 6),
+                      _languageTabButton('DE', 'GERMAN'),
+                      const SizedBox(width: 6),
+                      _languageTabButton('IT', 'ITALIAN'),
+                      const SizedBox(width: 6),
+                      _languageTabButton('ES', 'SPANISH'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Business Operation type triggers
+                  _buildLanguageTriggerButtons(context, state),
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _languageTabButton(String code, String label) {
+    final isSelected = _selectedLanguageCode == code;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedLanguageCode = code;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFC4B89B) : Colors.black26,
+            border: Border.all(
+              color: isSelected ? const Color(0xFFE5D5B0) : Colors.white10,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.oswald(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? const Color(0xFF1A1612) : const Color(0xFFC4B89B),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageTriggerButtons(BuildContext context, GameState state) {
+    final categories = [
+      {
+        'category': 'GENERIC / GENERAL',
+        'cases': [
+          {'id': 1, 'name': 'Restroom Query'},
+          {'id': 2, 'name': 'Closing Time'},
+          {'id': 3, 'name': 'Open Status'},
+          {'id': 4, 'name': 'Direction to Town'},
+          {'id': 5, 'name': 'Manager Escalation'},
+          {'id': 6, 'name': 'Business Tenure'},
+          {'id': 7, 'name': 'Restaurant Recs'},
+          {'id': 8, 'name': 'Warranty Spam'},
+          {'id': 9, 'name': 'Wait Time'},
+          {'id': 10, 'name': 'Bible Preachers'},
+        ]
+      },
+      {
+        'category': 'HOTEL / TAVERN',
+        'cases': [
+          {'id': 11, 'name': 'Room Rental'},
+        ]
+      },
+      {
+        'category': 'MEDICAL PRACTICE',
+        'cases': [
+          {'id': 12, 'name': 'Clinic Emergency'},
+          {'id': 13, 'name': 'Sickness Outbreak'},
+        ]
+      },
+      {
+        'category': 'RESTAURANT',
+        'cases': [
+          {'id': 14, 'name': 'Table Reservations'},
+        ]
+      },
+      {
+        'category': 'DISTILLERY',
+        'cases': [
+          {'id': 15, 'name': 'Liquor Distributor'},
+        ]
+      },
+      {
+        'category': 'LEGAL PRACTICE',
+        'cases': [
+          {'id': 16, 'name': 'Legal Consultation'},
+        ]
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: categories.map((cat) {
+        final catName = cat['category'] as String;
+        final cases = cat['cases'] as List<Map<String, dynamic>>;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 6),
+              child: Text(
+                catName,
+                style: GoogleFonts.oswald(
+                  color: const Color(0xFFE5D5B0).withOpacity(0.6),
+                  fontSize: 8.5,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: cases.map((c) {
+                final id = c['id'] as int;
+                final name = c['name'] as String;
+
+                return SizedBox(
+                  width: 142,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _triggerSpecificLanguageDialogue(context, state, id, _selectedLanguageCode);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black38,
+                      foregroundColor: const Color(0xFFE5D5B0),
+                      side: const BorderSide(color: Colors.white10),
+                      shape: const RoundedRectangleBorder(),
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    ),
+                    child: Text(
+                      name.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.playfairDisplay(fontSize: 8, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  void _triggerSpecificLanguageDialogue(
+    BuildContext context,
+    GameState state,
+    int id,
+    String languageCode,
+  ) {
+    final random = Random();
+    final encounter = LanguageEncounter.generateSpecific(
+      id: id,
+      languageCode: languageCode,
+      random: random,
+    );
+
+    final greeter = state.npcs.firstWhere(
+      (n) => n.isPlayer,
+      orElse: () => state.npcs.firstWhere(
+        (n) => n.role == 'Butler',
+        orElse: () => state.npcs.first,
+      ),
+    );
+
+    final guest = NPC(
+      id: 'debug_lang_guest_${DateTime.now().millisecondsSinceEpoch}',
+      name: languageCode == 'FR'
+          ? 'Jean-Pierre'
+          : (languageCode == 'IT'
+              ? 'Giovanni'
+              : (languageCode == 'DE' ? 'Hans' : 'Mateo')),
+      specimenType: 'Human',
+      role: 'Visitor',
+      age: 35,
+      gender: 'Male',
+      stats: {},
+      traits: [],
+      bodyParts: [],
+      inventory: [],
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      currentRoomId: 'entryway',
+      appearance: NPCAppearance.defaultButler(),
+      metadata: {'guestType': 'language_visitor'},
+    );
+
+    state.triggerLanguageEncounterForTesting(encounter, greeter, guest);
+
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "Triggered ${encounter.languageName} dialogue (${encounter.promptEnglish}) in the entryway!",
+        ),
       ),
     );
   }

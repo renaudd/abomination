@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../../models/graduate_school_state.dart';
+import '../widgets/submarine_dock_dialog.dart';
 import '../widgets/location_tile.dart';
 import '../widgets/time_speed_controls.dart';
 
@@ -183,6 +184,76 @@ class RegionalMapScreen extends StatelessWidget {
                           icon: Icons.water,
                           description: 'Walled medieval village in France.',
                         ),
+                      ),
+                      Consumer<GameState>(
+                        builder: (context, state, child) {
+                          final hasSubTech = state.unlockedDiscoveries.contains('submersible_tech');
+                          
+                          return Positioned(
+                            top: 250,
+                            left: 70,
+                            child: LocationTile(
+                              name: 'LAC LÉMAN ABYSS',
+                              icon: Icons.waves,
+                              description: hasSubTech
+                                  ? 'Deep water lake depths. Launch submersible expeditions to harvest specimens and discover alchemical treasures.'
+                                  : 'Ink-black lake depths. Requires "Submersible Design" discovery in the Study to build a submarine and explore.',
+                              isCurrent: false,
+                              onTap: () {
+                                if (hasSubTech) {
+                                  showSubmarineDockDialog(context);
+                                } else {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        backgroundColor: const Color(0xFF1E1712),
+                                        shape: RoundedRectangleBorder(
+                                          side: BorderSide(
+                                            color: const Color(0xFFC4B89B).withOpacity(0.4),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        title: Text(
+                                          'LAKE ABYSS UNREACHABLE',
+                                          style: GoogleFonts.playfairDisplay(
+                                            color: const Color(0xFFE5D5B0),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 1.5,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        content: Text(
+                                          'The dark, freezing depths of Lac Léman are impenetrable to ordinary boats. You must first unlock the "Submersible Design" scientific discovery by studying Physical Sciences (Physics and Engineering Level 3) in the Manor Study.',
+                                          style: GoogleFonts.oldStandardTt(
+                                            color: Colors.white70,
+                                            fontSize: 11,
+                                            height: 1.4,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: Text(
+                                              'ACKNOWLEDGE',
+                                              style: GoogleFonts.playfairDisplay(
+                                                color: const Color(0xFFE5D5B0),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                }
+                              },
+                            ),
+                          );
+                        }
                       ),
                     ],
                   ),

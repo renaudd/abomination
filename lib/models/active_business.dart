@@ -22,6 +22,9 @@ enum BusinessType {
   lawPractice,
   medicalPractice,
   theater,
+  steakhouse,
+  bar,
+  nightClub,
 }
 
 extension BusinessTypeExtension on BusinessType {
@@ -43,7 +46,23 @@ extension BusinessTypeExtension on BusinessType {
         return 'Private Medical Clinic';
       case BusinessType.theater:
         return 'Imperial Grand Theater';
+      case BusinessType.steakhouse:
+        return 'Hearthside Steakhouse';
+      case BusinessType.bar:
+        return 'Cantonal Tavern & Bar';
+      case BusinessType.nightClub:
+        return 'Esoteric Night Club';
     }
+  }
+
+  bool get isFoodOrDrinkService {
+    return this == BusinessType.bistro ||
+        this == BusinessType.bakery ||
+        this == BusinessType.pizzeria ||
+        this == BusinessType.cafe ||
+        this == BusinessType.steakhouse ||
+        this == BusinessType.bar ||
+        this == BusinessType.nightClub;
   }
 }
 

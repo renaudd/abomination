@@ -322,6 +322,137 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                         ),
                       ),
 
+                      // --- NEIGHBOR COTTAGES ---
+                      if (state.unlockedCottages.contains('cottage_gregor'))
+                        Positioned(
+                          top: 100,
+                          left: 60,
+                          child: LocationTile(
+                            name: 'ST. FRIDOLIN\'S PARISH',
+                            icon: Icons.church,
+                            description: 'Father Gregor Zweifel\'s drafty parish church.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_gregor' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_gregor'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_fritz'))
+                        Positioned(
+                          top: 80,
+                          left: 880,
+                          child: LocationTile(
+                            name: 'CLOCKWORK COTTAGE',
+                            icon: Icons.watch_later_outlined,
+                            description: 'Professor Fritz Weishaupt\'s clockwork-laden cottage.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_fritz' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_fritz'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_antoinette'))
+                        Positioned(
+                          top: 500,
+                          left: 160,
+                          child: LocationTile(
+                            name: 'CHATEAU DE LA FOI',
+                            icon: Icons.gavel,
+                            description: 'Countess Antoinette de Bertier\'s fortified vineyard.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_antoinette' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_antoinette'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_regina'))
+                        Positioned(
+                          top: 450,
+                          left: 1000,
+                          child: LocationTile(
+                            name: 'NEOCLASSICAL VAULT',
+                            icon: Icons.account_balance,
+                            description: 'Baroness Regina von Stauffacher\'s neoclassical vault chateau.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_regina' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_regina'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_johannes'))
+                        Positioned(
+                          top: 600,
+                          left: 520,
+                          child: LocationTile(
+                            name: 'ALCHEMICAL CAVE',
+                            icon: Icons.brightness_3,
+                            description: 'Johannes the Hermit\'s hollowed-out alchemical cave.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_johannes' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_johannes'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_seamus'))
+                        Positioned(
+                          top: 250,
+                          left: 120,
+                          child: LocationTile(
+                            name: 'COVERT FORGE',
+                            icon: Icons.build,
+                            description: 'Seamus O\'Connor\'s covert revolutionary forge.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_seamus' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_seamus'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_elspeth'))
+                        Positioned(
+                          top: 40,
+                          left: 700,
+                          child: LocationTile(
+                            name: 'MOSS-GROWN GROVE',
+                            icon: Icons.nature_people,
+                            description: 'Elspeth Luchsinger\'s moss-grown woodland grove.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_elspeth' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_elspeth'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_giuseppe'))
+                        Positioned(
+                          top: 280,
+                          left: 740,
+                          child: LocationTile(
+                            name: 'CHARCOAL PIT HUT',
+                            icon: Icons.fireplace,
+                            description: 'Giuseppe Rossi\'s smoky charcoal pit woodland hut.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_giuseppe' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_giuseppe'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_godfrey'))
+                        Positioned(
+                          top: 300,
+                          left: 980,
+                          child: LocationTile(
+                            name: 'ANCIENT STONE KEEP',
+                            icon: Icons.shield,
+                            description: 'Godfrey de Molay\'s ancient Templar stone keep.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_godfrey' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_godfrey'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_lilith'))
+                        Positioned(
+                          top: 50,
+                          left: 450,
+                          child: LocationTile(
+                            name: 'GOTHIC MANOR',
+                            icon: Icons.auto_stories,
+                            description: 'Lilith Crowley\'s gothic manor house.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_lilith' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_lilith'),
+                          ),
+                        ),
+
                       // Carbonari Faction Hideout (Unlocked by Pasta Carbonara)
                       if (context.watch<GameState>().knownRecipes.contains('pasta_carbonara'))
                         Positioned(
@@ -572,10 +703,21 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   }
 
   void _showPrepareJourney(BuildContext context, String destinationId) {
-    showDialog(
-      context: context,
-      builder: (context) => PrepareJourneyDialog(destinationId: destinationId),
-    );
+    final state = context.read<GameState>();
+    final someoneThere = state.npcs.any((n) => n.worldDestinationId == destinationId && n.worldTravelProgress >= 1.0);
+    if (someoneThere) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DestinationScreen(destinationId: destinationId),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => PrepareJourneyDialog(destinationId: destinationId),
+      );
+    }
   }
 
   Duration _getTravelAnimationDuration(GameSpeed speed) {

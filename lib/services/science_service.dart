@@ -40,16 +40,6 @@ class ScienceService {
   static List<ScienceActivity> getAvailableActivities() {
     return [
       ScienceActivity(
-        id: 'generic_research',
-        name: 'Fundamental Research',
-        type: TaskType.research,
-        ingredients: {'research_notes': 1},
-        baseDurationMinutes: 45, // Adjusted per item if possible
-        discipline: 'General',
-        outcomeDescription:
-            'Produces research notes and advances personal knowledge.',
-      ),
-      ScienceActivity(
         id: 'small_dissection',
         name: 'Small Specimen Dissection',
         type: TaskType.dissect,
@@ -118,10 +108,10 @@ class ScienceService {
         type: TaskType.clinicalTrial,
         ingredients: {'specimen': 10, 'herb_reagent': 1, 'meals': 5},
         baseDurationMinutes: 7200, // 120 hours
-        discipline: 'Medicine',
+        discipline: 'Pathology',
         moralCost: 0.1,
         outcomeDescription:
-            'Produces notes in the medicine discipline and zoology.',
+            'Produces notes in the pathology discipline and zoology.',
       ),
       ScienceActivity(
         id: 'behavioral_optimization',

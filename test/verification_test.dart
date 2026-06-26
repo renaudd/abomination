@@ -1274,7 +1274,7 @@ void main() {
       expect(dirtyDishesInPen, isEmpty);
     });
 
-    test('Bug Fix Verification: Laboratory room conversion requires Zoology 1 and lab_schematics blueprint', () {
+    test('Bug Fix Verification: Laboratory room conversion requires Structural Engineering 1 and lab_schematics blueprint', () {
       final state = GameState();
       state.initializeNewGame(
         firstName: "Test",
@@ -1285,6 +1285,9 @@ void main() {
         gilesTrait: GilesTrait.silent,
         objective: LifeObjective.science,
       );
+
+      // Manually remove the starting blueprint to test the missing blueprint scenario
+      state.removeItemFromRoom('library', 'lab_schematics');
 
       // Inject resources for construction costs
       state.addItemToRoom('library', GameItem.create(name: 'Funds', type: 'funds', category: ItemCategory.resource, quantity: 5000));
@@ -1303,20 +1306,20 @@ void main() {
       );
       state.addRoomForTesting(attic);
 
-      // Attempt laboratory conversion (Zoology is 0 and no schematics)
+      // Attempt laboratory conversion (Structural Engineering is 0 and no schematics)
       state.convertRoomToLaboratory('attic_test');
       final updatedAttic = state.rooms.firstWhere((r) => r.id == 'attic_test');
       expect(updatedAttic.isUnderConstruction, isFalse);
 
-      // Grant Zoology level 1 by adding encyclopedia
+      // Grant Structural Engineering level 1 by adding encyclopedia
       state.addItemToRoom(
         'library',
         GameItem.create(
-          name: 'Zoology Encyclopedia',
+          name: 'Structural Engineering Encyclopedia',
           type: 'encyclopedia',
           category: ItemCategory.knowledge,
           quantity: 1,
-          metadata: {'discipline': 'Zoology'},
+          metadata: {'discipline': 'Structural Engineering', 'isResearched': true},
         ),
       );
 
@@ -1428,7 +1431,7 @@ void main() {
           type: 'alchemy_book',
           category: ItemCategory.knowledge,
           quantity: 1,
-          metadata: {'discipline': 'Alchemy'},
+          metadata: {'discipline': 'Alchemy', 'isResearched': true},
         ),
       );
 
@@ -1444,7 +1447,7 @@ void main() {
           type: 'principles_of_galvanism',
           category: ItemCategory.knowledge,
           quantity: 1,
-          metadata: {'discipline': 'Alchemy'},
+          metadata: {'discipline': 'Alchemy', 'isResearched': true},
         ),
       );
 

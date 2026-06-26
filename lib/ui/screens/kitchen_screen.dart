@@ -123,7 +123,7 @@ class KitchenScreen extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       _buildCookingQueue(state),
-                                      if (state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ...[
+                                      if (state.activeBusinesses.any((b) => b.type.isFoodOrDrinkService && (b.status == 'active' || b.status == 'inProgress'))) ...[
                                         const SizedBox(height: 12),
                                         _buildDualQueuePanel(state),
                                         const SizedBox(height: 12),

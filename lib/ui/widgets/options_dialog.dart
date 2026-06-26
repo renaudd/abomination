@@ -318,8 +318,41 @@ class OptionsDialog extends StatelessWidget {
                       ),
                       const Divider(color: Colors.white10, height: 32),
 
-                      // 4. Sleep Acceleration Section
-                      _sectionTitle('4. WHEN ALL RESIDENTS ARE ASLEEP'),
+                      // 4. Visitor Arrival Section
+                      _sectionTitle('4. WHEN A VISITOR ARRIVES'),
+                      const SizedBox(height: 8),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Pause the game',
+                        value: 'pause',
+                        groupValue: state.visitorArrivalBehavior,
+                        onChanged: (val) => state.setVisitorArrivalBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Reduce game speed to Slow',
+                        value: 'slow',
+                        groupValue: state.visitorArrivalBehavior,
+                        onChanged: (val) => state.setVisitorArrivalBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Reduce game speed to Normal',
+                        value: 'normal',
+                        groupValue: state.visitorArrivalBehavior,
+                        onChanged: (val) => state.setVisitorArrivalBehavior(val!),
+                      ),
+                      _buildRadioOption<String>(
+                        context: context,
+                        title: 'Do nothing',
+                        value: 'nothing',
+                        groupValue: state.visitorArrivalBehavior,
+                        onChanged: (val) => state.setVisitorArrivalBehavior(val!),
+                      ),
+                      const Divider(color: Colors.white10, height: 32),
+
+                      // 5. Sleep Acceleration Section
+                      _sectionTitle('5. WHEN ALL RESIDENTS ARE ASLEEP'),
                       const SizedBox(height: 8),
                       _buildRadioOption<String>(
                         context: context,

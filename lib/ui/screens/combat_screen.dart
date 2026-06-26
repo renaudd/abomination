@@ -37,6 +37,7 @@ import '../../services/combat_unit_service.dart';
 import 'survival_estate_map_screen.dart';
 import 'main_menu_screen.dart';
 import 'help_screen.dart';
+import '../../services/audio_service.dart';
 
 class CombatScreen extends StatefulWidget {
   final List<NPC>? customPlayerDeck;
@@ -282,6 +283,7 @@ class _CombatScreenState extends State<CombatScreen>
   @override
   void initState() {
     super.initState();
+    AudioService().pushBgmMode(BgmMode.combat);
     
     _gameState = Provider.of<GameState>(context, listen: false);
     final state = _gameState;
@@ -426,12 +428,42 @@ class _CombatScreenState extends State<CombatScreen>
       y: _combatManager.map.height / 2,
     );
 
-    // Spawn Mobile AI Leader
-    final enemyHero = widget.customEnemyHero ?? CombatUnitFactory.createAlphonse().copyWith(
-      id: 'ai_mirror',
-      name: 'Bandit Captain',
-      isPlayer: false,
-    );
+    NPC enemyHero;
+    if (widget.customEnemyHero != null) {
+      enemyHero = widget.customEnemyHero!;
+    } else if (encounterTitle.contains("Construct")) {
+      enemyHero = CombatUnitFactory.createStitchedHorror().copyWith(
+        id: 'ai_leader_construct',
+        name: 'Flesh Colossus',
+        isPlayer: false,
+      );
+    } else if (encounterTitle.contains("Warden")) {
+      enemyHero = CombatUnitFactory.createPolicemen().copyWith(
+        id: 'ai_leader_warden',
+        name: 'Grand Warden',
+        isPlayer: false,
+      );
+    } else if (encounterTitle.contains("Mercenary")) {
+      enemyHero = CombatUnitFactory.createMercenaries().copyWith(
+        id: 'ai_leader_mercenary',
+        name: 'Mercenary Commander',
+        isPlayer: false,
+      );
+    } else if (encounterTitle.contains("Beast") || encounterTitle.contains("Animal") || encounterTitle.contains("Feral")) {
+      enemyHero = CombatUnitFactory.createFleshHound().copyWith(
+        id: 'ai_leader_beast',
+        name: 'Alpha Flesh Hound',
+        isPlayer: false,
+      );
+    } else {
+      // Default: Highwaymen/Bandit Captain
+      enemyHero = CombatUnitFactory.createBanditCaptain().copyWith(
+        id: 'ai_mirror',
+        name: 'Bandit Captain',
+        isPlayer: false,
+      );
+    }
+
     _combatManager.spawnUnit(
       enemyHero.copyWith(isPlayer: false),
       CombatSide.enemy,
@@ -531,6 +563,7 @@ class _CombatScreenState extends State<CombatScreen>
         _gameState.setSpeed(_previousSpeed!);
       });
     }
+    AudioService().popBgmMode();
     _keyboardFocusNode.dispose();
     _tickController.dispose();
     super.dispose();
@@ -6779,6 +6812,82 @@ class _AoeEffectPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (effect.id.startsWith('lightning_')) {
+      final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
+      if (pct >= 1.0) return;
+
+      final targetPos = projection.project(effect.x, effect.y);
+      final double endX = targetPos.dx;
+      final double endY = targetPos.dy;
+
+      // Seed based on elapsed time to create a flickering effect
+      final int flickerIndex = (effect.elapsedSeconds * 20.0).floor();
+      final rand = Random(flickerIndex + effect.id.hashCode);
+
+      final boltPath = Path();
+      boltPath.moveTo(endX, 0.0); // Start from top of screen
+
+      final int segments = 10;
+      final double segmentHeight = endY / segments;
+
+      for (int i = 1; i <= segments; i++) {
+        final double nextY = i * segmentHeight;
+        double nextX;
+        if (i == segments) {
+          nextX = endX;
+        } else {
+          // Add random jitter/jaggedness
+          final double jitter = (rand.nextDouble() - 0.5) * 30.0;
+          nextX = endX + jitter;
+        }
+        boltPath.lineTo(nextX, nextY);
+
+        // Sometimes draw a branching spark
+        if (i > 1 && i < segments && rand.nextDouble() < 0.3) {
+          final sparkPath = Path();
+          sparkPath.moveTo(nextX, nextY);
+          final double branchDirection = rand.nextBool() ? 1.0 : -1.0;
+          final double branchEndX = nextX + branchDirection * (30.0 + rand.nextDouble() * 30.0);
+          final double branchEndY = nextY + (10.0 + rand.nextDouble() * 20.0);
+          sparkPath.lineTo(branchEndX, branchEndY);
+
+          final sparkGlow = Paint()
+            ..color = effect.color.withValues(alpha: 0.3 * (1.0 - pct))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.0;
+          final sparkCore = Paint()
+            ..color = Colors.white.withValues(alpha: 0.7 * (1.0 - pct))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.0;
+          canvas.drawPath(sparkPath, sparkGlow);
+          canvas.drawPath(sparkPath, sparkCore);
+        }
+      }
+
+      // Draw outer electric glow
+      final glowPaint = Paint()
+        ..color = effect.color.withValues(alpha: 0.65 * (1.0 - pct))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6.0
+        ..strokeCap = StrokeCap.round;
+      canvas.drawPath(boltPath, glowPaint);
+
+      // Draw bright inner core
+      final corePaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.95 * (1.0 - pct))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..strokeCap = StrokeCap.round;
+      canvas.drawPath(boltPath, corePaint);
+
+      // Draw a small bright spark at the impact point on the ground/target
+      final impactPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.9 * (1.0 - pct))
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(endX, endY), 10.0 * (1.0 - pct), impactPaint);
+      return;
+    }
+
     final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
     final double currentRadius = effect.maxRadius * pct;
     

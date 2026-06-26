@@ -16,9 +16,27 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
+import '../../services/audio_service.dart';
 
-class AlchemyBench extends StatelessWidget {
+class AlchemyBench extends StatefulWidget {
   const AlchemyBench({super.key});
+
+  @override
+  State<AlchemyBench> createState() => _AlchemyBenchState();
+}
+
+class _AlchemyBenchState extends State<AlchemyBench> {
+  @override
+  void initState() {
+    super.initState();
+    AudioService().pushBgmMode(BgmMode.laboratory);
+  }
+
+  @override
+  void dispose() {
+    AudioService().popBgmMode();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

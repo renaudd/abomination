@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
+import '../../models/science_discipline.dart';
 
 class DiscoveriesContent extends StatelessWidget {
   const DiscoveriesContent({super.key});
@@ -123,49 +124,72 @@ class DiscoveriesContent extends StatelessWidget {
 
   Widget _buildResearchStanding(GameState state) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(16),
       color: Colors.black.withValues(alpha: 0.3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'RESEARCH STANDING:',
+            'RESEARCH STANDING',
             style: GoogleFonts.playfairDisplay(
               color: const Color(0xFFC4B89B),
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
+              letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 4),
-          ...[
-            'Anatomy',
-            'Zoology',
-            'Medicine',
-            'Chemistry',
-          ].map(
-            (discipline) => Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    discipline.toUpperCase(),
-                    style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFE5D5B0),
-                      fontSize: 11,
+          const SizedBox(height: 16),
+          ...DisciplineBranch.values.map((branch) {
+            final disciplines = ScienceRegistry.disciplines.values
+                .where((d) => d.branch == branch)
+                .toList();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    branch.name.toUpperCase(),
+                    style: GoogleFonts.playfairDisplay(
+                      color: const Color(0xFFE5D5B0).withValues(alpha: 0.6),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
                     ),
                   ),
-                  Text(
-                    state.getKnowledgeLevel(discipline).toStringAsFixed(1),
-                    style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFC4B89B),
-                      fontSize: 11,
+                ),
+                ...disciplines.map((d) {
+                  final level = state.getKnowledgeLevel(d.name);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            d.name.toUpperCase(),
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.oldStandardTt(
+                              color: const Color(0xFFE5D5B0),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          level.toStringAsFixed(1),
+                          style: GoogleFonts.oldStandardTt(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+                  );
+                }),
+                const Divider(color: Colors.white10, height: 16),
+              ],
+            );
+          }),
         ],
       ),
     );

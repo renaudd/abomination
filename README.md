@@ -1,13 +1,11 @@
-# Abomination
-
 **Abomination** is a mad scientist management simulator built with Flutter. Set in a rural Swiss manor in the 1800s, the game challenges players to balance traditional manor management with dark, experimental science. 
 
 ## 🦇 Game Overview
 
-- **Manor Management:** Build and manage a 6-tier manor estate, ranging from subterranean laboratories to expansive upper-floor chambers. Assign tasks, manage NPC physiological needs, and oversee estate resources in an industrial-dark blueprint aesthetic.
+- **Manor Management:** Build and manage a manor estate. Assign tasks, manage NPC physiological needs, and oversee estate resources.
 - **Complex NPC AI:** A granular task scheduling and queueing system. NPCs have physiological needs (hunger, energy) and specific routines that react dynamically to the environment and the player's orders.
 - **Science and Research:** A core progression loop simulating bizarre scientific experiments. Accelerate research by engaging with study materials, culminating in reanimation, cybernetics, and biological alterations.
-- **Tactical Combat:** Skirmish simulation on a grid-based battlefield. Deploy customized units from a dynamic hand of cards, manage action points (AP), and engage enemy forces.
+- **Tactical Combat:** Skirmish-based real time strategy combat. Deploy customized units from a dynamic hand of cards, manage action points (AP), and engage enemy forces.
 
 ## 🛠️ Technology Stack
 

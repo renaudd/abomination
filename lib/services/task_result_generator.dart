@@ -187,9 +187,14 @@ class TaskResultGenerator {
         double opQuality =
             (dexterity + judgment + intelligence + endurance) / 4.0;
 
+        String taskDesc = "operation";
+        if (type == TaskType.construction) taskDesc = "construction";
+        else if (type == TaskType.manufacturing) taskDesc = "manufacturing";
+        else if (type == TaskType.blacksmithing) taskDesc = "blacksmithing";
+
         return TaskResult(
           message:
-              "Operation completed with ${(opQuality * 10).toInt()}/10 precision.",
+              "${worker.name} completed the $taskDesc with ${(opQuality * 10).toInt()}/10 precision.",
           quality: opQuality * 2.0,
         );
 
@@ -212,16 +217,16 @@ class TaskResultGenerator {
       case TaskType.collectEggs:
         return TaskResult(message: "${worker.name} went to collect eggs.");
       case TaskType.harvestCabbage:
-        return TaskResult(message: "Harvested fresh cabbage from the fields.");
+        return TaskResult(message: "${worker.name} harvested fresh cabbage from the fields.");
       case TaskType.hunt:
-        return _generateHuntResult();
+        return _generateHuntResult(worker);
       case TaskType.dissect:
         final intellect =
             worker.stats['intellect'] ?? 3; // Changed from intellect
         final qualityBonus = (intellect / 100.0) * 0.5;
         
         return TaskResult(
-          message: "The autopsy is complete. Anatomical notes have been filed.",
+          message: "${worker.name} completed the autopsy. Anatomical notes have been filed.",
           itemsFound: [
             GameItem.create(
               name: 'Anatomical Study',
@@ -333,7 +338,7 @@ class TaskResultGenerator {
         }
       case TaskType.recombineSpecimen:
         return TaskResult(
-          message: "The specimen was caught and returned to containment.",
+          message: "${worker.name} caught the specimen and returned it to containment.",
         );
       case TaskType.refinePlantFungus:
         return TaskResult(
@@ -341,33 +346,33 @@ class TaskResultGenerator {
         );
       case TaskType.defendManor:
         return TaskResult(
-          message: "The intruder was driven off. The manor is safe.",
+          message: "${worker.name} drove off the intruder. The manor is safe.",
         );
       default:
-        return TaskResult(message: "${type.displayName} completed.");
+        return TaskResult(message: "${worker.name}: ${type.displayName} completed.");
     }
   }
 
-  static TaskResult _generateHuntResult() {
+  static TaskResult _generateHuntResult(NPC worker) {
     double r = _random.nextDouble();
     if (r < 0.4) {
       return TaskResult(
-        message: "The hunt was successful: a fat hare has been caught.",
+        message: "${worker.name}'s hunt was successful: a fat hare has been caught.",
         resourcesGained: {'meat': 1},
       );
     } else if (r < 0.6) {
       return TaskResult(
-        message: "A brace of pheasants was brought down in the woods.",
+        message: "${worker.name} brought down a brace of pheasants in the woods.",
         resourcesGained: {'meat': 2},
       );
     } else if (r < 0.1) {
       return TaskResult(
-        message: "A rare ibex was spotted and taken!",
+        message: "${worker.name} spotted and took a rare ibex!",
         resourcesGained: {'meat': 5, 'leather': 1},
       );
     }
     return TaskResult(
-      message: "The butler returned empty-handed from the woods.",
+      message: "${worker.name} returned empty-handed from the woods.",
     );
   }
 

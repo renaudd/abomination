@@ -135,7 +135,7 @@ class RoomTile extends StatelessWidget {
                     // Content
                     Padding(
                       padding: EdgeInsets.symmetric(
-                        horizontal: room.type == RoomType.chickenCoop ? 3.0 : (isCompact ? 4.0 : 12.0),
+                        horizontal: isCompact ? 4.0 : 12.0,
                         vertical: 12.0,
                       ),
                       child: Column(
@@ -144,13 +144,9 @@ class RoomTile extends StatelessWidget {
                           Text(
                             room.displayShortName.toUpperCase(),
                             style: GoogleFonts.outfit(
-                              fontSize: room.type == RoomType.chickenCoop
-                                  ? (isCompact ? 10.0 : 10.5)
-                                  : (isCompact ? 10.5 : 11),
+                              fontSize: isCompact ? 12.0 : 13.0,
                               fontWeight: FontWeight.w700,
-                              letterSpacing: room.type == RoomType.chickenCoop
-                                  ? 1.0
-                                  : (isCompact ? 2.0 : 2.0),
+                              letterSpacing: 2.0,
                               color: room.name == 'Excavation Node'
                                   ? const Color(
                                       0xFFC4B89B,

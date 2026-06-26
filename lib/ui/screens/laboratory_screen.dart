@@ -24,11 +24,29 @@ import '../../services/science_service.dart';
 import '../../services/task_service.dart';
 import '../../models/game_item.dart';
 import '../widgets/fireworks_overlay.dart';
+import '../../services/audio_service.dart';
 
-class LaboratoryScreen extends StatelessWidget {
+class LaboratoryScreen extends StatefulWidget {
   final Room room;
 
   const LaboratoryScreen({super.key, required this.room});
+
+  @override
+  State<LaboratoryScreen> createState() => _LaboratoryScreenState();
+}
+
+class _LaboratoryScreenState extends State<LaboratoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AudioService().pushBgmMode(BgmMode.laboratory);
+  }
+
+  @override
+  void dispose() {
+    AudioService().popBgmMode();
+    super.dispose();
+  }
 
   void _checkMobileNotificationModal(BuildContext context, GameState state) {
     if (state.pendingMobileNotification != null &&
@@ -369,7 +387,7 @@ class LaboratoryScreen extends StatelessWidget {
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () {
-                                state.demolishRoom(room.id);
+                                state.demolishRoom(widget.room.id);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(

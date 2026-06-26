@@ -22,6 +22,7 @@ import '../models/schedule.dart';
 import '../models/diet.dart';
 import '../models/combat_map.dart';
 import 'combat_unit_factory.dart';
+import '../main.dart' show globalGameState;
 
 enum CombatSide { player, enemy }
 
@@ -121,6 +122,9 @@ class Combatant {
 
   double attackBuffMultiplier = 1.0;
   double attackBuffDurationRemaining = 0.0;
+
+  double flatAttackBuff = 0.0;
+  double flatAttackBuffDurationRemaining = 0.0;
 
   double damageDebuffMultiplier = 1.0;
   double damageDebuffDurationRemaining = 0.0;
@@ -296,11 +300,11 @@ class CombatManager extends ChangeNotifier {
   
   double getBaseMovementMultiplier(Combatant c) {
     if (c.npc.isPlayer || c.isAiLeader || c.npc.role == 'Leader' || c.npc.role == 'Master') {
-      return 30.0; // Leaders move at 30.0 base
+      return 24.0; // Leaders move at 24.0 base
     } else if (c.isStampedeHorse) {
-      return 24.0; // Stampede horses move at 24.0 base
+      return 18.0; // Stampede horses move at 18.0 base
     } else {
-      return 18.0; // Non-player, non-master, non-stampede horse units move at 18.0
+      return 12.0; // Non-player, non-master, non-stampede horse units move at 12.0
     }
   }
 
@@ -328,8 +332,11 @@ class CombatManager extends ChangeNotifier {
   // Simulation Mode Fields
   bool _isSimulation = false;
   double _aiActionPoints = 6.0;
+  double _aiSummonDelayRemaining =
+      3.0; // 3 seconds starting delay for AI summons
   final List<NPC> _aiDeck = [];
   final List<NPC> _aiHand = [];
+  final List<NPC> _initialAiDeck = [];
   Map<String, int> upgrades = {};
   bool isSurvivalMode = false;
   bool isNormalGameMode = false;
@@ -584,7 +591,15 @@ class CombatManager extends ChangeNotifier {
 
       final double upgradedMaxHealth = 600.0 * (1.0 + hpLvl * 0.15 + indHpLvl * 0.08);
       final double upgradedAttack = 15.0 * (1.0 + atkLvl * 0.15 + indAtkLvl * 0.08);
-      final double upgradedRange = 20.0 + (rangeLvl * 2.5) + (indRangeLvl * 1.5);
+      double upgradedRange = 20.0 + (rangeLvl * 2.5) + (indRangeLvl * 1.5);
+      final hasArtillery =
+          globalGameState?.unlockedDiscoveries.contains(
+            'barometric_artillery',
+          ) ??
+          false;
+      if (isSurvivalMode && hasArtillery) {
+        upgradedRange *= 1.25;
+      }
       final double upgradedSpeed = (2.0 - (speedLvl * 0.2) - (indSpeedLvl * 0.1)).clamp(0.4, 2.0);
 
       final String tName = isSurvivalMode
@@ -640,7 +655,14 @@ class CombatManager extends ChangeNotifier {
 
   void prepareDeck(List<NPC> units) {
     _deck.clear();
+    final hasArachnidArmor =
+        globalGameState?.unlockedDiscoveries.contains(
+          'insectoid_silk_composites',
+        ) ??
+        false;
+
     for (var u in units) {
+      NPC finalUnit = u;
       if (u.id == 'butler' || u.role == 'Butler') {
         final musketeer = CombatUnitFactory.createMusketeers();
         final abilities = List<Ability>.from(u.abilities);
@@ -654,14 +676,23 @@ class CombatManager extends ChangeNotifier {
             effectData: {'threshold': 0.5, 'type': 'interrupt_kill'},
           ));
         }
-        final transformed = u.copyWith(
+        finalUnit = u.copyWith(
           combatStats: musketeer.combatStats,
           abilities: abilities,
         );
-        _deck.add(transformed);
-      } else {
-        _deck.add(u);
       }
+      
+      if (hasArachnidArmor && finalUnit.combatStats != null) {
+        final stats = finalUnit.combatStats!;
+        final boostedStats = stats.copyWith(
+          maxHealth: stats.maxHealth * 1.25,
+          health: stats.health * 1.25,
+          defense: stats.defense + 5.0,
+        );
+        finalUnit = finalUnit.copyWith(combatStats: boostedStats);
+      }
+
+      _deck.add(finalUnit);
     }
     _deck.shuffle();
     _hand.clear();
@@ -677,6 +708,9 @@ class CombatManager extends ChangeNotifier {
   }
 
   void setupAIDeck(List<NPC> units) {
+    _initialAiDeck.clear();
+    _initialAiDeck.addAll(units);
+
     _aiHand.clear();
     _aiDeck.clear();
     _aiDeck.addAll(units);
@@ -735,6 +769,9 @@ class CombatManager extends ChangeNotifier {
     _targetCameraY = null;
     _cameraResumeFollowDelay = 0.0;
     _combatControlMode = 'pad';
+    _actionPoints = 6.0;
+    _aiActionPoints = 6.0;
+    _aiSummonDelayRemaining = 3.0;
 
     _cauldrons.clear();
     _cauldrons.addAll([
@@ -758,6 +795,9 @@ class CombatManager extends ChangeNotifier {
     _isAiVsAi = isAiVsAi;
     prepareDeck(playerDeck);
 
+    _initialAiDeck.clear();
+    _initialAiDeck.addAll(aiDeck);
+
     _aiHand.clear();
     _aiDeck.clear();
     _aiDeck.addAll(aiDeck);
@@ -766,7 +806,9 @@ class CombatManager extends ChangeNotifier {
       _aiHand.add(_aiDeck.removeAt(0));
     }
 
+    _actionPoints = 6.0;
     _aiActionPoints = 6.0;
+    _aiSummonDelayRemaining = 3.0;
   }
 
   Offset _getFormationOffset(int index) {
@@ -1187,7 +1229,21 @@ class CombatManager extends ChangeNotifier {
       }
 
       // Check support spell instantaneous triggers
-      if (npc.name.toLowerCase().contains('hypnosis') || npc.name.toLowerCase().contains('pendulum')) {
+      if (npc.name.toLowerCase().contains('propaganda') || npc.name.toLowerCase().contains('rationalist')) {
+        _addFloatingMessage(spawnedLeader, 'RATIONALIST PROPAGANDA!', Colors.lightGreenAccent);
+        spawnAoeEffect(spawnX, spawnY, 45.0, Colors.lightGreen, durationMs: 1000.0);
+        for (final enemy in _combatants) {
+          if (enemy.isDead || enemy.side == side) continue;
+          final distSq = pow(enemy.x - spawnX, 2) + pow(enemy.y - spawnY, 2);
+          if (distSq < 45.0 * 45.0) {
+            enemy.speedBuffMultiplier = 0.5;
+            enemy.speedBuffDurationRemaining = 8.0;
+            enemy.attackSpeedBuffMultiplier = 0.5;
+            enemy.attackSpeedBuffDurationRemaining = 8.0;
+            _addFloatingMessage(enemy, 'DAMPENED BY TRUTH!', Colors.lightGreen);
+          }
+        }
+      } else if (npc.name.toLowerCase().contains('hypnosis') || npc.name.toLowerCase().contains('pendulum')) {
         // Find strongest enemy unit and mind control it for 12 seconds
         final enemies = _combatants.where((c) => !c.isDead && !c.isTower && c.side != side && !c.isAiLeader && !c.npc.isPlayer).toList();
         if (enemies.isNotEmpty) {
@@ -1486,12 +1542,24 @@ class CombatManager extends ChangeNotifier {
               // Clear and refill AI deck/hand upon respawn so they continue summoning fresh guards!
               _aiDeck.clear();
               _aiHand.clear();
-              _aiDeck.addAll([
-                CombatUnitFactory.createGoon(),
-                CombatUnitFactory.createGoon(),
-                CombatUnitFactory.createMilitia(),
-                CombatUnitFactory.createMilitia(),
-              ]);
+              if (_initialAiDeck.isNotEmpty) {
+                // Add copies of the original AI deck units so they remain thematic!
+                // Generate new IDs to prevent ID collisions.
+                for (var unit in _initialAiDeck) {
+                  _aiDeck.add(
+                    unit.copyWith(
+                      id: '${unit.id}_respawn_${DateTime.now().microsecondsSinceEpoch}_${Random().nextInt(1000)}',
+                    ),
+                  );
+                }
+              } else {
+                _aiDeck.addAll([
+                  CombatUnitFactory.createGoon(),
+                  CombatUnitFactory.createGoon(),
+                  CombatUnitFactory.createMilitia(),
+                  CombatUnitFactory.createMilitia(),
+                ]);
+              }
             }
           }
           c.attackCooldown = 0.0;
@@ -1519,8 +1587,13 @@ class CombatManager extends ChangeNotifier {
       final rateMultiplier = (_combatTimeRemaining <= 60.0) ? 2.0 : 1.0;
       _aiActionPoints = min(maxAP, _aiActionPoints + apPerSecond * rateMultiplier * dt);
 
+      // Tick down starting AI summon delay
+      if (_aiSummonDelayRemaining > 0.0) {
+        _aiSummonDelayRemaining = max(0.0, _aiSummonDelayRemaining - dt);
+      }
+
       // AI Spawning Strategy
-      if (_aiHand.isNotEmpty) {
+      if (_aiSummonDelayRemaining <= 0.0 && _aiHand.isNotEmpty) {
         // Find the active AI Leader if alive
         final aiLeader = _combatants.firstWhereOrNull(
           (c) => c.side == CombatSide.enemy && c.isAiLeader && !c.isDead
@@ -2030,6 +2103,28 @@ class CombatManager extends ChangeNotifier {
       c.gasSlowTimer = max(0.0, c.gasSlowTimer - dt);
     }
 
+    // Rosicrucian Blessing: Leader HP Regeneration (+5 HP/sec)
+    if (c.npc.metadata['rosicrucian_blessing_active'] == 1) {
+      final stats = c.npc.combatStats!;
+      if (stats.health < stats.maxHealth) {
+        final double healPerSecond = 5.0;
+        final double healAmount = healPerSecond * dt;
+        final newHealth = min(stats.maxHealth, stats.health + healAmount);
+        c.npc = c.npc.copyWith(
+          combatStats: stats.copyWith(health: newHealth),
+        );
+
+        if (Random().nextDouble() < 0.03) {
+          c.floatingMessages.add(
+            FloatingMessage(
+              text: '+5 HP (Leyline)',
+              color: Colors.greenAccent,
+            ),
+          );
+        }
+      }
+    }
+
     // Process Persistent Passive Healing Auras (Brewers & Hag)
     if (c.npc.role == 'Coven') {
       final nameLower = c.npc.name.toLowerCase();
@@ -2293,6 +2388,10 @@ class CombatManager extends ChangeNotifier {
         c.attackBuffDurationRemaining -= dt;
         if (c.attackBuffDurationRemaining <= 0) c.attackBuffMultiplier = 1.0;
       }
+      if (c.flatAttackBuffDurationRemaining > 0) {
+        c.flatAttackBuffDurationRemaining -= dt;
+        if (c.flatAttackBuffDurationRemaining <= 0) c.flatAttackBuff = 0.0;
+      }
       if (c.damageDebuffDurationRemaining > 0) {
         c.damageDebuffDurationRemaining -= dt;
         if (c.damageDebuffDurationRemaining <= 0) c.damageDebuffMultiplier = 1.0;
@@ -2535,7 +2634,10 @@ class CombatManager extends ChangeNotifier {
     final enemyTowers = _combatants.where((other) => other.isTower && other.side != c.side && !other.isDead).toList();
     final lastTower = (isSurvivalMode && enemyTowers.length == 1) ? enemyTowers.first : null;
 
-    if (lastTower != null) {
+    // Check if there are any nearby mobile enemies (non-towers) in the unit's local detection list
+    final bool hasNearbyMobileEnemies = targets.any((t) => !t.isTower);
+
+    if (lastTower != null && !hasNearbyMobileEnemies) {
       prioritizedTargets.add(lastTower);
     } else if (_map.laneCenters.length == 2) {
       // On a two-lane battlefield, forces simply engage the closest reachable targets
@@ -3289,7 +3391,8 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'witch_charge_heal':
-        const reach = 9.0;
+        const reach = 14.0;
+        spawnAoeEffect(c.x, c.y, reach, Colors.greenAccent, durationMs: 800.0);
         final allies =
             _combatants
                 .where(
@@ -3755,6 +3858,81 @@ class CombatManager extends ChangeNotifier {
         }
         _addLog('${c.npc.name} dampened enemy attack power!', side: c.side);
         break;
+
+      case 'shield_wall':
+        spawnAoeEffect(c.x, c.y, 30.0, Colors.blueAccent, durationMs: 800.0);
+        final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
+        for (final t in allies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 30.0) {
+            t.isInvulnerable = true;
+            t.invulnerableDurationRemaining = 6.0;
+            _addFloatingMessage(t, 'IMMUNE', Colors.blueAccent);
+          }
+        }
+        _addLog('${c.npc.name} activated Shield Wall! Nearby allies gain complete damage immunity for 6 seconds.', side: c.side);
+        break;
+
+      case 'battle_cry':
+        spawnAoeEffect(c.x, c.y, 30.0, Colors.redAccent, durationMs: 800.0);
+        final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
+        for (final t in allies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 30.0) {
+            t.flatAttackBuff = 25.0;
+            t.flatAttackBuffDurationRemaining = 8.0;
+            _addFloatingMessage(t, '+25 ATK', Colors.redAccent);
+          }
+        }
+        _addLog('${c.npc.name} let out a Battle Cry! Nearby allies gain +25 Attack for 8 seconds.', side: c.side);
+        break;
+
+      case 'lightning_strike':
+      case 'warlock_lightning':
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead).toList();
+        if (enemies.isNotEmpty) {
+          enemies.sort((a, b) => sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2)).compareTo(sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2))));
+          final target = enemies.first;
+          spawnAoeEffect(
+            target.x,
+            target.y,
+            12.0,
+            Colors.cyanAccent,
+            durationMs: 400.0,
+            id: 'lightning_${target.npc.id}_${DateTime.now().microsecondsSinceEpoch}',
+          );
+          _applyDamage(c, target, 150.0);
+          _applyFreeze(target, 4.0);
+          _addFloatingMessage(target, 'STUNNED', Colors.yellowAccent);
+          _addLog('${c.npc.name} cast Lightning Strike on ${target.npc.name}!', side: c.side);
+        }
+        break;
+
+      case 'vampiric_screech':
+        spawnAoeEffect(c.x, c.y, 20.0, Colors.purpleAccent, durationMs: 700.0);
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        double totalDrained = 0.0;
+        for (final t in enemies) {
+          final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+          if (dist <= 20.0) {
+            _applyDamage(c, t, 35.0);
+            totalDrained += 35.0;
+            _addFloatingMessage(t, 'DRAINED', Colors.purpleAccent);
+          }
+        }
+        if (totalDrained > 0) {
+          final allies = _combatants.where((other) => other.side == c.side && !other.isDead);
+          for (final t in allies) {
+            final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
+            if (dist <= 20.0) {
+              final stats = t.npc.combatStats!;
+              t.npc = t.npc.copyWith(combatStats: stats.copyWith(health: min(stats.maxHealth, stats.health + 20.0)));
+              _addFloatingMessage(t, '+20 HP', Colors.greenAccent);
+            }
+          }
+        }
+        _addLog('${c.npc.name} released a Vampiric Screech!', side: c.side);
+        break;
     }
   }
 
@@ -3786,6 +3964,9 @@ class CombatManager extends ChangeNotifier {
       case 'undead_rot':
       case 'magical_howl':
       case 'dragon_breath':
+      case 'lightning_strike':
+      case 'warlock_lightning':
+      case 'vampiric_screech':
         return _combatants.any((other) => other.side != c.side && !other.isDead);
       case 'execute_low_health':
         final threshold = (ability.effectData['threshold'] as num?)?.toDouble() ?? 0.4;
@@ -3825,6 +4006,9 @@ class CombatManager extends ChangeNotifier {
         return _combatants.any((other) => other.side == c.side && other != c && !other.isDead);
       case 'self_invulnerability':
         return !c.isInvulnerable;
+      case 'shield_wall':
+      case 'battle_cry':
+        return true;
       default:
         return true;
     }
@@ -3978,7 +4162,8 @@ class CombatManager extends ChangeNotifier {
     }
     final attacker = _combatants.firstWhereOrNull((c) => c.npc.id == attackerId);
     final targetStats = target.npc.combatStats!;
-    final double dmgVal = damage * (attacker?.attackBuffMultiplier ?? 1.0) * (attacker?.damageDebuffMultiplier ?? 1.0);
+    final double flatBonus = attacker?.flatAttackBuff ?? 0.0;
+    final double dmgVal = (damage + flatBonus) * (attacker?.attackBuffMultiplier ?? 1.0) * (attacker?.damageDebuffMultiplier ?? 1.0);
     final actualDamage = max(1.0, dmgVal - targetStats.defense);
 
     target.npc = target.npc.copyWith(
@@ -4005,10 +4190,10 @@ class CombatManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void spawnAoeEffect(double x, double y, double radius, Color color, {double durationMs = 600.0}) {
+  void spawnAoeEffect(double x, double y, double radius, Color color, {double durationMs = 600.0, String? id}) {
     _aoeEffects.add(
       AoeEffect(
-        id: DateTime.now().millisecondsSinceEpoch.toString() + Random().nextDouble().toString(),
+        id: id ?? (DateTime.now().millisecondsSinceEpoch.toString() + Random().nextDouble().toString()),
         x: x,
         y: y,
         maxRadius: radius,
@@ -4026,7 +4211,8 @@ class CombatManager extends ChangeNotifier {
       return;
     }
     final tStats = target.npc.combatStats!;
-    final double dmgVal = damage * attacker.attackBuffMultiplier * attacker.damageDebuffMultiplier;
+    final double flatBonus = attacker.flatAttackBuff;
+    final double dmgVal = (damage + flatBonus) * attacker.attackBuffMultiplier * attacker.damageDebuffMultiplier;
     final actualDamage = max(1.0, dmgVal - tStats.defense);
 
     final newHealth = max(0.0, tStats.health - actualDamage);

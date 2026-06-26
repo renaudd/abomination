@@ -391,23 +391,25 @@ class Room {
     for (var item in inventory) {
       if (item.category == ItemCategory.knowledge &&
           item.metadata['discipline'] == discipline) {
-        // Multiplier based on item type
-        double typeMultiplier = 1.0;
-        switch (item.type) {
-          case 'research_notes':
-            typeMultiplier = 1.0;
-            break;
-          case 'research_study':
-            typeMultiplier = 5.0;
-            break;
-          case 'research_book':
-            typeMultiplier = 10.0;
-            break;
-          case 'encyclopedia':
-            typeMultiplier = 50.0;
-            break;
+        if (item.metadata['isResearched'] == true) {
+          // Multiplier based on item type
+          double typeMultiplier = 1.0;
+          switch (item.type) {
+            case 'research_notes':
+              typeMultiplier = 1.0;
+              break;
+            case 'research_study':
+              typeMultiplier = 5.0;
+              break;
+            case 'research_book':
+              typeMultiplier = 10.0;
+              break;
+            case 'encyclopedia':
+              typeMultiplier = 50.0;
+              break;
+          }
+          total += item.quantity * item.quality * typeMultiplier;
         }
-        total += item.quantity * item.quality * typeMultiplier;
       }
     }
     return total;

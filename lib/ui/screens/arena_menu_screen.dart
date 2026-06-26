@@ -953,6 +953,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
       CombatUnitFactory.createJamesStephens().copyWith(id: 'james_stephens', isPlayer: true),
       CombatUnitFactory.createFerdinandDeBertier().copyWith(id: 'ferdinand_de_bertier', isPlayer: true),
       CombatUnitFactory.createChiefRangerRobin().copyWith(id: 'chief_ranger_robin', isPlayer: true),
+      CombatUnitFactory.createAdamWeishaupt().copyWith(id: 'adam_weishaupt', isPlayer: true),
     ];
 
     int currentIndex = 0;

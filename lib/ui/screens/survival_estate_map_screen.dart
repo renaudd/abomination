@@ -18,7 +18,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
+import '../../main.dart' show globalGameState;
+import '../../models/game_item.dart';
 import '../../models/survival_state.dart';
+import '../widgets/submarine_dock_dialog.dart';
 import '../../models/npc.dart';
 import '../../models/combat_stats.dart';
 import '../../services/survival_service.dart';
@@ -41,6 +44,7 @@ class WeaponUpgradeSpec {
   final double range;
   final double aoe;
   final String targetingRule;
+  final int tier;
 
   const WeaponUpgradeSpec({
     required this.name,
@@ -51,6 +55,7 @@ class WeaponUpgradeSpec {
     required this.range,
     required this.aoe,
     required this.targetingRule,
+    required this.tier,
   });
 }
 
@@ -81,9 +86,9 @@ class GeneralWeaponSpec {
 final List<GeneralWeaponSpec> _generalWeaponMarket = [
   const GeneralWeaponSpec(
     name: 'Iron-Tipped Spear',
-    cost: 30,
+    cost: 35,
     isRanged: false,
-    damage: 11,
+    damage: 16,
     speed: 1.0,
     range: 1.6,
     aoe: 0.0,
@@ -92,7 +97,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
   ),
   const GeneralWeaponSpec(
     name: 'Heavy Spiked Mace',
-    cost: 35,
+    cost: 45,
     isRanged: false,
     damage: 22,
     speed: 1.2,
@@ -103,21 +108,21 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
   ),
   const GeneralWeaponSpec(
     name: 'Standard Matchlock',
-    cost: 30,
+    cost: 40,
     isRanged: true,
-    damage: 20,
-    speed: 2.8,
-    range: 8.0,
+    damage: 32,
+    speed: 3.2,
+    range: 7.5,
     aoe: 0.0,
     targetingRule: 'Closest',
     tier: 1,
   ),
   const GeneralWeaponSpec(
     name: 'Flintlock Rifle',
-    cost: 40,
+    cost: 65,
     isRanged: true,
-    damage: 26,
-    speed: 2.4,
+    damage: 24,
+    speed: 2.2,
     range: 9.5,
     aoe: 0.0,
     targetingRule: 'Closest',
@@ -137,7 +142,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
 
   const GeneralWeaponSpec(
     name: 'Vanguard Halberd',
-    cost: 55,
+    cost: 125,
     isRanged: false,
     damage: 18,
     speed: 1.2,
@@ -148,7 +153,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
   ),
   const GeneralWeaponSpec(
     name: 'Rifled Carbine',
-    cost: 60,
+    cost: 140,
     isRanged: true,
     damage: 34,
     speed: 2.0,
@@ -159,7 +164,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
   ),
   const GeneralWeaponSpec(
     name: 'Voltaic Chain Electrodes',
-    cost: 65,
+    cost: 160,
     isRanged: true,
     damage: 32,
     speed: 0.9,
@@ -171,7 +176,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
 
   const GeneralWeaponSpec(
     name: 'Industrial Rivet Gun',
-    cost: 75,
+    cost: 200,
     isRanged: true,
     damage: 30,
     speed: 0.9,
@@ -182,7 +187,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
   ),
   const GeneralWeaponSpec(
     name: 'Grenade Splash Grenadier',
-    cost: 85,
+    cost: 240,
     isRanged: true,
     damage: 38,
     speed: 1.4,
@@ -193,7 +198,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
   ),
   const GeneralWeaponSpec(
     name: 'Precision Long-Rifle',
-    cost: 95,
+    cost: 280,
     isRanged: true,
     damage: 58,
     speed: 2.3,
@@ -204,7 +209,7 @@ final List<GeneralWeaponSpec> _generalWeaponMarket = [
   ),
   const GeneralWeaponSpec(
     name: 'Rocket Launcher Package',
-    cost: 110,
+    cost: 320,
     isRanged: true,
     damage: 48,
     speed: 1.5,
@@ -220,31 +225,34 @@ final List<WeaponUpgradeSpec> _samuraiUpgrades = [
     name: 'Steel Katana',
     cost: 0,
     isRanged: false,
-    damage: 24,
-    speed: 0.9,
+    damage: 45,
+    speed: 0.8,
     range: 1.2,
     aoe: 0.0,
     targetingRule: 'Closest',
+    tier: 1,
   ),
   const WeaponUpgradeSpec(
     name: 'Demon-Forged Odachi',
-    cost: 60,
+    cost: 180,
     isRanged: false,
-    damage: 40,
-    speed: 0.8,
+    damage: 65,
+    speed: 1.2,
     range: 1.8,
     aoe: 0.5,
     targetingRule: 'Closest',
+    tier: 2,
   ),
   const WeaponUpgradeSpec(
     name: 'Sacred Dragon Blade',
-    cost: 120,
+    cost: 350,
     isRanged: false,
-    damage: 60,
-    speed: 0.7,
-    range: 2.0,
-    aoe: 0.6,
+    damage: 90,
+    speed: 1.5,
+    range: 2.2,
+    aoe: 0.8,
     targetingRule: 'Low Health',
+    tier: 3,
   ),
 ];
 
@@ -290,6 +298,7 @@ WeaponUpgradeSpec _getStartingWeapon(String cardId) {
         range: 1.0,
         aoe: 0.0,
         targetingRule: 'Closest',
+        tier: 1,
       );
     case 'goon':
       return const WeaponUpgradeSpec(
@@ -301,6 +310,7 @@ WeaponUpgradeSpec _getStartingWeapon(String cardId) {
         range: 1.0,
         aoe: 0.0,
         targetingRule: 'Closest',
+        tier: 1,
       );
     case 'militia':
       return const WeaponUpgradeSpec(
@@ -312,6 +322,7 @@ WeaponUpgradeSpec _getStartingWeapon(String cardId) {
         range: 6.0,
         aoe: 0.0,
         targetingRule: 'Closest',
+        tier: 1,
       );
     case 'musketeers':
       return const WeaponUpgradeSpec(
@@ -323,6 +334,7 @@ WeaponUpgradeSpec _getStartingWeapon(String cardId) {
         range: 8.0,
         aoe: 0.0,
         targetingRule: 'Closest',
+        tier: 1,
       );
     case 'commandos':
       return const WeaponUpgradeSpec(
@@ -334,6 +346,19 @@ WeaponUpgradeSpec _getStartingWeapon(String cardId) {
         range: 5.0,
         aoe: 0.0,
         targetingRule: 'Closest',
+        tier: 1,
+      );
+    case 'samurai':
+      return const WeaponUpgradeSpec(
+        name: 'Steel Katana',
+        cost: 0,
+        isRanged: false,
+        damage: 45,
+        speed: 0.8,
+        range: 1.2,
+        aoe: 0.0,
+        targetingRule: 'Closest',
+        tier: 1,
       );
     default:
       return const WeaponUpgradeSpec(
@@ -345,6 +370,7 @@ WeaponUpgradeSpec _getStartingWeapon(String cardId) {
         range: 1.0,
         aoe: 0.0,
         targetingRule: 'Closest',
+        tier: 1,
       );
   }
 }
@@ -421,16 +447,18 @@ String? _getWeaponAdvantageOrDisadvantage(String cardId, String weaponName) {
   final baseAtk = sampleUnit.combatStats?.attack ?? 10;
   final baseWep =
       _generalWeaponMarket.where((w) => w.name == weaponName).firstOrNull;
-  final bool isAdvanced =
-      baseWep != null &&
-      (baseWep.tier >= 2 || baseWep.damage >= baseAtk * 1.35);
+  int tier = 1;
+  final samWepIndex = _samuraiUpgrades.indexWhere((w) => w.name == weaponName);
+  if (samWepIndex != -1) {
+    tier = _samuraiUpgrades[samWepIndex].tier;
+  } else if (baseWep != null) {
+    tier = baseWep.tier;
+  }
 
-  if (isAdvanced) {
-    if (baseCost <= 3) {
-      return 'PERFORMANCE IMPACT: +2 AP Summon Cost & -25% Locomotion Speed (High-Cost Encumbrance)';
-    } else {
-      return 'ELITE WEAPON SYNERGY: +1 AP Summon Cost (+15% Damage & +1.0ft Range Mastery)';
-    }
+  if (tier == 2) {
+    return 'PERFORMANCE IMPACT: +1 AP Summon Cost & -15% Locomotion Speed (Tier 2 Advanced Gear)';
+  } else if (tier == 3) {
+    return 'PERFORMANCE IMPACT: +2 AP Summon Cost & -25% Locomotion Speed (Tier 3 Masterwork Gear)';
   }
 
   if (cardId == 'peasant') {
@@ -474,6 +502,12 @@ WeaponUpgradeSpec _getEquippedWeaponStats(String cardId, String weaponName) {
   final starting = _getStartingWeapon(cardId);
   if (starting.name == weaponName) {
     return starting;
+  }
+
+  // Check if it is a specialized Samurai upgrade
+  final samWepIndex = _samuraiUpgrades.indexWhere((w) => w.name == weaponName);
+  if (samWepIndex != -1) {
+    return _samuraiUpgrades[samWepIndex];
   }
 
   final baseWep = _generalWeaponMarket.firstWhere(
@@ -547,6 +581,7 @@ WeaponUpgradeSpec _getEquippedWeaponStats(String cardId, String weaponName) {
     range: baseWep.range,
     aoe: baseWep.aoe,
     targetingRule: baseWep.targetingRule,
+    tier: baseWep.tier,
   );
 }
 
@@ -570,6 +605,7 @@ class SurvivalEstateMapScreen extends StatefulWidget {
 class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   bool _isDrafting = true;
   final List<String> _selectedCart = [];
+  bool _hasCheckedInitialEvents = false;
 
   String _activeTab =
       'ESTATE'; // 'ESTATE', 'DECK', 'LEADER', 'TOWERS', 'MARKET', 'MANOR_RECORDS'
@@ -673,6 +709,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   int _die2 = 1;
   String _diceOutcomeMessage = '';
   VoidCallback? _diceOutcomeAction;
+  int? _lastDiceTotal;
 
   set selectedInspectorCardId(String? val) {
     setState(() {
@@ -715,7 +752,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     {'type': 'hag', 'cost': 280, 'name': 'Hag'},
     {'type': 'witch', 'cost': 240, 'name': 'Witch'},
     {'type': 'warlock', 'cost': 250, 'name': 'Warlock'},
-    {'type': 'goons', 'cost': 220, 'name': 'Goons'},
+    {'type': 'goon', 'cost': 220, 'name': 'Goons'},
     {'type': 'deserters', 'cost': 210, 'name': 'Deserters'},
   ];
 
@@ -732,6 +769,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           child: CircularProgressIndicator(color: Color(0xFFC4B89B)),
         ),
       );
+    }
+
+    if (!_hasCheckedInitialEvents) {
+      _hasCheckedInitialEvents = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkAndTriggerRippleEffects(context);
+      });
     }
 
     final t1Destroyed = (progress.towerDamaged['tower_1'] ?? 0.0) >= 1.0;
@@ -1995,36 +2039,40 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           ? _samuraiUpgrades[cSamIdx].name
           : _generalWeaponMarket[cGenIdx].name;
       final wepStats = _getEquippedWeaponStats(t, wepName);
-      final bool isAdvanced = wepStats.damage >= baseAttack * 1.35 ||
-          (t == 'samurai' && rawWepIdx > 1);
 
       baseAttack = wepStats.damage;
       distance = wepStats.range;
       rangedRange = wepStats.range;
       hasRanged = wepStats.isRanged;
+      baseSpeed = wepStats.speed;
 
-      if (isAdvanced) {
-        if (baseCost <= 3) {
-          baseCost += 2;
-          baseSpeed *= 1.2;
-          baseMovement *= 0.75;
-        } else {
-          baseCost += 1;
-          baseAttack *= 1.15;
-          distance += 1.0;
-          rangedRange += 1.0;
-        }
+      if (wepStats.tier == 2) {
+        baseCost += 1;
+        baseMovement *= 0.85;
+      } else if (wepStats.tier == 3) {
+        baseCost += 2;
+        baseMovement *= 0.75;
       }
     }
 
+    final bool isLeader = (t == progress.selectedLeaderId);
+    final bool hasRosicrucianCurse = isLeader && (progress.cardUpgrades['rosicrucian_curse_active'] == 1);
+    final double healthVal = (npc.combatStats!.health * mult) - (hasRosicrucianCurse ? 100.0 : 0.0);
+    final double maxHealthVal = (npc.combatStats!.maxHealth * mult) - (hasRosicrucianCurse ? 100.0 : 0.0);
+
     return npc.copyWith(
-      metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
+      metadata: {
+        ...npc.metadata,
+        'cardType': t,
+        'level': lvl,
+        if (isLeader && progress.cardUpgrades['rosicrucian_blessing_active'] == 1) 'rosicrucian_blessing_active': 1,
+      },
       combatStats: npc.combatStats?.copyWith(
         cost: baseCost,
         speed: baseSpeed,
         movement: baseMovement,
-        health: npc.combatStats!.health * mult,
-        maxHealth: npc.combatStats!.maxHealth * mult,
+        health: max(1.0, healthVal),
+        maxHealth: max(1.0, maxHealthVal),
         attack: baseAttack * mult,
         meleeDamage: baseAttack * mult,
         rangedDamage: hasRanged ? baseAttack * mult : 0.0,
@@ -2161,7 +2209,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Lvl $lvl | Food cost: ${SurvivalService.getFoodCost(npc)}',
+                                    'Lvl $lvl | Food cost: ${SurvivalService.getFoodCost(npc, level: lvl)}',
                                     style: GoogleFonts.oswald(
                                       color: Colors.white38,
                                       fontSize: 8,
@@ -2539,42 +2587,144 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               ? _samuraiUpgrades[cSamIdx].name
                               : _generalWeaponMarket[cGenIdx].name;
                       final wepStats = _getEquippedWeaponStats(t, wepName);
-                      final bool isAdvanced =
-                          wepStats.damage >= baseAttack * 1.35 ||
-                          (t == 'samurai' && rawWepIdx > 1);
 
                       baseAttack = wepStats.damage;
                       distance = wepStats.range;
                       rangedRange = wepStats.range;
                       hasRanged = wepStats.isRanged;
+                      baseSpeed = wepStats.speed;
 
-                      if (isAdvanced) {
-                        if (baseCost <= 3) {
-                          baseCost += 2;
-                          baseSpeed *= 1.2;
-                          baseMovement *= 0.75;
-                        } else {
-                          baseCost += 1;
-                          baseAttack *= 1.15;
-                          distance += 1.0;
-                          rangedRange += 1.0;
-                        }
+                      if (wepStats.tier == 2) {
+                        baseCost += 1;
+                        baseMovement *= 0.85;
+                      } else if (wepStats.tier == 3) {
+                        baseCost += 2;
+                        baseMovement *= 0.75;
                       }
                     }
 
+                    // Apply permanent Fate Dice encounter stat bonuses/penalties
+                    final movementBonus =
+                        (progress.cardUpgrades['${t}_stat_movement_bonus'] ??
+                            0) /
+                        100.0;
+                    final speedBonus =
+                        (progress.cardUpgrades['${t}_stat_speed_bonus'] ?? 0) /
+                        100.0;
+                    final meleeDamageBonus =
+                        (progress.cardUpgrades['${t}_stat_meleeDamage_bonus'] ??
+                                0)
+                            .toDouble();
+                    final rangedDamageBonus =
+                        (progress.cardUpgrades['${t}_stat_rangedDamage_bonus'] ??
+                                0)
+                            .toDouble();
+                    final maxHealthBonus =
+                        (progress.cardUpgrades['${t}_stat_maxHealth_bonus'] ??
+                                0)
+                            .toDouble();
+                    final meleeRangeBonus =
+                        (progress.cardUpgrades['${t}_stat_meleeRange_bonus'] ??
+                            0) /
+                        100.0;
+                    final rangedRangeBonus =
+                        (progress.cardUpgrades['${t}_stat_rangedRange_bonus'] ??
+                            0) /
+                        100.0;
+                    final meleeAttackSpeedBonus =
+                        (progress
+                                .cardUpgrades['${t}_stat_meleeAttackSpeed_bonus'] ??
+                            0) /
+                        100.0;
+                    final rangedAttackSpeedBonus =
+                        (progress
+                                .cardUpgrades['${t}_stat_rangedAttackSpeed_bonus'] ??
+                            0) /
+                        100.0;
+
+                    baseMovement = (baseMovement + movementBonus).clamp(
+                      0.1,
+                      15.0,
+                    );
+                    baseSpeed = (baseSpeed + speedBonus).clamp(0.1, 10.0);
+
+                    final bool isLeader = (t == progress.selectedLeaderId);
+                    final bool hasRosicrucianBlessing = isLeader && (progress.cardUpgrades['rosicrucian_blessing_active'] == 1);
+                    final bool hasRosicrucianCurse = isLeader && (progress.cardUpgrades['rosicrucian_curse_active'] == 1);
+
+                    double finalMaxHealth =
+                        (npc.combatStats!.maxHealth * mult + maxHealthBonus)
+                            .clamp(1.0, 9999.0);
+                    if (hasRosicrucianCurse) {
+                      finalMaxHealth = max(1.0, finalMaxHealth - 100.0);
+                    }
+
+                    double finalHealth =
+                        (npc.combatStats!.health * mult + maxHealthBonus).clamp(
+                          1.0,
+                          finalMaxHealth,
+                        );
+                    if (hasRosicrucianCurse) {
+                      finalHealth = max(1.0, finalHealth - 100.0);
+                    }
+
+                    final double finalAttack =
+                        (baseAttack * mult + meleeDamageBonus).clamp(
+                          1.0,
+                          999.0,
+                        );
+                    final double finalMeleeDamage =
+                        (baseAttack * mult + meleeDamageBonus).clamp(
+                          1.0,
+                          999.0,
+                        );
+                    final double finalRangedDamage = hasRanged
+                        ? (baseAttack * mult + rangedDamageBonus).clamp(
+                            0.0,
+                            999.0,
+                          )
+                        : 0.0;
+
+                    final double finalDistance = hasRanged
+                        ? (distance + rangedRangeBonus).clamp(1.0, 50.0)
+                        : (npc.combatStats!.distance + meleeRangeBonus).clamp(
+                            1.0,
+                            15.0,
+                          );
+
+                    final double finalRangedRange = hasRanged
+                        ? (rangedRange + rangedRangeBonus).clamp(1.0, 50.0)
+                        : 0.0;
+
+                    final double finalMeleeAttackSpeed =
+                        (npc.combatStats!.meleeAttackSpeed +
+                                meleeAttackSpeedBonus)
+                            .clamp(0.1, 10.0);
+                    final double finalRangedAttackSpeed =
+                        (npc.combatStats!.rangedAttackSpeed +
+                                rangedAttackSpeedBonus)
+                            .clamp(0.1, 10.0);
+
                     return npc.copyWith(
-                      metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
+                      metadata: {
+                        ...npc.metadata,
+                        'cardType': t,
+                        'level': lvl,
+                        if (hasRosicrucianBlessing) 'rosicrucian_blessing_active': 1,
+                      },
                       combatStats: npc.combatStats?.copyWith(
                         cost: baseCost,
                         speed: baseSpeed,
                         movement: baseMovement,
-                        health: npc.combatStats!.health * mult,
-                        maxHealth: npc.combatStats!.maxHealth * mult,
-                        attack: baseAttack * mult,
-                        meleeDamage: baseAttack * mult,
-                        rangedDamage: hasRanged ? baseAttack * mult : 0.0,
-                        distance: hasRanged ? distance : npc.combatStats!.distance,
-                        rangedRange: hasRanged ? rangedRange : 0.0,
+                        health: finalHealth,
+                        maxHealth: finalMaxHealth,
+                        attack: finalAttack,
+                        meleeDamage: finalMeleeDamage,
+                        rangedDamage: finalRangedDamage,
+                        distance: finalDistance,
+                        rangedRange: finalRangedRange,
+                        meleeAttackSpeed: finalMeleeAttackSpeed,
+                        rangedAttackSpeed: finalRangedAttackSpeed,
                       ),
                     );
                   }).toList();
@@ -3629,6 +3779,42 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     SurvivalService service,
     String plotKey,
   ) {
+    final progress = service.progress!;
+    if (progress.cardUpgrades['${plotKey}_permanently_locked'] == 1) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1F1109),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Colors.redAccent, width: 2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          title: Text(
+            'PLOT PERMANENTLY LOCKED',
+            style: GoogleFonts.playfairDisplay(
+              color: Colors.redAccent,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          content: Text(
+            'This plot of land has been permanently confiscated or destroyed as a consequence of your hostile standing with the factions of the valley. It cannot be used for construction.',
+            style: GoogleFonts.oldStandardTt(color: const Color(0xFFE5D5B0), fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'UNDERSTOOD',
+                style: GoogleFonts.oswald(color: const Color(0xFFE5D5B0)),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     if (plotKey == 'plot_c') {
       showDialog(
         context: context,
@@ -3770,6 +3956,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     SurvivalService service,
     SurvivalBuilding b,
   ) {
+    if (b.type == SurvivalBuildingType.garage) {
+      showSubmarineDockDialog(context, survivalService: service);
+      return;
+    }
     final level = b.level;
     final maxLvl =
         (b.type == SurvivalBuildingType.arsenal ||
@@ -6289,10 +6479,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     SurvivalProgress progress,
     SurvivalService service,
   ) {
+    final tempDiscount = progress.cardUpgrades['market_temp_discount'] ?? 0;
+    final permDiscount = progress.cardUpgrades['market_discount_percent'] ?? 0;
+    final totalDiscount = (tempDiscount + permDiscount).clamp(0, 80);
+    final discountFactor = 1.0 - (totalDiscount / 100.0);
+
     final factor = 1.0 + (progress.currentTurn - 1) * 0.2;
-    final foodPackCost = (40 * factor).toInt();
-    final woodTimberCost = (60 * factor).toInt();
-    final ironCrateCost = (85 * factor).toInt();
+    final foodPackCost = (40 * factor * discountFactor).toInt();
+    final woodTimberCost = (60 * factor * discountFactor).toInt();
+    final ironCrateCost = (85 * factor * discountFactor).toInt();
 
     final List<Map<String, dynamic>> availableHires = [];
     if (progress.villageHealth <= 0) {
@@ -6435,7 +6630,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           ) {
                             final hire = availableHires[index];
                             final type = hire['type'] as String;
-                            final cost = hire['cost'] as int;
+                            final baseCost = hire['cost'] as int;
+                            final cost = (baseCost * discountFactor).toInt();
                             final npc = CombatUnitService.createUnit(type);
                             final bool isAlreadyOwned = progress.playerDeckIds.contains(type);
                             final canAfford =
@@ -6690,7 +6886,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         );
       }
 
-      final cost = nextWep.cost;
+      final tempDiscount = progress.cardUpgrades['market_temp_discount'] ?? 0;
+      final permDiscount =
+          progress.cardUpgrades['market_discount_percent'] ?? 0;
+      final totalDiscount = (tempDiscount + permDiscount).clamp(0, 80);
+      final discountFactor = 1.0 - (totalDiscount / 100.0);
+
+      final baseCost = nextWep.cost;
+      final cost = (baseCost * discountFactor).toInt();
       final requiredArsenalLvl = _weaponRequiresArsenal(nextWep.name)
           ? (currentWepIdx + 1)
           : 0;
@@ -6813,6 +7016,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
     final squadSize = _getSquadSize(cardId);
 
+    final tempDiscount = progress.cardUpgrades['market_temp_discount'] ?? 0;
+    final permDiscount = progress.cardUpgrades['market_discount_percent'] ?? 0;
+    final totalDiscount = (tempDiscount + permDiscount).clamp(0, 80);
+    final discountFactor = 1.0 - (totalDiscount / 100.0);
+
     final rawWeps = _getAvailableMarketWeapons(
       progress.currentTurn,
       progress.villageHealth,
@@ -6820,7 +7028,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     // Compatible, affordable, and unlocked weapons for sale
     final compatibleWeps = rawWeps.where((w) {
       if (_getWeaponCompatibilityError(cardId, w.name) != null) return false;
-      if (progress.cash < w.cost * squadSize) return false;
+      final discountedCost = (w.cost * discountFactor).toInt();
+      if (progress.cash < discountedCost * squadSize) return false;
       final reqLvl = _weaponRequiresArsenal(w.name) ? w.tier : 0;
       if (arsenalLvl < reqLvl) return false;
       return true;
@@ -6843,7 +7052,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     final evaluatedStats = evaluatedWep != null
         ? _getEquippedWeaponStats(cardId, evaluatedWep.name)
         : null;
-    final totalCost = evaluatedWep != null ? evaluatedWep.cost * squadSize : 0;
+    final totalCost = evaluatedWep != null
+        ? (evaluatedWep.cost * discountFactor).toInt() * squadSize
+        : 0;
 
     final reqLvl = evaluatedWep != null
         ? (_weaponRequiresArsenal(evaluatedWep.name) ? evaluatedWep.tier : 0)
@@ -6911,7 +7122,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    '${wep.cost} CHF',
+                    tempDiscount > 0
+                        ? '${(wep.cost * discountFactor).toInt()} CHF'
+                        : '${wep.cost} CHF',
                     style: GoogleFonts.oswald(
                       color: const Color(0xFFD4AF37),
                       fontSize: 11,
@@ -7224,15 +7437,19 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.oldStandardTt(
-              color: highlight ? const Color(0xFFC4B89B) : Colors.white38,
-              fontSize: 11.0,
-              fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.oldStandardTt(
+                color: highlight ? const Color(0xFFC4B89B) : Colors.white38,
+                fontSize: 11.0,
+                fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 currentVal,
@@ -7945,17 +8162,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Provide 300 food and 200 wood to help them rebuild."',
           'subtitle': 'Effect: Rebuild Glarus village, set Glarus to refugees faction, gain +20 Glarus standing.',
+          'checkAffordable': () => progress.food >= 300 && progress.wood >= 200,
           'onPress': () {
-            if (progress.food >= 300 && progress.wood >= 200) {
-              progress.food -= 300;
-              progress.wood -= 200;
-              progress.villageHealth = 100;
-              progress.cardUpgrades['glarus_resettlement_type'] = 1;
-              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
-              service.addLog('Refugees resettled Glarus. Human units unlocked in market.');
-            } else {
-              service.addLog('Insufficient food or wood to support resettlement.');
-            }
+            progress.food -= 300;
+            progress.wood -= 200;
+            progress.villageHealth = 100;
+            progress.cardUpgrades['glarus_resettlement_type'] = 1;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 20;
+            service.addLog(
+              'Refugees resettled Glarus. Human units unlocked in market.',
+            );
           },
         });
         options.add({
@@ -7975,16 +8192,16 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Accept their proposal (Pay 500 CHF for security, they pay 1000 CHF upfront)."',
           'subtitle': 'Effect: Rebuild Glarus village, set Glarus to caravan faction, +500 CHF net gain, +10 Gnomes standing.',
+          'checkAffordable': () => progress.cash >= 500,
           'onPress': () {
-            if (progress.cash >= 500) {
-              progress.cash += 500; // -500 + 1000 = +500 net
-              progress.villageHealth = 100;
-              progress.cardUpgrades['glarus_resettlement_type'] = 2;
-              progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
-              service.addLog('Caravan established in Glarus. Exotic units unlocked.');
-            } else {
-              service.addLog('Insufficient cash to secure the caravan.');
-            }
+            progress.cash += 500; // -500 + 1000 = +500 net
+            progress.villageHealth = 100;
+            progress.cardUpgrades['glarus_resettlement_type'] = 2;
+            progress.factionStandings['Gnomes of Zurich'] =
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+            service.addLog(
+              'Caravan established in Glarus. Exotic units unlocked.',
+            );
           },
         });
         options.add({
@@ -8028,17 +8245,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Accept Canton decree (Provide 150 iron for protection watchtowers)."',
           'subtitle': 'Effect: Rebuild Glarus, set Glarus to farmers faction, gain +200 food, gain +15 Glarus standing.',
+          'checkAffordable': () => progress.iron >= 150,
           'onPress': () {
-            if (progress.iron >= 150) {
-              progress.iron -= 150;
-              progress.food += 200;
-              progress.villageHealth = 100;
-              progress.cardUpgrades['glarus_resettlement_type'] = 4;
-              progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
-              service.addLog('Displaced farmers resettled Glarus under Canton protection.');
-            } else {
-              service.addLog('Insufficient iron to construct watchtower protection.');
-            }
+            progress.iron -= 150;
+            progress.food += 200;
+            progress.villageHealth = 100;
+            progress.cardUpgrades['glarus_resettlement_type'] = 4;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+            service.addLog(
+              'Displaced farmers resettled Glarus under Canton protection.',
+            );
           },
         });
         options.add({
@@ -8268,9 +8485,11 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'A) "Build the Lodge."',
           'subtitle':
               'Cost: 150 Wood, 50 Iron. Reward: +300 CHF, +100 Wood. (+15 Freemasons, -15 Carbonari)',
+          'checkAffordable': () => progress.wood >= 150 && progress.iron >= 50,
           'onPress': () {
-            progress.wood = max(0, progress.wood - 150 + 100);
-            progress.iron = max(0, progress.iron - 50);
+            progress.wood -= 150;
+            progress.wood += 100;
+            progress.iron -= 50;
             progress.cash += 300;
             progress.factionStandings['Freemasons'] =
                 (progress.factionStandings['Freemasons'] ?? 0) + 15;
@@ -8294,8 +8513,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'C) "Bribe both factions."',
           'subtitle': 'Cost: 200 CHF. (+5 Freemasons, +5 Carbonari)',
+          'checkAffordable': () => progress.cash >= 200,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 200);
+            progress.cash -= 200;
             progress.factionStandings['Freemasons'] =
                 (progress.factionStandings['Freemasons'] ?? 0) + 5;
             progress.factionStandings['Carbonari'] =
@@ -8342,8 +8562,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'A) "Perform transmutation."',
           'subtitle':
               'Cost: 60 Wood. Reward: +30 Iron. (+15 Rosicrucians, -15 Golden Dawn)',
+          'checkAffordable': () => progress.wood >= 60,
           'onPress': () {
-            progress.wood = max(0, progress.wood - 60);
+            progress.wood -= 60;
             progress.iron += 30;
             progress.factionStandings['Rosicrucians'] =
                 (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
@@ -8369,8 +8590,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'C) "Host collaborative study."',
           'subtitle':
               'Cost: 100 CHF. Reward: Receive Vampiric Totem card. (+10 Rosicrucians, +5 Golden Dawn)',
+          'checkAffordable': () => progress.cash >= 100,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 100);
+            progress.cash -= 100;
             progress.playerDeckIds.add('vampiric_totem');
             progress.factionStandings['Rosicrucians'] =
                 (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
@@ -8417,9 +8639,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'A) "Pay the Crusade Levy."',
           'subtitle':
               'Cost: 200 CHF, 20 Iron. (+15 Knights Templar, -5 Rosicrucians)',
+          'checkAffordable': () => progress.cash >= 200 && progress.iron >= 20,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 200);
-            progress.iron = max(0, progress.iron - 20);
+            progress.cash -= 200;
+            progress.iron -= 20;
             progress.factionStandings['Knights Templar'] =
                 (progress.factionStandings['Knights Templar'] ?? 0) + 15;
             progress.factionStandings['Rosicrucians'] =
@@ -8431,8 +8654,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'B) "Smuggle resources."',
           'subtitle':
               'Cost: 20 Wood. Reward: +50 Food. (-15 Knights Templar, +15 Rosicrucians)',
+          'checkAffordable': () => progress.wood >= 20,
           'onPress': () {
-            progress.wood = max(0, progress.wood - 20);
+            progress.wood -= 20;
             progress.food += 50;
             progress.factionStandings['Knights Templar'] =
                 (progress.factionStandings['Knights Templar'] ?? 0) - 15;
@@ -8488,9 +8712,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Accede to rations and wage demands."',
           'subtitle': 'Cost: 40 Food, 100 CHF. (+15 Carbonari, +15 Army)',
+          'checkAffordable': () => progress.food >= 40 && progress.cash >= 100,
           'onPress': () {
-            progress.food = max(0, progress.food - 40);
-            progress.cash = max(0, progress.cash - 100);
+            progress.food -= 40;
+            progress.cash -= 100;
             progress.factionStandings['Carbonari'] =
                 (progress.factionStandings['Carbonari'] ?? 0) + 15;
             progress.factionStandings['Army'] =
@@ -8501,8 +8726,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'B) "Compromise with bonus wages."',
           'subtitle': 'Cost: 150 CHF. (+10 Carbonari, +5 Army)',
+          'checkAffordable': () => progress.cash >= 150,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 150);
+            progress.cash -= 150;
             progress.factionStandings['Carbonari'] =
                 (progress.factionStandings['Carbonari'] ?? 0) + 10;
             progress.factionStandings['Army'] =
@@ -8628,8 +8854,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'A) "Buy the weapon packages."',
           'subtitle':
               'Cost: 200 CHF. Reward: Receive Cannoneer card. (+15 Fenian, -10 Gnomes)',
+          'checkAffordable': () => progress.cash >= 200,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 200);
+            progress.cash -= 200;
             progress.playerDeckIds.add('cannoneer');
             progress.factionStandings['Fenian Brotherhood'] =
                 (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 15;
@@ -8654,8 +8881,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'C) "Facilitate backroom deal."',
           'subtitle':
               'Cost: 100 CHF. Reward: Receive Tear Gas Grenade card. (+10 Fenian, +10 Gnomes)',
+          'checkAffordable': () => progress.cash >= 100,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 100);
+            progress.cash -= 100;
             progress.playerDeckIds.add('tear_gas_grenade');
             progress.factionStandings['Fenian Brotherhood'] =
                 (progress.factionStandings['Fenian Brotherhood'] ?? 0) + 10;
@@ -8726,8 +8954,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'C) "Sell them premium horse feed."',
           'subtitle':
               'Cost: 30 Food. Reward: +200 CHF. (+10 Chevaliers, -5 Glarus)',
+          'checkAffordable': () => progress.food >= 30,
           'onPress': () {
-            progress.food = max(0, progress.food - 30);
+            progress.food -= 30;
             progress.cash += 200;
             progress.factionStandings['Chevaliers de la foi'] =
                 (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 10;
@@ -8846,8 +9075,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Bribe the auditors."',
           'subtitle': 'Cost: 300 CHF. (+15 Gnomes, -10 Freemasons)',
+          'checkAffordable': () => progress.cash >= 300,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 300);
+            progress.cash -= 300;
             progress.factionStandings['Gnomes of Zurich'] =
                 (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
             progress.factionStandings['Freemasons'] =
@@ -8858,8 +9088,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'B) "Lock the estate gates."',
           'subtitle': 'Cost: 20 Food. (-15 Gnomes, -15 Freemasons)',
+          'checkAffordable': () => progress.food >= 20,
           'onPress': () {
-            progress.food = max(0, progress.food - 20);
+            progress.food -= 20;
             progress.factionStandings['Gnomes of Zurich'] =
                 (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
             progress.factionStandings['Freemasons'] =
@@ -8870,8 +9101,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'C) "Route funds via Templar vaults."',
           'subtitle': 'Cost: 150 CHF. (+10 Knights Templar, -10 Gnomes)',
+          'checkAffordable': () => progress.cash >= 150,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 150);
+            progress.cash -= 150;
             progress.factionStandings['Knights Templar'] =
                 (progress.factionStandings['Knights Templar'] ?? 0) + 10;
             progress.factionStandings['Gnomes of Zurich'] =
@@ -8944,8 +9176,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'C) "Test herbs in laboratory."',
           'subtitle':
               'Cost: 50 CHF. Reward: +10 Iron. (+10 Rosicrucians, +5 Foresters)',
+          'checkAffordable': () => progress.cash >= 50,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 50);
+            progress.cash -= 50;
             progress.iron += 10;
             progress.factionStandings['Rosicrucians'] =
                 (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
@@ -8990,9 +9223,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Distribute whiskey and host feast."',
           'subtitle': 'Cost: 100 CHF, 20 Food. (+15 Army, +15 Fenian)',
+          'checkAffordable': () => progress.cash >= 100 && progress.food >= 20,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 100);
-            progress.food = max(0, progress.food - 20);
+            progress.cash -= 100;
+            progress.food -= 20;
             progress.factionStandings['Army'] =
                 (progress.factionStandings['Army'] ?? 0) + 15;
             progress.factionStandings['Fenian Brotherhood'] =
@@ -9062,8 +9296,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Support the grand royalist ball."',
           'subtitle': 'Cost: 250 CHF. (+20 Chevaliers, -20 Glarus, +10 Army)',
+          'checkAffordable': () => progress.cash >= 250,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 250);
+            progress.cash -= 250;
             progress.factionStandings['Chevaliers de la foi'] =
                 (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 20;
             progress.factionStandings['Glarus'] =
@@ -9087,9 +9322,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'C) "Compromise with modest peasant feast."',
           'subtitle': 'Cost: 50 CHF, 30 Food. (+10 Glarus, +5 Chevaliers)',
+          'checkAffordable': () => progress.cash >= 50 && progress.food >= 30,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 50);
-            progress.food = max(0, progress.food - 30);
+            progress.cash -= 50;
+            progress.food -= 30;
             progress.factionStandings['Glarus'] =
                 (progress.factionStandings['Glarus'] ?? 0) + 10;
             progress.factionStandings['Chevaliers de la foi'] =
@@ -9146,8 +9382,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'B) "Pay tolls for Glarus merchants."',
           'subtitle': 'Cost: 150 CHF. (+15 Glarus, +5 Freemasons)',
+          'checkAffordable': () => progress.cash >= 150,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 150);
+            progress.cash -= 150;
             progress.factionStandings['Glarus'] =
                 (progress.factionStandings['Glarus'] ?? 0) + 15;
             progress.factionStandings['Freemasons'] =
@@ -9158,8 +9395,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'C) "Construct forest detour paths."',
           'subtitle': 'Cost: 100 Wood. (+10 Glarus, -10 Freemasons)',
+          'checkAffordable': () => progress.wood >= 100,
           'onPress': () {
-            progress.wood = max(0, progress.wood - 100);
+            progress.wood -= 100;
             progress.factionStandings['Glarus'] =
                 (progress.factionStandings['Glarus'] ?? 0) + 10;
             progress.factionStandings['Freemasons'] =
@@ -9204,9 +9442,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Supply food and water filters."',
           'subtitle': 'Cost: 40 Food, 10 Iron. (+15 Glarus, +5 Rosicrucians)',
+          'checkAffordable': () => progress.food >= 40 && progress.iron >= 10,
           'onPress': () {
-            progress.food = max(0, progress.food - 40);
-            progress.iron = max(0, progress.iron - 10);
+            progress.food -= 40;
+            progress.iron -= 10;
             progress.factionStandings['Glarus'] =
                 (progress.factionStandings['Glarus'] ?? 0) + 15;
             progress.factionStandings['Rosicrucians'] =
@@ -9344,8 +9583,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'A) "Supply wood for print operations."',
           'subtitle':
               'Cost: 80 Wood. Reward: +50 CHF. (+20 Carbonari, -10 Golden Dawn)',
+          'checkAffordable': () => progress.wood >= 80,
           'onPress': () {
-            progress.wood = max(0, progress.wood - 80);
+            progress.wood -= 80;
             progress.cash += 50;
             progress.factionStandings['Carbonari'] =
                 (progress.factionStandings['Carbonari'] ?? 0) + 20;
@@ -9513,8 +9753,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           'title': 'C) "Harvest timber selectively."',
           'subtitle':
               'Cost: 50 CHF. Reward: +40 Wood. (+10 Foresters, +5 Army)',
+          'checkAffordable': () => progress.cash >= 50,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 50);
+            progress.cash -= 50;
             progress.wood += 40;
             progress.factionStandings['Ancient Order of Foresters'] =
                 (progress.factionStandings['Ancient Order of Foresters'] ?? 0) +
@@ -9632,9 +9873,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         options.add({
           'title': 'A) "Pay full damages to Glarus."',
           'subtitle': 'Cost: 200 CHF, 30 Wood. (+20 Glarus, -10 Army)',
+          'checkAffordable': () => progress.cash >= 200 && progress.wood >= 30,
           'onPress': () {
-            progress.cash = max(0, progress.cash - 200);
-            progress.wood = max(0, progress.wood - 30);
+            progress.cash -= 200;
+            progress.wood -= 30;
             progress.factionStandings['Glarus'] =
                 (progress.factionStandings['Glarus'] ?? 0) + 20;
             progress.factionStandings['Army'] =
@@ -9683,6 +9925,707 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
               spoilsFood: 10,
               spoilsCash: 50,
               spoilsIron: 5,
+              spoilsWood: 15,
+            );
+            return;
+          },
+        });
+        break;
+
+      // =======================================================================
+      // FACTION STORY ARCS: GLARUS PEASANTS
+      // =======================================================================
+      case 'Glarus_positive_step1':
+        title = "THE CANTON DEFENSE INITIATIVE";
+        faction = "Glarus Peasants";
+        story = "Your high reputation with the Canton has inspired local representatives. They offer a formal alliance and ask you to lead the valley's joint defense council. To seal the pact, they request 200 Wood to fortify outer borders.";
+        options.add({
+          'title': 'A) "Pledge our leadership and supply 200 Wood."',
+          'subtitle': 'Effect: Form Canton Alliance, deduct 200 Wood, gain +10 Glarus standing.',
+          'checkAffordable': () => progress.wood >= 200,
+          'onPress': () {
+            progress.wood -= 200;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+            service.addLog('Formed Canton Alliance. Supplied 200 Wood.');
+          },
+        });
+        options.add({
+          'title': 'B) "Declined. Our resources are for the Manor alone."',
+          'subtitle': 'Effect: Relieve Glarus leadership role. No resource cost.',
+          'onPress': () {
+            service.addLog('Declined Glarus joint defense invitation.');
+          },
+        });
+        break;
+
+      case 'Glarus_positive_step2':
+        title = "THE PASSES OF GLARUS";
+        faction = "Glarus Peasants";
+        story = "Our alliance flourishes! However, aggressive rogue bands have occupied the mountain passes, threatening all trade. The Canton begs for 300 CHF and 50 Iron to arm their local volunteer patrols.";
+        options.add({
+          'title': 'A) "Equip the patrols with 300 CHF and 50 Iron."',
+          'subtitle': 'Effect: Canton patrols armed, deduct 300 CHF & 50 Iron, gain +15 Glarus standing.',
+          'checkAffordable': () => progress.cash >= 300 && progress.iron >= 50,
+          'onPress': () {
+            progress.cash -= 300;
+            progress.iron -= 50;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 15;
+            service.addLog('Equipped Canton patrols, clearing mountain passes.');
+          },
+        });
+        options.add({
+          'title': 'B) "We cannot spare the cash or iron. Stand down."',
+          'subtitle': 'Effect: Lose -5 Glarus standing as trade corridors suffer.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 5;
+            service.addLog('Refused to fund Canton patrols.');
+          },
+        });
+        break;
+
+      case 'Glarus_positive_step3':
+        title = "SOVEREIGN PROTECTOR OF THE CANTON";
+        faction = "Glarus Peasants";
+        story = "The Canton Council stands in awe of your leadership! In a grand assembly, Jacob Landolt presents you with a sovereign decree: you are elected the Sovereign Protector of Glarus! They offer you a key to a new estate sector and command of their finest troops.";
+        options.add({
+          'title': 'A) "Accept the Crown and merge Glarus under our banner!"',
+          'subtitle': 'Effect: Unlocks new Estate Plot E for free and receive the elite Militia Leader card!',
+          'onPress': () {
+            if (!progress.purchasedPlots.contains('plot_e')) {
+              progress.purchasedPlots.add('plot_e');
+            }
+            progress.playerDeckIds.add('militia');
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 20;
+            service.addLog('Crowned Sovereign Protector of Glarus! Unlocked Plot E and recruited Militia Leader.');
+          },
+        });
+        options.add({
+          'title': 'B) "Decline the crown but sign a heavy trade treaty."',
+          'subtitle': 'Effect: Gain +800 CHF immediately and +10 Glarus standing.',
+          'onPress': () {
+            progress.cash += 800;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 10;
+            service.addLog('Declined sovereign crown. Signed Glarus trade treaty.');
+          },
+        });
+        break;
+
+      case 'Glarus_negative_step1':
+        title = "THE ANGRY MOB OUTSIDE";
+        faction = "Glarus Rebels";
+        story = "Your extreme hostility with the local population has ignited a crisis! A massive, angry mob of Glarus peasants stands outside the Manor gates, throwing stones and demanding 200 Food to feed their starving families.";
+        options.add({
+          'title': 'A) "Hand over 200 Food to appease the mob."',
+          'subtitle': 'Effect: Deduct 200 Food, mob disperses. Gain +5 Glarus standing.',
+          'checkAffordable': () => progress.food >= 200,
+          'onPress': () {
+            progress.food -= 200;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) + 5;
+            service.addLog('Appeased the peasant mob with food reserves.');
+          },
+        });
+        options.add({
+          'title': 'B) "Order guards to disperse them with force!"',
+          'subtitle': 'Effect: Mob driven off. Lose -10 Glarus standing. Tensions escalate.',
+          'onPress': () {
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 10;
+            service.addLog('Dispersed peasant mob with force.');
+          },
+        });
+        break;
+
+      case 'Glarus_negative_step2':
+        title = "SABOTAGE IN THE FOREST";
+        faction = "Glarus Rebels";
+        story = "Peasant saboteurs have struck in the dark! Your lumber mill and outer timber supplies have been set on fire, halting all operations. The arsonists stand armed in the woods.";
+        options.add({
+          'title': 'A) "Pay 300 CHF to hire professional mercenary guards."',
+          'subtitle': 'Effect: Mill secured and repaired. Deduct 300 CHF.',
+          'checkAffordable': () => progress.cash >= 300,
+          'onPress': () {
+            progress.cash -= 300;
+            service.addLog('Hired mercenaries to secure the logging camps.');
+          },
+        });
+        options.add({
+          'title': 'B) "Confront the rebel saboteurs in open combat!"',
+          'subtitle': 'Effect: Immediate battle with Glarus peasant rebels. No cash cost.',
+          'onPress': () {
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createMilitia(),
+              ],
+              eventTitle: title,
+              spoilsFood: 15,
+              spoilsCash: 120,
+              spoilsIron: 5,
+              spoilsWood: 30,
+            );
+            return;
+          },
+        });
+        break;
+
+      case 'Glarus_negative_step3':
+        title = "THE GREAT SWISS PEASANT REBELLION";
+        faction = "Glarus Rebels";
+        story = "A full-scale armed rebellion of thousands of peasants has surrounded the Manor, determined to seize back your land. They demand that you sign a charter surrendering the outer farm fields.";
+        options.add({
+          'title': 'A) "Surrender the fields to save the Manor."',
+          'subtitle': 'Effect: Plot C is PERMANENTLY locked and its building demolished! Standing set to -10.',
+          'onPress': () {
+            progress.cardUpgrades['plot_c_permanently_locked'] = 1;
+            progress.buildings.removeWhere((b) => b.id == 'plot_c');
+            progress.factionStandings['Glarus'] = -10;
+            service.addLog('CONSEQUENCE: Surrendered the outer fields. Plot C is permanently locked and building demolished.');
+          },
+        });
+        options.add({
+          'title': 'B) "Crush the rebellion once and for all!"',
+          'subtitle': 'Effect: Massive combat battle against elite peasant forces! High risk of defeat.',
+          'onPress': () {
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createPikemen(),
+                CombatUnitFactory.createMusketeers(),
+              ],
+              eventTitle: title,
+              spoilsFood: 25,
+              spoilsCash: 350,
+              spoilsIron: 15,
+              spoilsWood: 40,
+            );
+            return;
+          },
+        });
+        break;
+
+      // =======================================================================
+      // FACTION STORY ARCS: GNOMES OF ZURICH
+      // =======================================================================
+      case 'Gnomes of Zurich_positive_step1':
+        title = "THE ZURICH CO-INVESTMENT";
+        faction = "Gnomes of Zurich";
+        story = "Your stellar financial standing has earned you an invitation to participate in a high-grade smuggling and speculative silver cargo scheme with the Swiss banking cartel. They request 400 CHF to fund the carriage.";
+        options.add({
+          'title': 'A) "Invest 400 CHF in the silver cargo scheme."',
+          'subtitle': 'Effect: Deduct 400 CHF, gain +10 Gnomes standing.',
+          'checkAffordable': () => progress.cash >= 400,
+          'onPress': () {
+            progress.cash -= 400;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+            service.addLog('Invested 400 CHF in Gnomes cargo scheme.');
+          },
+        });
+        options.add({
+          'title': 'B) "Decline. We do not engage in speculative trade."',
+          'subtitle': 'Effect: No cost, standing remains unchanged.',
+          'onPress': () {
+            service.addLog('Declined Gnomes cargo scheme invitation.');
+          },
+        });
+        break;
+
+      case 'Gnomes of Zurich_positive_step2':
+        title = "THE BRIBED CUSTOMS AGENT";
+        faction = "Gnomes of Zurich";
+        story = "The silver carriage has reached the border, but a stubborn customs agent refuses passage unless a massive bribe is paid, or you use your immense credit to bypass him.";
+        options.add({
+          'title': 'A) "Pay 250 CHF to bribe the customs agent."',
+          'subtitle': 'Effect: Smuggling succeeds, deduct 250 CHF, gain +10 Gnomes standing.',
+          'checkAffordable': () => progress.cash >= 250,
+          'onPress': () {
+            progress.cash -= 250;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 10;
+            service.addLog('Bribed customs agent to secure silver carriage passage.');
+          },
+        });
+        options.add({
+          'title': 'B) "Bypass him using our high standing."',
+          'subtitle': 'Effect: Requires Gnomes standing >= 22. Gain +15 Gnomes standing.',
+          'checkAffordable': () => (progress.factionStandings['Gnomes of Zurich'] ?? 0) >= 22,
+          'onPress': () {
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 15;
+            service.addLog('Used immense financial standing to bypass customs.');
+          },
+        });
+        break;
+
+      case 'Gnomes of Zurich_positive_step3':
+        title = "THE SYNDICATE PARTNERSHIP";
+        faction = "Gnomes of Zurich";
+        story = "The silver carriage was a colossal triumph! Regina von Stauffacher welcomes you as a Grand Syndicate Partner. They offer you their ultimate defense asset and a direct share of the bank's dividends.";
+        options.add({
+          'title': 'A) "Accept the Grand Syndicate Seat."',
+          'subtitle': 'Effect: Receive the elite Gatling Gun card and +50% PERMANENT cash income from all sources!',
+          'onPress': () {
+            progress.playerDeckIds.add('gatling_gun');
+            progress.cardUpgrades['gnomes_syndicate_active'] = 1;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 20;
+            service.addLog('Became Grand Syndicate Partner! Recruited Gatling Gun and unlocked +50% passive cash multiplier.');
+          },
+        });
+        options.add({
+          'title': 'B) "Take a massive lump sum cash payout of 1500 CHF."',
+          'subtitle': 'Effect: Gain +1500 CHF immediately.',
+          'onPress': () {
+            progress.cash += 1500;
+            service.addLog('Claimed 1500 CHF lump sum payout from the Gnomes.');
+          },
+        });
+        break;
+
+      case 'Gnomes of Zurich_negative_step1':
+        title = "THE CREDITOR'S WARNING";
+        faction = "Gnomes of Zurich";
+        story = "Your hostile standing has prompted the bank to freeze your credit lines. Armed collectors stand at the Manor gate, demanding immediate payment of 300 CHF in 'outstanding interest penalties'.";
+        options.add({
+          'title': 'A) "Pay the 300 CHF interest penalty."',
+          'subtitle': 'Effect: Penalty paid, deduct 300 CHF. Gain +5 Gnomes standing.',
+          'checkAffordable': () => progress.cash >= 300,
+          'onPress': () {
+            progress.cash -= 300;
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) + 5;
+            service.addLog('Paid outstanding bank interest penalty.');
+          },
+        });
+        options.add({
+          'title': 'B) "Tell them to leave, or face our steel!"',
+          'subtitle': 'Effect: Collectors driven off, lose -10 Gnomes standing. Tensions escalate.',
+          'onPress': () {
+            progress.factionStandings['Gnomes of Zurich'] = (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
+            service.addLog('Threatened bank debt collectors. Credit frozen.');
+          },
+        });
+        break;
+
+      case 'Gnomes of Zurich_negative_step2':
+        title = "CARAVAN EMBARGO & AMBUSH";
+        faction = "Gnomes of Zurich";
+        story = "The Gnomes have retaliated! Armed mercenary collectors have ambushed one of your supply caravans, seizing all resource carriage routes.";
+        options.add({
+          'title': 'A) "Pay a heavy penalty fee of 500 CHF to lift the embargo."',
+          'subtitle': 'Effect: Caravan routes cleared. Deduct 500 CHF.',
+          'checkAffordable': () => progress.cash >= 500,
+          'onPress': () {
+            progress.cash -= 500;
+            service.addLog('Paid Gnomes penalty fee to clear trade corridors.');
+          },
+        });
+        options.add({
+          'title': 'B) "Fight the debt collectors in open skirmish!"',
+          'subtitle': 'Effect: Immediate combat against Zurich guard forces. No cash cost.',
+          'onPress': () {
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 200,
+              spoilsIron: 20,
+              spoilsWood: 10,
+            );
+            return;
+          },
+        });
+        break;
+
+      case 'Gnomes of Zurich_negative_step3':
+        title = "THE SYNDICATE FORECLOSURE";
+        faction = "Gnomes of Zurich";
+        story = "The Gnomes have executed a foreclosure decree! A heavily armed private military force has arrived to seize your estate assets and recover unpaid debts.";
+        options.add({
+          'title': 'A) "Submit to foreclosure and pay 600 CHF."',
+          'subtitle': 'Effect: Deduct 600 CHF and suffer a permanent -30% cash penalty on all future income!',
+          'checkAffordable': () => progress.cash >= 600,
+          'onPress': () {
+            progress.cash -= 600;
+            progress.cardUpgrades['gnomes_foreclosure_penalty'] = 1;
+            progress.factionStandings['Gnomes of Zurich'] = -10;
+            service.addLog('CONSEQUENCE: Foreclosure active. Suffer -30% permanent cash penalty on all future income.');
+          },
+        });
+        options.add({
+          'title': 'B) "Burn their ledgers in open war!"',
+          'subtitle': 'Effect: High-difficulty combat against elite commandos! High risk of defeat.',
+          'onPress': () {
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCommandos(),
+                CombatUnitFactory.createCommandos(),
+                CombatUnitFactory.createCavalry(),
+              ],
+              eventTitle: title,
+              spoilsFood: 15,
+              spoilsCash: 500,
+              spoilsIron: 30,
+              spoilsWood: 20,
+            );
+            return;
+          },
+        });
+        break;
+
+      // =======================================================================
+      // FACTION STORY ARCS: BAVARIAN ILLUMINATI
+      // =======================================================================
+      case 'Bavarian Illuminati_positive_step1':
+        title = "THE LODGE OF LIGHT";
+        faction = "Bavarian Illuminati";
+        story = "Professor Fritz Weishaupt invites you to join the secret Outer Circle. To construct their technological lodge in the valley, they request 150 Wood and 100 Iron.";
+        options.add({
+          'title': 'A) "Pledge resources to the Lodge of Light."',
+          'subtitle': 'Effect: Join Lodge, deduct 150 Wood & 100 Iron, gain +10 Illuminati standing.',
+          'checkAffordable': () => progress.wood >= 150 && progress.iron >= 100,
+          'onPress': () {
+            progress.wood -= 150;
+            progress.iron -= 100;
+            progress.factionStandings['Bavarian Illuminati'] = (progress.factionStandings['Bavarian Illuminati'] ?? 0) + 10;
+            service.addLog('Joined Lodge of Light. Supplied construction materials.');
+          },
+        });
+        options.add({
+          'title': 'B) "We keep our timber and iron. Decline."',
+          'subtitle': 'Effect: Refuse invitation. Standing remains unchanged.',
+          'onPress': () {
+            service.addLog('Declined Illuminati Lodge invitation.');
+          },
+        });
+        break;
+
+      case 'Bavarian Illuminati_positive_step2':
+        title = "THE REFUGEE INVENTOR";
+        faction = "Bavarian Illuminati";
+        story = "A brilliant renegade cybernetic scientist is fleeing Church persecution and begs for sanctuary at the Manor. Fritz offers 300 CHF to fund his research laboratory.";
+        options.add({
+          'title': 'A) "Shelter and fund the scientist for 300 CHF."',
+          'subtitle': 'Effect: Sponsor research, deduct 300 CHF, gain +15 Illuminati standing.',
+          'checkAffordable': () => progress.cash >= 300,
+          'onPress': () {
+            progress.cash -= 300;
+            progress.factionStandings['Bavarian Illuminati'] = (progress.factionStandings['Bavarian Illuminati'] ?? 0) + 15;
+            service.addLog('Sheltered cybernetic scientist. Sponsored advanced research.');
+          },
+        });
+        options.add({
+          'title': 'B) "Turn him away. We do not harbor heretics."',
+          'subtitle': 'Effect: Gain +5 Templar standing, lose -5 Glarus standing.',
+          'onPress': () {
+            progress.factionStandings['Knights Templar'] = (progress.factionStandings['Knights Templar'] ?? 0) + 5;
+            progress.factionStandings['Glarus'] = (progress.factionStandings['Glarus'] ?? 0) - 5;
+            service.addLog('Refused scientist sanctuary to appease the Templars.');
+          },
+        });
+        break;
+
+      case 'Bavarian Illuminati_positive_step3':
+        title = "THE SCIENTIFIC RENAISSANCE";
+        faction = "Bavarian Illuminati";
+        story = "The sponsored research is complete! The Bavarian Illuminati welcome you to their Inner Circle, gifting you a self-operating prototype automaton and an Advanced Laboratory blueprint.";
+        options.add({
+          'title': 'A) "Induct the Automaton and blueprints!"',
+          'subtitle': 'Effect: Receive the elite Steampunk Robot card and unlock a free Advanced Laboratory on the estate!',
+          'onPress': () {
+            progress.playerDeckIds.add('steampunk_robot');
+            final nextId = 'plot_' + String.fromCharCode(97 + progress.buildings.length);
+            if (!progress.purchasedPlots.contains(nextId) && progress.buildings.length < 6) {
+              progress.purchasedPlots.add(nextId);
+              progress.buildings.add(SurvivalBuilding(id: nextId, type: SurvivalBuildingType.mine, level: 3, assignedUnitIds: []));
+            }
+            progress.factionStandings['Bavarian Illuminati'] = (progress.factionStandings['Bavarian Illuminati'] ?? 0) + 20;
+            service.addLog('Inducted Inner Circle! Recruited Steampunk Robot and constructed Advanced Facility.');
+          },
+        });
+        options.add({
+          'title': 'B) "Accept a technological cash grant of 1000 CHF."',
+          'subtitle': 'Effect: Gain +1000 CHF immediately.',
+          'onPress': () {
+            progress.cash += 1000;
+            service.addLog('Claimed 1000 CHF Illuminati research grant.');
+          },
+        });
+        break;
+
+      case 'Bavarian Illuminati_negative_step1':
+        title = "THE SHADOW SPY";
+        faction = "Bavarian Illuminati";
+        story = "Your servants have caught a shadowy Bavarian Illuminati spy in your study attempting to copy your alchemical blueprints!";
+        options.add({
+          'title': 'A) "Release him to avoid a shadow war."',
+          'subtitle': 'Effect: Spy released. Gain +5 Illuminati standing.',
+          'onPress': () {
+            progress.factionStandings['Bavarian Illuminati'] = (progress.factionStandings['Bavarian Illuminati'] ?? 0) + 5;
+            service.addLog('Released captured Illuminati spy to de-escalate.');
+          },
+        });
+        options.add({
+          'title': 'B) "Imprison and interrogate him!"',
+          'subtitle': 'Effect: Spy interrogated, lose -10 Illuminati standing. Shadow war begins.',
+          'onPress': () {
+            progress.factionStandings['Bavarian Illuminati'] = (progress.factionStandings['Bavarian Illuminati'] ?? 0) - 10;
+            service.addLog('Imprisoned spy. Blueprint secrets secured.');
+          },
+        });
+        break;
+
+      case 'Bavarian Illuminati_negative_step2':
+        title = "THE CHEMICAL SABOTAGE";
+        faction = "Bavarian Illuminati";
+        story = "The shadow war has struck home! An Illuminati infiltrator has introduced a chemical toxin into your Manor, infecting your humanoid troops and corrupting your archives.";
+        options.add({
+          'title': 'A) "Pay 400 CHF on alchemical neutralizers to purge the toxin."',
+          'subtitle': 'Effect: Toxin purged, deduct 400 CHF.',
+          'checkAffordable': () => progress.cash >= 400,
+          'onPress': () {
+            progress.cash -= 400;
+            service.addLog('Purged toxic contamination from barracks.');
+          },
+        });
+        options.add({
+          'title': 'B) "Isolate the wing and accept the permanent loss."',
+          'subtitle': 'Effect: Permanent -10% attack speed penalty to all humanoid units due to toxin exposure!',
+          'onPress': () {
+            progress.cardUpgrades['illuminati_toxin_penalty'] = 1;
+            service.addLog('CONSEQUENCE: Barracks contaminated. Humanoid attack speed permanently reduced by 10%.');
+          },
+        });
+        break;
+
+      case 'Bavarian Illuminati_negative_step3':
+        title = "THE NEURAL MEMORY WIPE";
+        faction = "Bavarian Illuminati";
+        story = "An elite Illuminati assassination squad has bypassed your guards, cornering you in your study. They demand you submit to a neural memory-wipe serum to erase all alchemical secrets.";
+        options.add({
+          'title': 'A) "Submit to the memory wipe to save your life."',
+          'subtitle': 'Effect: Your highest-level combat card is reset back to Level 1!',
+          'onPress': () {
+            String highestCard = 'peasant';
+            int maxLvl = -1;
+            for (var t in progress.playerDeckIds) {
+              final lvl = progress.getUnitLevel(t);
+              if (lvl > maxLvl) {
+                maxLvl = lvl;
+                highestCard = t;
+              }
+            }
+            progress.cardUpgrades['level_$highestCard'] = 1;
+            progress.cardUpgrades['${highestCard}_xp'] = 0;
+            progress.factionStandings['Bavarian Illuminati'] = -10;
+            service.addLog('CONSEQUENCE: Neural memory wipe reset ${highestCard.toUpperCase()} back to Level 1.');
+          },
+        });
+        options.add({
+          'title': 'B) "Fight the assassins!"',
+          'subtitle': 'Effect: High-difficulty combat against cybernetic soldiers and a Steampunk Robot!',
+          'onPress': () {
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCommandos(),
+                CombatUnitFactory.createCommandos(),
+                CombatUnitFactory.createSteampunkRobot(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 400,
+              spoilsIron: 25,
+              spoilsWood: 15,
+            );
+            return;
+          },
+        });
+        break;
+
+      // =======================================================================
+      // FACTION STORY ARCS: ROSICRUCIANS
+      // =======================================================================
+      case 'Rosicrucians_positive_step1':
+        title = "THE LEADING SPIRIT";
+        faction = "Rosicrucians";
+        story = "Johannes the Hermit believes your Manor lies directly on a powerful alchemical leyline node. He requests 200 Wood and 100 Food to construct a sacred alchemical circle to tap the cosmic power.";
+        options.add({
+          'title': 'A) "Donate 200 Wood and 100 Food to tap the leyline."',
+          'subtitle': 'Effect: Build Leyline Circle, deduct 200 Wood & 100 Food, gain +10 Rosicrucian standing.',
+          'checkAffordable': () => progress.wood >= 200 && progress.food >= 100,
+          'onPress': () {
+            progress.wood -= 200;
+            progress.food -= 100;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            service.addLog('Constructed alchemical leyline circle on the estate.');
+          },
+        });
+        options.add({
+          'title': 'B) "Refuse. Occult circles have no place here."',
+          'subtitle': 'Effect: Decline request, standing remains unchanged.',
+          'onPress': () {
+            service.addLog('Declined Rosicrucian leyline circle proposal.');
+          },
+        });
+        break;
+
+      case 'Rosicrucians_positive_step2':
+        title = "THE COSMIC CHANNEL";
+        faction = "Rosicrucians";
+        story = "The leyline circle is active, but it requires a human mind to act as the spiritual leyline anchor. The process is exhausting and will temporarily weaken your leader.";
+        options.add({
+          'title': 'A) "Volunteer our leader to anchor the leyline."',
+          'subtitle': 'Effect: Leader anchors leyline, gain +15 Rosicrucian standing.',
+          'onPress': () {
+            progress.cardUpgrades['rosicrucian_leyline_anchored'] = 1;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 15;
+            service.addLog('Leader anchored the alchemical leyline. Spiritual node secured.');
+          },
+        });
+        options.add({
+          'title': 'B) "Decline. We do not risk our minds."',
+          'subtitle': 'Effect: Cancel leyline project, lose -5 Rosicrucian standing.',
+          'onPress': () {
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
+            service.addLog('Cancelled alchemical leyline project.');
+          },
+        });
+        break;
+
+      case 'Rosicrucians_positive_step3':
+        title = "THE ALCHEMICAL MARRIAGE";
+        faction = "Rosicrucians";
+        story = "The spiritual nodes are perfectly aligned! Johannes offers to seal the Alchemical Marriage, merging your leader's soul with the Rose and Cross. This grants ultimate battle regeneration and their elite spellcaster.";
+        options.add({
+          'title': 'A) "Drink the Alchemical Elixir and seal the marriage."',
+          'subtitle': 'Effect: Recruited elite Warlock card, and leader gains permanent HP regeneration (+5 HP/sec) in combat!',
+          'onPress': () {
+            progress.playerDeckIds.add('warlock');
+            progress.cardUpgrades['rosicrucian_blessing_active'] = 1;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 20;
+            service.addLog('Sealed Alchemical Marriage! Recruited Warlock and unlocked leader battle HP regeneration.');
+          },
+        });
+        options.add({
+          'title': 'B) "Decline the marriage but accept alchemical gold."',
+          'subtitle': 'Effect: Gain +1200 CHF immediately and +10 Rosicrucian standing.',
+          'onPress': () {
+            progress.cash += 1200;
+            progress.factionStandings['Rosicrucians'] = (progress.factionStandings['Rosicrucians'] ?? 0) + 10;
+            service.addLog('Refused alchemical marriage. Claimed 1200 CHF alchemical gold.');
+          },
+        });
+        break;
+
+      case 'Rosicrucians_negative_step1':
+        title = "THE OCCULT HEX";
+        faction = "Rosicrucians";
+        story = "Angered by your hostility, Rosicrucian mystics have placed an occult hex on your pantry! A mysterious rot is turning your food to ash. They demand 150 CHF to lift the hex.";
+        options.add({
+          'title': 'A) "Appease the spirits with a 150 CHF offering."',
+          'subtitle': 'Effect: Hex lifted, deduct 150 CHF.',
+          'checkAffordable': () => progress.cash >= 150,
+          'onPress': () {
+            progress.cash -= 150;
+            service.addLog('Appeased the mystics with a financial offering. Hex lifted.');
+          },
+        });
+        options.add({
+          'title': 'B) "Ignore their silly superstitions!"',
+          'subtitle': 'Effect: Food rot spreads! Instantly lose 150 Food.',
+          'onPress': () {
+            progress.food = max(0, progress.food - 150);
+            service.addLog('CONSEQUENCE: Food rot spread. Lost 150 food reserves.');
+          },
+        });
+        break;
+
+      case 'Rosicrucians_negative_step2':
+        title = "PLAGUE OF THE ALCHEMICAL VERMIN";
+        faction = "Rosicrucians";
+        story = "Occult conjurers have summoned a plague of giant alchemical vermin and monstrosities to swarm your outer watchtowers!";
+        options.add({
+          'title': 'A) "Pay 300 CHF to hire professional pest exterminators."',
+          'subtitle': 'Effect: Vermin cleared, deduct 300 CHF.',
+          'checkAffordable': () => progress.cash >= 300,
+          'onPress': () {
+            progress.cash -= 300;
+            service.addLog('Hired alchemical exterminators to clear outer watchtowers.');
+          },
+        });
+        options.add({
+          'title': 'B) "Cleanse the vermin in open battle!"',
+          'subtitle': 'Effect: Immediate combat against alchemical beasts. No cash cost.',
+          'onPress': () {
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createFleshGolem(),
+                CombatUnitFactory.createFleshGolem(),
+              ],
+              eventTitle: title,
+              spoilsFood: 30,
+              spoilsCash: 100,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+            return;
+          },
+        });
+        break;
+
+      case 'Rosicrucians_negative_step3':
+        title = "THE CURSE OF THE WITHERED SOUL";
+        faction = "Rosicrucians";
+        story = "The Grand Master of the Rose and Cross has cast a devastating spiritual blight upon your Manor, cursing your leader and your fields.";
+        options.add({
+          'title': 'A) "Submit to the curse and yield alchemical notes."',
+          'subtitle': 'Effect: Leader max health permanently reduced by -100 HP, and starvation infractions accumulate twice as fast!',
+          'onPress': () {
+            progress.cardUpgrades['rosicrucian_curse_active'] = 1;
+            progress.factionStandings['Rosicrucians'] = -10;
+            service.addLog('CONSEQUENCE: Spiritual blight active. Leader max health reduced by 100 HP and starvation doubled.');
+          },
+        });
+        options.add({
+          'title': 'B) "Burn their occult sanctuary in open war!"',
+          'subtitle': 'Effect: High-difficulty combat against coven warlocks and flesh golems!',
+          'onPress': () {
+            Navigator.pop(context);
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createFleshGolem(),
+                CombatUnitFactory.createFleshGolem(),
+              ],
+              eventTitle: title,
+              spoilsFood: 10,
+              spoilsCash: 300,
+              spoilsIron: 35,
               spoilsWood: 15,
             );
             return;
@@ -9750,15 +10693,24 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                     final String titleStr = opt['title'] as String;
                     final String subtitleStr = opt['subtitle'] as String;
                     final VoidCallback cb = opt['onPress'] as VoidCallback;
+                    final bool isAffordable = opt['checkAffordable'] != null
+                        ? (opt['checkAffordable'] as bool Function())()
+                        : true;
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2A1E16),
-                            side: const BorderSide(
-                              color: Color(0xFFC4B89B),
+                            backgroundColor: isAffordable
+                                ? const Color(0xFF2A1E16)
+                                : const Color(0xFF18120E),
+                            disabledBackgroundColor: const Color(0xFF18120E),
+                            side: BorderSide(
+                              color: isAffordable
+                                  ? const Color(0xFFC4B89B)
+                                  : Colors.white12,
                               width: 1.0,
                             ),
                             shape: const RoundedRectangleBorder(),
@@ -9767,7 +10719,33 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               vertical: 10,
                             ),
                           ),
-                          onPressed: () {
+                          onPressed: isAffordable
+                              ? () {
+                                  int choiceVal = 1;
+                                  if (titleStr.contains('B)'))
+                                    choiceVal = 2;
+                                  else if (titleStr.contains('C)'))
+                                    choiceVal = 3;
+                                  else if (titleStr.contains('D)'))
+                                    choiceVal = 4;
+
+                                  final nonRippleEncounters = [
+                                    'davos_smallpox_vaccine',
+                                    'smallpox_outbreak',
+                                    'glarus_refugees_resettle',
+                                    'glarus_caravan_stay',
+                                    'glarus_missionaries_buy',
+                                    'glarus_farmers_grant',
+                                  ];
+                                  if (!nonRippleEncounters.contains(
+                                    encounterId,
+                                  )) {
+                                    progress.cardUpgrades['ripple_turn_$encounterId'] =
+                                        progress.currentTurn + 3;
+                                    progress.cardUpgrades['ripple_choice_$encounterId'] =
+                                        choiceVal;
+                                  }
+
                             if (titleStr.contains('D)')) {
                               Navigator.pop(context);
                               cb();
@@ -9776,14 +10754,23 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               service.manualSave();
                               Navigator.pop(context);
                             }
-                          },
+
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    _checkAndTriggerRippleEffects(context);
+                                  });
+                                }
+                              : null,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Text(
                                 titleStr,
                                 style: GoogleFonts.playfairDisplay(
-                                  color: const Color(0xFFE5D5B0),
+                                  color: isAffordable
+                                      ? const Color(0xFFE5D5B0)
+                                      : Colors.white24,
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -9791,10 +10778,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                subtitleStr,
+                                isAffordable
+                                    ? subtitleStr
+                                    : "[UNAFFORDABLE] $subtitleStr",
                                 style: GoogleFonts.oldStandardTt(
-                                  color: Colors.white54,
+                                  color: isAffordable
+                                      ? Colors.white54
+                                      : const Color(0xFFCF6679),
                                   fontSize: 8.5,
+                                  fontWeight: isAffordable
+                                      ? FontWeight.normal
+                                      : FontWeight.bold,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -9857,41 +10851,120 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                 ? _samuraiUpgrades[cSamIdx].name
                 : _generalWeaponMarket[cGenIdx].name;
         final wepStats = _getEquippedWeaponStats(t, wepName);
-        final bool isAdvanced =
-            wepStats.damage >= baseAttack * 1.35 ||
-            (t == 'samurai' && rawWepIdx > 1);
 
         baseAttack = wepStats.damage;
         distance = wepStats.range;
         rangedRange = wepStats.range;
+        baseSpeed = wepStats.speed;
 
-        if (isAdvanced) {
-          if (baseCost <= 3) {
-            baseCost += 2;
-            baseSpeed *= 1.2;
-            baseMovement *= 0.75;
-          } else {
-            baseCost += 1;
-            baseAttack *= 1.15;
-            distance += 1.0;
-            rangedRange += 1.0;
-          }
+        if (wepStats.tier == 2) {
+          baseCost += 1;
+          baseMovement *= 0.85;
+        } else if (wepStats.tier == 3) {
+          baseCost += 2;
+          baseMovement *= 0.75;
         }
       }
 
+      // Apply permanent Fate Dice encounter stat bonuses/penalties
+      final movementBonus =
+          (progress.cardUpgrades['${t}_stat_movement_bonus'] ?? 0) / 100.0;
+      final speedBonus =
+          (progress.cardUpgrades['${t}_stat_speed_bonus'] ?? 0) / 100.0;
+      final meleeDamageBonus =
+          (progress.cardUpgrades['${t}_stat_meleeDamage_bonus'] ?? 0)
+              .toDouble();
+      final rangedDamageBonus =
+          (progress.cardUpgrades['${t}_stat_rangedDamage_bonus'] ?? 0)
+              .toDouble();
+      final maxHealthBonus =
+          (progress.cardUpgrades['${t}_stat_maxHealth_bonus'] ?? 0).toDouble();
+      final meleeRangeBonus =
+          (progress.cardUpgrades['${t}_stat_meleeRange_bonus'] ?? 0) / 100.0;
+      final rangedRangeBonus =
+          (progress.cardUpgrades['${t}_stat_rangedRange_bonus'] ?? 0) / 100.0;
+      final meleeAttackSpeedBonus =
+          (progress.cardUpgrades['${t}_stat_meleeAttackSpeed_bonus'] ?? 0) /
+          100.0;
+      final rangedAttackSpeedBonus =
+          (progress.cardUpgrades['${t}_stat_rangedAttackSpeed_bonus'] ?? 0) /
+          100.0;
+
+      baseMovement = (baseMovement + movementBonus).clamp(0.1, 15.0);
+      baseSpeed = (baseSpeed + speedBonus).clamp(0.1, 10.0);
+
+      final bool isLeader = (t == progress.selectedLeaderId);
+      final bool hasRosicrucianBlessing = isLeader && (progress.cardUpgrades['rosicrucian_blessing_active'] == 1);
+      final bool hasRosicrucianCurse = isLeader && (progress.cardUpgrades['rosicrucian_curse_active'] == 1);
+
+      double finalMaxHealth =
+          (npc.combatStats!.maxHealth * mult + maxHealthBonus).clamp(
+            1.0,
+            9999.0,
+          );
+      if (hasRosicrucianCurse) {
+        finalMaxHealth = max(1.0, finalMaxHealth - 100.0);
+      }
+
+      double finalHealth =
+          (npc.combatStats!.health * mult + maxHealthBonus).clamp(
+            1.0,
+            finalMaxHealth,
+          );
+      if (hasRosicrucianCurse) {
+        finalHealth = max(1.0, finalHealth - 100.0);
+      }
+
+      final bool hasRanged = npc.combatStats!.rangedDamage > 0.0;
+      final double finalAttack = (baseAttack * mult + meleeDamageBonus).clamp(
+        1.0,
+        999.0,
+      );
+      final double finalMeleeDamage = (baseAttack * mult + meleeDamageBonus)
+          .clamp(1.0, 999.0);
+      final double finalRangedDamage = hasRanged
+          ? (baseAttack * mult + rangedDamageBonus).clamp(0.0, 999.0)
+          : 0.0;
+
+      final double finalDistance = hasRanged
+          ? (distance + rangedRangeBonus).clamp(1.0, 50.0)
+          : (npc.combatStats!.distance + meleeRangeBonus).clamp(1.0, 15.0);
+
+      final double finalRangedRange = hasRanged
+          ? (rangedRange + rangedRangeBonus).clamp(1.0, 50.0)
+          : 0.0;
+
+      final double finalMeleeAttackSpeed =
+          (npc.combatStats!.meleeAttackSpeed + meleeAttackSpeedBonus).clamp(
+            0.1,
+            10.0,
+          );
+      final double finalRangedAttackSpeed =
+          (npc.combatStats!.rangedAttackSpeed + rangedAttackSpeedBonus).clamp(
+            0.1,
+            10.0,
+          );
+
       return npc.copyWith(
-        metadata: {...npc.metadata, 'cardType': t, 'level': lvl},
+        metadata: {
+          ...npc.metadata,
+          'cardType': t,
+          'level': lvl,
+          if (hasRosicrucianBlessing) 'rosicrucian_blessing_active': 1,
+        },
         combatStats: npc.combatStats?.copyWith(
           cost: baseCost,
           speed: baseSpeed,
           movement: baseMovement,
-          health: npc.combatStats!.health * mult,
-          maxHealth: npc.combatStats!.maxHealth * mult,
-          attack: baseAttack * mult,
-          meleeDamage: baseAttack * mult,
-          rangedDamage: baseAttack * mult,
-          distance: distance,
-          rangedRange: rangedRange,
+          health: finalHealth,
+          maxHealth: finalMaxHealth,
+          attack: finalAttack,
+          meleeDamage: finalMeleeDamage,
+          rangedDamage: finalRangedDamage,
+          distance: finalDistance,
+          rangedRange: finalRangedRange,
+          meleeAttackSpeed: finalMeleeAttackSpeed,
+          rangedAttackSpeed: finalRangedAttackSpeed,
         ),
       );
     }).toList();
@@ -10342,12 +11415,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   }
 
   List<NPC> _generateDiverseSurvivalOpponentDeck(int turn) {
+    final int combatIndex = turn - 1;
+    final rand = Random();
+
     int targetDeckSize = 5;
-    if (turn >= 9) {
+    if (combatIndex >= 8) {
       targetDeckSize = 12;
-    } else if (turn >= 6) {
+    } else if (combatIndex >= 5) {
       targetDeckSize = 9;
-    } else if (turn >= 3) {
+    } else if (combatIndex >= 2) {
       targetDeckSize = 7;
     }
 
@@ -10402,10 +11478,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         CombatUnitFactory.createForesterBeastmaster(),
       ],
     ];
-    final rand = Random();
+
     final List<int> cardLevels = [];
-    if (turn < 9) {
-      final int numLvl2 = turn.clamp(1, targetDeckSize);
+    if (combatIndex < 8) {
+      final int numLvl2 = combatIndex.clamp(1, targetDeckSize);
       for (int i = 0; i < numLvl2; i++) {
         cardLevels.add(2);
       }
@@ -10413,9 +11489,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         cardLevels.add(1);
       }
     } else {
-      final int numLvl3 = (turn - 8).clamp(0, 12);
+      final int numLvl3 = (combatIndex - 7).clamp(0, 12);
       if (numLvl3 >= 12) {
-        final double targetMean = (3.0 + (turn - 20) * 0.15).clamp(3.0, 7.0);
+        final double targetMean = (3.0 + (combatIndex - 19) * 0.15).clamp(
+          3.0,
+          7.0,
+        );
         for (int i = 0; i < 12; i++) {
           final double offset = (i % 2 == 0) ? -0.5 : 0.5;
           final double noise = (rand.nextDouble() - 0.5) * 0.4;
@@ -10502,7 +11581,1385 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     Future.delayed(const Duration(milliseconds: 100), rollTick);
   }
 
+  int _getPlotEventIdFromString(String key) {
+    switch (key) {
+      case 'Glarus_positive_step1': return 101;
+      case 'Glarus_positive_step2': return 102;
+      case 'Glarus_positive_step3': return 103;
+      case 'Glarus_negative_step1': return 104;
+      case 'Glarus_negative_step2': return 105;
+      case 'Glarus_negative_step3': return 106;
+
+      case 'Gnomes of Zurich_positive_step1': return 201;
+      case 'Gnomes of Zurich_positive_step2': return 202;
+      case 'Gnomes of Zurich_positive_step3': return 203;
+      case 'Gnomes of Zurich_negative_step1': return 204;
+      case 'Gnomes of Zurich_negative_step2': return 205;
+      case 'Gnomes of Zurich_negative_step3': return 206;
+
+      case 'Bavarian Illuminati_positive_step1': return 301;
+      case 'Bavarian Illuminati_positive_step2': return 302;
+      case 'Bavarian Illuminati_positive_step3': return 303;
+      case 'Bavarian Illuminati_negative_step1': return 304;
+      case 'Bavarian Illuminati_negative_step2': return 305;
+      case 'Bavarian Illuminati_negative_step3': return 306;
+
+      case 'Rosicrucians_positive_step1': return 401;
+      case 'Rosicrucians_positive_step2': return 402;
+      case 'Rosicrucians_positive_step3': return 403;
+      case 'Rosicrucians_negative_step1': return 404;
+      case 'Rosicrucians_negative_step2': return 405;
+      case 'Rosicrucians_negative_step3': return 406;
+      default: return 0;
+    }
+  }
+
+  String? _getPlotEventStringFromId(int id) {
+    switch (id) {
+      case 101: return 'Glarus_positive_step1';
+      case 102: return 'Glarus_positive_step2';
+      case 103: return 'Glarus_positive_step3';
+      case 104: return 'Glarus_negative_step1';
+      case 105: return 'Glarus_negative_step2';
+      case 106: return 'Glarus_negative_step3';
+
+      case 201: return 'Gnomes of Zurich_positive_step1';
+      case 202: return 'Gnomes of Zurich_positive_step2';
+      case 203: return 'Gnomes of Zurich_positive_step3';
+      case 204: return 'Gnomes of Zurich_negative_step1';
+      case 205: return 'Gnomes of Zurich_negative_step2';
+      case 206: return 'Gnomes of Zurich_negative_step3';
+
+      case 301: return 'Bavarian Illuminati_positive_step1';
+      case 302: return 'Bavarian Illuminati_positive_step2';
+      case 303: return 'Bavarian Illuminati_positive_step3';
+      case 304: return 'Bavarian Illuminati_negative_step1';
+      case 305: return 'Bavarian Illuminati_negative_step2';
+      case 306: return 'Bavarian Illuminati_negative_step3';
+
+      case 401: return 'Rosicrucians_positive_step1';
+      case 402: return 'Rosicrucians_positive_step2';
+      case 403: return 'Rosicrucians_positive_step3';
+      case 404: return 'Rosicrucians_negative_step1';
+      case 405: return 'Rosicrucians_negative_step2';
+      case 406: return 'Rosicrucians_negative_step3';
+      default: return null;
+    }
+  }
+
+  void _checkAndTriggerRippleEffects(BuildContext context) {
+    final service = Provider.of<SurvivalService>(context, listen: false);
+    final progress = service.progress;
+    if (progress == null) return;
+
+    final state = Provider.of<GameState>(context, listen: false);
+
+    // 1. Check if a scheduled faction plot event is due on this turn
+    int? duePlotEventId;
+    String? duePlotKey;
+    for (final key in progress.cardUpgrades.keys.toList()) {
+      if (key.startsWith('scheduled_plot_event_')) {
+        final scheduledTurnStr = key.substring('scheduled_plot_event_'.length);
+        final scheduledTurn = int.tryParse(scheduledTurnStr);
+        if (scheduledTurn == progress.currentTurn) {
+          duePlotEventId = progress.cardUpgrades[key];
+          duePlotKey = key;
+          break;
+        }
+      }
+    }
+
+    if (duePlotEventId != null && duePlotKey != null) {
+      // Remove it from the schedule so it doesn't trigger repeatedly
+      progress.cardUpgrades.remove(duePlotKey);
+      service.manualSave();
+
+      // Trigger the narrative encounter for this plot event!
+      final eventString = _getPlotEventStringFromId(duePlotEventId);
+      if (eventString != null) {
+        _showNarrativeEncounter(context, eventString, progress, service, state);
+        return; // Only trigger one narrative encounter per check to avoid overlap
+      }
+    }
+
+    // 2. Check for new faction plotline triggers (standing thresholds)
+    for (final faction in ['Glarus', 'Gnomes of Zurich', 'Bavarian Illuminati', 'Rosicrucians']) {
+      final standing = progress.factionStandings[faction] ?? 0;
+      final posTriggerKey = 'plot_triggered_${faction}_positive';
+      final negTriggerKey = 'plot_triggered_${faction}_negative';
+
+      if (standing >= 20 && progress.cardUpgrades[posTriggerKey] != 1) {
+        progress.cardUpgrades[posTriggerKey] = 1;
+        // Schedule the series of events: turn +1, turn +3, turn +5
+        progress.cardUpgrades['scheduled_plot_event_${progress.currentTurn + 1}'] = _getPlotEventIdFromString('${faction}_positive_step1');
+        progress.cardUpgrades['scheduled_plot_event_${progress.currentTurn + 3}'] = _getPlotEventIdFromString('${faction}_positive_step2');
+        progress.cardUpgrades['scheduled_plot_event_${progress.currentTurn + 5}'] = _getPlotEventIdFromString('${faction}_positive_step3');
+        service.addLog('CRITICAL: Standing with $faction has unlocked their faction story arc!');
+        service.manualSave();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('CRITICAL: High reputation with $faction has unlocked their faction story arc!'),
+            backgroundColor: const Color(0xFF2E1A0A),
+          ),
+        );
+        break;
+      } else if (standing <= -20 && progress.cardUpgrades[negTriggerKey] != 1) {
+        progress.cardUpgrades[negTriggerKey] = 1;
+        // Schedule the series of events: turn +1, turn +3, turn +5
+        progress.cardUpgrades['scheduled_plot_event_${progress.currentTurn + 1}'] = _getPlotEventIdFromString('${faction}_negative_step1');
+        progress.cardUpgrades['scheduled_plot_event_${progress.currentTurn + 3}'] = _getPlotEventIdFromString('${faction}_negative_step2');
+        progress.cardUpgrades['scheduled_plot_event_${progress.currentTurn + 5}'] = _getPlotEventIdFromString('${faction}_negative_step3');
+        service.addLog('CRITICAL: Hostility with $faction has triggered their revenge story arc!');
+        service.manualSave();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('WARNING: Extreme hostility with $faction has triggered their revenge story arc!'),
+            backgroundColor: const Color(0xFF4C1010),
+          ),
+        );
+        break;
+      }
+    }
+
+    final encounterIds = [
+      'gnomes_artillery',
+      'freemasons_tribute',
+      'alchemist_transmutation',
+      'templar_levy',
+      'carbonari_strike',
+      'golden_dawn_seance',
+      'fenian_gunrunning',
+      'french_cavalry',
+      'adrenochrome_syndicate',
+      'bank_audit',
+      'mystic_herbs',
+      'irish_mutiny',
+      'monarchist_ball',
+      'masonic_toll',
+      'alchemical_explosion',
+      'secret_treaty',
+      'carbonari_press',
+      'golden_dawn_relic',
+      'forester_woodcutters',
+      'swiss_banker_loan',
+      'grenadier_sabotage',
+    ];
+
+    String? dueEncounterId;
+    for (var encId in encounterIds) {
+      final dueTurn = progress.cardUpgrades['ripple_turn_$encId'];
+      if (dueTurn != null && dueTurn == progress.currentTurn) {
+        dueEncounterId = encId;
+        break;
+      }
+    }
+
+    if (dueEncounterId == null) return;
+
+    final choiceVal = progress.cardUpgrades['ripple_choice_$dueEncounterId'];
+    final choice = choiceVal == 1
+        ? 'A'
+        : choiceVal == 2
+        ? 'B'
+        : choiceVal == 3
+        ? 'C'
+        : 'D';
+    progress.cardUpgrades.remove('ripple_turn_$dueEncounterId');
+    progress.cardUpgrades.remove('ripple_choice_$dueEncounterId');
+    service.manualSave();
+
+    _resolveRippleEffect(
+      context,
+      dueEncounterId,
+      choice,
+      progress,
+      service,
+      state,
+    );
+  }
+
+  void _showRippleEffectDialog(
+    BuildContext context,
+    String title,
+    String description,
+    VoidCallback? onConfirm,
+    SurvivalService service,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A130E),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Color(0xFFD4AF37), width: 2.0),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          title: Text(
+            title,
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFD4AF37),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: SizedBox(
+            width: 400,
+            child: Text(
+              description,
+              style: GoogleFonts.oldStandardTt(
+                color: const Color(0xFFE5D5B0),
+                fontSize: 12,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              height: 36,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC4B89B),
+                  foregroundColor: Colors.black,
+                  shape: const RoundedRectangleBorder(),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (onConfirm != null) {
+                    onConfirm();
+                  }
+                  service.manualSave();
+                },
+                child: Text(
+                  'ACKNOWLEDGE',
+                  style: GoogleFonts.playfairDisplay(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _applyPermanentStatModifierToCurrentDeck({
+    required SurvivalProgress progress,
+    double movement = 0.0,
+    double speed = 0.0,
+    double meleeDamage = 0.0,
+    double rangedDamage = 0.0,
+    double maxHealth = 0.0,
+    double meleeRange = 0.0,
+    double rangedRange = 0.0,
+    double meleeAttackSpeed = 0.0,
+    double rangedAttackSpeed = 0.0,
+  }) {
+    for (final t in progress.playerDeckIds) {
+      if (movement != 0.0) {
+        final current = progress.cardUpgrades['${t}_stat_movement_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_movement_bonus'] =
+            current + (movement * 100).round();
+      }
+      if (speed != 0.0) {
+        final current = progress.cardUpgrades['${t}_stat_speed_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_speed_bonus'] =
+            current + (speed * 100).round();
+      }
+      if (meleeDamage != 0.0) {
+        final current =
+            progress.cardUpgrades['${t}_stat_meleeDamage_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_meleeDamage_bonus'] =
+            current + meleeDamage.round();
+      }
+      if (rangedDamage != 0.0) {
+        final current =
+            progress.cardUpgrades['${t}_stat_rangedDamage_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_rangedDamage_bonus'] =
+            current + rangedDamage.round();
+      }
+      if (maxHealth != 0.0) {
+        final current = progress.cardUpgrades['${t}_stat_maxHealth_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_maxHealth_bonus'] =
+            current + maxHealth.round();
+      }
+      if (meleeRange != 0.0) {
+        final current =
+            progress.cardUpgrades['${t}_stat_meleeRange_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_meleeRange_bonus'] =
+            current + (meleeRange * 100).round();
+      }
+      if (rangedRange != 0.0) {
+        final current =
+            progress.cardUpgrades['${t}_stat_rangedRange_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_rangedRange_bonus'] =
+            current + (rangedRange * 100).round();
+      }
+      if (meleeAttackSpeed != 0.0) {
+        final current =
+            progress.cardUpgrades['${t}_stat_meleeAttackSpeed_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_meleeAttackSpeed_bonus'] =
+            current + (meleeAttackSpeed * 100).round();
+      }
+      if (rangedAttackSpeed != 0.0) {
+        final current =
+            progress.cardUpgrades['${t}_stat_rangedAttackSpeed_bonus'] ?? 0;
+        progress.cardUpgrades['${t}_stat_rangedAttackSpeed_bonus'] =
+            current + (rangedAttackSpeed * 100).round();
+      }
+    }
+  }
+
+  void _resolveRippleEffect(
+    BuildContext context,
+    String encounterId,
+    String? choice,
+    SurvivalProgress progress,
+    SurvivalService service,
+    GameState state,
+  ) {
+    String title = "";
+    String description = "";
+    VoidCallback? onConfirmAction;
+
+    switch (encounterId) {
+      case 'gnomes_artillery':
+        title = "GNOMES OF ZURICH: THE REPERCUSSIONS";
+        if (choice == 'A') {
+          description =
+              "The Zurich banking syndicate is pleased with your respect for their client's trust. They send a dividend payout of +250 CHF and bonus AP (+2 AP) for your next battle.";
+          onConfirmAction = () {
+            progress.cash += 250;
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 2;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Survivors from Glarus have formed a vengeance coalition to punish you for destroying their village. They launch a surprise ambush on your estate!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createMilitia(),
+                CombatUnitFactory.createMilitia(),
+                CombatUnitFactory.createMusketeers(),
+              ],
+              eventTitle: "GLARUS REBELS AMBUSH",
+              spoilsFood: 10,
+              spoilsCash: 100,
+              spoilsIron: 5,
+              spoilsWood: 5,
+            );
+          };
+        } else if (choice == 'C') {
+          description =
+              "The Gnomes of Zurich realize you profited from Glarus's destruction and demand a cut. You must pay 400 CHF or face an immediate audit attack!";
+          onConfirmAction = () {
+            if (progress.cash >= 400) {
+              progress.cash -= 400;
+            } else {
+              progress.cash = 0;
+              _startEventCombat(
+                progress: progress,
+                service: service,
+                state: state,
+                aiUnits: [
+                  CombatUnitFactory.createZurichDebtCollector(),
+                  CombatUnitFactory.createZurichDebtCollector(),
+                ],
+                eventTitle: "ZURICH ENFORCERS RAID",
+                spoilsFood: 5,
+                spoilsCash: 150,
+                spoilsIron: 5,
+                spoilsWood: 5,
+              );
+            }
+          };
+        } else {
+          description =
+              "The Gnomes of Zurich have blacklisted your estate. Your units suffer a -15% AP gain rate during the next combat due to supply chain sabotage.";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_gain_rate_multiplier'] = 85;
+          };
+        }
+        break;
+
+      case 'freemasons_tribute':
+        title = "THE LODGE'S AFTERMATH";
+        if (choice == 'A') {
+          description =
+              "The completed Masonic Lodge has attracted elite architects. They reinforce your watchtowers, restoring all towers to 100% health and increasing their maximum health by 10% permanently!";
+          onConfirmAction = () {
+            progress.towerDamaged['tower_1'] = 0.0;
+            progress.towerDamaged['tower_2'] = 0.0;
+            progress.towerDamaged['tower_3'] = 0.0;
+            progress.cardUpgrades['tower_health_multiplier'] =
+                (progress.cardUpgrades['tower_health_multiplier'] ?? 100) + 10;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Grateful for your support against the Masons, the Carbonari mobilize local rebel sympathizers. A veteran Militia unit joins your army!";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.length < 12) {
+              progress.playerDeckIds.add('militia');
+              progress.cardUpgrades['level_militia'] = 3;
+            } else {
+              progress.food += 50;
+            }
+          };
+        } else if (choice == 'C') {
+          description =
+              "Both factions realize you bribed them to play both sides. Angered by your double-dealing, they raid your stockpiles, stealing 150 wood and 150 iron.";
+          onConfirmAction = () {
+            progress.wood = max(0, progress.wood - 150);
+            progress.iron = max(0, progress.iron - 150);
+          };
+        } else {
+          description =
+              "Striking rioters return to sabotage your estate infrastructure, setting one of your watchtowers to 100% damaged!";
+          onConfirmAction = () {
+            progress.towerDamaged['tower_1'] = 1.0;
+          };
+        }
+        break;
+
+      case 'alchemist_transmutation':
+        title = "ALCHEMICAL RESONANCE";
+        if (choice == 'A') {
+          description =
+              "The transmutated iron proved molecularly unstable. It disintegrates in your stockpiles, costing you 40 iron.";
+          onConfirmAction = () {
+            progress.iron = max(0, progress.iron - 40);
+          };
+        } else if (choice == 'B') {
+          description =
+              "The exiled Rosicrucian alchemist curses your troops from afar. Your units start the next combat with a -50% health penalty!\n\n(All units currently in your deck permanently suffer -5 maxHealth and +0.1s attack delay!)";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_health_penalty'] = 1;
+            _applyPermanentStatModifierToCurrentDeck(
+              progress: progress,
+              maxHealth: -5,
+              speed: 0.1,
+              meleeAttackSpeed: 0.1,
+              rangedAttackSpeed: 0.1,
+            );
+          };
+        } else if (choice == 'C') {
+          description =
+              "The collaborative study yields a major breakthrough in combat stims! Your units gain +3 starting AP for the next combat.\n\n(All units currently in your deck permanently gain +5 maxHealth and +0.1 movement speed!)";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 3;
+            _applyPermanentStatModifierToCurrentDeck(
+              progress: progress,
+              maxHealth: 5,
+              movement: 0.1,
+            );
+          };
+        } else {
+          description =
+              "Your scholars successfully decode the secrets of the seized laboratory, adding +200 wood and +100 iron to your stores.";
+          onConfirmAction = () {
+            progress.wood += 200;
+            progress.iron += 100;
+          };
+        }
+        break;
+
+      case 'templar_levy':
+        title = "TEMPLAR JUDGMENT";
+        if (choice == 'A') {
+          description =
+              "Pleased with your piety and tribute, the Knights Templar send a veteran Cavalry squad to join your army!";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.length < 12) {
+              progress.playerDeckIds.add('cavalry');
+              progress.cardUpgrades['level_cavalry'] = 3;
+            } else {
+              progress.cash += 250;
+            }
+          };
+        } else if (choice == 'B') {
+          description =
+              "The Templar inquisitors discover your smuggling operation! They confiscate 150 food and 100 CHF as penalty.";
+          onConfirmAction = () {
+            progress.food = max(0, progress.food - 150);
+            progress.cash = max(0, progress.cash - 100);
+          };
+        } else if (choice == 'C') {
+          description =
+              "The Knights Templar you sheltered bless your estate. All your combat units are fully cured of their injuries!";
+          onConfirmAction = () {
+            progress.bondageDebuffCount.clear();
+          };
+        } else {
+          description =
+              "The Templar Grand Master launches an Inquisition Crusade against your estate to punish your heresy!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createPikemen(),
+              ],
+              eventTitle: "TEMPLAR INQUISITION CRUSADE",
+              spoilsFood: 20,
+              spoilsCash: 300,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'carbonari_strike':
+        title = "THE UNION'S RECONCILIATION";
+        if (choice == 'A') {
+          description =
+              "Your satisfied workforce works double-time! You receive a massive production boost of +200 wood and +100 iron.";
+          onConfirmAction = () {
+            progress.wood += 200;
+            progress.iron += 100;
+          };
+        } else if (choice == 'B') {
+          description =
+              "The wage compromise was only temporary. Discontented laborers slow down operations, costing you 50 wood and 50 iron.";
+          onConfirmAction = () {
+            progress.wood = max(0, progress.wood - 50);
+            progress.iron = max(0, progress.iron - 50);
+          };
+        } else if (choice == 'C') {
+          description =
+              "The oppressed workers sabotage your watchtowers in secret! All towers start the next combat with only 50% maximum health.";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_tower_health_multiplier'] = 50;
+          };
+        } else {
+          description =
+              "The violent suppression of the strike has left your agricultural fields empty. You produce 0 food this turn!";
+          onConfirmAction = () {
+            progress.food = max(0, progress.food - 100);
+          };
+        }
+        break;
+
+      case 'golden_dawn_seance':
+        title = "THE SÉANCE'S ECHO";
+        if (choice == 'A') {
+          description =
+              "The spiritual veil remains thin. Chimerical energy mutates your guards; they start the next combat with +2 starting AP but -20% maximum health.";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 2;
+            progress.cardUpgrades['next_combat_health_penalty_percent'] = 20;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Angered by your ban, Golden Dawn sorcerers curse your barracks. A random unit becomes terrified and deserts your army permanently!";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.isNotEmpty) {
+              progress.playerDeckIds.removeAt(
+                Random().nextInt(progress.playerDeckIds.length),
+              );
+            }
+          };
+        } else if (choice == 'C') {
+          description =
+              "Restless spirits haunt your estate to protest being commercialized. Your units suffer a -15% AP gain rate during the next combat.";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_gain_rate_multiplier'] = 85;
+          };
+        } else {
+          description =
+              "The consecrated cemetery yields holy blessings. The Knights Templar reward your purity by sending a Pikemen squad to join your army!";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.length < 12) {
+              progress.playerDeckIds.add('militia');
+              progress.cardUpgrades['level_militia'] = 3;
+            } else {
+              progress.cash += 150;
+            }
+          };
+        }
+        break;
+
+      case 'fenian_gunrunning':
+        title = "GUN-RUNNING REPERCUSSIONS";
+        if (choice == 'A') {
+          description =
+              "The Fenian weapon packages prove highly effective! Your towers deal +25% damage in the next combat.\n\n(All units currently in your deck permanently gain +1 damage and +0.1 attack range!)";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_tower_damage_bonus'] = 25;
+            _applyPermanentStatModifierToCurrentDeck(
+              progress: progress,
+              meleeDamage: 1,
+              rangedDamage: 1,
+              meleeRange: 0.1,
+              rangedRange: 0.1,
+            );
+          };
+        } else if (choice == 'B') {
+          description =
+              "The Fenians discover your betrayal. Rebel commandos infiltrate your camp and blow up your munitions yards, costing you 150 iron.";
+          onConfirmAction = () {
+            progress.iron = max(0, progress.iron - 150);
+          };
+        } else if (choice == 'C') {
+          description =
+              "The backroom deal opens steady smuggling channels. You receive a generous share of the black market profits (+300 CHF).";
+          onConfirmAction = () {
+            progress.cash += 300;
+          };
+        } else {
+          description =
+              "Angered by your raid, Fenian cell members launch a coordinated strike on your estate!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCommandos(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: "FENIAN RETALIATION",
+              spoilsFood: 10,
+              spoilsCash: 150,
+              spoilsIron: 20,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'french_cavalry':
+        title = "THE CAVALRY'S TRAIL";
+        if (choice == 'A') {
+          description =
+              "The monarchist drills pay off! Your cavalry units gain a permanent +20% movement speed in combat.";
+          onConfirmAction = () {
+            progress.cardUpgrades['cavalry_speed_multiplier'] = 120;
+          };
+        } else if (choice == 'B') {
+          description =
+              "The insulted Chevaliers lobby the canton to block your imports. You cannot purchase cards from the market for the next 2 turns.";
+          onConfirmAction = () {
+            progress.cardUpgrades['market_blocked_turns'] = 2;
+          };
+        } else if (choice == 'C') {
+          description =
+              "Grateful for the horse feed, the Chevaliers escort your trade caravan, yielding +300 CHF.";
+          onConfirmAction = () {
+            progress.cash += 300;
+          };
+        } else {
+          description =
+              "The royalists return with heavy cavalry reinforcements to avenge their mock combat defeat!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createCavalry(),
+              ],
+              eventTitle: "CHEVALIERS VENDETTA",
+              spoilsFood: 15,
+              spoilsCash: 250,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'adrenochrome_syndicate':
+        title = "THE COVENANT'S PAYMENT";
+        if (choice == 'A') {
+          description =
+              "The illegal blood trade corrupts your lands. Glarus standing decreases by 20, and a random unit contracts a disease (-30% max health permanently).";
+          onConfirmAction = () {
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 20;
+            if (progress.playerDeckIds.isNotEmpty) {
+              final randUnit =
+                  progress.playerDeckIds[Random().nextInt(
+                    progress.playerDeckIds.length,
+                  )];
+              progress.cardUpgrades['level_penalty_$randUnit'] =
+                  (progress.cardUpgrades['level_penalty_$randUnit'] ?? 0) + 1;
+            }
+          };
+        } else if (choice == 'B') {
+          description =
+              "The Foresters druid council is grateful for your boundary. They bless your estate crops, granting you +150 food.";
+          onConfirmAction = () {
+            progress.food += 150;
+          };
+        } else if (choice == 'C') {
+          description =
+              "Your investigation results are leaked. Quiet blackmail payments arrive from the syndicate, yielding +300 CHF.";
+          onConfirmAction = () {
+            progress.cash += 300;
+          };
+        } else {
+          description =
+              "The Ancient Order of Foresters launches a massive forest war to avenge their raided laboratory!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createFleshGolem(),
+                CombatUnitFactory.createWildWolves(),
+              ],
+              eventTitle: "FORESTERS RETALIATION WAR",
+              spoilsFood: 30,
+              spoilsCash: 100,
+              spoilsIron: 5,
+              spoilsWood: 20,
+            );
+          };
+        }
+        break;
+
+      case 'bank_audit':
+        title = "THE AUDIT'S CONCLUSION";
+        if (choice == 'A') {
+          description =
+              "The bribed audit passes cleanly! The syndicate sends an elite High Banker Rothschild card to manage your finances!";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.length < 12) {
+              progress.playerDeckIds.add('banker_rothschild');
+              progress.cardUpgrades['level_banker_rothschild'] = 1;
+            } else {
+              progress.cash += 500;
+            }
+          };
+        } else if (choice == 'B') {
+          description =
+              "Outraged by your lockout, the Zurich bank freezes your accounts. You lose 50% of your current cash in transaction fees!";
+          onConfirmAction = () {
+            progress.cash = (progress.cash * 0.5).toInt();
+          };
+        } else if (choice == 'C') {
+          description =
+              "The Templars demand a high protection fee to keep your accounts hidden. You must pay 200 CHF or lose 20 standing with them.";
+          onConfirmAction = () {
+            if (progress.cash >= 200) {
+              progress.cash -= 200;
+            } else {
+              progress.factionStandings['Knights Templar'] =
+                  (progress.factionStandings['Knights Templar'] ?? 0) - 20;
+            }
+          };
+        } else {
+          description =
+              "The banking syndicate sends heavily armed debt collectors to seize your estate assets by force!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createZurichDebtCollector(),
+                CombatUnitFactory.createZurichDebtCollector(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: "ZURICH BAILIFFS SEIZURE",
+              spoilsFood: 10,
+              spoilsCash: 400,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'mystic_herbs':
+        title = "HERBAL EFFECTIVENESS";
+        if (choice == 'A') {
+          description =
+              "The forest herbs cause a secondary alchemical mutation! Your constructs gain a permanent +15% damage boost in combat.";
+          onConfirmAction = () {
+            progress.cardUpgrades['construct_damage_multiplier'] =
+                (progress.cardUpgrades['construct_damage_multiplier'] ?? 100) +
+                15;
+          };
+        } else if (choice == 'B') {
+          description =
+              "The slighted forest druids curse your estate. Your farm food production is halved for the next 2 turns.";
+          onConfirmAction = () {
+            progress.cardUpgrades['farm_output_halved_turns'] = 2;
+          };
+        } else if (choice == 'C') {
+          description =
+              "Your laboratory successfully synthesizes a miracle panacea! All units are cured of all injuries, and you sell the surplus for +200 CHF.";
+          onConfirmAction = () {
+            progress.bondageDebuffCount.clear();
+            progress.cash += 200;
+          };
+        } else {
+          description =
+              "Burning the herbs released toxic, weakening spores. Your units suffer -2 starting AP in the next combat.\n\n(All units currently in your deck permanently suffer -0.1 movement speed and -5 maxHealth!)";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) - 2;
+            _applyPermanentStatModifierToCurrentDeck(
+              progress: progress,
+              movement: -0.1,
+              maxHealth: -5,
+            );
+          };
+        }
+        break;
+
+      case 'irish_mutiny':
+        title = "BARRACKS RESOLUTION";
+        if (choice == 'A') {
+          description =
+              "Your soldiers are in high spirits! All units start the next combat with +2 starting AP and +20% damage.";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 2;
+            progress.cardUpgrades['next_combat_damage_multiplier'] = 120;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Fenian sympathizers sabotage your armory. You lose 100 iron and a random unit's weapon is damaged (-30% damage next combat).";
+          onConfirmAction = () {
+            progress.iron = max(0, progress.iron - 100);
+            if (progress.playerDeckIds.isNotEmpty) {
+              final randUnit =
+                  progress.playerDeckIds[Random().nextInt(
+                    progress.playerDeckIds.length,
+                  )];
+              progress.cardUpgrades['weapon_debuff_$randUnit'] = 1;
+            }
+          };
+        } else if (choice == 'C') {
+          description =
+              "The veterans return from their frontline deployment! An experienced Commandos unit joins your army.";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.length < 12) {
+              progress.playerDeckIds.add('commandos');
+              progress.cardUpgrades['level_commandos'] = 3;
+            } else {
+              progress.cash += 150;
+            }
+          };
+        } else {
+          description =
+              "Jailed mutineers break out of the dungeons and launch an armed rebellion inside your estate!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createMilitia(),
+                CombatUnitFactory.createMilitia(),
+              ],
+              eventTitle: "BARRACKS MUTINY REBELLION",
+              spoilsFood: 10,
+              spoilsCash: 100,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'monarchist_ball':
+        title = "THE BALL'S AFTERMATH";
+        if (choice == 'A') {
+          description =
+              "Impressed by the grand ball, a wealthy royalist patron sends a donation of +500 CHF and sponsors a Cavalry unit to join your army.";
+          onConfirmAction = () {
+            progress.cash += 500;
+            if (progress.playerDeckIds.length < 12 &&
+                !progress.playerDeckIds.contains('cavalry')) {
+              progress.playerDeckIds.add('cavalry');
+              progress.cardUpgrades['level_cavalry'] = 3;
+            }
+          };
+        } else if (choice == 'B') {
+          description =
+              "The insulted Chevaliers blacklist your estate from noble trade, increasing all market upgrade costs by 20% for 3 turns.";
+          onConfirmAction = () {
+            progress.cardUpgrades['market_inflation_turns'] = 3;
+          };
+        } else if (choice == 'C') {
+          description =
+              "The modest peasant feast builds strong community ties. Glarus villagers volunteer to fully repair all your watchtowers!";
+          onConfirmAction = () {
+            progress.towerDamaged['tower_1'] = 0.0;
+            progress.towerDamaged['tower_2'] = 0.0;
+            progress.towerDamaged['tower_3'] = 0.0;
+          };
+        } else {
+          description =
+              "Insulted by your disruption, the Chevaliers send royal guards to execute your commanders!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createMusketeers(),
+              ],
+              eventTitle: "ROYALIST RETALIATION",
+              spoilsFood: 10,
+              spoilsCash: 200,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'masonic_toll':
+        title = "THE TOLL'S BURDEN";
+        if (choice == 'A') {
+          description =
+              "The bridge toll strangles Glarus trade. You receive +300 CHF in toll dividends, but Glarus standing drops by 15.";
+          onConfirmAction = () {
+            progress.cash += 300;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) - 15;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Grateful Glarus merchants reward your generous toll sponsorship, supplying your estate with +150 food and +100 wood.";
+          onConfirmAction = () {
+            progress.food += 150;
+            progress.wood += 100;
+          };
+        } else if (choice == 'C') {
+          description =
+              "Angry about your detour, the Masons block your iron trade routes, costing you 100 iron.";
+          onConfirmAction = () {
+            progress.iron = max(0, progress.iron - 100);
+          };
+        } else {
+          description =
+              "The Masonic Lodge sends armed enforcers to rebuild the toll booth and punish your defiance!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: "MASONIC REBUILDERS FORCE",
+              spoilsFood: 15,
+              spoilsCash: 150,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'alchemical_explosion':
+        title = "THE CONTAMINATION REPORT";
+        if (choice == 'A') {
+          description =
+              "The water filters successfully contain the epidemic! Glarus rewards your help with +200 CHF and +15 standing.";
+          onConfirmAction = () {
+            progress.cash += 200;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 15;
+          };
+        } else if (choice == 'B') {
+          description =
+              "The water cover-up fails! Furious villagers riot, setting fire to your storage yards and destroying 150 wood and 100 food.";
+          onConfirmAction = () {
+            progress.wood = max(0, progress.wood - 150);
+            progress.food = max(0, progress.food - 100);
+          };
+        } else if (choice == 'C') {
+          description =
+              "The unchecked disease spreads to your estate. Your units contract sickness, suffering -20% health in the next 2 battles.\n\n(All units currently in your deck permanently suffer -1 damage and -5 maxHealth!)";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_health_penalty_percent'] = 20;
+            _applyPermanentStatModifierToCurrentDeck(
+              progress: progress,
+              meleeDamage: -1,
+              rangedDamage: -1,
+              maxHealth: -5,
+            );
+          };
+        } else {
+          description =
+              "Angry Rosicrucians deploy alchemical chimeras to break their lead scientist out of your dungeons!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createFleshGolem(),
+                CombatUnitFactory.createBrownRats(),
+              ],
+              eventTitle: "ROSICRUCIAN PRISON BREAK",
+              spoilsFood: 10,
+              spoilsCash: 200,
+              spoilsIron: 15,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'secret_treaty':
+        title = "THE ALLIANCE'S RESOLVE";
+        if (choice == 'A') {
+          description =
+              "In fulfillment of the secret treaty, the Knights Templar send an elite veteran Samurai to reinforce your army!";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.length < 12 &&
+                !progress.playerDeckIds.contains('samurai')) {
+              progress.playerDeckIds.add('samurai');
+              progress.cardUpgrades['level_samurai'] = 3;
+            } else {
+              progress.iron += 100;
+            }
+          };
+        } else if (choice == 'B') {
+          description =
+              "The Templars send a shadow assassin to punish your betrayal. Your leader Alphonse is injured, losing 25% max health permanently!";
+          onConfirmAction = () {
+            progress.cardUpgrades['alphonse_health_penalty'] =
+                (progress.cardUpgrades['alphonse_health_penalty'] ?? 0) + 25;
+          };
+        } else if (choice == 'C') {
+          description =
+              "Your peaceful neutrality keeps you out of their war. Masons and Templars send small trade dividends, yielding +100 CHF.";
+          onConfirmAction = () {
+            progress.cash += 100;
+          };
+        } else {
+          description =
+              "Templars and Masons launch a coordinated raid to rescue their captured envoys from your dungeons!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createCavalry(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: "PRISONER RESCUE RAID",
+              spoilsFood: 10,
+              spoilsCash: 200,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'carbonari_press':
+        title = "THE PRESS'S INFLUENCE";
+        if (choice == 'A') {
+          description =
+              "The pamhplets inspire local rebels! A veteran Goon joins your army, and your units start the next combat with +1 starting AP.";
+          onConfirmAction = () {
+            if (progress.playerDeckIds.length < 12 &&
+                !progress.playerDeckIds.contains('goon')) {
+              progress.playerDeckIds.add('goon');
+              progress.cardUpgrades['level_goon'] = 3;
+            }
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 1;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Angry Carbonari rebels sabotage your iron mines. You produce 0 iron this turn!";
+          onConfirmAction = () {
+            progress.iron = max(0, progress.iron - 50);
+          };
+        } else if (choice == 'C') {
+          description =
+              "The Carbonari refuse to pay your heavy taxes and steal 200 CHF from your reserves in a late-night heist.";
+          onConfirmAction = () {
+            progress.cash = max(0, progress.cash - 200);
+          };
+        } else {
+          description =
+              "The Carbonari launch an armed assault on your estate to reclaim their printing press!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createGoon(),
+                CombatUnitFactory.createMilitia(),
+              ],
+              eventTitle: "PRESS RECLAMATION STRIKE",
+              spoilsFood: 5,
+              spoilsCash: 100,
+              spoilsIron: 5,
+              spoilsWood: 20,
+            );
+          };
+        }
+        break;
+
+      case 'golden_dawn_relic':
+        title = "THE RELIC'S ENERGY";
+        if (choice == 'A') {
+          description =
+              "The relic whispers ancient knowledge. Your scholars achieve a major breakthrough, granting +100 XP distributed to all units in your deck!\n\n(All units currently in your deck permanently gain +0.2 attack range!)";
+          onConfirmAction = () {
+            for (var t in progress.playerDeckIds) {
+              progress.unitExp[t] = (progress.unitExp[t] ?? 0.0) + 100.0;
+            }
+            _applyPermanentStatModifierToCurrentDeck(
+              progress: progress,
+              meleeRange: 0.2,
+              rangedRange: 0.2,
+            );
+          };
+        } else if (choice == 'B') {
+          description =
+              "The sold relic was heavily cursed! Your cashbox wood rots, causing a loss of 200 CHF.\n\n(All units currently in your deck permanently suffer -0.1 movement speed and +0.1s attack delay!)";
+          onConfirmAction = () {
+            progress.cash = max(0, progress.cash - 200);
+            _applyPermanentStatModifierToCurrentDeck(
+              progress: progress,
+              movement: -0.1,
+              speed: 0.1,
+              meleeAttackSpeed: 0.1,
+              rangedAttackSpeed: 0.1,
+            );
+          };
+        } else if (choice == 'C') {
+          description =
+              "The cathedral blesses your donation, granting all units +2 starting AP and restoring all towers by 30%.";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 2;
+            progress.towerDamaged['tower_1'] = max(
+              0.0,
+              (progress.towerDamaged['tower_1'] ?? 0.0) - 0.3,
+            );
+            progress.towerDamaged['tower_2'] = max(
+              0.0,
+              (progress.towerDamaged['tower_2'] ?? 0.0) - 0.3,
+            );
+            progress.towerDamaged['tower_3'] = max(
+              0.0,
+              (progress.towerDamaged['tower_3'] ?? 0.0) - 0.3,
+            );
+          };
+        } else {
+          description =
+              "Smashing the relic released ancient, vengeful spirits that swarm your estate!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createWerewolf(),
+                CombatUnitFactory.createBrownRats(),
+              ],
+              eventTitle: "SPECTRAL SPIRITS SWARM",
+              spoilsFood: 10,
+              spoilsCash: 150,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'forester_woodcutters':
+        title = "THE FOREST'S REACTION";
+        if (choice == 'A') {
+          description =
+              "Nature is pleased by your restraint! Forest druids enrich your estate soil, granting you +200 food.";
+          onConfirmAction = () {
+            progress.food += 200;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Nature strikes back! A pack of rabid wild beasts raids your farms, destroying 150 food and injuring workers (adds 1 bondage debuff to all units).";
+          onConfirmAction = () {
+            progress.food = max(0, progress.food - 150);
+            for (var t in progress.playerDeckIds) {
+              progress.bondageDebuffCount[t] =
+                  (progress.bondageDebuffCount[t] ?? 0) + 1;
+            }
+          };
+        } else if (choice == 'C') {
+          description =
+              "Your balanced logging approach pays off! You receive a bonus of +100 wood and +10 standing with both Foresters and Glarus.";
+          onConfirmAction = () {
+            progress.wood += 100;
+            progress.factionStandings['Ancient Order of Foresters'] =
+                (progress.factionStandings['Ancient Order of Foresters'] ?? 0) +
+                10;
+            progress.factionStandings['Glarus'] =
+                (progress.factionStandings['Glarus'] ?? 0) + 10;
+          };
+        } else {
+          description =
+              "Feral forest guardians launch a massive stampede to crush your logging camps!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createWildWolves(),
+                CombatUnitFactory.createFleshGolem(),
+              ],
+              eventTitle: "FERAL FOREST STAMPEDE",
+              spoilsFood: 20,
+              spoilsCash: 100,
+              spoilsIron: 5,
+              spoilsWood: 100,
+            );
+          };
+        }
+        break;
+
+      case 'swiss_banker_loan':
+        title = "DEBT COLLECTION DAY";
+        if (choice == 'A') {
+          description =
+              "The Swiss loan is due! You must pay 600 CHF (500 principal + 100 interest). If you cannot afford it, the bank forecloses, seizing 200 wood and 200 iron!";
+          onConfirmAction = () {
+            if (progress.cash >= 600) {
+              progress.cash -= 600;
+            } else {
+              progress.cash = 0;
+              progress.wood = max(0, progress.wood - 200);
+              progress.iron = max(0, progress.iron - 200);
+            }
+          };
+        } else if (choice == 'B') {
+          description =
+              "Your fiscal discipline pays off! Local merchants trust your estate, granting you a permanent 10% discount on all upgrades in the market.";
+          onConfirmAction = () {
+            progress.cardUpgrades['market_discount_percent'] =
+                (progress.cardUpgrades['market_discount_percent'] ?? 0) + 10;
+          };
+        } else if (choice == 'C') {
+          description =
+              "Angered by your stolen pensions, your soldiers go on strike, refusing to coordinate. You suffer -3 starting AP in the next combat.";
+          onConfirmAction = () {
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) - 3;
+          };
+        } else {
+          description =
+              "The Zurich bank sends elite syndicate enforcers to reclaim their stolen gold and eliminate your commanders!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createZurichDebtCollector(),
+                CombatUnitFactory.createZurichDebtCollector(),
+              ],
+              eventTitle: "ZURICH HIT SQUAD",
+              spoilsFood: 10,
+              spoilsCash: 350,
+              spoilsIron: 10,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      case 'grenadier_sabotage':
+        title = "THE WINDMILL'S LEGACY";
+        if (choice == 'A') {
+          description =
+              "The rebuilt windmill is fully operational! Grateful Glarus villagers supply your estate with +150 food.";
+          onConfirmAction = () {
+            progress.food += 150;
+          };
+        } else if (choice == 'B') {
+          description =
+              "Insulted by the court-martial, a group of elite grenadiers deserts your army, stealing 100 iron from your armory.";
+          onConfirmAction = () {
+            progress.iron = max(0, progress.iron - 100);
+            if (progress.playerDeckIds.isNotEmpty) {
+              progress.playerDeckIds.removeAt(
+                Random().nextInt(progress.playerDeckIds.length),
+              );
+            }
+          };
+        } else if (choice == 'C') {
+          description =
+              "Without the windmill, Glarus suffers a terrible famine. Angry, starving villagers raid your estate, stealing 100 food and 100 wood.";
+          onConfirmAction = () {
+            progress.food = max(0, progress.food - 100);
+            progress.wood = max(0, progress.wood - 100);
+          };
+        } else {
+          description =
+              "Furious Glarus peasants launch an armed insurrection to burn down your estate in revenge for the windmill!";
+          onConfirmAction = () {
+            _startEventCombat(
+              progress: progress,
+              service: service,
+              state: state,
+              aiUnits: [
+                CombatUnitFactory.createMilitia(),
+                CombatUnitFactory.createGoon(),
+              ],
+              eventTitle: "PEASANT INSURRECTION",
+              spoilsFood: 15,
+              spoilsCash: 80,
+              spoilsIron: 5,
+              spoilsWood: 10,
+            );
+          };
+        }
+        break;
+
+      default:
+        return;
+    }
+
+    _showRippleEffectDialog(
+      context,
+      title,
+      description,
+      onConfirmAction,
+      service,
+    );
+  }
+ 
   void _evaluateDiceOutcome(int total, SurvivalProgress progress, SurvivalService service) {
+    _lastDiceTotal = total;
     final state = Provider.of<GameState>(context, listen: false);
 
     String logDesc = 'Fate Event triggered.';
@@ -10670,20 +13127,61 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           ]);
         }
 
+        final deckSize = encountersList.length;
+        // Initialize shuffled deck if not already done
+        if (progress.cardUpgrades['encounter_deck_initialized'] != 1) {
+          final indices = List<int>.generate(deckSize, (i) => i)..shuffle();
+          for (int i = 0; i < deckSize; i++) {
+            progress.cardUpgrades['encounter_deck_pos_$i'] = indices[i];
+          }
+          progress.cardUpgrades['encounter_deck_initialized'] = 1;
+          progress.cardUpgrades['next_encounter_index'] = 0;
+        }
+
+        // Retrieve next unresolved encounter using the shuffled deck
         String? nextEncounterId;
-        int foundIndex = index;
-        for (int i = 0; i < encountersList.length; i++) {
-          final checkIdx = (index + i) % encountersList.length;
-          final encId = encountersList[checkIdx];
+        int foundPointer = index;
+
+        for (int i = 0; i < deckSize; i++) {
+          final checkPointer = (index + i) % deckSize;
+          final shuffledIdx = progress.cardUpgrades['encounter_deck_pos_$checkPointer'] ?? checkPointer;
+          final finalIdx = shuffledIdx.clamp(0, deckSize - 1);
+          final encId = encountersList[finalIdx];
+
           if (progress.cardUpgrades['encounter_${encId}_resolved'] != 1) {
             nextEncounterId = encId;
-            foundIndex = checkIdx;
+            foundPointer = checkPointer;
             break;
           }
         }
 
+        // Recycle and reshuffle if all are resolved
+        if (nextEncounterId == null) {
+          for (final encId in encountersList) {
+            progress.cardUpgrades.remove('encounter_${encId}_resolved');
+          }
+          final indices = List<int>.generate(deckSize, (i) => i)..shuffle();
+          for (int i = 0; i < deckSize; i++) {
+            progress.cardUpgrades['encounter_deck_pos_$i'] = indices[i];
+          }
+          progress.cardUpgrades['encounter_deck_initialized'] = 1;
+          progress.cardUpgrades['next_encounter_index'] = 0;
+
+          for (int i = 0; i < deckSize; i++) {
+            final checkPointer = i;
+            final shuffledIdx = progress.cardUpgrades['encounter_deck_pos_$checkPointer'] ?? checkPointer;
+            final finalIdx = shuffledIdx.clamp(0, deckSize - 1);
+            final encId = encountersList[finalIdx];
+            if (progress.cardUpgrades['encounter_${encId}_resolved'] != 1) {
+              nextEncounterId = encId;
+              foundPointer = checkPointer;
+              break;
+            }
+          }
+        }
+
         if (nextEncounterId != null) {
-          progress.cardUpgrades['next_encounter_index'] = foundIndex;
+          progress.cardUpgrades['next_encounter_index'] = (foundPointer + 1) % deckSize;
           _diceOutcomeMessage = "ROLLED A 7!\nTravel Encounter: ${nextEncounterId.replaceAll('_', ' ').toUpperCase()}";
           _diceOutcomeAction = () {
             _showNarrativeEncounter(
@@ -10720,7 +13218,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         break;
 
       case 10:
-        _diceOutcomeMessage = "ROLLED A 10! Rest!\nBarracks rest: All units start the next combat with +2 starting AP.";
+        _diceOutcomeMessage =
+            "ROLLED A 10! Rest!\nBarracks rest: Start the next combat with +2 starting AP.";
         _diceOutcomeAction = () {
           progress.cardUpgrades['next_combat_ap_modifier'] = (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 2;
           service.manualSave();
@@ -11032,17 +13531,53 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         final List<Map<String, dynamic>> genericDiscoveries = [
           {
             'id': 'lost_cashbox',
-            'title': 'LOST CASHBOX',
-            'description': 'Unearth a vintage locked lockbox on the border plots! Yields +300 CHF.',
-            'run': () => progress.cash += 300,
+            'title': 'THE LOST GENEVAN TREASURE',
+            'description':
+                'Unearth a vintage iron-bound chest containing a lost Genevan treasure! Grants +500 CHF and 1 level promotion to the most experienced unit in your deck!',
+            'run': () {
+              progress.cash += 500;
+              if (progress.playerDeckIds.isNotEmpty) {
+                String? bestCard;
+                double maxExp = -1;
+                for (final t in progress.playerDeckIds) {
+                  final xp = progress.unitExp[t] ?? 0.0;
+                  if (xp > maxExp) {
+                    maxExp = xp;
+                    bestCard = t;
+                  }
+                }
+                if (bestCard != null) {
+                  progress.addXpToUnit(
+                    bestCard,
+                    SurvivalProgress.getRequiredXpForLevel(
+                      progress.getUnitLevel(bestCard) + 1,
+                    ).toDouble(),
+                  );
+                }
+              }
+            },
           },
           {
             'id': 'ammunition_crate',
-            'title': 'AMBULANT AMMUNITION CRATE',
-            'description': 'A stray supply cart is recovered, yielding +20 food and +50 metal.',
+            'title': 'SURPLUS ARMY MUNITIONS CRATE',
+            'description':
+                'A heavy, sealed military supply wagon is recovered! Yields +100 food, +150 metal, and all squad/melee units in your deck gain +1 base melee damage permanently from high-quality steel sharpening kits!',
             'run': () {
-              progress.food += 20;
-              progress.iron += 50;
+              progress.food += 100;
+              progress.iron += 150;
+              for (final t in progress.playerDeckIds) {
+                final npc = CombatUnitService.createUnit(t);
+                final isMelee =
+                    npc.combatStats != null &&
+                    npc.combatStats!.distance < 3.0 &&
+                    !SurvivalService.isConstruct(npc);
+                if (isMelee) {
+                  final current =
+                      progress.cardUpgrades['${t}_stat_meleeDamage_bonus'] ?? 0;
+                  progress.cardUpgrades['${t}_stat_meleeDamage_bonus'] =
+                      current + 1;
+                }
+              }
             },
           },
           {
@@ -11056,18 +13591,37 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
           {
             'id': 'weather_window',
-            'title': 'WEATHER WINDOW',
-            'description': 'Clear, perfect weather boosts general collection next turn, yielding +100 food and +100 wood.',
+            'title': 'IDEAL WEATHER WINDOW',
+            'description':
+                'Clear, perfect weather boosts general collection, yielding +200 food, +200 wood, and all units in your current deck gain +0.5 movement speed permanently from marching drills!',
             'run': () {
-              progress.food += 100;
-              progress.wood += 100;
+              progress.food += 200;
+              progress.wood += 200;
+              for (final t in progress.playerDeckIds) {
+                final current =
+                    progress.cardUpgrades['${t}_stat_movement_bonus'] ?? 0;
+                progress.cardUpgrades['${t}_stat_movement_bonus'] =
+                    current + 50;
+              }
             },
           },
           {
             'id': 'wild_crop_seedlings',
-            'title': 'WILD CROP SEEDLINGS',
-            'description': 'Find wild edible tubers growing along the riverside, adding +60 food to the pantry.',
-            'run': () => progress.food += 60,
+            'title': 'WILD CROP BUMPER SEEDLINGS',
+            'description':
+                'Find wild edible tubers and alchemical herbs growing along the riverside, adding +150 food and permanently increasing the max health of all non-construct cards in your current deck by +5 Max Health!',
+            'run': () {
+              progress.food += 150;
+              for (final t in progress.playerDeckIds) {
+                final npc = CombatUnitService.createUnit(t);
+                if (!SurvivalService.isConstruct(npc)) {
+                  final current =
+                      progress.cardUpgrades['${t}_stat_maxHealth_bonus'] ?? 0;
+                  progress.cardUpgrades['${t}_stat_maxHealth_bonus'] =
+                      current + 5;
+                }
+              }
+            },
           },
           {
             'id': 'draft_horse_recruit',
@@ -11079,9 +13633,21 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
           {
             'id': 'iron_ore_deposit',
-            'title': 'IRON ORE DEPOSIT',
-            'description': 'Find a shallow surface outcrop of high-grade iron ore, adding +40 metal.',
-            'run': () => progress.iron += 40,
+            'title': 'RICH SURFACE IRON VEIN',
+            'description':
+                'Find a shallow surface outcrop of high-grade iron ore! Yields +150 metal and permanently increases the max health of all constructs/machines in your current deck by +15 Max Health due to steel armor reinforcements!',
+            'run': () {
+              progress.iron += 150;
+              for (final t in progress.playerDeckIds) {
+                final npc = CombatUnitService.createUnit(t);
+                if (SurvivalService.isConstruct(npc)) {
+                  final current =
+                      progress.cardUpgrades['${t}_stat_maxHealth_bonus'] ?? 0;
+                  progress.cardUpgrades['${t}_stat_maxHealth_bonus'] =
+                      current + 15;
+                }
+              }
+            },
           },
           {
             'id': 'military_logbook',
@@ -11096,9 +13662,14 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
           {
             'id': 'glarus_trade_voucher',
-            'title': 'GLARUS TRADE VOUCHER',
-            'description': 'Find a trade voucher redeemable at Glarus bank for +150 CHF.',
-            'run': () => progress.cash += 150,
+            'title': 'GLARUS INDUSTRIAL TRADE VOUCHER',
+            'description':
+                'Recover a high-value merchant bank order and trade voucher! Adds +300 CHF, and permanently reduces all Weapon Market upgrade and hiring costs by 10%!',
+            'run': () {
+              progress.cash += 300;
+              progress.cardUpgrades['market_discount_percent'] =
+                  (progress.cardUpgrades['market_discount_percent'] ?? 0) + 10;
+            },
           },
           {
             'id': 'aethelgards_ring',
@@ -11126,18 +13697,45 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
           {
             'id': 'forgotten_gunpowder_stash',
-            'title': 'FORGOTTEN GUNPOWDER STASH',
-            'description': 'A sealed crate yields +30 metal and +30 wood.',
+            'title': 'FORGOTTEN BLACK POWDER ARSENAL',
+            'description':
+                'Uncover a massive, sealed crate of vintage black powder! Yields +100 wood, +100 iron, and all ranged cards in your current deck gain +1 base ranged damage permanently!',
             'run': () {
-              progress.iron += 30;
-              progress.wood += 30;
+              progress.iron += 100;
+              progress.wood += 100;
+              for (final t in progress.playerDeckIds) {
+                final npc = CombatUnitService.createUnit(t);
+                final isRanged =
+                    npc.combatStats != null && npc.combatStats!.distance >= 3.0;
+                if (isRanged) {
+                  final current =
+                      progress.cardUpgrades['${t}_stat_rangedDamage_bonus'] ??
+                      0;
+                  progress.cardUpgrades['${t}_stat_rangedDamage_bonus'] =
+                      current + 1;
+                }
+              }
             },
           },
           {
             'id': 'migrating_waterfowl',
-            'title': 'MIGRATING WATERFOWL',
-            'description': 'A massive flock of wild ducks lands in the marsh, allowing our guards to forage +80 food.',
-            'run': () => progress.food += 80,
+            'title': 'MIGRATING WATERFOWL TARGET PRACTICE',
+            'description':
+                'A massive flock of wild ducks lands in the marsh! Our army uses them for hunting target practice, harvesting +120 food. Furthermore, all cards in your current deck with a ranged attack gain +0.1 attack range permanently!',
+            'run': () {
+              progress.food += 120;
+              for (final t in progress.playerDeckIds) {
+                final npc = CombatUnitService.createUnit(t);
+                final isRanged =
+                    npc.combatStats != null && npc.combatStats!.distance >= 3.0;
+                if (isRanged) {
+                  final current =
+                      progress.cardUpgrades['${t}_stat_rangedRange_bonus'] ?? 0;
+                  progress.cardUpgrades['${t}_stat_rangedRange_bonus'] =
+                      current + 10;
+                }
+              }
+            },
           },
           {
             'id': 'forge_upgrades_crate',
@@ -11155,17 +13753,31 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
           {
             'id': 'inspiring_mountain_vista',
-            'title': 'INSPIRING MOUNTAIN VISTA',
-            'description': 'Stunning sunrise boosts morale; all cards start the next combat encounter with +1 AP.',
+            'title': 'MAJESTIC ALPINE RESOLVE',
+            'description':
+                'Stunning alpine sunrise resolves our troops! All cards start the next combat with +2 AP, and all cards in your current deck gain +0.5 movement speed permanently!',
             'run': () {
-              progress.cardUpgrades['next_combat_ap_modifier'] = (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 1;
+              progress.cardUpgrades['next_combat_ap_modifier'] =
+                  (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 2;
+              for (final t in progress.playerDeckIds) {
+                final current =
+                    progress.cardUpgrades['${t}_stat_movement_bonus'] ?? 0;
+                progress.cardUpgrades['${t}_stat_movement_bonus'] =
+                    current + 50;
+              }
             },
           },
           {
             'id': 'iron_pickaxe_crate',
-            'title': 'IRON PICKAXE CRATE',
-            'description': 'Find a collection of mining picks, yielding +50 metal.',
-            'run': () => progress.iron += 50,
+            'title': 'PIONEER STEEL PICKAXE CRATE',
+            'description':
+                'Find a collection of heavy steel mining picks, yielding +150 metal and permanently increasing all Watchtower maximum health by 10%!',
+            'run': () {
+              progress.iron += 150;
+              progress.cardUpgrades['tower_health_multiplier'] =
+                  (progress.cardUpgrades['tower_health_multiplier'] ?? 100) +
+                  10;
+            },
           },
           {
             'id': 'calming_herbage',
@@ -11272,7 +13884,18 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         'run': () {
           final farm = progress.buildings.firstWhereOrNull((b) => b.type == SurvivalBuildingType.farm);
           if (farm != null) {
+            final hasVectors =
+                globalGameState?.unlockedDiscoveries.contains(
+                  'immunological_vectors',
+                ) ??
+                false;
             for (var cardType in farm.assignedUnitIds) {
+              if (hasVectors) {
+                service.addLog(
+                  'Immunological Vectors protected $cardType from the Zoonotic Outbreak!',
+                );
+                continue;
+              }
               progress.unitExp[cardType] = 0.0;
               progress.bondageDebuffCount[cardType] = (progress.bondageDebuffCount[cardType] ?? 0) + 1;
               service.addLog('Disaster Zoonotic Farm Outbreak: Reset XP and applied sick debuff to $cardType.');
@@ -11927,6 +14550,28 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
   String getDiceOutcomeMessageForTest() {
     return _diceOutcomeMessage;
   }
+ 
+  void triggerRippleEffectsForTest(BuildContext context) {
+    _checkAndTriggerRippleEffects(context);
+  }
+
+  void resolveRippleEffectForTest(
+    BuildContext context,
+    String encounterId,
+    String? choice,
+    SurvivalProgress progress,
+    SurvivalService service,
+    GameState state,
+  ) {
+    _resolveRippleEffect(
+      context,
+      encounterId,
+      choice,
+      progress,
+      service,
+      state,
+    );
+  }
 
   Widget _buildDiceRollOverlay(
     SurvivalProgress progress,
@@ -12013,6 +14658,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                           });
                           if (_diceOutcomeAction != null) {
                             _diceOutcomeAction!();
+                          }
+                          final isDialogEvent =
+                              _lastDiceTotal == 7 || _lastDiceTotal == 2;
+                          if (!isDialogEvent) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              _checkAndTriggerRippleEffects(context);
+                            });
                           }
                         },
                         child: Text(

@@ -20,6 +20,7 @@ import '../models/npc.dart';
 import '../models/combat_stats.dart';
 import 'combat_unit_service.dart';
 import 'arena_save_service.dart';
+import '../main.dart' show globalGameState;
 
 class SurvivalService extends ChangeNotifier {
   SurvivalProgress? _progress;
@@ -323,9 +324,37 @@ class SurvivalService extends ChangeNotifier {
     return !isUndead(npc) && !isWildAnimal(npc) && !isChimera(npc) && !isConstruct(npc);
   }
 
-  static int getFoodCost(NPC npc) {
-    if (isUndead(npc) || isWildAnimal(npc) || isConstruct(npc)) return 0;
-    return npc.combatStats?.unitCount ?? 1;
+  static int getFoodCost(NPC npc, {int level = 1}) {
+    if (isUndead(npc) || isConstruct(npc)) return 0;
+
+    int baseCost = 1;
+
+    if (isWildAnimal(npc)) {
+      final name = npc.name.toLowerCase();
+      final id = npc.id.toLowerCase();
+      if (name.contains('bear') || id.contains('bear')) {
+        baseCost = 4;
+      } else if (name.contains('chimera') || id.contains('chimera')) {
+        baseCost = 4;
+      } else if (name.contains('werewolf') || id.contains('werewolf')) {
+        baseCost = 3;
+      } else if (name.contains('wolf') || id.contains('wolf') || name.contains('wolves') || name.contains('hound') || id.contains('hound')) {
+        baseCost = 2;
+      } else {
+        baseCost = 1; // Fox, Rats, Bats
+      }
+    } else {
+      // Humanoid
+      final count = npc.combatStats?.unitCount ?? 1;
+      if (count == 1) {
+        baseCost = 2; // Singletons consume 2
+      } else {
+        baseCost = count + 1; // Squads consume count + 1
+      }
+    }
+
+    if (baseCost == 0) return 0;
+    return baseCost + (level - 1);
   }
 
   // Worker Assignment Mechanics
@@ -554,7 +583,7 @@ class SurvivalService extends ChangeNotifier {
 
   // Resource production calculation
   int getFarmOutput(int level, int workers) {
-    // Farm yields 15 food per worker per level
+    // Farm yields 10 food per worker per level (reduced by 1/3 from 15)
     if (level >= 4) {
       double efficiency = 0.0;
       for (int i = 0; i < workers; i++) {
@@ -566,9 +595,9 @@ class SurvivalService extends ChangeNotifier {
           efficiency += 0.6;
         }
       }
-      return (efficiency * 15 * level).round();
+      return (efficiency * 10 * level).round();
     }
-    return workers * 15 * level;
+    return workers * 10 * level;
   }
 
   int getLumberMillOutput(int level, int workers) {
@@ -722,11 +751,12 @@ class SurvivalService extends ChangeNotifier {
     addLog('--- TURN ${_progress!.currentTurn} RESOLUTION ---');
 
     // 1. Deduct food cost
-    int totalFoodCost = 1; // 1 unit of food for the player's character (Alphonse)
+    int totalFoodCost = 3; // 3 units of food for the player's leader character
     final Map<String, int> unitCosts = {};
     for (var type in _progress!.playerDeckIds) {
       final npc = CombatUnitService.createUnit(type);
-      final c = getFoodCost(npc);
+      final lvl = _progress!.getUnitLevel(type);
+      final c = getFoodCost(npc, level: lvl);
       totalFoodCost += c;
       unitCosts[type] = c;
     }
@@ -744,7 +774,8 @@ class SurvivalService extends ChangeNotifier {
       // Process Elite unit desertion
       final eliteStarving = _progress!.playerDeckIds.where((t) {
         final npc = CombatUnitService.createUnit(t);
-        return getFoodCost(npc) >= 1 && npc.combatStats!.cost >= 5 && !isConstruct(npc);
+        final lvl = _progress!.getUnitLevel(t);
+        return getFoodCost(npc, level: lvl) >= 1 && npc.combatStats!.cost >= 5 && !isConstruct(npc);
       }).toList();
       
       int eliteDesertersCount = min(deficit, eliteStarving.length);
@@ -758,7 +789,8 @@ class SurvivalService extends ChangeNotifier {
       // Process Basic unit infractions
       final basicStarving = _progress!.playerDeckIds.where((t) {
         final npc = CombatUnitService.createUnit(t);
-        return getFoodCost(npc) >= 1 && npc.combatStats!.cost < 5 && !isConstruct(npc);
+        final lvl = _progress!.getUnitLevel(t);
+        return getFoodCost(npc, level: lvl) >= 1 && npc.combatStats!.cost < 5 && !isConstruct(npc);
       }).toList();
 
       for (var t in basicStarving) {
@@ -787,28 +819,61 @@ class SurvivalService extends ChangeNotifier {
     }
 
     // 2. Industry Production
+    final bool doubleProduction = _progress!.cardUpgrades['double_estate_production'] == 1;
+    if (doubleProduction) {
+      addLog('BOUNTY ACTIVE: All estate facility production is doubled this turn!');
+    }
+
     for (var b in _progress!.buildings) {
       final workers = b.assignedUnitIds.length;
       if (b.type == SurvivalBuildingType.farm) {
-        final out = getFarmOutput(b.level, workers);
+        var out = getFarmOutput(b.level, workers);
+        if (doubleProduction) out *= 2;
         _progress!.food += out;
-        if (out > 0) addLog('Farm produced +$out Food (workers: $workers).');
+        if (out > 0) {
+          final bonusStr = doubleProduction ? ' (Doubled by Bounty!)' : '';
+          addLog('Farm produced +$out Food (workers: $workers)$bonusStr.');
+        }
       } else if (b.type == SurvivalBuildingType.lumberMill) {
-        final out = getLumberMillOutput(b.level, workers);
+        var out = getLumberMillOutput(b.level, workers);
+        if (doubleProduction) out *= 2;
         _progress!.wood += out;
-        if (out > 0) addLog('Lumber Mill produced +$out Wood.');
+        if (out > 0) {
+          final bonusStr = doubleProduction ? ' (Doubled by Bounty!)' : '';
+          addLog('Lumber Mill produced +$out Wood$bonusStr.');
+        }
       } else if (b.type == SurvivalBuildingType.mine) {
-        final out = getMineOutput(b.level, workers);
+        var out = getMineOutput(b.level, workers);
+        if (doubleProduction) out *= 2;
         _progress!.iron += out;
-        if (out > 0) addLog('Iron Mine produced +$out Iron (workers: $workers).');
+        if (out > 0) {
+          final bonusStr = doubleProduction ? ' (Doubled by Bounty!)' : '';
+          addLog('Iron Mine produced +$out Iron (workers: $workers)$bonusStr.');
+        }
       } else {
         var out = getAdvancedOutput(b.level, workers);
         if (b.type == SurvivalBuildingType.arsenal &&
             _progress!.cardUpgrades['davos_vaccine_choice'] == 1) {
           out = (out * 1.5).round();
         }
+        final hasActuarial = globalGameState?.unlockedDiscoveries.contains('actuarial_probability') ?? false;
+        if (hasActuarial) {
+          out = (out * 1.20).round();
+        }
+        if (doubleProduction) out *= 2;
+
+        if (_progress!.cardUpgrades['gnomes_syndicate_active'] == 1) {
+          out = (out * 1.5).round();
+        } else if (_progress!.cardUpgrades['gnomes_foreclosure_penalty'] == 1) {
+          out = (out * 0.7).round();
+        }
+
         _progress!.cash += out;
-        if (out > 0) addLog('${b.type.displayName.toUpperCase()} produced +$out CHF (workers: $workers).');
+        if (out > 0) {
+          final bonusStr = (hasActuarial ? ' (including +20% Actuarial bonus)' : '') +
+              (doubleProduction ? ' (Doubled by Bounty!)' : '');
+          addLog('${b.type.displayName.toUpperCase()} produced +$out CHF (workers: $workers)$bonusStr.');
+        }
       }
     }
 
@@ -879,6 +944,10 @@ class SurvivalService extends ChangeNotifier {
       }
     }
 
+    // Clear temporary turn-based Fate upgrades
+    _progress!.cardUpgrades.remove('market_temp_discount');
+    _progress!.cardUpgrades.remove('double_estate_production');
+
     // Increment Turn Counter
     _progress!.currentTurn += 1;
     _save();
@@ -929,11 +998,17 @@ class SurvivalService extends ChangeNotifier {
       // 1) Food: 2-3 per animal card + 10 baseline
       final spoilsFood = customSpoilsFood ?? (10 + wildAnimals * (2 + rand.nextInt(2)));
       // 2) Cash: 10-15 chf per human card + 100 + turn * 20 baseline
-      final spoilsCash = customSpoilsCash ?? (100 + currentTurn * 20 + humans * (10 + rand.nextInt(6)));
+      int spoilsCash = customSpoilsCash ?? (100 + currentTurn * 20 + humans * (10 + rand.nextInt(6)));
       // 3) Iron: 4-6 per vehicle card
       final spoilsIron = customSpoilsIron ?? (vehicles * (4 + rand.nextInt(3)));
       // 4) Wood: 10 wood per enemy tower level destroyed (tower level = currentTurn) + 30 baseline
       final spoilsWood = customSpoilsWood ?? (30 + destroyedEnemyTowers * 10 * currentTurn);
+
+      if (_progress!.cardUpgrades['gnomes_syndicate_active'] == 1) {
+        spoilsCash = (spoilsCash * 1.5).round();
+      } else if (_progress!.cardUpgrades['gnomes_foreclosure_penalty'] == 1) {
+        spoilsCash = (spoilsCash * 0.7).round();
+      }
 
       _progress!.cash += spoilsCash;
       _progress!.wood += spoilsWood;

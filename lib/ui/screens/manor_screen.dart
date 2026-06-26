@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../state/game_state.dart';
 import '../../models/room.dart';
+import '../../models/crop.dart';
 import '../../services/task_service.dart';
 import '../../services/science_service.dart';
 import '../../util/manor_layout.dart';
@@ -1017,16 +1018,44 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                liveRoom.isRestored
-                    ? 'RESTORED AND FUNCTIONAL.'
-                    : 'THIS ROOM IS IN DISREPAIR AND REQUIRES RESTORATION.',
-                style: GoogleFonts.oldStandardTt(
-                  fontSize: 11,
-                  color: const Color(0xFFC4B89B),
-                  letterSpacing: 1.2,
-                ),
-              ),
+              () {
+                if (liveRoom.type == RoomType.field) {
+                  final roomCrops = state.crops.where((c) => c.roomId == liveRoom.id).toList();
+                  if (roomCrops.isNotEmpty) {
+                    final crop = roomCrops[0];
+                    final prefix = crop.isDead ? "CROPS DIED" : "ACTIVE CROPS";
+                    final cropName = _getCropDisplayName(crop.type);
+                    return Text(
+                      "$prefix: $cropName",
+                      style: GoogleFonts.oldStandardTt(
+                        fontSize: 11,
+                        color: crop.isDead ? Colors.redAccent : const Color(0xFFC4B89B),
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  } else if (liveRoom.isRestored) {
+                    return Text(
+                      "FALLOW.",
+                      style: GoogleFonts.oldStandardTt(
+                        fontSize: 11,
+                        color: const Color(0xFFC4B89B),
+                        letterSpacing: 1.2,
+                      ),
+                    );
+                  }
+                }
+                return Text(
+                  liveRoom.isRestored
+                      ? 'RESTORED AND FUNCTIONAL.'
+                      : 'THIS ROOM IS IN DISREPAIR AND REQUIRES RESTORATION.',
+                  style: GoogleFonts.oldStandardTt(
+                    fontSize: 11,
+                    color: const Color(0xFFC4B89B),
+                    letterSpacing: 1.2,
+                  ),
+                );
+              }(),
               const SizedBox(height: 10),
               ...state.activeTasks.where((t) => t.targetId == liveRoom.id).map((
                 activeTask,
@@ -1149,7 +1178,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                       liveRoom.type == RoomType.chickenCoop ||
                       liveRoom.type == RoomType.kitchen ||
                       liveRoom.type == RoomType.garden ||
-                      (liveRoom.type == RoomType.diningRoom && state.activeBusinesses.any((b) => b.type == BusinessType.bistro && (b.status == 'active' || b.status == 'inProgress'))) ||
+                      (liveRoom.type == RoomType.diningRoom && state.activeBusinesses.any((b) => b.type.isFoodOrDrinkService && (b.status == 'active' || b.status == 'inProgress'))) ||
                       liveRoom.type == RoomType.library))
                 SizedBox(
                   width: double.infinity,
@@ -1460,7 +1489,12 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               label = "RESEARCH ${activityId.toUpperCase().replaceAll('_', ' ')}";
             }
           } else {
-            label = "RESEARCH ${topic.toUpperCase().replaceAll('_', ' ')}";
+            final item = state.findItemInManor(topic);
+            if (item != null) {
+              label = "RESEARCH ${item.name.toUpperCase()}";
+            } else {
+              label = "RESEARCH ${topic.toUpperCase().replaceAll('_', ' ')}";
+            }
           }
         }
       }
@@ -1653,15 +1687,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               padding: EdgeInsets.symmetric(vertical: 6.0),
               child: Divider(color: Colors.white10),
             ),
-            Text(
-              roomCrops[0].isDead ? "CROPS DIED:" : "ACTIVE CROPS:",
-              style: GoogleFonts.oswald(
-                fontSize: 9,
-                color: roomCrops[0].isDead ? Colors.redAccent : const Color(0xFFC4B89B),
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 4),
             if (roomCrops[0].isDead)
               Text(
                 "Crops have withered completely from lack of moisture. Clear the field to replant.",
@@ -1692,6 +1717,31 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         ],
       ),
     );
+  }
+
+  String _getCropDisplayName(CropType type) {
+    switch (type) {
+      case CropType.cabbage:
+        return "CABBAGE";
+      case CropType.potato:
+        return "POTATOES";
+      case CropType.carrot:
+        return "CARROTS";
+      case CropType.beet:
+        return "BEETS";
+      case CropType.fabaBean:
+        return "FABA BEANS";
+      case CropType.greenBean:
+        return "GREEN BEANS";
+      case CropType.grain:
+        return "GRAIN";
+      case CropType.cannabis:
+        return "CANNABIS";
+      case CropType.tobacco:
+        return "TOBACCO";
+      case CropType.mushroom:
+        return "MUSHROOMS";
+    }
   }
 
   Widget _statusRow(String label, double progress) {
@@ -1825,7 +1875,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
         return state.getFirstUnassignedLaboratoryTask() != null;
       case TaskType.tillSoil:
         final hasActiveCrops = state.crops.any((c) => c.roomId == room.id);
-        return !hasActiveCrops && !room.isTilled;
+        return !hasActiveCrops && room.tilledAmount < 1.0;
       case TaskType.fertilizeSoil:
         final hasActiveCrops = state.crops.any((c) => c.roomId == room.id);
         return !hasActiveCrops && room.fertilizedAmount < 1.0;
@@ -1917,6 +1967,10 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
 
   void _showSeedSelection(BuildContext context, GameState state, Room room) {
     final seedResources = state.resources.entries
+        .map((e) {
+          final effective = state.getEffectiveResourceAmount(e.key);
+          return MapEntry(e.key, effective);
+        })
         .where((e) => e.key.startsWith('seeds_') && e.value > 0)
         .toList();
 
@@ -2692,7 +2746,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
             child: ListView(
               shrinkWrap: true,
               children: [
-                if (room.floor == Floor.attic || room.floor == Floor.basement)
+                if ((room.floor == Floor.attic || room.floor == Floor.basement) && state.hasItemInManor('lab_schematics'))
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
@@ -2703,7 +2757,10 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                       onTap: () {
                         Navigator.pop(context);
                         _selectedRoomForDetails = null;
-                        state.convertRoomToLaboratory(room.id);
+                        final error = state.convertRoomToLaboratory(room.id);
+                        if (error != null) {
+                          _showWarningDialog(context, error);
+                        }
                       },
                       leading: const Icon(Icons.biotech, color: Color(0xFFC4B89B)),
                       title: Text(
@@ -2725,13 +2782,16 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Colors.black26,
-                      border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                      border: Border.all(color: const Color(0xFFC4B89B).withOpacity(0.3)),
                     ),
                     child: ListTile(
                       onTap: () {
                         Navigator.pop(context);
                         _selectedRoomForDetails = null;
-                        state.convertUnusedToBedroom(room.id);
+                        final error = state.convertUnusedToBedroom(room.id);
+                        if (error != null) {
+                          _showWarningDialog(context, error);
+                        }
                       },
                       leading: const Icon(Icons.bed, color: Color(0xFFC4B89B)),
                       title: Text(
@@ -2752,13 +2812,16 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Colors.black26,
-                      border: Border.all(color: const Color(0xFFC4B89B).withValues(alpha: 0.3)),
+                      border: Border.all(color: const Color(0xFFC4B89B).withOpacity(0.3)),
                     ),
                     child: ListTile(
                       onTap: () {
                         Navigator.pop(context);
                         _selectedRoomForDetails = null;
-                        state.convertUnusedToBallroom(room.id);
+                        final error = state.convertUnusedToBallroom(room.id);
+                        if (error != null) {
+                          _showWarningDialog(context, error);
+                        }
                       },
                       leading: const Icon(Icons.celebration, color: Color(0xFFC4B89B)),
                       title: Text(
@@ -2785,6 +2848,57 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               child: Text(
                 "ABANDON",
                 style: GoogleFonts.playfairDisplay(color: Colors.white24, fontSize: 11),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showWarningDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1A15),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: Color(0xFFC4B89B), width: 1.5),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 22),
+              const SizedBox(width: 12),
+              Text(
+                "CONSTRUCTION BLOCKED",
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: GoogleFonts.oldStandardTt(
+              color: Colors.white70,
+              fontSize: 11,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                "ACKNOWLEDGE",
+                style: GoogleFonts.oswald(
+                  color: const Color(0xFFC4B89B),
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
           ],
