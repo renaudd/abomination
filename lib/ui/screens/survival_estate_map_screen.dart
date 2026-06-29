@@ -2593,7 +2593,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                 processLevelUps().then((_) {
                   // Route straight to Combat stage! Leveled-up stats are dynamically mapped here!
-                  final playerUnits = progress.playerDeckIds.map((t) {
+                  final filteredDeckIds = progress.playerDeckIds.where((t) {
+                    final npc = CombatUnitService.createUnit(t);
+                    if ((progress.cardUpgrades['garage_disabled_turns'] ?? 0) > 0 && npc.combatStats?.unitType == UnitType.vehicle) {
+                      return false;
+                    }
+                    if ((progress.cardUpgrades['artillery_disabled_encounters'] ?? 0) > 0 && t == 'artillery_barrage') {
+                      return false;
+                    }
+                    return true;
+                  }).toList();
+                  final playerUnits = filteredDeckIds.map((t) {
                     final npc = CombatUnitService.createUnit(t);
                     final lvl = progress.getUnitLevel(t);
                     final mult = 1.0 + (lvl - 1) * 0.1;
@@ -3377,6 +3387,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
             const woodRepairCost = 50;
             const cashRepairCost = 180;
+            int actualCashRepairCost = cashRepairCost;
+            if ((currentProgress.cardUpgrades['double_construction_costs_turns'] ?? 0) > 0) {
+              actualCashRepairCost *= 2;
+            } else if ((currentProgress.cardUpgrades['repair_cost_multiplier_turns'] ?? 0) > 0) {
+              actualCashRepairCost = (actualCashRepairCost * 1.5).round();
+            }
 
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1712),
@@ -3520,13 +3536,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                     context: context,
                                     service: service,
                                     towerId: towerId,
-                                    label: 'CONTRACT (180 CHF)',
+                                    label: 'CONTRACT ($actualCashRepairCost CHF)',
                                     method: 'cash',
                                     woodCost: 0,
-                                    cashCost: cashRepairCost,
+                                    cashCost: actualCashRepairCost,
                                     color: Colors.amber,
                                     enabled:
-                                        currentProgress.cash >= cashRepairCost,
+                                        currentProgress.cash >= actualCashRepairCost,
                                     onSuccess: () => setDialogState(() {}),
                                   ),
                                   const SizedBox(height: 6),
@@ -3989,6 +4005,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     int iron,
     int cash,
   ) {
+    int actualCash = cash;
+    if ((service.progress!.cardUpgrades['double_construction_costs_turns'] ?? 0) > 0) {
+      actualCash *= 2;
+    } else if ((service.progress!.cardUpgrades['repair_cost_multiplier_turns'] ?? 0) > 0) {
+      actualCash = (actualCash * 1.5).round();
+    }
+
     return SimpleDialogOption(
       onPressed: () {
         if (service.buildFacility(plotKey, type, wood, iron, cash)) {
@@ -4003,7 +4026,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 11),
           ),
           Text(
-            '$wood W | $iron I | $cash CHF',
+            '$wood W | $iron I | $actualCash CHF',
             style: const TextStyle(color: Colors.amber, fontSize: 9),
           ),
         ],
@@ -4031,7 +4054,12 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
     final costWood = 30 * level;
     final costIron = 10 * level;
-    final costCash = 100 * level;
+    int costCash = 100 * level;
+    if ((service.progress!.cardUpgrades['double_construction_costs_turns'] ?? 0) > 0) {
+      costCash *= 2;
+    } else if ((service.progress!.cardUpgrades['repair_cost_multiplier_turns'] ?? 0) > 0) {
+      costCash = (costCash * 1.5).round();
+    }
 
     final String resName;
     final int currentOutput;
@@ -11261,7 +11289,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     required int spoilsIron,
     required int spoilsWood,
   }) {
-    final playerUnits = progress.playerDeckIds.map((t) {
+    final filteredDeckIds = progress.playerDeckIds.where((t) {
+      final npc = CombatUnitService.createUnit(t);
+      if ((progress.cardUpgrades['garage_disabled_turns'] ?? 0) > 0 && npc.combatStats?.unitType == UnitType.vehicle) {
+        return false;
+      }
+      if ((progress.cardUpgrades['artillery_disabled_encounters'] ?? 0) > 0 && t == 'artillery_barrage') {
+        return false;
+      }
+      return true;
+    }).toList();
+    final playerUnits = filteredDeckIds.map((t) {
       final npc = CombatUnitService.createUnit(t);
       final lvl = progress.getUnitLevel(t);
       final mult = 1.0 + (lvl - 1) * 0.1;

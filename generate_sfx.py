@@ -250,6 +250,53 @@ def make_experiment():
             samples[i] += s
     return samples
 
+def make_combat_attack():
+    samples = []
+    num_samples = int(SAMPLE_RATE * 0.15)
+    for i in range(num_samples):
+        t = i / SAMPLE_RATE
+        freq = 1800 - 1000 * (t / 0.15)
+        env = math.exp(-t * 35)
+        noise = random.uniform(-0.1, 0.1)
+        s = (math.sin(2 * math.pi * freq * t) + noise) * env * 0.4
+        samples.append(s)
+    return samples
+
+def make_combat_summon():
+    samples = []
+    num_samples = int(SAMPLE_RATE * 0.4)
+    for i in range(num_samples):
+        t = i / SAMPLE_RATE
+        freq = 400 + 800 * (t / 0.4)
+        vibrato = math.sin(2 * math.pi * 15 * t) * 30
+        env = math.sin(math.pi * (t / 0.4))
+        s = math.sin(2 * math.pi * (freq + vibrato) * t) * env * 0.35
+        samples.append(s)
+    return samples
+
+def make_combat_death():
+    samples = []
+    num_samples = int(SAMPLE_RATE * 0.5)
+    for i in range(num_samples):
+        t = i / SAMPLE_RATE
+        freq = 150 - 110 * (t / 0.5)
+        env = math.exp(-t * 8)
+        s = math.sin(2 * math.pi * freq * t) * env * 0.5
+        samples.append(s)
+    return samples
+
+def make_combat_caltrops():
+    samples = [0] * int(SAMPLE_RATE * 0.8)
+    for clink_time in [0.05, 0.12, 0.22, 0.3, 0.45, 0.6]:
+        start = int(SAMPLE_RATE * clink_time)
+        for i in range(int(SAMPLE_RATE * 0.08)):
+            t = i / SAMPLE_RATE
+            freq = random.uniform(2200, 2600)
+            env = math.exp(-t * 50)
+            s = math.sin(2 * math.pi * freq * t) * env * 0.15
+            samples[start + i] += s
+    return samples
+
 def main():
     write_wav("sfx_tap.wav", make_tap())
     write_wav("sfx_achievement.wav", make_achievement())
@@ -267,7 +314,11 @@ def main():
     write_wav("sfx_eggs.wav", make_eggs())
     write_wav("sfx_meal.wav", make_meal())
     write_wav("sfx_experiment.wav", make_experiment())
-    print("All 16 SFX successfully generated!")
+    write_wav("sfx_combat_attack.wav", make_combat_attack())
+    write_wav("sfx_combat_summon.wav", make_combat_summon())
+    write_wav("sfx_combat_death.wav", make_combat_death())
+    write_wav("sfx_combat_caltrops.wav", make_combat_caltrops())
+    print("All 20 SFX successfully generated!")
 
 if __name__ == "__main__":
     main()

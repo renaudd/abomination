@@ -190,6 +190,7 @@ class _AbominationAppState extends State<AbominationApp> {
       child: MaterialApp(
         navigatorKey: navigatorKey,
         title: 'Abomination',
+        debugShowCheckedModeBanner: false,
         theme: _isFullyLoaded
             ? ThemeData(
                 brightness: Brightness.dark,

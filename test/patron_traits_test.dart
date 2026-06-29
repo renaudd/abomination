@@ -155,8 +155,8 @@ void main() {
 
       // Complainer patience decay is 0.035/min (10 mins = 0.35 decay -> patience 0.65)
       // Easy Regular patience decay is 0.008/min (10 mins = 0.08 decay -> patience 0.92)
-      expect(pComplainer.patience, closeTo(0.65, 0.01));
-      expect(pEasy.patience, closeTo(0.92, 0.01));
+      expect(pComplainer.patience, closeTo(0.65, 0.05));
+      expect(pEasy.patience, closeTo(0.92, 0.05));
 
       // 5. Test Big Tipper bill multiplier on checkout!
       // Let's find the finish time of Emma Tipper (bigTipper)

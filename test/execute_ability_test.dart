@@ -136,7 +136,7 @@ void main() {
 
       final enemy = CombatUnitFactory.createGoon().copyWith(
         combatStats: CombatUnitFactory.createGoon().combatStats!.copyWith(
-          health: 50, // Enemy is < 50%
+          health: 30, // Enemy is < 40% threshold
         ),
       );
 
@@ -522,10 +522,10 @@ void main() {
       final oldGoon = manager.combatants.firstWhereOrNull((c) => c.npc.id == 'goons_1');
       expect(oldGoon == null || oldGoon.isDead, isTrue);
 
-      // A fresh Goons squad should be spawned on the field with 130.0 health
+      // A fresh Goons squad should be spawned on the field with 95.0 health
       final newGoon = manager.combatants.firstWhereOrNull((c) => c.npc.name == 'Goons' && !c.isDead && c.npc.id != 'goons_1');
       expect(newGoon, isNotNull);
-      expect(newGoon!.npc.combatStats!.health, equals(130.0));
+      expect(newGoon!.npc.combatStats!.health, equals(95.0));
     });
 
     test('Card balance stats are correct', () {

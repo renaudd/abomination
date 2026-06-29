@@ -27,6 +27,7 @@ class CharacterBlobRenderer extends StatelessWidget {
 
   final bool isCombat;
   final bool isLiveBattlefield;
+  final bool? isPlayerSide;
 
   const CharacterBlobRenderer({
     super.key,
@@ -39,6 +40,7 @@ class CharacterBlobRenderer extends StatelessWidget {
     this.attackCooldown,
     this.isCombat = false,
     this.isLiveBattlefield = false,
+    this.isPlayerSide,
   });
 
   @override
@@ -56,7 +58,7 @@ class CharacterBlobRenderer extends StatelessWidget {
           children: [
             if ((npc.combatStats?.swarmSize ?? 0) > 0)
               _buildSwarm(npc, size)
-            else if (npc.name.toLowerCase().contains('ram'))
+            else if (npc.name.toLowerCase().contains('battering ram'))
               _buildBatteringRam(size)
             else if (npc.specimenType == 'Bat' ||
                 npc.name.toLowerCase().contains('bat'))
@@ -161,187 +163,225 @@ class CharacterBlobRenderer extends StatelessWidget {
                 ),
               ),
 
-              // Body (Rounded Rect)
-              _buildAnimatedContainer(
-                child: Container(
-                  width: _getBodyWidth(appearance.bodyType, size),
-                  height: _getBodyHeight(appearance.bodyType, size),
-                  decoration: BoxDecoration(
-                    color: _getCustomOutfitColor(npc),
-                    borderRadius: BorderRadius.circular(
-                      _getBodyRadius(appearance.bodyType, size),
-                    ),
-                    border: Border.all(color: Colors.black12, width: 0.5),
-                  ),
-                ),
-                offset: Offset(
-                  0,
-                  size *
-                      ((npc.role == 'Coven' ||
-                              npc.equippedVisuals.contains('WitchHat') ||
-                              npc.equippedVisuals.contains('PlumHat'))
-                          ? 0.3
-                          : 0.1),
+              // Humanoid Body, Head, Gear, and Weapons wrapped in a lunge attack transform
+              Positioned.fill(
+                child: Builder(
+                  builder: (context) {
+                    final bool hasMeleeAttack = (npc.combatStats?.meleeDamage ?? 0) > 0 || (npc.combatStats?.rangedDamage ?? 0) == 0;
+                    double strikeProgress = 0.0;
+                    if (isCombat && attackCooldown != null) {
+                      final maxCooldown = (npc.combatStats?.speed ?? 1.0) * 1.2;
+                      final elapsed = maxCooldown - attackCooldown!;
+                      if (elapsed >= 0 && elapsed <= 0.45) {
+                        final t = elapsed / 0.45;
+                        strikeProgress = t < 0.5 ? (t * 2) : (1.0 - (t - 0.5) * 2);
+                      }
+                    }
+                    final bool isAttacking = strikeProgress > 0.01;
+                    final double strikeOffset = strikeProgress * 14.0;
+                    final double strikeAngle = strikeProgress * 0.35;
+                    final double dirMult = (isPlayerSide ?? npc.isPlayer) ? 1.0 : -1.0;
+
+                    return Transform.translate(
+                      offset: Offset(
+                        (isCombat && hasMeleeAttack && isAttacking) ? strikeOffset * dirMult : 0.0,
+                        0.0,
+                      ),
+                      child: Transform.rotate(
+                        angle: (isCombat && hasMeleeAttack && isAttacking) ? strikeAngle * dirMult : 0.0,
+                        alignment: Alignment.bottomCenter,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Body (Rounded Rect)
+                            _buildAnimatedContainer(
+                              child: Container(
+                                width: _getBodyWidth(appearance.bodyType, size),
+                                height: _getBodyHeight(appearance.bodyType, size),
+                                decoration: BoxDecoration(
+                                  color: _getCustomOutfitColor(npc),
+                                  borderRadius: BorderRadius.circular(
+                                    _getBodyRadius(appearance.bodyType, size),
+                                  ),
+                                  border: Border.all(color: Colors.black12, width: 0.5),
+                                ),
+                              ),
+                              offset: Offset(
+                                0,
+                                size *
+                                    ((npc.role == 'Coven' ||
+                                            npc.equippedVisuals.contains('WitchHat') ||
+                                            npc.equippedVisuals.contains('PlumHat'))
+                                        ? 0.3
+                                        : 0.1),
+                              ),
+                            ),
+
+                            // Head (Circle)
+                            _buildAnimatedContainer(
+                              child: Stack(
+                                alignment: Alignment.center,
+                                clipBehavior: Clip.none,
+                                children: [
+                                  // Hair (Back)
+                                  if (appearance.hairStyle != HairStyle.none &&
+                                      appearance.hairStyle != HairStyle.bald)
+                                    _buildHair(appearance, size, isBack: true),
+
+                                  // Skin
+                                  Container(
+                                    width: size * (npc.role == 'Bruiser' ? 0.45 : 0.4),
+                                    height: size * (npc.role == 'Sharpshooter' ? 0.45 : 0.4),
+                                    decoration: BoxDecoration(
+                                      color: _getCustomSkinColor(npc),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.black12, width: 0.5),
+                                    ),
+                                  ),
+
+                                  // Eyes
+                                  Positioned(
+                                    top: size * 0.18,
+                                    left: size * 0.1,
+                                    child: _buildEye(
+                                      npc.status == NPCStatus.broken
+                                          ? Colors.red
+                                          : appearance.eyeColor,
+                                      size,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: size * 0.18,
+                                    right: size * 0.1,
+                                    child: _buildEye(
+                                      npc.status == NPCStatus.broken
+                                          ? Colors.red
+                                          : appearance.eyeColor,
+                                      size,
+                                    ),
+                                  ),
+
+                                  // Facial Hair
+                                  if (appearance.facialHairStyle != FacialHairStyle.none)
+                                    _buildFacialHair(appearance, size),
+
+                                  // Hair (Front)
+                                  if (appearance.hairStyle != HairStyle.none &&
+                                      appearance.hairStyle != HairStyle.bald)
+                                    _buildHair(appearance, size, isBack: false),
+
+                                  // Samurai Kabuto Helmet
+                                  if (npc.name.toLowerCase().contains('samurai'))
+                                    _buildSamuraiHelmet(size)
+                                  else if (npc.name.toLowerCase().contains('sapper'))
+                                    Container(width: size * 0.35, height: size * 0.15, decoration: BoxDecoration(color: const Color(0xFF37474F), borderRadius: BorderRadius.circular(2)), child: const Icon(Icons.remove_red_eye, color: Colors.amberAccent, size: 8))
+                                  else if (npc.name.toLowerCase().contains('pyre'))
+                                    Container(width: size * 0.35, height: size * 0.35, decoration: BoxDecoration(color: const Color(0xFFCFD8DC), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.amber)))
+                                  else if (npc.name.toLowerCase().contains('thug'))
+                                    Container(width: size * 0.35, height: size * 0.18, decoration: const BoxDecoration(color: Color(0xFF3E2723), borderRadius: BorderRadius.vertical(top: Radius.circular(8))))
+                                  else if (npc.name.toLowerCase().contains('captain'))
+                                    Container(width: size * 0.45, height: size * 0.15, decoration: const BoxDecoration(color: Color(0xFFB71C1C), border: Border(bottom: BorderSide(color: Colors.amber, width: 2))))
+                                  else if (npc.name.toLowerCase().contains('martyr'))
+                                    Container(width: size * 0.28, height: size * 0.25, decoration: const BoxDecoration(color: Color(0xFFD32F2F), borderRadius: BorderRadius.only(topLeft: Radius.circular(12))))
+                                  else if (npc.name.toLowerCase().contains('raider'))
+                                    Container(width: size * 0.35, height: size * 0.35, decoration: const BoxDecoration(color: Color(0xFF004D40), shape: BoxShape.circle))
+                                  else if (npc.name.toLowerCase().contains('assassin'))
+                                    Container(width: size * 0.4, height: size * 0.12, color: Colors.black87)
+                                  else if (npc.role == 'Coven' ||
+                                      npc.equippedVisuals.contains('WitchHat') ||
+                                      npc.equippedVisuals.contains('PlumHat') ||
+                                      npc.name.toLowerCase().contains('mesmerist'))
+                                    _buildWitchHat(size, _getHatColor(npc)),
+                                ],
+                              ),
+                              offset: Offset(
+                                0,
+                                size *
+                                    ((npc.role == 'Coven' ||
+                                            npc.equippedVisuals.contains('WitchHat') ||
+                                            npc.equippedVisuals.contains('PlumHat'))
+                                        ? 0.05
+                                        : -0.15),
+                              ),
+                              delayFactor: 0.5,
+                            ),
+
+                            // Gear / Items
+                            if (npc.specimenType == 'Human')
+                              ...npc.equippedVisuals.map(
+                                (item) => _buildItemBlob(item, size),
+                              ),
+
+                            // Healing Energy Waves Aura (ONLY on live battlefield, NOT on card portraits!)
+                            if (isLiveBattlefield &&
+                                (npc.name.toLowerCase().contains('brewer') ||
+                                    npc.name.toLowerCase().contains('hag')))
+                              Positioned.fill(
+                                child: CustomPaint(
+                                  painter: _HealingWavesPainter(
+                                    progress:
+                                        (DateTime.now().millisecondsSinceEpoch % 1500) /
+                                        1500.0,
+                                  ),
+                                ),
+                              ),
+
+                            // Staff Sling (Witch)
+                            if (isCombat &&
+                                (npc.name.toLowerCase().contains('witch') ||
+                                    npc.equippedVisuals.contains('Sling')))
+                              _buildStaffSlingOverlay(size),
+
+                            // Crossbow (Warlock)
+                            if (isCombat &&
+                                ((npc.name.toLowerCase().contains('warlock') && !npc.name.toLowerCase().contains('mesmerist')) ||
+                                    npc.equippedVisuals.contains('Crossbow')))
+                              _buildCrossbowOverlay(size),
+
+                            // Pole Weapons (Halberdier, Pikeman, Mob/Villager, Broomstick)
+                            if (isCombat &&
+                                (npc.name.toLowerCase().contains('halberd') ||
+                                    npc.name.toLowerCase().contains('pike') ||
+                                    npc.name.toLowerCase().contains('mob') ||
+                                    npc.name.toLowerCase().contains('villager') ||
+                                    npc.equippedVisuals.contains('Broom') ||
+                                    npc.name.toLowerCase().contains('brewer') ||
+                                    npc.name.toLowerCase().contains('hag')))
+                              _buildPoleWeaponOverlay(size),
+
+                            // Ranged Infantry Muskets / Firearm users
+                            if (isCombat && _isUsingFirearm(npc))
+                              _buildMusketOverlay(size),
+
+                            // Custom Victorian & Esoteric Weapon Overlays
+                            if (isCombat && npc.name.toLowerCase().contains('mesmerist'))
+                              Positioned(top: -size * 0.1, child: Icon(Icons.waves, color: Colors.amberAccent, size: size * 0.5)),
+                            if (isCombat && npc.name.toLowerCase().contains('sapper'))
+                              Positioned(left: -size * 0.2, top: size * 0.05, child: Row(children: [Container(width: size * 0.25, height: 8, color: Colors.red), Container(width: 4, height: 4, color: Colors.orange)])),
+                            if (isCombat && npc.name.toLowerCase().contains('pyre'))
+                              Positioned(left: -size * 0.25, top: 2, child: Transform.rotate(angle: -0.4, child: Container(width: size * 0.45, height: 6, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Colors.white, Colors.orange, Colors.red]))))),
+                            if (isCombat && npc.name.toLowerCase().contains('collector'))
+                              Positioned(left: -size * 0.2, top: size * 0.05, child: Transform.rotate(angle: -0.2, child: Container(width: size * 0.35, height: size * 0.15, color: const Color(0xFF1B5E20)))),
+                            if (isCombat && npc.name.toLowerCase().contains('arsonist'))
+                              Positioned(left: -size * 0.25, top: 0, child: Row(children: [Container(width: size * 0.3, height: 3, color: Colors.grey), const Icon(Icons.whatshot, color: Colors.deepOrangeAccent, size: 14)])),
+                            if (isCombat && npc.name.toLowerCase().contains('raider'))
+                              Positioned(left: -size * 0.2, top: size * 0.1, child: Row(children: [Container(width: size * 0.2, height: 3, color: Colors.greenAccent), const SizedBox(width: 4), Container(width: size * 0.2, height: 3, color: Colors.greenAccent)])),
+                            if (isCombat && npc.name.toLowerCase().contains('standard bearer'))
+                              Positioned(left: -size * 0.25, top: -size * 0.3, child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: 3, height: size * 0.8, color: Colors.amber), Container(width: size * 0.35, height: size * 0.25, color: Colors.blue.shade900)])),
+                            if (isCombat && npc.name.toLowerCase().contains('herbalist'))
+                              Positioned(right: -2, top: size * 0.1, child: Container(width: size * 0.2, height: size * 0.2, decoration: BoxDecoration(color: Colors.lightGreen, borderRadius: BorderRadius.circular(4)))),
+                            if (isCombat && npc.name.toLowerCase().contains('thug'))
+                              Positioned(left: -size * 0.2, top: size * 0.05, child: Transform.rotate(angle: -0.3, child: Container(width: size * 0.35, height: 5, color: const Color(0xFF3E2723)))),
+                            if (isCombat && npc.name.toLowerCase().contains('captain'))
+                              Positioned(left: -size * 0.25, top: size * 0.05, child: Row(children: [Container(width: 4, height: 8, color: Colors.amber), Container(width: size * 0.35, height: 2.5, color: Colors.white)])),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                 ),
               ),
-
-              // Head (Circle)
-              _buildAnimatedContainer(
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Hair (Back)
-                    if (appearance.hairStyle != HairStyle.none &&
-                        appearance.hairStyle != HairStyle.bald)
-                      _buildHair(appearance, size, isBack: true),
-
-                    // Skin
-                    Container(
-                      width: size * (npc.role == 'Bruiser' ? 0.45 : 0.4),
-                      height: size * (npc.role == 'Sharpshooter' ? 0.45 : 0.4),
-                      decoration: BoxDecoration(
-                        color: _getCustomSkinColor(npc),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black12, width: 0.5),
-                      ),
-                    ),
-
-                    // Eyes
-                    Positioned(
-                      top: size * 0.18,
-                      left: size * 0.1,
-                      child: _buildEye(
-                        npc.status == NPCStatus.broken
-                            ? Colors.red
-                            : appearance.eyeColor,
-                        size,
-                      ),
-                    ),
-                    Positioned(
-                      top: size * 0.18,
-                      right: size * 0.1,
-                      child: _buildEye(
-                        npc.status == NPCStatus.broken
-                            ? Colors.red
-                            : appearance.eyeColor,
-                        size,
-                      ),
-                    ),
-
-                    // Facial Hair
-                    if (appearance.facialHairStyle != FacialHairStyle.none)
-                      _buildFacialHair(appearance, size),
-
-                    // Hair (Front)
-                    if (appearance.hairStyle != HairStyle.none &&
-                        appearance.hairStyle != HairStyle.bald)
-                      _buildHair(appearance, size, isBack: false),
-
-                    // Samurai Kabuto Helmet
-                    if (npc.name.toLowerCase().contains('samurai'))
-                      _buildSamuraiHelmet(size)
-                    else if (npc.name.toLowerCase().contains('sapper'))
-                      Container(width: size * 0.35, height: size * 0.15, decoration: BoxDecoration(color: const Color(0xFF37474F), borderRadius: BorderRadius.circular(2)), child: const Icon(Icons.remove_red_eye, color: Colors.amberAccent, size: 8))
-                    else if (npc.name.toLowerCase().contains('pyre'))
-                      Container(width: size * 0.35, height: size * 0.35, decoration: BoxDecoration(color: const Color(0xFFCFD8DC), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.amber)))
-                    else if (npc.name.toLowerCase().contains('thug'))
-                      Container(width: size * 0.35, height: size * 0.18, decoration: const BoxDecoration(color: Color(0xFF3E2723), borderRadius: BorderRadius.vertical(top: Radius.circular(8))))
-                    else if (npc.name.toLowerCase().contains('captain'))
-                      Container(width: size * 0.45, height: size * 0.15, decoration: const BoxDecoration(color: Color(0xFFB71C1C), border: Border(bottom: BorderSide(color: Colors.amber, width: 2))))
-                    else if (npc.name.toLowerCase().contains('martyr'))
-                      Container(width: size * 0.28, height: size * 0.25, decoration: const BoxDecoration(color: Color(0xFFD32F2F), borderRadius: BorderRadius.only(topLeft: Radius.circular(12))))
-                    else if (npc.name.toLowerCase().contains('raider'))
-                      Container(width: size * 0.35, height: size * 0.35, decoration: const BoxDecoration(color: Color(0xFF004D40), shape: BoxShape.circle))
-                    else if (npc.name.toLowerCase().contains('assassin'))
-                      Container(width: size * 0.4, height: size * 0.12, color: Colors.black87)
-                    else if (npc.role == 'Coven' ||
-                        npc.equippedVisuals.contains('WitchHat') ||
-                        npc.equippedVisuals.contains('PlumHat') ||
-                        npc.name.toLowerCase().contains('mesmerist'))
-                      _buildWitchHat(size, _getHatColor(npc)),
-                  ],
-                ),
-                offset: Offset(
-                  0,
-                  size *
-                      ((npc.role == 'Coven' ||
-                              npc.equippedVisuals.contains('WitchHat') ||
-                              npc.equippedVisuals.contains('PlumHat'))
-                          ? 0.05
-                          : -0.15),
-                ),
-                delayFactor: 0.5,
-              ),
-
-              // Gear / Items
-              if (npc.specimenType == 'Human')
-                ...npc.equippedVisuals.map(
-                  (item) => _buildItemBlob(item, size),
-                ),
-
-              // Healing Energy Waves Aura (ONLY on live battlefield, NOT on card portraits!)
-              if (isLiveBattlefield &&
-                  (npc.name.toLowerCase().contains('brewer') ||
-                      npc.name.toLowerCase().contains('hag')))
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _HealingWavesPainter(
-                      progress:
-                          (DateTime.now().millisecondsSinceEpoch % 1500) /
-                          1500.0,
-                    ),
-                  ),
-                ),
-
-              // Staff Sling (Witch)
-              if (isCombat &&
-                  (npc.name.toLowerCase().contains('witch') ||
-                      npc.equippedVisuals.contains('Sling')))
-                _buildStaffSlingOverlay(size),
-
-              // Crossbow (Warlock)
-              if (isCombat &&
-                  ((npc.name.toLowerCase().contains('warlock') && !npc.name.toLowerCase().contains('mesmerist')) ||
-                      npc.equippedVisuals.contains('Crossbow')))
-                _buildCrossbowOverlay(size),
-
-              // Pole Weapons (Halberdier, Pikeman, Mob/Villager, Broomstick)
-              if (isCombat &&
-                  (npc.name.toLowerCase().contains('halberd') ||
-                      npc.name.toLowerCase().contains('pike') ||
-                      npc.name.toLowerCase().contains('mob') ||
-                      npc.name.toLowerCase().contains('villager') ||
-                      npc.equippedVisuals.contains('Broom') ||
-                      npc.name.toLowerCase().contains('brewer') ||
-                      npc.name.toLowerCase().contains('hag')))
-                _buildPoleWeaponOverlay(size),
-
-              // Ranged Infantry Muskets / Firearm users
-              if (isCombat && _isUsingFirearm(npc))
-                _buildMusketOverlay(size),
-
-              // Custom Victorian & Esoteric Weapon Overlays
-              if (isCombat && npc.name.toLowerCase().contains('mesmerist'))
-                Positioned(top: -size * 0.1, child: Icon(Icons.waves, color: Colors.amberAccent, size: size * 0.5)),
-              if (isCombat && npc.name.toLowerCase().contains('sapper'))
-                Positioned(left: -size * 0.2, top: size * 0.05, child: Row(children: [Container(width: size * 0.25, height: 8, color: Colors.red), Container(width: 4, height: 4, color: Colors.orange)])),
-              if (isCombat && npc.name.toLowerCase().contains('pyre'))
-                Positioned(left: -size * 0.25, top: 2, child: Transform.rotate(angle: -0.4, child: Container(width: size * 0.45, height: 6, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Colors.white, Colors.orange, Colors.red]))))),
-              if (isCombat && npc.name.toLowerCase().contains('collector'))
-                Positioned(left: -size * 0.2, top: size * 0.05, child: Transform.rotate(angle: -0.2, child: Container(width: size * 0.35, height: size * 0.15, color: const Color(0xFF1B5E20)))),
-              if (isCombat && npc.name.toLowerCase().contains('arsonist'))
-                Positioned(left: -size * 0.25, top: 0, child: Row(children: [Container(width: size * 0.3, height: 3, color: Colors.grey), const Icon(Icons.whatshot, color: Colors.deepOrangeAccent, size: 14)])),
-              if (isCombat && npc.name.toLowerCase().contains('raider'))
-                Positioned(left: -size * 0.2, top: size * 0.1, child: Row(children: [Container(width: size * 0.2, height: 3, color: Colors.greenAccent), const SizedBox(width: 4), Container(width: size * 0.2, height: 3, color: Colors.greenAccent)])),
-              if (isCombat && npc.name.toLowerCase().contains('standard bearer'))
-                Positioned(left: -size * 0.25, top: -size * 0.3, child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: 3, height: size * 0.8, color: Colors.amber), Container(width: size * 0.35, height: size * 0.25, color: Colors.blue.shade900)])),
-              if (isCombat && npc.name.toLowerCase().contains('herbalist'))
-                Positioned(right: -2, top: size * 0.1, child: Container(width: size * 0.2, height: size * 0.2, decoration: BoxDecoration(color: Colors.lightGreen, borderRadius: BorderRadius.circular(4)))),
-              if (isCombat && npc.name.toLowerCase().contains('thug'))
-                Positioned(left: -size * 0.2, top: size * 0.05, child: Transform.rotate(angle: -0.3, child: Container(width: size * 0.35, height: 5, color: const Color(0xFF3E2723)))),
-              if (isCombat && npc.name.toLowerCase().contains('captain'))
-                Positioned(left: -size * 0.25, top: size * 0.05, child: Row(children: [Container(width: 4, height: 8, color: Colors.amber), Container(width: size * 0.35, height: 2.5, color: Colors.white)])),
             ],
 
             // Speech Bubble

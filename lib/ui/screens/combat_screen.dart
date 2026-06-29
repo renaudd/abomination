@@ -2042,6 +2042,7 @@ class _CombatantSprite extends StatelessWidget {
                     attackCooldown: combatant.attackCooldown,
                     isCombat: true,
                     isLiveBattlefield: true,
+                    isPlayerSide: combatant.side == CombatSide.player,
                   ))),
 
         // Staggered recent damage numerical overlay
@@ -4725,6 +4726,13 @@ IconData _getIconForAbility(Ability? ab, IconData defaultIcon) {
   final String id = ab.id.toLowerCase();
   final String name = ab.name.toLowerCase();
 
+  if (id.contains('overclock')) {
+    return Icons.access_time;
+  }
+  if (id.contains('tesla_discharge') || id.contains('tesla')) {
+    return Icons.battery_charging_full;
+  }
+
   if (id.contains('heal') || name.contains('heal') || name.contains('mist') || name.contains('chant')) {
     return Icons.healing;
   }
@@ -6948,6 +6956,62 @@ class _AoeEffectPainter extends CustomPainter {
           canvas.drawLine(groundPos, shaftEnd, fadePaint);
         }
       }
+      return;
+    }
+
+    if (effect.id.startsWith('caltrops_special_')) {
+      final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
+      if (pct >= 1.0) return;
+      final double alphaMult = 1.0 - pct;
+
+      final double halfSize = 15.0; // 30 ft diameter
+      final p1 = projection.project(effect.x - halfSize, effect.y - halfSize);
+      final p2 = projection.project(effect.x + halfSize, effect.y - halfSize);
+      final p3 = projection.project(effect.x + halfSize, effect.y + halfSize);
+      final p4 = projection.project(effect.x - halfSize, effect.y + halfSize);
+
+      final path = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..lineTo(p3.dx, p3.dy)
+        ..lineTo(p4.dx, p4.dy)
+        ..close();
+
+      // Rusted ground overlay fading out
+      final basePaint = Paint()
+        ..color = const Color(0xFF795548).withValues(alpha: 0.12 * alphaMult)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(path, basePaint);
+
+      // Draw sharp scattered spikes inside the projected polygon
+      final spikePaint = Paint()
+        ..color = const Color(0xFF3E2723).withValues(alpha: alphaMult)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8;
+
+      for (int i = 0; i < 24; i++) {
+        final double rx = ((sin(i * 41.9898 + effect.id.hashCode) * 43758.5453).abs() % 1.0);
+        final double ry = ((sin(i * 73.233 + effect.id.hashCode) * 43758.5453).abs() % 1.0);
+
+        final wx = effect.x - halfSize + rx * 30.0;
+        final wy = effect.y - halfSize + ry * 30.0;
+
+        final pCenter = projection.project(wx, wy);
+        final cx = pCenter.dx;
+        final cy = pCenter.dy;
+
+        const double spikeLen = 4.0;
+        canvas.drawLine(Offset(cx - spikeLen, cy), Offset(cx + spikeLen, cy), spikePaint);
+        canvas.drawLine(Offset(cx, cy - spikeLen), Offset(cx, cy + spikeLen), spikePaint);
+        canvas.drawLine(Offset(cx - spikeLen/2.0, cy - spikeLen/2.0), Offset(cx + spikeLen/2.0, cy + spikeLen/2.0), spikePaint);
+      }
+
+      // Warning outline around the projected path fading out
+      final borderPaint = Paint()
+        ..color = const Color(0xFFFF8F00).withValues(alpha: 0.25 * alphaMult)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+      canvas.drawPath(path, borderPaint);
       return;
     }
 

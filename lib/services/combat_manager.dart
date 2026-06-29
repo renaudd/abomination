@@ -23,6 +23,7 @@ import '../models/diet.dart';
 import '../models/combat_map.dart';
 import 'combat_unit_factory.dart';
 import 'combat_unit_service.dart';
+import 'audio_service.dart';
 import '../main.dart' show globalGameState;
 
 enum CombatSide { player, enemy }
@@ -951,6 +952,7 @@ class CombatManager extends ChangeNotifier {
   bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y, bool isAiLeader = false, bool bypassCost = false, double? supportDuration}) {
     final stats = npc.combatStats;
     if (stats == null) return false;
+    AudioService().playSFX('audio/sfx_combat_summon.wav');
 
     // Resolve leader factors
     double strFactor = 0.0;
@@ -3279,6 +3281,7 @@ class CombatManager extends ChangeNotifier {
 
   void _performAttack(Combatant attacker, Combatant target) {
     if (target.isDead || target.isNonPhysicalSupport) return;
+    AudioService().playSFX('audio/sfx_combat_attack.wav');
     final stats = attacker.npc.combatStats!;
     final targetStats = target.npc.combatStats!;
 
@@ -3637,7 +3640,9 @@ class CombatManager extends ChangeNotifier {
         for (final target in targets) {
           if ((target.x - c.x).abs() <= c.npc.combatStats!.distance) {
             final dir = target.x > c.x ? 1.0 : -1.0;
-            target.x += dir * pushDist;
+            if (!target.isTower) {
+              target.x += dir * pushDist;
+            }
             final stats = target.npc.combatStats!;
             target.npc = target.npc.copyWith(
               combatStats: stats.copyWith(
@@ -3931,7 +3936,8 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'tight_slow': // 9) slow all enemies in a tight circle around the leader for a moderate length of time (~9 seconds).
-        spawnAoeEffect(c.x, c.y, 15.0, Colors.amberAccent, durationMs: 700.0);
+        spawnAoeEffect(c.x, c.y, 15.0, Colors.amberAccent, durationMs: 3000.0, id: 'caltrops_special_${DateTime.now().millisecondsSinceEpoch}');
+        AudioService().playSFX('audio/sfx_combat_caltrops.wav');
         final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
         for (final t in enemies) {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
@@ -3971,12 +3977,34 @@ class CombatManager extends ChangeNotifier {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
           if (dist <= 20.0) {
             final dir = t.x > c.x ? 1.0 : -1.0;
-            t.x += dir * 25.0; // Increased to 25 ft!
+            if (!t.isTower) {
+              t.x += dir * 25.0; // Increased to 25 ft!
+            }
             _applyDamage(c, t, 50.0);
             _addFloatingMessage(t, 'REPELLED', Colors.greenAccent);
           }
         }
         _addLog('${c.npc.name} repelled nearby troops with Thicket Repulsion!', side: c.side);
+        break;
+
+      case 'masonic_rite':
+        spawnAoeEffect(c.x, c.y, 25.0, Colors.amberAccent, durationMs: 800.0);
+        AudioService().playSFX('audio/sfx_combat_caltrops.wav');
+        final allies = _combatants.where((other) => other.side == c.side && other != c && !other.isDead && !other.isTower).toList();
+        if (allies.isNotEmpty) {
+          allies.sort((a, b) => sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2)).compareTo(sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2))));
+          final nearest = allies.first;
+          final targetSquadId = nearest.squadId;
+          final targets = (targetSquadId != null && targetSquadId.isNotEmpty)
+              ? allies.where((a) => a.squadId == targetSquadId).toList()
+              : [nearest];
+          for (final target in targets) {
+            target.attackBuffMultiplier = 1.2; // +20% damage
+            target.attackBuffDurationRemaining = 999999.0; // permanent
+            _addFloatingMessage(target, 'MASONIC RITE (+20% DMG)', Colors.amberAccent);
+          }
+          _addLog('${c.npc.name} blessed the unit of ${nearest.npc.name} with Masonic Rite permanently!', side: c.side);
+        }
         break;
 
       case 'health_transmute': // 13) Increase the health and maximum health of the nearest friendly troop by a significant amount.
@@ -4078,21 +4106,30 @@ class CombatManager extends ChangeNotifier {
 
       case 'overclock':
         spawnAoeEffect(c.x, c.y, 40.0, Colors.orangeAccent, durationMs: 800.0);
-        final allies = _combatants.where((other) => other.side == c.side && !other.isDead && (other.npc.combatStats?.distance ?? 1.0) > 2.0);
-        for (final other in allies) {
-          other.attackSpeedBuffMultiplier = 1.6;
-          other.attackSpeedBuffDurationRemaining = 10.0;
-          _addFloatingMessage(other, '+60% ATK SPEED', Colors.yellow);
+        AudioService().playSFX('audio/sfx_combat_caltrops.wav');
+        final allies = _combatants.where((other) => other.side == c.side && other != c && !other.isDead && !other.isTower).toList();
+        if (allies.isNotEmpty) {
+          allies.sort((a, b) => sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2)).compareTo(sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2))));
+          final nearest = allies.first;
+          final targetSquadId = nearest.squadId;
+          final targets = (targetSquadId != null && targetSquadId.isNotEmpty)
+              ? allies.where((a) => a.squadId == targetSquadId).toList()
+              : [nearest];
+          for (final target in targets) {
+            target.attackSpeedBuffMultiplier = 1.3; // +30% speed
+            target.attackSpeedBuffDurationRemaining = 999999.0; // permanent
+            _addFloatingMessage(target, 'OVERCLOCKED (+30% SPD)', Colors.orangeAccent);
+          }
+          _addLog('${c.npc.name} overclocked the unit of ${nearest.npc.name} permanently!', side: c.side);
         }
-        _addLog('${c.npc.name} overclocked all ranged units! Ranged attack speed +60% for 10 seconds.', side: c.side);
         break;
 
       case 'tesla_discharge':
-        spawnAoeEffect(c.x, c.y, 25.0, Colors.cyanAccent, durationMs: 600.0);
+        spawnAoeEffect(c.x, c.y, 40.0, Colors.cyanAccent, durationMs: 600.0);
         final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
         for (final target in enemies) {
           final dist = sqrt(pow(target.x - c.x, 2) + pow(target.y - c.y, 2));
-          if (dist <= 25.0) {
+          if (dist <= 40.0) {
             _applyDamage(c, target, 40.0);
             _applyFreeze(target, 2.0);
             _addFloatingMessage(target, 'SHOCKED', Colors.cyanAccent);
@@ -4166,6 +4203,7 @@ class CombatManager extends ChangeNotifier {
       case 'tight_slow':
       case 'mind_control_nearest':
       case 'quake_push':
+      case 'masonic_rite':
       case 'attack_debuff':
       case 'push_back':
       case 'captain_strike':
@@ -4218,6 +4256,7 @@ class CombatManager extends ChangeNotifier {
       case 'aoe_heal':
       case 'health_transmute':
       case 'witch_charge_heal':
+      case 'masonic_rite':
         return _combatants.any((other) => other.side == c.side && other != c && !other.isDead);
       case 'self_invulnerability':
         return !c.isInvulnerable;
@@ -4298,6 +4337,7 @@ class CombatManager extends ChangeNotifier {
       case 'tight_slow':
       case 'mind_control_nearest':
       case 'attack_debuff':
+      case 'masonic_rite':
       case 'freeze_line':
       case 'ap_steal':
       case 'undead_rot':
@@ -4342,8 +4382,9 @@ class CombatManager extends ChangeNotifier {
       case 'overclock':
         return _combatants.any((other) =>
             other.side == c.side &&
+            other != c &&
             !other.isDead &&
-            (other.npc.combatStats?.distance ?? 1.0) > 2.0);
+            !other.isTower);
 
       case 'feral_howl':
         return _combatants.any((other) =>
@@ -4638,6 +4679,7 @@ class CombatManager extends ChangeNotifier {
 
   void _onCombatantDeath(Combatant target, Combatant? killer) {
     target.isDead = true;
+    AudioService().playSFX('audio/sfx_combat_death.wav');
 
     // Reset leader special attack charge ups to zero on death
     if (target.npc.isPlayer || target.isAiLeader) {

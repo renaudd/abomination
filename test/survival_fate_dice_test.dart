@@ -174,6 +174,8 @@ void main() {
     // --- TEST CASE 9: Roll = 9 (Bounty: Double Estate Production) ---
     service.progress!.cardUpgrades.clear();
     service.progress!.buildings.clear();
+    service.progress!.playerDeckIds.clear();
+    service.progress!.food = 0;
     service.progress!.buildings.add(SurvivalBuilding(
       id: 'farm_1',
       type: SurvivalBuildingType.farm,

@@ -100,11 +100,10 @@ class CharacterPortraitDialog extends StatelessWidget {
                         Tab(text: "  SOCIAL  "),
                       ],
                     ),
-                    // Main Panel
                     Container(
                       constraints: BoxConstraints(
                         maxWidth: 600, // 50% more horizontal space
-                        maxHeight: MediaQuery.of(context).size.height * 0.72, // 10% less height
+                        maxHeight: MediaQuery.of(context).size.height * 0.65, // slightly less height to prevent landscape overflow
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E1A15),

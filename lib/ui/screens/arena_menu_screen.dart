@@ -529,30 +529,32 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
           ),
           content: SizedBox(
             width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDifficultySelectCard(
-                  title: 'ELEMENTARY',
-                  desc: 'Losing all three watchtowers does not end the game. Multiple save slots are supported, and turn-by-turn auto-save can be disabled.',
-                  difficulty: SurvivalDifficulty.elementary,
-                  onSelect: onDifficultySelected,
-                ),
-                const SizedBox(height: 12),
-                _buildDifficultySelectCard(
-                  title: 'CLASSIC',
-                  desc: 'Auto-saves every turn on a single slot. Manual save/load is disabled. Upon defeat, you may reload your most recent save.',
-                  difficulty: SurvivalDifficulty.classic,
-                  onSelect: onDifficultySelected,
-                ),
-                const SizedBox(height: 12),
-                _buildDifficultySelectCard(
-                  title: 'ARCADE',
-                  desc: 'Auto-saves every turn on a single slot. The game ends permanently when defeated, recording your turns and medals.',
-                  difficulty: SurvivalDifficulty.arcade,
-                  onSelect: onDifficultySelected,
-                ),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildDifficultySelectCard(
+                    title: 'ELEMENTARY',
+                    desc: 'Losing all three watchtowers does not end the game. Multiple save slots are supported, and turn-by-turn auto-save can be disabled.',
+                    difficulty: SurvivalDifficulty.elementary,
+                    onSelect: onDifficultySelected,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDifficultySelectCard(
+                    title: 'CLASSIC',
+                    desc: 'Auto-saves every turn on a single slot. Manual save/load is disabled. Upon defeat, you may reload your most recent save.',
+                    difficulty: SurvivalDifficulty.classic,
+                    onSelect: onDifficultySelected,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDifficultySelectCard(
+                    title: 'ARCADE',
+                    desc: 'Auto-saves every turn on a single slot. The game ends permanently when defeated, recording your turns and medals.',
+                    difficulty: SurvivalDifficulty.arcade,
+                    onSelect: onDifficultySelected,
+                  ),
+                ],
+              ),
             ),
           ),
         );

@@ -513,14 +513,21 @@ class SurvivalService extends ChangeNotifier {
       return false;
     }
 
-    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < cashCost) {
-      addLog('Cannot build: Insufficient resources. Requires $woodCost Wood, $ironCost Iron, $cashCost CHF.');
+    int actualCashCost = cashCost;
+    if ((_progress!.cardUpgrades['double_construction_costs_turns'] ?? 0) > 0) {
+      actualCashCost *= 2;
+    } else if ((_progress!.cardUpgrades['repair_cost_multiplier_turns'] ?? 0) > 0) {
+      actualCashCost = (actualCashCost * 1.5).round();
+    }
+
+    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < actualCashCost) {
+      addLog('Cannot build: Insufficient resources. Requires $woodCost Wood, $ironCost Iron, $actualCashCost CHF.');
       return false;
     }
 
     _progress!.wood -= woodCost;
     _progress!.iron -= ironCost;
-    _progress!.cash -= cashCost;
+    _progress!.cash -= actualCashCost;
 
     _progress!.cardUpgrades.remove('${plotKey}_fallow');
     _progress!.buildings.add(SurvivalBuilding(id: plotKey, type: type, level: 1, assignedUnitIds: []));
@@ -552,14 +559,21 @@ class SurvivalService extends ChangeNotifier {
                     b.type == SurvivalBuildingType.munitionsFactory) ? 3 : 7;
     
     if (b.level >= maxLvl) return false;
-    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < cashCost) {
-      addLog('Cannot upgrade: Insufficient resources. Requires $woodCost Wood, $ironCost Iron, $cashCost CHF.');
+    int actualCashCost = cashCost;
+    if ((_progress!.cardUpgrades['double_construction_costs_turns'] ?? 0) > 0) {
+      actualCashCost *= 2;
+    } else if ((_progress!.cardUpgrades['repair_cost_multiplier_turns'] ?? 0) > 0) {
+      actualCashCost = (actualCashCost * 1.5).round();
+    }
+
+    if (_progress!.wood < woodCost || _progress!.iron < ironCost || _progress!.cash < actualCashCost) {
+      addLog('Cannot upgrade: Insufficient resources. Requires $woodCost Wood, $ironCost Iron, $actualCashCost CHF.');
       return false;
     }
 
     _progress!.wood -= woodCost;
     _progress!.iron -= ironCost;
-    _progress!.cash -= cashCost;
+    _progress!.cash -= actualCashCost;
 
     b.level++;
     addLog('Upgraded ${b.type.name.replaceAll("_", " ").toUpperCase()} to Level ${b.level}.');
@@ -653,8 +667,15 @@ class SurvivalService extends ChangeNotifier {
       _progress!.towerRepairWorkers[towerId]?.clear();
       addLog('Repaired $fName with raw Wood.');
     } else if (method == 'cash') {
-      if (_progress!.cash < cashCost) return false;
-      _progress!.cash -= cashCost;
+      int actualCashCost = cashCost;
+      if ((_progress!.cardUpgrades['double_construction_costs_turns'] ?? 0) > 0) {
+        actualCashCost *= 2;
+      } else if ((_progress!.cardUpgrades['repair_cost_multiplier_turns'] ?? 0) > 0) {
+        actualCashCost = (actualCashCost * 1.5).round();
+      }
+
+      if (_progress!.cash < actualCashCost) return false;
+      _progress!.cash -= actualCashCost;
       _progress!.towerDamaged[towerId] = 0.0;
       _progress!.towerRepairWorkers[towerId]?.clear();
       addLog('Repaired $fName via Cash contract.');
@@ -823,9 +844,22 @@ class SurvivalService extends ChangeNotifier {
       addLog('BOUNTY ACTIVE: All estate facility production is doubled this turn!');
     }
 
+    final int mutinied = _progress!.cardUpgrades['units_mutinied'] ?? 0;
+    final bool isMutinied = mutinied > 0;
+    if (isMutinied) {
+      addLog('MUTINY ACTIVE: Starving units refused to work! No resources produced this turn.');
+    }
+
     for (var b in _progress!.buildings) {
       final workers = b.assignedUnitIds.length;
       if (b.type == SurvivalBuildingType.farm) {
+        final farmHalted = _progress!.cardUpgrades['farm_halted_turns'] ?? 0;
+        if (farmHalted > 0) {
+          addLog('Farm production is HALTED due to Crop Blight.');
+          continue;
+        }
+        if (isMutinied) continue;
+
         var out = getFarmOutput(b.level, workers);
         if (doubleProduction) out *= 2;
         _progress!.food += out;
@@ -834,7 +868,13 @@ class SurvivalService extends ChangeNotifier {
           addLog('Farm produced +$out Food (workers: $workers)$bonusStr.');
         }
       } else if (b.type == SurvivalBuildingType.lumberMill) {
+        if (isMutinied) continue;
+        final failTurns = _progress!.cardUpgrades['lumber_mill_fail_turns'] ?? 0;
+
         var out = getLumberMillOutput(b.level, workers);
+        if (failTurns > 0) {
+          out = (out * 0.5).round();
+        }
         final hasDarkMatterInd = globalGameState?.unlockedDiscoveries.contains('dark_matter_industrialization') ?? false;
         if (hasDarkMatterInd) {
           out = (out * 1.35).round();
@@ -842,11 +882,19 @@ class SurvivalService extends ChangeNotifier {
         if (doubleProduction) out *= 2;
         _progress!.wood += out;
         if (out > 0) {
+          final failStr = failTurns > 0 ? ' (Reduced 50% by Machine Failure)' : '';
           final bonusStr = (hasDarkMatterInd ? ' (including +35% Dark Matter bonus)' : '') +
-              (doubleProduction ? ' (Doubled by Bounty!)' : '');
+              (doubleProduction ? ' (Doubled by Bounty!)' : '') + failStr;
           addLog('Lumber Mill produced +$out Wood$bonusStr.');
         }
       } else if (b.type == SurvivalBuildingType.mine) {
+        if (isMutinied) continue;
+        final flooded = _progress!.cardUpgrades['mine_flooded_turns'] ?? 0;
+        if (flooded > 0) {
+          addLog('Iron Mine production is HALTED due to Water Seepage.');
+          continue;
+        }
+
         var out = getMineOutput(b.level, workers);
         final hasDarkMatterInd = globalGameState?.unlockedDiscoveries.contains('dark_matter_industrialization') ?? false;
         if (hasDarkMatterInd) {
@@ -860,6 +908,7 @@ class SurvivalService extends ChangeNotifier {
           addLog('Iron Mine produced +$out Iron (workers: $workers)$bonusStr.');
         }
       } else {
+        if (isMutinied) continue;
         var out = getAdvancedOutput(b.level, workers);
         if (b.type == SurvivalBuildingType.arsenal &&
             _progress!.cardUpgrades['davos_vaccine_choice'] == 1) {
@@ -964,6 +1013,25 @@ class SurvivalService extends ChangeNotifier {
       addLog('Red Hand Insignia: -5 Glarus and -5 Ancient Order of Foresters standing.');
     }
 
+    // Decrement disaster/consequence turn counters
+    void decrementCounter(String key) {
+      final val = _progress!.cardUpgrades[key] ?? 0;
+      if (val > 0) {
+        if (val - 1 == 0) {
+          _progress!.cardUpgrades.remove(key);
+        } else {
+          _progress!.cardUpgrades[key] = val - 1;
+        }
+      }
+    }
+    decrementCounter('farm_halted_turns');
+    decrementCounter('garage_disabled_turns');
+    decrementCounter('units_mutinied');
+    decrementCounter('mine_flooded_turns');
+    decrementCounter('lumber_mill_fail_turns');
+    decrementCounter('repair_cost_multiplier_turns');
+    decrementCounter('double_construction_costs_turns');
+
     // Increment Turn Counter
     _progress!.currentTurn += 1;
     _save();
@@ -983,6 +1051,15 @@ class SurvivalService extends ChangeNotifier {
     int? customSpoilsWood,
   }) {
     if (_progress == null) return const {};
+
+    final artVal = _progress!.cardUpgrades['artillery_disabled_encounters'] ?? 0;
+    if (artVal > 0) {
+      if (artVal - 1 == 0) {
+        _progress!.cardUpgrades.remove('artillery_disabled_encounters');
+      } else {
+        _progress!.cardUpgrades['artillery_disabled_encounters'] = artVal - 1;
+      }
+    }
 
     final levelUps = <String, List<int>>{};
 

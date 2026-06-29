@@ -1204,7 +1204,7 @@ class CombatUnitFactory {
   }
 
   static NPC createGoons() {
-    final t = createThugs();
+    final t = createBandits();
     return t.copyWith(
       id: _generateId('goons'),
       name: 'Goons',
@@ -1397,14 +1397,14 @@ class CombatUnitFactory {
           name: 'Overclock',
           type: AbilityType.special,
           description:
-              'Increases the ranged attack speed of all units by +60% for 10 seconds.',
+              'Increases the nearest friendly combat unit\'s attack speed by +30% permanently.',
           chargeTime: 18.0,
         ),
         const Ability(
           id: 'tesla_discharge',
           name: 'Tesla Discharge',
           type: AbilityType.special,
-          description: 'Discharges electric current, dealing 40 damage and stunning nearby enemies for 2 seconds.',
+          description: 'Discharges electric current within a 40ft radius, dealing 40 damage and stunning enemies for 2 seconds.',
           chargeTime: 25.0,
         ),
       ],
@@ -2217,7 +2217,8 @@ class CombatUnitFactory {
     id: 'hiram_abiff',
     name: 'Grand Master Hiram',
     role: 'Commander',
-    metadata: const {'faction': 'Freemasons', 'cardType': 'hiram_abiff', 'description': 'Grand Architect of the Masonic Order. Wields sacred invulnerability domes and masonic repulsion.'},
+    appearance: NPCAppearance.deterministic('Grand Master Hiram'),
+    metadata: const {'faction': 'Freemasons', 'cardType': 'hiram_abiff', 'description': 'Grand Architect of the Masonic Order. Wields sacred invulnerability domes and masonic rites.'},
     combatStats: const CombatStats(
       attack: 45,
       health: 450,
@@ -2231,7 +2232,7 @@ class CombatUnitFactory {
     ),
     abilities: const [
       Ability(id: 'aoe_invulnerability', name: 'Sacred Dome', type: AbilityType.special, chargeTime: 12.0, description: 'Makes friendly units within a significant radius immune to all damage for 4.5s'),
-      Ability(id: 'quake_push', name: 'Masonic Repulsion', type: AbilityType.special, chargeTime: 15.0, description: 'Forcefully damages and pushes opposing troops backward by 18 ft'),
+      Ability(id: 'masonic_rite', name: 'Masonic Rite', type: AbilityType.special, chargeTime: 15.0, description: 'Increases nearest friendly combat unit\'s attack damage by +20% permanently'),
       Ability(id: 'trait_structure_immune', name: 'Architectural Fortitude', type: AbilityType.trait, description: 'Truly Passive Trait: Completely immune to structural demolition and siege debuffs'),
     ],
   );
