@@ -62,6 +62,8 @@ class CombatUnitService {
         return CombatUnitFactory.createUndeadBats();
       case 'brown_rats':
         return CombatUnitFactory.createBrownRats();
+      case 'spectral_wolf':
+        return CombatUnitFactory.createSpectralWolf();
       case 'werewolf':
         return CombatUnitFactory.createWerewolf();
       case 'chimera':
@@ -122,6 +124,9 @@ class CombatUnitService {
         return CombatUnitFactory.createBossRudolf();
       case 'boss_gearbox':
         return CombatUnitFactory.createBossGearbox();
+      case 'elizabeth_bat_swarm_support':
+      case 'lady_elizabeth_bat_swarm_spell':
+        return CombatUnitFactory.createElizabethBatSwarmSupport();
       case 'boss_elizabeth':
         return CombatUnitFactory.createBossElizabeth();
       case 'boss_thorne':

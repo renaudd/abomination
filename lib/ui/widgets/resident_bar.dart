@@ -1354,9 +1354,74 @@ class _ResidentBarState extends State<ResidentBar> {
           const SizedBox(height: 16),
           _buildRecordGrid(inkColor),
           const SizedBox(height: 16),
+          _buildTraitsSection(inkColor, state),
+          const SizedBox(height: 16),
           _buildProficienciesList(inkColor, state),
         ],
       ),
+    );
+  }
+
+  Widget _buildTraitsSection(Color inkColor, GameState state) {
+    final List<String> visibleTraits = [];
+    if (state.unlockedDiscoveries.contains('psychological_profiling')) {
+      visibleTraits.addAll(widget.npc.traits.where((t) => t.id != 'short_sleeper').map((t) => t.name));
+    }
+    if (state.unlockedDiscoveries.contains('short_sleeper_id') && widget.npc.traits.any((t) => t.id == 'short_sleeper')) {
+      visibleTraits.add('Short Sleeper Syndrome');
+    }
+
+    final hasPsychology = state.unlockedDiscoveries.contains('psychological_profiling');
+    final hasShortSleeperId = state.unlockedDiscoveries.contains('short_sleeper_id');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Identified Character Traits",
+          style: GoogleFonts.playfairDisplay(
+            color: inkColor,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (visibleTraits.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: visibleTraits.map((t) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: inkColor.withValues(alpha: 0.1),
+                  border: Border.all(color: inkColor.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  t.toUpperCase(),
+                  style: GoogleFonts.oldStandardTt(
+                    color: inkColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            }).toList(),
+          )
+        else
+          Text(
+            !hasPsychology && !hasShortSleeperId
+                ? "TRAITS UNKNOWN. REQUIRES PSYCHOLOGICAL RESEARCH IN THE STUDY TO IDENTIFY PERSONALITY AND PHYSIOLOGICAL TRAITS."
+                : "NO IDENTIFIED SIGNIFICANT TRAITS.",
+            style: GoogleFonts.oldStandardTt(
+              color: inkColor.withValues(alpha: 0.5),
+              fontSize: 9.5,
+              fontStyle: FontStyle.italic,
+              height: 1.3,
+            ),
+          ),
+      ],
     );
   }
 

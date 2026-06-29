@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:collection/collection.dart';
 import 'package:abomination/services/combat_manager.dart';
 import 'package:abomination/services/combat_unit_factory.dart';
 import 'package:abomination/models/combat_stats.dart';
@@ -501,12 +502,38 @@ void main() {
       expect(allyFarCombatant.npc.combatStats!.health, 50.0); // Not healed
     });
 
+    test('Rothschild Asset Liquidation (sacrifice_resummon) sacrifices low health friendly troop and spawns fresh full health troop', () {
+      manager.isSurvivalMode = true;
+
+      final rothschild = CombatUnitFactory.createBankerRothschild().copyWith(specialCharge: 1.0);
+      final damagedGoon = CombatUnitFactory.createGoon().copyWith(
+        id: 'goons_1',
+        combatStats: CombatUnitFactory.createGoon().combatStats!.copyWith(health: 30.0, maxHealth: 130.0),
+      );
+
+      manager.spawnUnit(rothschild, CombatSide.player, x: 50.0, y: 42.5);
+      manager.spawnUnit(damagedGoon, CombatSide.player, x: 55.0, y: 42.5);
+
+      expect(manager.combatants.any((c) => c.npc.id == 'goons_1'), isTrue);
+
+      manager.executeSpecial(rothschild.id);
+
+      // The damaged goon should be dead/removed
+      final oldGoon = manager.combatants.firstWhereOrNull((c) => c.npc.id == 'goons_1');
+      expect(oldGoon == null || oldGoon.isDead, isTrue);
+
+      // A fresh Goons squad should be spawned on the field with 130.0 health
+      final newGoon = manager.combatants.firstWhereOrNull((c) => c.npc.name == 'Goons' && !c.isDead && c.npc.id != 'goons_1');
+      expect(newGoon, isNotNull);
+      expect(newGoon!.npc.combatStats!.health, equals(130.0));
+    });
+
     test('Card balance stats are correct', () {
       final bats = CombatUnitFactory.createBats();
       expect(bats.combatStats!.cost, 3); // Bats cost 3 AP now
 
       final sniper = CombatUnitFactory.createSniper();
-      expect(sniper.combatStats!.health, 160); // Sniper health is 160
+      expect(sniper.combatStats!.health, 190); // Sniper health is 190
 
       final brewers = CombatUnitFactory.createBrewers();
       expect(brewers.combatStats!.health, 110); // Brewers health nerfed to 110

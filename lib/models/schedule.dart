@@ -293,4 +293,34 @@ class NPCSchedule {
     }
     return NPCSchedule(blocks: blocks);
   }
+
+  NPCSchedule shortenSleepForShortSleeper() {
+    final newBlocks = List<ScheduleBlock>.from(blocks);
+    final orderedHours = List.generate(24, (index) => (index + 12) % 24);
+
+    for (int day = 0; day < 7; day++) {
+      final dayStart = day * 24;
+      
+      // Find which of the ordered hours are sleep blocks
+      final sleepHoursInOrder = <int>[];
+      for (final h in orderedHours) {
+        final globalHour = dayStart + h;
+        if (newBlocks[globalHour].activity == ScheduleActivity.sleep) {
+          sleepHoursInOrder.add(h);
+        }
+      }
+
+      if (sleepHoursInOrder.length > 4) {
+        // Convert the prefix of the sleep period to work
+        final hoursToConvert = sleepHoursInOrder.sublist(0, sleepHoursInOrder.length - 4);
+        for (final h in hoursToConvert) {
+          final globalHour = dayStart + h;
+          newBlocks[globalHour] = newBlocks[globalHour].copyWith(
+            activity: ScheduleActivity.work,
+          );
+        }
+      }
+    }
+    return NPCSchedule(blocks: newBlocks);
+  }
 }

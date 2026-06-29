@@ -122,18 +122,53 @@ class GameState extends ChangeNotifier {
 
   static const List<NeighborDefinition> _neighborSequence = [
     NeighborDefinition(
+      name: 'Mary Shelley',
+      role: 'Novelist & Confidante',
+      faction: 'Glarus',
+      cottageId: 'cottage_mary',
+      description: 'Brilliant novelist grappling with profound personal grief and the boundaries of life and death.',
+    ),
+    NeighborDefinition(
+      name: 'Percy Bysshe Shelley',
+      role: 'Radical Vitalist & Poet',
+      faction: 'Bavarian Illuminati',
+      cottageId: 'cottage_percy',
+      description: 'Radical poet and vitalist obsessed with chemistry, electricity, and the spark of life.',
+    ),
+    NeighborDefinition(
+      name: 'Lord Byron',
+      role: 'Aristocratic Patron',
+      faction: 'Gnomes of Zurich',
+      cottageId: 'cottage_byron',
+      description: 'Scandalous, wealthy English Lord seeking forbidden engineering spectacles.',
+    ),
+    NeighborDefinition(
+      name: 'Claire Clairmont',
+      role: 'Espionage Agent',
+      faction: 'Carbonari',
+      cottageId: 'cottage_claire',
+      description: 'Resourceful stepsister of Mary, orchestrating covert maps and rescue plans.',
+    ),
+    NeighborDefinition(
+      name: 'Dr. John Polidori',
+      role: 'Vampiric Physician',
+      faction: 'Rosicrucians',
+      cottageId: 'cottage_polidori',
+      description: 'Byron\'s cynical doctor, researching life-siphoning algorithms and anatomy.',
+    ),
+    NeighborDefinition(
       name: 'Father Gregor Zweifel',
-      role: 'Rustic Priest',
+      role: 'Parish Priest',
       faction: 'Glarus',
       cottageId: 'cottage_gregor',
-      description: 'Rustic priest caught between superstition and science.',
+      description: 'The parish priest of Glarus parish, suspicious of the manor\'s experiments.',
     ),
     NeighborDefinition(
       name: 'Professor Fritz Weishaupt',
-      role: 'Rationalist Initiate',
+      role: 'Illuminati Coordinator',
       faction: 'Bavarian Illuminati',
       cottageId: 'cottage_fritz',
-      description: 'Rationalist initiate coordinating a local network of spies.',
+      description: 'Coordinator of the local Bavarian Illuminati cell seeking intellectual order.',
     ),
     NeighborDefinition(
       name: 'Countess Antoinette de Bertier',
@@ -144,17 +179,17 @@ class GameState extends ChangeNotifier {
     ),
     NeighborDefinition(
       name: 'Baroness Regina von Stauffacher',
-      role: 'Calculated Banker',
+      role: 'Gnomes Financial Officer',
       faction: 'Gnomes of Zurich',
       cottageId: 'cottage_regina',
-      description: 'Calculating Swiss banker managing secret vaults.',
+      description: 'Financial officer coordinating secret banking vaults for the Gnomes of Zurich.',
     ),
     NeighborDefinition(
       name: 'Johannes the Hermit',
-      role: 'Rosicrucian Mystic',
+      role: 'Rosicrucian Alchemist',
       faction: 'Rosicrucians',
       cottageId: 'cottage_johannes',
-      description: 'Reclusive mystic seeking the Philosopher\'s Stone.',
+      description: 'Rosicrucian alchemist seeking transformation of the soul.',
     ),
     NeighborDefinition(
       name: 'Seamus O\'Connor',
@@ -172,10 +207,10 @@ class GameState extends ChangeNotifier {
     ),
     NeighborDefinition(
       name: 'Giuseppe Rossi',
-      role: 'Fiery Agitator',
+      role: 'Carbonari Activist',
       faction: 'Carbonari',
       cottageId: 'cottage_giuseppe',
-      description: 'Fiery Italian agitator organizing secret labor unions.',
+      description: 'Carbonari political activist organizing local charcoal burners.',
     ),
     NeighborDefinition(
       name: 'Godfrey de Molay',
@@ -739,6 +774,7 @@ class GameState extends ChangeNotifier {
   void unlockCottage(String cottageId) {
     if (!_unlockedCottages.contains(cottageId)) {
       _unlockedCottages.add(cottageId);
+      _checkObjectives();
       notifyListeners();
     }
   }
@@ -4741,16 +4777,20 @@ class GameState extends ChangeNotifier {
     // First spawn must not be until Day 3 or later.
     if (day < 3) return;
 
-    // Count how many neighbors have already been spawned
-    final int spawnedCount = _npcs.where((n) => n.metadata['isNeighbor'] == true).length;
+    // Count how many neighbors have already been spawned (both cottage unlocked and currently visiting)
+    final int spawnedCount = unlockedCottages.length +
+        _npcs.where((n) => n.metadata['isNeighbor'] == true && !unlockedCottages.contains(n.metadata['neighborCottageId'])).length;
 
-    // Player should not meet more than two neighbors before reaching Chapter 2
-    if (_activeChapter < 2 && spawnedCount >= 2) {
+    // Player should not meet more than two neighbors plus the five planted neighbors (7 total) before reaching Chapter 2
+    if (_activeChapter < 2 && spawnedCount >= 7) {
       return;
     }
 
-    // Spawn frequency: at least 3 days must have elapsed since the last spawn.
-    if (_lastNeighborSpawnDay > 0 && (day - _lastNeighborSpawnDay < 3)) {
+    // Spawn frequency: no more than one visitor per day and neighbor visits at least two days apart.
+    if (day == _lastNeighborSpawnDay) {
+      return;
+    }
+    if (_lastNeighborSpawnDay > 0 && (day - _lastNeighborSpawnDay < 2)) {
       return;
     }
 
@@ -7098,6 +7138,19 @@ class GameState extends ChangeNotifier {
     _objectives.clear();
     _objectives.add(
       Objective(
+        id: 'winter_dreams_clara_1',
+        title: 'The Winter Dreams of Clara',
+        description:
+            'Mary Shelley prompts you to retrieve the first galvanic conductor components from a local carriage wreck. Travel to the wreckage site and win 1 combat.',
+        type: ObjectiveType.story,
+        requirements: {
+          'combats_won': 1,
+        },
+        nextObjectiveId: 'red_hand_covenant_1',
+      ),
+    );
+    _objectives.add(
+      Objective(
         id: 'farming_tutorial_1',
         title: 'Break the Earth',
         description:
@@ -7230,6 +7283,15 @@ class GameState extends ChangeNotifier {
       if (reqs.containsKey('map_hexes_explored')) {
         final count = reqs['map_hexes_explored'] as int;
         if (_exploredHexesCount < count) completed = false;
+      }
+      if (reqs.containsKey('unlocked_cottages')) {
+        final cottages = List<String>.from(reqs['unlocked_cottages']);
+        for (final cId in cottages) {
+          if (!_unlockedCottages.contains(cId)) {
+            completed = false;
+            break;
+          }
+        }
       }
       if (reqs.containsKey('manor_population')) {
         final count = reqs['manor_population'] as int;
@@ -7422,6 +7484,24 @@ class GameState extends ChangeNotifier {
               },
             ),
           );
+        } else if (objective.id == 'winter_dreams_clara_1') {
+          nextObjectives.add(
+            Objective(
+              id: 'red_hand_covenant_1',
+              title: 'The Red Hand Covenant',
+              description:
+                  'Meet Mary Shelley to answer her questions on morality and construct creation, and unlock the "Red Hand" Insignia.',
+              type: ObjectiveType.story,
+              requirements: {
+                'unlocked_cottages': ['cottage_mary'],
+              },
+            ),
+          );
+        } else if (objective.id == 'red_hand_covenant_1') {
+          if (!_unlockedDiscoveries.contains('red_hand_insignia')) {
+            _unlockedDiscoveries.add('red_hand_insignia');
+          }
+          _lastAnnouncement = "RED HAND COVENANT SIGNED. RED HAND INSIGNIA UNLOCKED.";
         }
       }
     }
@@ -7475,6 +7555,19 @@ class GameState extends ChangeNotifier {
           _triggerMobileFireworksNotification(
             "SUBMERSIBLE DESIGN UNLOCKED",
             "You have discovered the secrets of underwater locomotion! You can now construct a deep-sea exploration Submarine in the Garage.",
+          );
+        } else if (discovery.id == 'short_sleeper_id') {
+          for (int i = 0; i < _npcs.length; i++) {
+            final npc = _npcs[i];
+            if (npc.isResident && npc.traits.any((t) => t.id == 'short_sleeper')) {
+              _npcs[i] = npc.copyWith(
+                schedule: npc.schedule.shortenSleepForShortSleeper(),
+              );
+            }
+          }
+          _triggerMobileFireworksNotification(
+            "SHORT SLEEPER SYNDROME IDENTIFIED",
+            "You have discovered how to identify Short Sleeper Syndrome! Identified short sleepers can have their daily sleep hours reduced to 4 hours with no fatigue penalty.",
           );
         }
       }
@@ -8287,6 +8380,9 @@ class GameState extends ChangeNotifier {
           recoveryMult = 1.5;
         }
       }
+      if (npcSnapshot.traits.any((t) => t.id == 'short_sleeper')) {
+        recoveryMult *= 2.0; // 4 hours is plenty for short sleepers!
+      }
 
       dEnergy += (12.0 / 60.0) * recoveryMult * sleepNoise * noise;
       dSatisf += (5.0 / 60.0) * recoveryMult;
@@ -8355,7 +8451,8 @@ class GameState extends ChangeNotifier {
 
     if (newEnergy <= 0 &&
         finalStatus != NPCStatus.fainted &&
-        finalStatus != NPCStatus.dead) {
+        finalStatus != NPCStatus.dead &&
+        !npcSnapshot.traits.any((t) => t.id == 'short_sleeper')) {
       finalStatus = NPCStatus.fainted;
       _announcementHistory.insert(
         0,
@@ -14618,13 +14715,19 @@ class GameState extends ChangeNotifier {
         _npcs[tIndex] = traveler.copyWith(journeyInventory: newInv);
 
         // SYNC: Hired NPC is now at the destination with the recruiter
-        final hiredNpc = npc.copyWith(
+        var hiredNpc = npc.copyWith(
           worldDestinationId: 'hamlet',
           worldDepartureId: 'manor',
           worldTravelProgress: 1.0,
           currentRoomId: null, // They are outside
           isResident: true, // Now under player control
         );
+        if (hiredNpc.traits.any((t) => t.id == 'short_sleeper') &&
+            _unlockedDiscoveries.contains('short_sleeper_id')) {
+          hiredNpc = hiredNpc.copyWith(
+            schedule: hiredNpc.schedule.shortenSleepForShortSleeper(),
+          );
+        }
         _npcs.add(hiredNpc);
 
         if (hiredNpc.id != 'butler') {

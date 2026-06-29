@@ -146,7 +146,7 @@ class SurvivalService extends ChangeNotifier {
     _progress = SurvivalProgress(
       currentTurn: 1,
       cash: 1000,
-      food: 15,
+      food: 25,
       wood: 40,
       iron: 20,
       selectedLeaderId: leaderId,
@@ -217,7 +217,8 @@ class SurvivalService extends ChangeNotifier {
   bool buyTrainingPoints(String cardId, int xpAmount, int cashCost) {
     if (_progress == null || _progress!.cash < cashCost) return false;
     final tempNpc = CombatUnitService.createUnit(cardId);
-    if (isUndead(tempNpc)) return false;
+    final hasUndeadTraining = globalGameState?.unlockedDiscoveries.contains('undead_training') ?? false;
+    if (isUndead(tempNpc) && !hasUndeadTraining) return false;
     _progress!.cash -= cashCost;
     
     final leveledUp = _progress!.addXpToUnit(cardId, xpAmount.toDouble());
@@ -363,8 +364,9 @@ class SurvivalService extends ChangeNotifier {
     
     // Validate if unit is eligible to work
     final npc = CombatUnitService.createUnit(unitCardId);
-    if (!isHumanoid(npc)) {
-      addLog('${npc.name} is not humanoid and cannot do industrial work.');
+    final hasBeastLabor = globalGameState?.unlockedDiscoveries.contains('beast_labor') ?? false;
+    if (!isHumanoid(npc) && !(isWildAnimal(npc) && hasBeastLabor)) {
+      addLog('${npc.name} is not eligible for industrial work.');
       return false;
     }
 
@@ -453,16 +455,13 @@ class SurvivalService extends ChangeNotifier {
     if (_progress == null) return false;
     
     final npc = CombatUnitService.createUnit(unitCardId);
-    if (isUndead(npc)) {
-      addLog('${npc.name} is undead and cannot be trained.');
+    final hasUndeadTraining = globalGameState?.unlockedDiscoveries.contains('undead_training') ?? false;
+    if (isUndead(npc) && !hasUndeadTraining) {
+      addLog('${npc.name} is undead and cannot be trained without Undead Conditioning research.');
       return false;
     }
     if (isChimera(npc)) {
       addLog('Chimera cannot be assigned to work or training.');
-      return false;
-    }
-    if (isUndead(npc)) {
-      addLog('Undead units cannot be assigned to the Training Yard.');
       return false;
     }
 
@@ -836,18 +835,28 @@ class SurvivalService extends ChangeNotifier {
         }
       } else if (b.type == SurvivalBuildingType.lumberMill) {
         var out = getLumberMillOutput(b.level, workers);
+        final hasDarkMatterInd = globalGameState?.unlockedDiscoveries.contains('dark_matter_industrialization') ?? false;
+        if (hasDarkMatterInd) {
+          out = (out * 1.35).round();
+        }
         if (doubleProduction) out *= 2;
         _progress!.wood += out;
         if (out > 0) {
-          final bonusStr = doubleProduction ? ' (Doubled by Bounty!)' : '';
+          final bonusStr = (hasDarkMatterInd ? ' (including +35% Dark Matter bonus)' : '') +
+              (doubleProduction ? ' (Doubled by Bounty!)' : '');
           addLog('Lumber Mill produced +$out Wood$bonusStr.');
         }
       } else if (b.type == SurvivalBuildingType.mine) {
         var out = getMineOutput(b.level, workers);
+        final hasDarkMatterInd = globalGameState?.unlockedDiscoveries.contains('dark_matter_industrialization') ?? false;
+        if (hasDarkMatterInd) {
+          out = (out * 1.35).round();
+        }
         if (doubleProduction) out *= 2;
         _progress!.iron += out;
         if (out > 0) {
-          final bonusStr = doubleProduction ? ' (Doubled by Bounty!)' : '';
+          final bonusStr = (hasDarkMatterInd ? ' (including +35% Dark Matter bonus)' : '') +
+              (doubleProduction ? ' (Doubled by Bounty!)' : '');
           addLog('Iron Mine produced +$out Iron (workers: $workers)$bonusStr.');
         }
       } else {
@@ -948,6 +957,13 @@ class SurvivalService extends ChangeNotifier {
     _progress!.cardUpgrades.remove('market_temp_discount');
     _progress!.cardUpgrades.remove('double_estate_production');
 
+    // Apply daily "Red Hand" Insignia standing penalty if active
+    if (_progress!.cardUpgrades['red_hand_insignia_active'] == 1) {
+      _progress!.factionStandings['Glarus'] = (_progress!.factionStandings['Glarus'] ?? 0) - 5;
+      _progress!.factionStandings['Ancient Order of Foresters'] = (_progress!.factionStandings['Ancient Order of Foresters'] ?? 0) - 5;
+      addLog('Red Hand Insignia: -5 Glarus and -5 Ancient Order of Foresters standing.');
+    }
+
     // Increment Turn Counter
     _progress!.currentTurn += 1;
     _save();
@@ -1031,6 +1047,9 @@ class SurvivalService extends ChangeNotifier {
 
     for (var entry in combatExpAwarded.entries) {
       double finalXp = entry.value * 0.5; // Halved combat XP
+      if (finalXp > 2.0) {
+        finalXp = (finalXp * 2.0 / 3.0).ceilToDouble();
+      }
       
       final oldLvl = _progress!.getUnitLevel(entry.key);
       

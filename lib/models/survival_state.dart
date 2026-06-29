@@ -99,6 +99,7 @@ class SurvivalProgress {
   SurvivalDifficulty difficulty;
   bool autoSaveEnabled;
   Map<String, int> factionStandings; // e.g. {'Freemasons': 0, 'Rosicrucians': 0, 'Glarus': 0, 'Army': 0...}
+  int sanity;
   Map<String, List<String>> towerRepairWorkers; // towerId -> list of cardTypes
 
   SurvivalProgress({
@@ -121,6 +122,7 @@ class SurvivalProgress {
     this.villageHealth = 100,
     this.difficulty = SurvivalDifficulty.classic,
     this.autoSaveEnabled = true,
+    this.sanity = 100,
     Map<String, int>? factionStandings,
     Map<String, List<String>>? towerRepairWorkers,
   }) : playerDeckIds = List<String>.from(playerDeckIds),
@@ -175,6 +177,7 @@ class SurvivalProgress {
         'autoSaveEnabled': autoSaveEnabled,
         'factionStandings': factionStandings,
         'towerRepairWorkers': towerRepairWorkers,
+        'sanity': sanity,
       };
 
   factory SurvivalProgress.fromJson(Map<String, dynamic> json) => SurvivalProgress(
@@ -201,6 +204,7 @@ class SurvivalProgress {
         trainingUnitIds: List<String>.from(json['trainingUnitIds'] as List? ?? []),
         cardUpgrades: Map<String, int>.from(json['cardUpgrades'] as Map? ?? {}),
         villageHealth: json['villageHealth'] as int? ?? 100,
+        sanity: json['sanity'] as int? ?? 100,
         difficulty: () {
           final diffStr = json['difficulty'] as String? ?? 'classic';
           if (diffStr == 'childPlay') return SurvivalDifficulty.elementary;

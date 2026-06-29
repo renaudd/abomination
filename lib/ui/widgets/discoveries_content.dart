@@ -15,9 +15,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 import '../../state/game_state.dart';
 import '../../models/science_discipline.dart';
-
+import '../../models/discovery.dart';
+// ... rest of imports/class ...
 class DiscoveriesContent extends StatelessWidget {
   const DiscoveriesContent({super.key});
 
@@ -103,18 +105,22 @@ class DiscoveriesContent extends StatelessWidget {
   }
 
   Widget _buildDiscoveryItem(String id) {
+    final discovery = Discovery.allDiscoveries.firstWhereOrNull((d) => d.id == id);
+    final displayName = discovery?.name ?? id.replaceAll('_', ' ').toUpperCase();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
           const Icon(Icons.auto_awesome, color: Color(0xFFE5D5B0), size: 14),
           const SizedBox(width: 12),
-          Text(
-            id.replaceAll('_', ' ').toUpperCase(),
-            style: GoogleFonts.oldStandardTt(
-              color: const Color(0xFFE5D5B0),
-              fontSize: 13,
-              letterSpacing: 1,
+          Expanded(
+            child: Text(
+              displayName.toUpperCase(),
+              style: GoogleFonts.oldStandardTt(
+                color: const Color(0xFFE5D5B0),
+                fontSize: 13,
+                letterSpacing: 1,
+              ),
             ),
           ),
         ],

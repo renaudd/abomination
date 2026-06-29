@@ -298,15 +298,24 @@ class _CombatScreenState extends State<CombatScreen>
         widget.customEnemyHero == null &&
         widget.onVictory == null;
 
-    final apModifier = widget.cardUpgrades?['next_combat_ap_modifier'] ?? 0;
-    if (apModifier != 0) {
-      widget.cardUpgrades?.remove('next_combat_ap_modifier');
+    final tempUpgrades = Map<String, int>.from(widget.cardUpgrades ?? {});
+    final apModifier = tempUpgrades['next_combat_ap_modifier'] ?? 0;
+    try {
+      if (widget.cardUpgrades != null) {
+        widget.cardUpgrades!.remove('next_combat_ap_modifier');
+        widget.cardUpgrades!.remove('next_combat_speed_reduction');
+        widget.cardUpgrades!.remove('next_combat_damage_multiplier');
+        widget.cardUpgrades!.remove('next_combat_health_penalty_percent');
+        widget.cardUpgrades!.remove('next_combat_health_penalty');
+      }
+    } catch (_) {
+      // Ignore if map is unmodifiable (e.g. in unit tests)
     }
 
     _combatManager = CombatManager()
       ..map = state.selectedCombatMap
       ..combatControlMode = state.combatControlMode
-      ..upgrades = widget.cardUpgrades ?? {}
+      ..upgrades = tempUpgrades
       ..isSurvivalMode = widget.survivalTurn != null
       ..isNormalGameMode = isNormalGame
       ..actionPoints = 6.0 + apModifier;
@@ -592,6 +601,7 @@ class _CombatScreenState extends State<CombatScreen>
         focusNode: _keyboardFocusNode,
         autofocus: true,
         onKeyEvent: (event) {
+          if (widget.isSimulationOnly == true) return;
           // Skip hotkeys if typing in a text field
           final primaryFocus = FocusManager.instance.primaryFocus;
           if (primaryFocus != null && primaryFocus.context != null) {
@@ -788,6 +798,7 @@ class _CombatScreenState extends State<CombatScreen>
                       }
                     },
                      onTapUp: (details) {
+                      if (widget.isSimulationOnly == true) return;
                       _keyboardFocusNode.requestFocus();
                       final gameState = Provider.of<GameState>(context, listen: false);
                       final localPosition = details.localPosition;
@@ -871,7 +882,7 @@ class _CombatScreenState extends State<CombatScreen>
                 child: Consumer<CombatManager>(
                   builder: (context, manager, child) {
                     final gameState = Provider.of<GameState>(context, listen: false);
-                    if (gameState.combatControlMode != 'pad') {
+                    if (gameState.combatControlMode != 'pad' || widget.isSimulationOnly == true) {
                       return const SizedBox.shrink();
                     }
                     return GestureDetector(
@@ -1196,6 +1207,7 @@ class _CombatScreenState extends State<CombatScreen>
                     final state = Provider.of<GameState>(context, listen: false);
                     state.addResources(_combatManager.accumulatedLoot);
                     state.clearEncounterState();
+                    state.recordCombatVictory();
                     Navigator.pop(context);
                   }
                 },
@@ -2496,6 +2508,9 @@ class _CombatBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final manager = Provider.of<CombatManager>(context);
+    if (manager.isAiVsAi) {
+      return const SizedBox.shrink();
+    }
     final playerLeader = manager.combatants
             .firstWhereOrNull((c) => c.npc.isPlayer)
             ?.npc;
@@ -2507,29 +2522,7 @@ class _CombatBottomBar extends StatelessWidget {
     final desc1 = ab1?.description ??
         "Nearby allies gain +50% Attack Speed for 8 seconds.";
 
-    IconData icon1 = Icons.gavel;
-    if (ab1 != null) {
-      final s = ab1.name.toLowerCase();
-      if (s.contains('shield')) {
-        icon1 = Icons.security;
-      } else if (s.contains('cry')) {
-        icon1 = Icons.campaign;
-      } else if (s.contains('overclock')) {
-        icon1 = Icons.speed;
-      } else if (s.contains('tesla')) {
-        icon1 = Icons.bolt;
-      } else if (s.contains('mist')) {
-        icon1 = Icons.cloud;
-      } else if (s.contains('swarm')) {
-        icon1 = Icons.pest_control;
-      } else if (s.contains('root')) {
-        icon1 = Icons.grass;
-      } else if (s.contains('howl')) {
-        icon1 = Icons.pets;
-      } else if (s.contains('rot')) {
-        icon1 = Icons.water_drop;
-      }
-    }
+    final icon1 = _getIconForAbility(ab1, Icons.gavel);
 
     final abList = playerLeader?.abilities
             .where((a) => a.type == AbilityType.special)
@@ -2540,29 +2533,7 @@ class _CombatBottomBar extends StatelessWidget {
     final desc2 = ab2?.description ??
         "Strike the nearest enemy for 150 dmg and stun them for 4s.";
 
-    IconData icon2 = Icons.flash_on;
-    if (ab2 != null) {
-      final s = ab2.name.toLowerCase();
-      if (s.contains('shield')) {
-        icon2 = Icons.security;
-      } else if (s.contains('cry')) {
-        icon2 = Icons.campaign;
-      } else if (s.contains('overclock')) {
-        icon2 = Icons.speed;
-      } else if (s.contains('tesla')) {
-        icon2 = Icons.bolt;
-      } else if (s.contains('mist')) {
-        icon2 = Icons.cloud;
-      } else if (s.contains('swarm')) {
-        icon2 = Icons.pest_control;
-      } else if (s.contains('root')) {
-        icon2 = Icons.grass;
-      } else if (s.contains('howl')) {
-        icon2 = Icons.pets;
-      } else if (s.contains('rot')) {
-        icon2 = Icons.water_drop;
-      }
-    }
+    final icon2 = _getIconForAbility(ab2, Icons.flash_on);
 
     return GestureDetector(
       onTap: () {}, // Absorbs gestures to block underlying map panning/zooming!
@@ -2647,7 +2618,7 @@ class _CombatBottomBar extends StatelessWidget {
                   child: _SpecialAbilityButton(
                     label: '',
                     icon: icon1,
-                    isCharged: manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer)?.npc.specialCharge == 1.0,
+                    progress: manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer)?.npc.specialCharge ?? 0.0,
                     onPressed: () {
                       manager.executeSpecial(playerId);
                     },
@@ -2665,7 +2636,7 @@ class _CombatBottomBar extends StatelessWidget {
                   child: _SpecialAbilityButton(
                     label: '',
                     icon: icon2,
-                    isCharged: (manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer)?.specialCharge2 ?? 0.0) >= 1.0,
+                    progress: manager.combatants.firstWhereOrNull((c) => c.npc.isPlayer)?.specialCharge2 ?? 0.0,
                     onPressed: () {
                       manager.executeSpecial2(playerId);
                     },
@@ -4645,21 +4616,59 @@ class _ImpliedJoystickState extends State<_ImpliedJoystick> {
   }
 }
 
+class _PieProgressPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _PieProgressPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0.0 || progress >= 1.0) return;
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Use the diagonal length as the radius to completely fill the button's corners!
+    final double radius = sqrt(size.width * size.width + size.height * size.height) / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // Draw the pie slice starting at -pi/2 (12 o'clock) and sweeping clockwise by progress * 2 * pi
+    final double startAngle = -pi / 2;
+    final double sweepAngle = progress * 2.0 * pi;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      true, // useCenter = true to make it a pie slice
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PieProgressPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.color != color;
+  }
+}
+
 class _SpecialAbilityButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final bool isCharged;
+  final double progress;
   final VoidCallback onPressed;
 
   const _SpecialAbilityButton({
     required this.label,
     required this.icon,
-    required this.isCharged,
+    required this.progress,
     required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isCharged = progress >= 1.0;
     final Color activeColor = isCharged ? const Color(0xFFD4AF37) : const Color(0xFF5D4037);
     
     return GestureDetector(
@@ -4682,16 +4691,87 @@ class _SpecialAbilityButton extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Center(
-          child: Icon(
-            icon,
-            color: isCharged ? const Color(0xFFD4AF37) : Colors.white30,
-            size: 18,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Stack(
+            children: [
+              // Clockwise expanding pie graph progress filling the entire button
+              if (!isCharged && progress > 0.0)
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _PieProgressPainter(
+                      progress: progress,
+                      color: const Color(0xFFD4AF37).withValues(alpha: 0.25),
+                    ),
+                  ),
+                ),
+              Center(
+                child: Icon(
+                  icon,
+                  color: isCharged ? const Color(0xFFD4AF37) : Colors.white30,
+                  size: 18,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+IconData _getIconForAbility(Ability? ab, IconData defaultIcon) {
+  if (ab == null) return defaultIcon;
+  final String id = ab.id.toLowerCase();
+  final String name = ab.name.toLowerCase();
+
+  if (id.contains('heal') || name.contains('heal') || name.contains('mist') || name.contains('chant')) {
+    return Icons.healing;
+  }
+  if (id.contains('invulner') || name.contains('shield') || name.contains('dome') || name.contains('providence')) {
+    return Icons.shield;
+  }
+  if (id.contains('push') || name.contains('repulsion')) {
+    return Icons.waves;
+  }
+  if (id.contains('range') || name.contains('volley') || name.contains('ballistics')) {
+    return Icons.gps_fixed;
+  }
+  if (id.contains('attack_buff') || name.contains('zeal') || name.contains('standard')) {
+    return Icons.flag;
+  }
+  if (id.contains('execute') || name.contains('execute')) {
+    return Icons.dangerous;
+  }
+  if (id.contains('drain') || name.contains('siphon')) {
+    return Icons.opacity;
+  }
+  if (id.contains('transmute') || name.contains('transmutation')) {
+    return Icons.add_moderator;
+  }
+  if (id.contains('mind_control') || name.contains('mesmerism') || id.contains('reeducation')) {
+    return Icons.psychology;
+  }
+  if (id.contains('debuff') || name.contains('subversion')) {
+    return Icons.trending_down;
+  }
+  if (id.contains('slow') || name.contains('caltrops') || name.contains('roots')) {
+    return Icons.grass;
+  }
+  if (id.contains('freeze') || name.contains('stun') || name.contains('flash')) {
+    return Icons.ac_unit;
+  }
+  if (id.contains('howl') || name.contains('feral')) {
+    return Icons.pets;
+  }
+  if (id.contains('whirlwind') || name.contains('cleave') || name.contains('pyre')) {
+    return Icons.rotate_right;
+  }
+  if (id.contains('direction') || name.contains('direction')) {
+    return Icons.explore;
+  }
+
+  return defaultIcon;
 }
 
 class _CauldronSprite extends StatelessWidget {
@@ -5130,6 +5210,7 @@ void _showCombatMenuDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (context) {
+      final isMobile = MediaQuery.of(context).size.height < 500;
       return Dialog(
         backgroundColor: const Color(0xFF1A1612),
         shape: const RoundedRectangleBorder(
@@ -5137,85 +5218,87 @@ void _showCombatMenuDialog(BuildContext context) {
         ),
         child: Container(
           width: 300,
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'COMBAT MENU',
-                style: GoogleFonts.playfairDisplay(
-                  color: const Color(0xFFE5D5B0),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+          padding: EdgeInsets.all(isMobile ? 12.0 : 20.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'COMBAT MENU',
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
                 ),
-              ),
-              const Divider(color: Colors.white10, height: 20),
-              _buildMenuButton(
-                context,
-                'LOAD GAME',
-                onPressed: () async {
-                  final navigator = Navigator.of(context);
-                  final data = await SaveService.loadGame(slot: 1);
-                  if (data != null) {
-                    gameState.loadFromJson(data);
-                    navigator.pop(); // close dialog
-                    navigator.pop(); // close combat screen
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuButton(
-                context,
-                'ATTEMPT TO FLEE',
-                onPressed: () {
-                  Navigator.of(context).pop(); // close dialog
-                  final success = Random().nextDouble() < 0.5;
-                  if (success) {
+                const Divider(color: Colors.white10, height: 20),
+                _buildMenuButton(
+                  context,
+                  'LOAD GAME',
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final data = await SaveService.loadGame(slot: 1);
+                    if (data != null) {
+                      gameState.loadFromJson(data);
+                      navigator.pop(); // close dialog
+                      navigator.pop(); // close combat screen
+                    }
+                  },
+                ),
+                SizedBox(height: isMobile ? 6.0 : 12.0),
+                _buildMenuButton(
+                  context,
+                  'ATTEMPT TO FLEE',
+                  onPressed: () {
+                    Navigator.of(context).pop(); // close dialog
+                    final success = Random().nextDouble() < 0.5;
+                    if (success) {
+                      gameState.clearEncounterState();
+                      Navigator.of(context).pop(); // close combat screen
+                      screenState?._showNotification('FLEED TO SAFETY', Colors.green.shade800);
+                    } else {
+                      screenState?._showNotification('FLEE ATTEMPT FAILED! THE ENEMY PURSUES!', Colors.red.shade900);
+                    }
+                  },
+                ),
+                SizedBox(height: isMobile ? 6.0 : 12.0),
+                _buildMenuButton(
+                  context,
+                  'HELP',
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));
+                  },
+                ),
+                SizedBox(height: isMobile ? 6.0 : 12.0),
+                _buildMenuButton(
+                  context,
+                  'GAME OPTIONS',
+                  onPressed: () {
+                    Navigator.of(context).pop(); // close dialog
+                    showDialog(
+                      context: context,
+                      builder: (context) => const OptionsDialog(),
+                    );
+                  },
+                ),
+                SizedBox(height: isMobile ? 6.0 : 12.0),
+                _buildMenuButton(
+                  context,
+                  'QUIT TO MAIN MENU',
+                  onPressed: () {
+                    Navigator.of(context).pop(); // close dialog
                     gameState.clearEncounterState();
-                    Navigator.of(context).pop(); // close combat screen
-                    screenState?._showNotification('FLEED TO SAFETY', Colors.green.shade800);
-                  } else {
-                    screenState?._showNotification('FLEE ATTEMPT FAILED! THE ENEMY PURSUES!', Colors.red.shade900);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuButton(
-                context,
-                'HELP',
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpScreen()));
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuButton(
-                context,
-                'GAME OPTIONS',
-                onPressed: () {
-                  Navigator.of(context).pop(); // close dialog
-                  showDialog(
-                    context: context,
-                    builder: (context) => const OptionsDialog(),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuButton(
-                context,
-                'QUIT TO MAIN MENU',
-                onPressed: () {
-                  Navigator.of(context).pop(); // close dialog
-                  gameState.clearEncounterState();
-                  gameState.quitGame();
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const MainMenuScreen()),
-                    (route) => false,
-                  );
-                },
-              ),
-            ],
+                    gameState.quitGame();
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+                      (route) => false,
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -6605,8 +6688,8 @@ class _OpponentDeckInspectorScreenState
                                 ? 'Passive Bonuses: Clockwork constructs deploy 15% faster and gain +10 armor.'
                                 : leader.id == 'boss_elizabeth'
                                 ? 'Passive Bonuses: Undead swarms gain +15% lifesteal and nocturnal vision.'
-                                : leader.id == 'boss_thorne'
-                                ? 'Passive Bonuses: Beast companions gain +20% movement speed and wilderness camouflage.'
+                                : leader.id == 'boss_thorne' || leader.id == 'chief_ranger_robin'
+                                ? 'Passive Bonuses: All friendly ranged units receive +2 ft attack range.'
                                 : 'Passive Bonuses: Military units gain +10% critical chance, and defensive towers receive +15% armor.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.oldStandardTt(
@@ -6812,6 +6895,103 @@ class _AoeEffectPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (effect.id.startsWith('arrows_')) {
+      final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
+      if (pct >= 1.0) return;
+
+      final rand = Random(effect.id.hashCode);
+      final arrowPaint = Paint()
+        ..color = const Color(0xFFC4B89B).withValues(alpha: 0.8 * (1.0 - pct))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+
+      final tipPaint = Paint()
+        ..color = Colors.white70.withValues(alpha: 0.9 * (1.0 - pct))
+        ..style = PaintingStyle.fill;
+
+      // Draw 60 falling arrows
+      for (int i = 0; i < 60; i++) {
+        // Target position in world space
+        final double tx = rand.nextDouble() * 300.0;
+        final double ty = rand.nextDouble() * 120.0;
+
+        // Speed/delay offset for each arrow to make it organic
+        final double delay = rand.nextDouble() * 0.3;
+        final double arrowPct = ((pct - delay) / 0.7).clamp(0.0, 1.0);
+
+        if (arrowPct <= 0.0) continue;
+
+        // Start position offset (diagonal fall)
+        final double startXOffset = -15.0;
+        final double startYOffset = -80.0;
+
+        // Current position of this arrow
+        final double curX = tx + startXOffset * (1.0 - arrowPct);
+        final double curY = ty + startYOffset * (1.0 - arrowPct);
+
+        final p = projection.project(curX, curY);
+
+        if (arrowPct < 0.9) {
+          // Draw the arrow shaft
+          final shaftEnd = projection.project(curX - startXOffset * 0.1, curY - startYOffset * 0.1);
+          canvas.drawLine(p, shaftEnd, arrowPaint);
+          // Draw a tiny arrowhead
+          canvas.drawCircle(p, 1.5, tipPaint);
+        } else {
+          // Arrow hit the ground: draw it sticking in the ground and fading
+          final groundPos = projection.project(tx, ty);
+          final shaftEnd = projection.project(tx - startXOffset * 0.08, ty - startYOffset * 0.08);
+          final fadePaint = Paint()
+            ..color = const Color(0xFF8B7E66).withValues(alpha: 0.5 * (1.0 - (arrowPct - 0.9) / 0.1))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2;
+          canvas.drawLine(groundPos, shaftEnd, fadePaint);
+        }
+      }
+      return;
+    }
+
+    if (effect.id.startsWith('thicket_')) {
+      final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
+      if (pct >= 1.0) return;
+
+      final double currentRadius = effect.maxRadius * pct;
+      final center = projection.project(effect.x, effect.y);
+
+      final vinePaint = Paint()
+        ..color = const Color(0xFF2E5A27).withValues(alpha: 0.8 * (1.0 - pct))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5;
+
+      final thornPaint = Paint()
+        ..color = const Color(0xFF5C4033).withValues(alpha: 0.9 * (1.0 - pct))
+        ..style = PaintingStyle.fill;
+
+      // Draw the main expanding ring
+      canvas.drawCircle(center, currentRadius, vinePaint);
+
+      // Draw 12 thorns along the ring
+      final int numThorns = 12;
+      for (int i = 0; i < numThorns; i++) {
+        final double angle = i * (2.0 * pi / numThorns) + (pct * 0.5); // Add a slight rotation as it expands
+        final double tipX = effect.x + cos(angle) * (currentRadius + 3.0);
+        final double tipY = effect.y + sin(angle) * (currentRadius + 3.0);
+        final double base1X = effect.x + cos(angle - 0.1) * (currentRadius - 1.0);
+        final double base1Y = effect.y + sin(angle - 0.1) * (currentRadius - 1.0);
+        final double base2X = effect.x + cos(angle + 0.1) * (currentRadius - 1.0);
+        final double base2Y = effect.y + sin(angle + 0.1) * (currentRadius - 1.0);
+
+        final thornPath = Path()
+          ..moveTo(projection.project(tipX, tipY).dx, projection.project(tipX, tipY).dy)
+          ..lineTo(projection.project(base1X, base1Y).dx, projection.project(base1X, base1Y).dy)
+          ..lineTo(projection.project(base2X, base2Y).dx, projection.project(base2X, base2Y).dy)
+          ..close();
+
+        canvas.drawPath(thornPath, thornPaint);
+      }
+      return;
+    }
+
     if (effect.id.startsWith('lightning_')) {
       final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
       if (pct >= 1.0) return;

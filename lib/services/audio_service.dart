@@ -189,7 +189,7 @@ class AudioService {
           url = 'audio/gloop.wav';
           break;
         case BgmMode.combat:
-          url = 'audio/dloop.wav';
+          url = 'audio/vivaldi_spring_mvt1.m4a';
           break;
         case BgmMode.bistroLutist:
           url = 'audio/aloop.wav';

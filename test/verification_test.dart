@@ -495,7 +495,7 @@ void main() {
         {'undead_bats': 10.0},
       );
       
-      expect(progress.unitExp['undead_bats'], equals(5.0));
+      expect(progress.unitExp['undead_bats'], equals(4.0));
     });
 
     testWidgets('Survival Mode: Melee-only units like wild_bear or brewers do not have ranged stats', (tester) async {

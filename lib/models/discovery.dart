@@ -182,5 +182,57 @@ class Discovery {
       description: 'Advertise the cutting-edge fusion of culinary science and modern alchemical design (+25% dining tips, alchemical decor).',
       requiredResearch: {'Marketing': 2, 'Alchemy': 1},
     ),
+    // --- DARK MATTER DISCOVERIES (Request 4) ---
+    Discovery(
+      id: 'dark_matter_identification',
+      name: 'Dark Matter Detection',
+      description: 'Enables identification and measurement of dark matter fields in the surrounding alpine valleys, detailing its exotic non-baryonic properties.',
+      requiredResearch: {'Physics': 4, 'Astronomy': 3},
+      unlocks: ['dark_matter_scanner'],
+    ),
+    Discovery(
+      id: 'dark_matter_weaponization',
+      name: 'Dark Matter Weaponization',
+      description: 'Harnesses dark matter particles to construct gravitational displacement weapons, increasing the attack power of all mechanical constructs by 40%.',
+      requiredResearch: {'Physics': 5, 'Engineering': 4},
+      unlocks: ['gravitational_weapons', 'dark_matter_ammo'],
+    ),
+    Discovery(
+      id: 'dark_matter_industrialization',
+      name: 'Dark Matter Industrialization',
+      description: 'Manipulates dark matter density fields to stabilize local gravitational pull, boosting resource output in the manor\'s automated refineries (Lumber Mill & Mine) by 35%.',
+      requiredResearch: {'Engineering': 5, 'Electrical Engineering': 5},
+      unlocks: ['gravitational_stabilizer', 'industrial_dark_matter'],
+    ),
+    // --- PSYCHOLOGY DISCOVERIES (Request 5) ---
+    Discovery(
+      id: 'short_sleeper_id',
+      name: 'Short Sleeper Syndrome Identification',
+      description: 'Enables identification of the Short Sleeper Syndrome trait in residents. Identified short sleepers can have their daily sleep hours reduced to 4 hours with no fatigue penalty.',
+      requiredResearch: {'Psychology': 1},
+      unlocks: ['identify_short_sleeper'],
+    ),
+    Discovery(
+      id: 'psychological_profiling',
+      name: 'Psychological Profiling',
+      description: 'Enables identification of behavioral and psychological traits (such as genius, hardworking, lazy, loyal, mutinous) in residents, allowing for optimal assignment and scouting.',
+      requiredResearch: {'Psychology': 2},
+      unlocks: ['identify_basic_traits'],
+    ),
+    // --- SURVIVAL MODE SPECIAL DISCOVERIES (Request 2) ---
+    Discovery(
+      id: 'beast_labor',
+      name: 'Beast Labor Assignment',
+      description: 'Applies behavioral conditioning to estate beasts, unlocking the ability to assign beasts to do facility work.',
+      requiredResearch: {'Biology': 3, 'Psychology': 2},
+      unlocks: ['assign_beast_labor'],
+    ),
+    Discovery(
+      id: 'undead_training',
+      name: 'Undead Conditioning & Training',
+      description: 'Develops specialized neural-galvanic training protocols, unlocking the ability to assign undead units to the Training Yard.',
+      requiredResearch: {'Necromancy': 3, 'Psychology': 2},
+      unlocks: ['train_undead_units'],
+    ),
   ];
 }

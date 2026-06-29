@@ -25,6 +25,7 @@ import '../../models/language_encounter.dart';
 import '../../models/neighbor_encounter.dart';
 import '../../models/room.dart';
 import '../../services/npc_generator.dart';
+import 'diodati_portrait_widget.dart';
 
 class GuestConversationDialog extends StatelessWidget {
   const GuestConversationDialog({super.key});
@@ -90,137 +91,151 @@ class GuestConversationDialog extends StatelessWidget {
                   ),
                   const Divider(color: Colors.white10, height: 24),
 
-                  // Narrator Description
-                  Text(
-                    "${greeter.name.toUpperCase()} has met ${guest.name.toUpperCase()} (${guest.role.toUpperCase()}) at the grand entryway doors.",
-                    style: GoogleFonts.oldStandardTt(
-                      color: const Color(0xFFC4B89B),
-                      fontSize: 13,
-                      height: 1.4,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  if (guestType == 'plot_visitor') ...[
-                    ..._buildPlotVisitorContent(context, state, greeter, guest),
-                  ] else if (guestType == 'neighbor') ...[
-                    ..._buildNeighborOptions(context, state, greeter, guest),
-                  ] else ...[
-                    Text(
-                      "The visitor looks up, a question hovering over their countenance. How shall Glarus respond to their presence?",
-                      style: GoogleFonts.oldStandardTt(
-                        color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    // Business Venture Proposal Option
-                    if (isProposer) ...[
-                      _dialogOption(
-                        context: context,
-                        title: "DISCUSS COMMERCIAL PROPOSAL",
-                        description: "Hear ${guest.name.toUpperCase()}'s venture proposal. Set up a specialty business at the manor.",
-                        icon: Icons.business_center,
-                        onTap: () {
-                          _showVentureProposalDetails(context, state, guest);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    // Option 1: Welcome and Trade
-                    _dialogOption(
-                      context: context,
-                      title: isMerchant ? "DISCUSS MERCHANDISE" : "WELCOME & OFFER COMMERCE",
-                      description: isMerchant 
-                          ? "Offer the merchant standard hospitality and inspect their wagon wares." 
-                          : "Welcome the visitor and ask if they carry any trade stock.",
-                      icon: Icons.storefront,
-                      onTap: () {
-                        guest.metadata['isGreeted'] = true;
-                        state.clearGuestConversation();
-                        Navigator.pop(context);
-
-                        if (isMerchant) {
-                          showDialog(
-                            context: context,
-                            builder: (context) => VisitingMerchantTradeDialog(merchant: guest),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("${guest.name} is not a merchant and has no goods to sell."),
-                              backgroundColor: const Color(0xFF241F1A),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DiodatiPortraitWidget(npcName: guest.name, size: 120.0),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Narrator Description
+                            Text(
+                              "${greeter.name.toUpperCase()} has met ${guest.name.toUpperCase()} (${guest.role.toUpperCase()}) at the grand entryway doors.",
+                              style: GoogleFonts.oldStandardTt(
+                                color: const Color(0xFFC4B89B),
+                                fontSize: 13,
+                                height: 1.4,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
+                            const SizedBox(height: 24),
 
-                    // Option 2: Custom Quest / Venture Opportunity (Request 4)
-                    (() {
-                      final quest = state.getVisitorQuestForNpc(guest);
-                      return _dialogOption(
-                        context: context,
-                        title: quest.title,
-                        description: '"${quest.teaserQuote}"',
-                        icon: Icons.assignment,
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showVisitorQuestProposalDetailsDialog(context, state, quest, guest);
-                        },
-                      );
-                    })(),
-                    const SizedBox(height: 12),
+                            if (guestType == 'plot_visitor') ...[
+                              ..._buildPlotVisitorContent(context, state, greeter, guest),
+                            ] else if (guestType == 'neighbor') ...[
+                              ..._buildNeighborOptions(context, state, greeter, guest),
+                            ] else ...[
+                              Text(
+                                "The visitor looks up, a question hovering over their countenance. How shall Glarus respond to their presence?",
+                                style: GoogleFonts.oldStandardTt(
+                                  color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
+                                  fontSize: 12,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              // Business Venture Proposal Option
+                              if (isProposer) ...[
+                                _dialogOption(
+                                  context: context,
+                                  title: "DISCUSS COMMERCIAL PROPOSAL",
+                                  description: "Hear ${guest.name.toUpperCase()}'s venture proposal. Set up a specialty business at the manor.",
+                                  icon: Icons.business_center,
+                                  onTap: () {
+                                    _showVentureProposalDetails(context, state, guest);
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                              ],
 
-                    // Option 3: Social Debate / Spirits
-                    _dialogOption(
-                      context: context,
-                      title: hasSpirits ? "SHARE REFINED SPIRITS & DEBATE" : "DISCUSS PHILOSOPHY & SCIENCE",
-                      description: hasSpirits 
-                          ? "Crack open Glarus spirits (-1 Spirits). Engage in a high-morale, deeply engaging debate (+20 Greeter Satisfaction)." 
-                          : "Engage in standard intellectual discourse. Greeter satisfaction slightly increases (+10).",
-                      icon: Icons.local_bar,
-                      onTap: () {
-                        if (hasSpirits) {
-                          state.updateResource('spirits', -1);
-                          state.adjustNpcSatisfaction(greeter.id, 20);
-                        } else {
-                          state.adjustNpcSatisfaction(greeter.id, 10);
-                        }
+                              // Option 1: Welcome and Trade
+                              _dialogOption(
+                                context: context,
+                                title: isMerchant ? "DISCUSS MERCHANDISE" : "WELCOME & OFFER COMMERCE",
+                                description: isMerchant 
+                                    ? "Offer the merchant hospitality and inspect their wagon wares." 
+                                    : "Welcome the visitor and ask if they carry any trade stock.",
+                                icon: Icons.storefront,
+                                onTap: () {
+                                  guest.metadata['isGreeted'] = true;
+                                  state.clearGuestConversation();
+                                  Navigator.pop(context);
 
-                        state.clearGuestConversation();
-                        Navigator.pop(context);
+                                  if (isMerchant) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => VisitingMerchantTradeDialog(merchant: guest),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("${guest.name} is not a merchant and has no goods to sell."),
+                                        backgroundColor: const Color(0xFF241F1A),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 12),
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(hasSpirits 
-                                ? "Refined spirits shared! ${greeter.name} gained +20 Satisfaction."
-                                : "Engaged in philosophical discourse. ${greeter.name} gained +10 Satisfaction."),
-                            backgroundColor: const Color(0xFF241F1A),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
+                              // Option 2: Custom Quest / Venture Opportunity (Request 4)
+                              (() {
+                                final quest = state.getVisitorQuestForNpc(guest);
+                                return _dialogOption(
+                                  context: context,
+                                  title: quest.title,
+                                  description: '"${quest.teaserQuote}"',
+                                  icon: Icons.assignment,
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _showVisitorQuestProposalDetailsDialog(context, state, quest, guest);
+                                  },
+                                );
+                              })(),
+                              const SizedBox(height: 12),
 
-                    // Option 4: Polite Dismissal
-                    _dialogOption(
-                      context: context,
-                      title: "POLITELY DISMISS GUEST",
-                      description: "Tell them that Glarus cannot host travelers today. They will immediately pack up and depart.",
-                      icon: Icons.exit_to_app,
-                      isRed: true,
-                      onTap: () {
-                        state.dismissGuest(guest.id);
-                        state.clearGuestConversation();
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
+                              // Option 3: Social Debate / Spirits
+                              _dialogOption(
+                                context: context,
+                                title: hasSpirits ? "SHARE REFINED SPIRITS & DEBATE" : "DISCUSS PHILOSOPHY & SCIENCE",
+                                description: hasSpirits 
+                                    ? "Crack open Glarus spirits (-1 Spirits). Engage in a high-morale, deeply engaging debate (+20 Greeter Satisfaction)." 
+                                    : "Engage in standard intellectual discourse. Greeter satisfaction slightly increases (+10).",
+                                icon: Icons.local_bar,
+                                onTap: () {
+                                  if (hasSpirits) {
+                                    state.updateResource('spirits', -1);
+                                    state.adjustNpcSatisfaction(greeter.id, 20);
+                                  } else {
+                                    state.adjustNpcSatisfaction(greeter.id, 10);
+                                  }
+
+                                  state.clearGuestConversation();
+                                  Navigator.pop(context);
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(hasSpirits 
+                                          ? "Refined spirits shared! ${greeter.name} gained +20 Satisfaction."
+                                          : "Engaged in philosophical discourse. ${greeter.name} gained +10 Satisfaction."),
+                                      backgroundColor: const Color(0xFF241F1A),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Option 4: Polite Dismissal
+                              _dialogOption(
+                                context: context,
+                                title: "POLITELY DISMISS GUEST",
+                                description: "Tell them that Glarus cannot host travelers today. They will immediately pack up and depart.",
+                                icon: Icons.exit_to_app,
+                                isRed: true,
+                                onTap: () {
+                                  state.dismissGuest(guest.id);
+                                  state.clearGuestConversation();
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -622,126 +637,140 @@ class GuestConversationDialog extends StatelessWidget {
               ),
               const Divider(color: Colors.white10, height: 24),
 
-              // Description
-              Text(
-                encounter.id >= 11 && encounter.id <= 16
-                    ? "A foreign customer has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}."
-                    : "A foreign traveler has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}.",
-                style: GoogleFonts.oldStandardTt(
-                  color: const Color(0xFFC4B89B),
-                  fontSize: 13,
-                  height: 1.4,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Prompt Bubble (Foreign or English depending on Translate flag)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  border: Border.all(color: const Color(0xFFC4B89B).withOpacity(0.3)),
-                ),
-                child: Text(
-                  isTranslated
-                      ? 'Translated:\n"${encounter.promptEnglish}"'
-                      : '"${encounter.promptForeign}"',
-                  style: GoogleFonts.oldStandardTt(
-                    color: const Color(0xFFE5D5B0),
-                    fontSize: 14,
-                    height: 1.5,
-                    fontWeight: isTranslated ? FontWeight.normal : FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Translate Option (if not yet translated)
-              if (!isTranslated) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        hasTranslator
-                            ? "A resident speaks ${encounter.languageName} and can translate."
-                            : "No resident at the Manor speaks ${encounter.languageName}.",
-                        style: GoogleFonts.oldStandardTt(
-                          color: hasTranslator ? Colors.green[300] : Colors.red[300],
-                          fontSize: 11,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DiodatiPortraitWidget(npcName: guest.name, size: 120.0),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Description
+                        Text(
+                          encounter.id >= 11 && encounter.id <= 16
+                              ? "A foreign customer has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}."
+                              : "A foreign traveler has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}.",
+                          style: GoogleFonts.oldStandardTt(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 13,
+                            height: 1.4,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF382F24),
-                        foregroundColor: const Color(0xFFE5D5B0),
-                        shape: const RoundedRectangleBorder(),
-                        side: const BorderSide(color: Color(0xFFC4B89B)),
-                      ),
-                      icon: const Icon(Icons.translate, size: 14),
-                      label: Text(
-                        "TRANSLATE (+10 mins)",
-                        style: GoogleFonts.playfairDisplay(fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: hasTranslator
-                          ? () {
-                              state.translateActiveEncounter();
-                            }
-                          : null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-              ],
+                        const SizedBox(height: 24),
 
-              // Response Options Headers
-              Text(
-                "SELECT RESPONSE:",
-                style: GoogleFonts.playfairDisplay(
-                  color: const Color(0xFFC4B89B),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 12),
+                        // Prompt Bubble (Foreign or English depending on Translate flag)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            border: Border.all(color: const Color(0xFFC4B89B).withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            isTranslated
+                                ? 'Translated:\n"${encounter.promptEnglish}"'
+                                : '"${encounter.promptForeign}"',
+                            style: GoogleFonts.oldStandardTt(
+                              color: const Color(0xFFE5D5B0),
+                              fontSize: 14,
+                              height: 1.5,
+                              fontWeight: isTranslated ? FontWeight.normal : FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
 
-              // Shuffled Options A-D
-              ...List.generate(encounter.options.length, (idx) {
-                final option = encounter.options[idx];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _dialogOption(
-                    context: context,
-                    title: '',
-                    description: option.text,
-                    icon: Icons.chat_bubble_outline,
-                    onTap: () {
-                      state.resolveLanguageEncounter(option);
-                      Navigator.pop(context);
-                    },
+                        // Translate Option (if not yet translated)
+                        if (!isTranslated) ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  hasTranslator
+                                      ? "A resident speaks ${encounter.languageName} and can translate."
+                                      : "No resident at the Manor speaks ${encounter.languageName}.",
+                                  style: GoogleFonts.oldStandardTt(
+                                    color: hasTranslator ? Colors.green[300] : Colors.red[300],
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF382F24),
+                                  foregroundColor: const Color(0xFFE5D5B0),
+                                  shape: const RoundedRectangleBorder(),
+                                  side: const BorderSide(color: Color(0xFFC4B89B)),
+                                ),
+                                icon: const Icon(Icons.translate, size: 14),
+                                label: Text(
+                                  "TRANSLATE (+10 mins)",
+                                  style: GoogleFonts.playfairDisplay(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: hasTranslator
+                                    ? () {
+                                        state.translateActiveEncounter();
+                                      }
+                                    : null,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Response Options Headers
+                        Text(
+                          "SELECT RESPONSE:",
+                          style: GoogleFonts.playfairDisplay(
+                            color: const Color(0xFFC4B89B),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Shuffled Options A-D
+                        ...List.generate(encounter.options.length, (idx) {
+                          final option = encounter.options[idx];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _dialogOption(
+                              context: context,
+                              title: '',
+                              description: option.text,
+                              icon: Icons.chat_bubble_outline,
+                              onTap: () {
+                                state.resolveLanguageEncounter(option);
+                                Navigator.pop(context);
+                              },
+                            ),
+                          );
+                        }),
+
+                        // Option E (Hostile Rebuff) anchored at bottom
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: _dialogOption(
+                            context: context,
+                            title: '',
+                            description: encounter.hostileOption.text,
+                            icon: Icons.gavel,
+                            isRed: true,
+                            onTap: () {
+                              state.resolveLanguageEncounter(encounter.hostileOption);
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              }),
-
-              // Option E (Hostile Rebuff) anchored at bottom
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: _dialogOption(
-                  context: context,
-                  title: '',
-                  description: encounter.hostileOption.text,
-                  icon: Icons.gavel,
-                  isRed: true,
-                  onTap: () {
-                    state.resolveLanguageEncounter(encounter.hostileOption);
-                    Navigator.pop(context);
-                  },
-                ),
+                ],
               ),
             ],
           ),

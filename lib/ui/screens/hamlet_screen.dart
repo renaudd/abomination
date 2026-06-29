@@ -1019,6 +1019,29 @@ class _HamletScreenState extends State<HamletScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
+                Builder(
+                  builder: (context) {
+                    final List<String> visibleTraits = [];
+                    if (state.unlockedDiscoveries.contains('psychological_profiling')) {
+                      visibleTraits.addAll(npc.traits.where((t) => t.id != 'short_sleeper').map((t) => t.name));
+                    }
+                    if (state.unlockedDiscoveries.contains('short_sleeper_id') && npc.traits.any((t) => t.id == 'short_sleeper')) {
+                      visibleTraits.add('Short Sleeper');
+                    }
+                    final traitsText = visibleTraits.isEmpty
+                        ? (state.unlockedDiscoveries.contains('psychological_profiling') ? 'NO SIGNIFICANT TRAITS' : 'TRAITS: UNKNOWN')
+                        : 'TRAITS: ${visibleTraits.join(', ').toUpperCase()}';
+                    return Text(
+                      traitsText,
+                      style: GoogleFonts.oldStandardTt(
+                        color: visibleTraits.isNotEmpty ? const Color(0xFFD4AF37) : Colors.white38,
+                        fontSize: 9,
+                        fontWeight: visibleTraits.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    );
+                  }
+                ),
+                const SizedBox(height: 4),
                 Text(
                   'WAGES: ${npc.monthlySalary} CHF / MONTH',
                   style: GoogleFonts.oldStandardTt(

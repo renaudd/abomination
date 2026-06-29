@@ -22,6 +22,7 @@ import '../models/schedule.dart';
 import '../models/diet.dart';
 import '../models/combat_map.dart';
 import 'combat_unit_factory.dart';
+import 'combat_unit_service.dart';
 import '../main.dart' show globalGameState;
 
 enum CombatSide { player, enemy }
@@ -128,6 +129,10 @@ class Combatant {
 
   double damageDebuffMultiplier = 1.0;
   double damageDebuffDurationRemaining = 0.0;
+  double vampiricMistDurationRemaining = 0.0;
+
+  double damageTakenMultiplier = 1.0;
+  double damageTakenMultiplierDurationRemaining = 0.0;
 
   double strengthFactor = 0.0;
   double enduranceFactor = 0.0;
@@ -183,6 +188,7 @@ class Combatant {
     if (chargeDurationRemaining > 0.0) {
       mult *= 3.5; // 3.5x speed when charging!
     }
+    mult *= speedBuffMultiplier;
     return mult;
   }
 
@@ -337,6 +343,7 @@ class CombatManager extends ChangeNotifier {
   final List<NPC> _aiDeck = [];
   final List<NPC> _aiHand = [];
   final List<NPC> _initialAiDeck = [];
+  final Set<String> _initialPlayerDeckCardTypes = {};
   Map<String, int> upgrades = {};
   bool isSurvivalMode = false;
   bool isNormalGameMode = false;
@@ -655,6 +662,7 @@ class CombatManager extends ChangeNotifier {
 
   void prepareDeck(List<NPC> units) {
     _deck.clear();
+    _initialPlayerDeckCardTypes.clear();
     final hasArachnidArmor =
         globalGameState?.unlockedDiscoveries.contains(
           'insectoid_silk_composites',
@@ -662,6 +670,8 @@ class CombatManager extends ChangeNotifier {
         false;
 
     for (var u in units) {
+      final cardType = _getUnitBaseCardType(u);
+      _initialPlayerDeckCardTypes.add(cardType);
       NPC finalUnit = u;
       if (u.id == 'butler' || u.role == 'Butler') {
         final musketeer = CombatUnitFactory.createMusketeers();
@@ -785,6 +795,7 @@ class CombatManager extends ChangeNotifier {
   }
 
   bool _isAiVsAi = false;
+  bool get isAiVsAi => _isAiVsAi;
 
   void setupSimulation(
     List<NPC> playerDeck,
@@ -937,7 +948,7 @@ class CombatManager extends ChangeNotifier {
     return true;
   }
 
-  bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y, bool isAiLeader = false}) {
+  bool spawnUnit(NPC npc, CombatSide side, {double? x, double? y, bool isAiLeader = false, bool bypassCost = false, double? supportDuration}) {
     final stats = npc.combatStats;
     if (stats == null) return false;
 
@@ -973,6 +984,58 @@ class CombatManager extends ChangeNotifier {
     }
 
     CombatStats finalStats = stats;
+    
+    // Apply Ranger Robin passive: +2 ft range to all ranged units on their side
+    final bool hasRobinPassive = (npc.id == 'chief_ranger_robin') || 
+        _combatants.any((other) => other.side == side && (other.npc.id.contains('chief_ranger_robin') || (other.npc.isPlayer && other.npc.id == 'chief_ranger_robin')));
+    if (hasRobinPassive && finalStats.rangedDamage > 0) {
+      finalStats = finalStats.copyWith(
+        distance: finalStats.distance + 2.0,
+        rangedRange: finalStats.rangedRange + 2.0,
+      );
+    }
+
+    // Apply temporary next-combat upgrades (Survival Mode)
+    if (side == CombatSide.player) {
+      final double speedRed = (upgrades['next_combat_speed_reduction'] ?? 0) / 100.0;
+      if (speedRed > 0.0) {
+        finalStats = finalStats.copyWith(
+          movement: max(0.1, finalStats.movement * (1.0 - speedRed)),
+        );
+      }
+      final double dmgMult = (upgrades['next_combat_damage_multiplier'] ?? 100) / 100.0;
+      if (dmgMult != 1.0) {
+        finalStats = finalStats.copyWith(
+          attack: finalStats.attack * dmgMult,
+          meleeDamage: finalStats.meleeDamage * dmgMult,
+          rangedDamage: finalStats.rangedDamage * dmgMult,
+        );
+      }
+      final double hpPenPercent = (upgrades['next_combat_health_penalty_percent'] ?? 0) / 100.0;
+      if (hpPenPercent > 0.0) {
+        finalStats = finalStats.copyWith(
+          health: (finalStats.health * (1.0 - hpPenPercent)).roundToDouble(),
+          maxHealth: (finalStats.maxHealth * (1.0 - hpPenPercent)).roundToDouble(),
+        );
+      }
+      final int hpPenFlat = upgrades['next_combat_health_penalty'] ?? 0;
+      if (hpPenFlat > 0) {
+        finalStats = finalStats.copyWith(
+          health: max(1.0, finalStats.health - 25.0),
+          maxHealth: max(1.0, finalStats.maxHealth - 25.0),
+        );
+      }
+      final bool redHandActive = upgrades['red_hand_insignia_active'] == 1;
+      if (redHandActive && !npc.isPlayer) {
+        finalStats = finalStats.copyWith(
+          movement: finalStats.movement * 1.10,
+          attack: finalStats.attack * 1.20,
+          meleeDamage: finalStats.meleeDamage * 1.20,
+          rangedDamage: finalStats.rangedDamage * 1.20,
+        );
+      }
+    }
+
     // 1. Endurance (HP)
     if (endFactor != 0.0) {
       final double hpMult = 1.0 + endFactor * 0.05;
@@ -1012,7 +1075,7 @@ class CombatManager extends ChangeNotifier {
     final double spawnY = (y ?? (Random().nextDouble() * _map.height)).clamp(2.0, _map.height - 2.0);
 
     // 2. Enforce manual player spawn limits & deduct Action Points (Only when NOT simulation!)
-    if (side == CombatSide.player && !_isAiVsAi) {
+    if (side == CombatSide.player && !_isAiVsAi && !bypassCost) {
       if (!isValidPlacement(npc, spawnX, spawnY)) return false;
       if (_actionPoints < stats.cost) return false;
 
@@ -1041,11 +1104,13 @@ class CombatManager extends ChangeNotifier {
     // Generate unique squad ID
     final String squadId = 'squad_${npc.id}_${DateTime.now().microsecondsSinceEpoch}';
 
-    double initialSupportDuration = 0.0;
-    if (stats.unitType == UnitType.support) {
+    double initialSupportDuration = supportDuration ?? 0.0;
+    if (supportDuration == null && stats.unitType == UnitType.support) {
       if (npc.name.contains('Barrage') || npc.name.contains('Artillery')) {
         initialSupportDuration = 3.0;
       } else if (npc.name.contains('Gas') || npc.name.contains('Tear')) {
+        initialSupportDuration = 6.0;
+      } else if (npc.name.contains('Bat Swarm Spell')) {
         initialSupportDuration = 6.0;
       } else if (npc.name.contains('Stampede')) {
         initialSupportDuration = 12.0;
@@ -1192,6 +1257,7 @@ class CombatManager extends ChangeNotifier {
           activeDeploymentTimer: finalStats.deploymentTime,
           originCardName: npc.name,
         )
+          ..supportDurationRemaining = initialSupportDuration
           ..strengthFactor = strFactor
           ..enduranceFactor = endFactor
           ..dexterityFactor = dexFactor
@@ -1443,8 +1509,10 @@ class CombatManager extends ChangeNotifier {
         }
         // Return player units to deck (Only recycle the main Squad Leader card when the ENTIRE squad is dead)
         if (c.side == CombatSide.player && !c.npc.isPlayer) {
-          final String? sqId = c.squadId;
-          if (sqId != null) {
+          final cardType = _getUnitBaseCardType(c.npc);
+          if (_initialPlayerDeckCardTypes.contains(cardType)) {
+            final String? sqId = c.squadId;
+            if (sqId != null) {
             final bool anyOthersAlive = _combatants.any((other) => other != c && other.squadId == sqId && !other.isDead);
             if (c.isSquadLeader) {
               final resetNpc = c.npc.copyWith(
@@ -1467,6 +1535,7 @@ class CombatManager extends ChangeNotifier {
                 }
               }
             }
+          }
           }
         } else if (c.side == CombatSide.enemy) {
           _killedEnemies.add(c.npc);
@@ -2237,6 +2306,29 @@ class CombatManager extends ChangeNotifier {
             }
           }
         }
+      } else if (c.npc.name.contains('Bat Swarm Spell')) {
+        const radius = 25.0;
+        final damageThisTick = 15.0 * dt;
+
+        for (final t in targets) {
+          final dx = t.x - c.x;
+          final dy = t.y - c.y;
+          final dist = sqrt(dx * dx + dy * dy);
+          if (dist <= radius) {
+            final tStats = t.npc.combatStats!;
+            final newHealth = max(0.0, tStats.health - damageThisTick);
+            t.npc = t.npc.copyWith(
+              combatStats: tStats.copyWith(health: newHealth),
+            );
+            t.flashTimer = 0.25;
+            t.recentDamage += damageThisTick;
+            t.speedBuffMultiplier = 0.7; // 30% slow
+            t.speedBuffDurationRemaining = 1.0; // Keep slow refreshed
+            if (newHealth <= 0) {
+              _onCombatantDeath(t, c);
+            }
+          }
+        }
       } else if (c.npc.name.contains('Caltrops')) {
         // Caltrops: slows ground units by 60%, deals 10 DPS (2.5x / 25 DPS to vehicles) in a square
         // Each side is 15.0 feet (long side of original layout)
@@ -2306,6 +2398,15 @@ class CombatManager extends ChangeNotifier {
       }
 
       return; // Skip normal locomotion, auto-targeting, or auto-attacks for Support units
+    }
+
+    // Decay normal units with supportDurationRemaining
+    if (c.supportDurationRemaining > 0.0) {
+      c.supportDurationRemaining = max(0.0, c.supportDurationRemaining - dt);
+      if (c.supportDurationRemaining <= 0.0) {
+        c.isDead = true;
+        return;
+      }
     }
 
     // A-1a. Elemental DOTs & Status Effect Processing Engine
@@ -2395,6 +2496,13 @@ class CombatManager extends ChangeNotifier {
       if (c.damageDebuffDurationRemaining > 0) {
         c.damageDebuffDurationRemaining -= dt;
         if (c.damageDebuffDurationRemaining <= 0) c.damageDebuffMultiplier = 1.0;
+      }
+      if (c.damageTakenMultiplierDurationRemaining > 0) {
+        c.damageTakenMultiplierDurationRemaining -= dt;
+        if (c.damageTakenMultiplierDurationRemaining <= 0) c.damageTakenMultiplier = 1.0;
+      }
+      if (c.vampiricMistDurationRemaining > 0.0) {
+        c.vampiricMistDurationRemaining = max(0.0, c.vampiricMistDurationRemaining - dt);
       }
     }
 
@@ -2525,11 +2633,15 @@ class CombatManager extends ChangeNotifier {
         specialCharge: min(1.0, c.npc.specialCharge + chargeInc),
       );
 
-      // Auto-fire special ability if charged and ready (AI ONLY or in Survival Mode for ALL units!)
-      if (c.npc.specialCharge >= 1.0 &&
-          (c.side == CombatSide.enemy || (isSurvivalMode && !c.npc.isPlayer))) {
+      // Auto-fire special ability if charged and ready (AI-controlled side, or in Survival Mode for non-player units, or in AI vs AI simulation)
+      final bool isAiControlled = c.side == CombatSide.enemy || 
+                                  _isAiVsAi || 
+                                  (isSurvivalMode && !c.npc.isPlayer);
+      if (c.npc.specialCharge >= 1.0 && isAiControlled) {
         if (canExecuteSpecial(c.npc.id)) {
-          executeSpecial(c.npc.id);
+          if (_shouldAiLeaderUseAbility(c, special)) {
+            executeSpecial(c.npc.id);
+          }
         }
       }
       final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
@@ -2537,10 +2649,9 @@ class CombatManager extends ChangeNotifier {
         final secAbility = specials[1];
         final secChargeInc = dt / (secAbility.chargeTime ?? 15.0);
         c.specialCharge2 = min(1.0, c.specialCharge2 + secChargeInc);
-        if (c.specialCharge2 >= 1.0 && (c.side == CombatSide.enemy || (isSurvivalMode && !c.npc.isPlayer))) {
+        if (c.specialCharge2 >= 1.0 && isAiControlled) {
           if (canExecuteSpecial2(c.npc.id)) {
-            final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
-            if (specials.length >= 2 && _shouldAiLeaderUseAbility(c, specials[1])) {
+            if (_shouldAiLeaderUseAbility(c, secAbility)) {
               executeSpecial2(c.npc.id);
             }
           }
@@ -2703,7 +2814,7 @@ class CombatManager extends ChangeNotifier {
         if (distToTarget - myRadius - targetRadius <= rangeInFeet) {
           if (c.attackCooldown <= 0) {
             _performAttack(c, target);
-            c.attackCooldown = stats.speed * 1.2;
+            c.attackCooldown = (stats.speed * 1.2) / c.attackSpeedBuffMultiplier;
           }
         }
       }
@@ -2800,7 +2911,7 @@ class CombatManager extends ChangeNotifier {
         if (distToTarget - myRadius - targetRadius <= rangeInFeet) {
           if (c.attackCooldown <= 0) {
             _performAttack(c, target);
-            c.attackCooldown = stats.speed * 1.2;
+            c.attackCooldown = (stats.speed * 1.2) / c.attackSpeedBuffMultiplier;
           }
         }
       }
@@ -2930,7 +3041,7 @@ class CombatManager extends ChangeNotifier {
           // Perform attack
           if (c.attackCooldown <= 0) {
             _performAttack(c, target);
-            c.attackCooldown = stats.speed * 1.2;
+            c.attackCooldown = (stats.speed * 1.2) / c.attackSpeedBuffMultiplier;
           }
           if (c.npc.specialCharge >= 1.0) {
             final specials = c.npc.abilities.where((a) => a.type == AbilityType.special).toList();
@@ -3127,7 +3238,7 @@ class CombatManager extends ChangeNotifier {
     } else {
       if (c.attackCooldown <= 0) {
         _performAttack(c, target);
-        c.attackCooldown = stats.speed * 1.2;
+        c.attackCooldown = (stats.speed * 1.2) / c.attackSpeedBuffMultiplier;
       }
     }
 
@@ -3358,6 +3469,34 @@ class CombatManager extends ChangeNotifier {
 
   void _applyAbilityEffect(Combatant c, Ability ability) {
     switch (ability.id) {
+      case 'rationalist_reeducation':
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        for (final t in enemies) {
+          t.damageDebuffMultiplier = 0.5;
+          t.damageDebuffDurationRemaining = 6.0;
+          _addFloatingMessage(t, 'RE-EDUCATED', Colors.grey);
+        }
+        _addLog('${c.npc.name} uses Re-education! All enemies\' damage reduced by 50% for 6.0 seconds.', side: c.side);
+        break;
+
+      case 'superiors_direction':
+        const double reach = 30.0;
+        const double duration = 8.0;
+        spawnAoeEffect(c.x, c.y, reach, Colors.orangeAccent, durationMs: 800.0);
+        final allies = _combatants.where((other) =>
+            other.side == c.side &&
+            !other.isDead &&
+            sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= reach);
+        for (final other in allies) {
+          other.attackSpeedBuffMultiplier = 1.6;
+          other.attackSpeedBuffDurationRemaining = duration;
+          other.damageTakenMultiplier = 1.2;
+          other.damageTakenMultiplierDurationRemaining = duration;
+          _addFloatingMessage(other, 'DIRECTED (+60% SPD, +20% DMG)', Colors.orangeAccent);
+        }
+        _addLog('${c.npc.name} uses Direction! Allies within 30.0 range get +60% attack speed but take +20% damage for 8.0 seconds.', side: c.side);
+        break;
+
       case 'accuracy_boost':
         final stats = c.npc.combatStats!;
         c.npc = c.npc.copyWith(
@@ -3699,9 +3838,10 @@ class CombatManager extends ChangeNotifier {
           final eligible = allies.where((a) => (a.npc.combatStats!.health / a.npc.combatStats!.maxHealth) < 0.5).toList();
           if (eligible.isNotEmpty) {
             final target = eligible.first;
-            final card = target.npc;
+            final cardType = target.npc.metadata['cardType'] ?? target.npc.id;
             _onCombatantDeath(target, c);
-            spawnUnit(card, c.side, x: c.x, y: c.y);
+            final freshCard = CombatUnitService.createUnit(cardType);
+            spawnUnit(freshCard, c.side, x: c.x, y: c.y, bypassCost: true);
             _addFloatingMessage(c, 'SACRIFICE REBIRTH', Colors.yellowAccent);
             _addLog('${c.npc.name} sacrificed ${target.npc.name} to resummon a full squad!', side: c.side);
           }
@@ -3735,14 +3875,15 @@ class CombatManager extends ChangeNotifier {
         _addLog('${c.npc.name} executed a lethal Whirlwind Melee!', side: c.side);
         break;
 
-      case 'range_buff': // 5) increase the range of all friendly ranged units for a short period.
-        final allies = _combatants.where((other) => other.side == c.side && !other.isDead && (other.npc.combatStats?.distance ?? 1.0) > 2.0);
-        for (final t in allies) {
-          t.rangeBuffMultiplier = 1.5;
-          t.rangeBuffDurationRemaining = 8.0;
-          _addFloatingMessage(t, '+RANGE', Colors.cyanAccent);
+      case 'range_buff': // Chief Ranger Robin's Longbow Volley: Deals 50 damage to all enemies (excluding towers) on the battlefield, visualized with rain of arrows.
+        spawnAoeEffect(150.0, 60.0, 0.0, Colors.white, durationMs: 1500.0, id: 'arrows_volley_${DateTime.now().millisecondsSinceEpoch}');
+        
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead && !other.isTower);
+        for (final t in enemies) {
+          _applyDamage(c, t, 50.0);
+          _addFloatingMessage(t, 'VOLLEY -50', Colors.redAccent);
         }
-        _addLog('${c.npc.name} boosted ally shooting range!', side: c.side);
+        _addLog('${c.npc.name} ordered a Longbow Volley rain of arrows!', side: c.side);
         break;
 
       case 'attack_buff': // 6) increase the melee attack strength of all friendly units for a short period.
@@ -3823,18 +3964,19 @@ class CombatManager extends ChangeNotifier {
         }
         break;
 
-      case 'quake_push': // 12) damage and push back all of the closest enemy troops.
+      case 'quake_push': // Thicket Repulsion: damage and push back all closest enemy troops.
+        spawnAoeEffect(c.x, c.y, 20.0, const Color(0xFF2E5A27), durationMs: 600.0, id: 'thicket_${DateTime.now().millisecondsSinceEpoch}');
         final enemies = _combatants.where((other) => other.side != c.side && !other.isDead).toList();
         for (final t in enemies) {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
           if (dist <= 20.0) {
             final dir = t.x > c.x ? 1.0 : -1.0;
-            t.x += dir * 18.0;
+            t.x += dir * 25.0; // Increased to 25 ft!
             _applyDamage(c, t, 50.0);
-            _addFloatingMessage(t, 'REPELLED', Colors.orangeAccent);
+            _addFloatingMessage(t, 'REPELLED', Colors.greenAccent);
           }
         }
-        _addLog('${c.npc.name} repelled nearby troops!', side: c.side);
+        _addLog('${c.npc.name} repelled nearby troops with Thicket Repulsion!', side: c.side);
         break;
 
       case 'health_transmute': // 13) Increase the health and maximum health of the nearest friendly troop by a significant amount.
@@ -3933,6 +4075,79 @@ class CombatManager extends ChangeNotifier {
         }
         _addLog('${c.npc.name} released a Vampiric Screech!', side: c.side);
         break;
+
+      case 'overclock':
+        spawnAoeEffect(c.x, c.y, 40.0, Colors.orangeAccent, durationMs: 800.0);
+        final allies = _combatants.where((other) => other.side == c.side && !other.isDead && (other.npc.combatStats?.distance ?? 1.0) > 2.0);
+        for (final other in allies) {
+          other.attackSpeedBuffMultiplier = 1.6;
+          other.attackSpeedBuffDurationRemaining = 10.0;
+          _addFloatingMessage(other, '+60% ATK SPEED', Colors.yellow);
+        }
+        _addLog('${c.npc.name} overclocked all ranged units! Ranged attack speed +60% for 10 seconds.', side: c.side);
+        break;
+
+      case 'tesla_discharge':
+        spawnAoeEffect(c.x, c.y, 25.0, Colors.cyanAccent, durationMs: 600.0);
+        final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
+        for (final target in enemies) {
+          final dist = sqrt(pow(target.x - c.x, 2) + pow(target.y - c.y, 2));
+          if (dist <= 25.0) {
+            _applyDamage(c, target, 40.0);
+            _applyFreeze(target, 2.0);
+            _addFloatingMessage(target, 'SHOCKED', Colors.cyanAccent);
+          }
+        }
+        _addLog('${c.npc.name} released a Tesla Discharge!', side: c.side);
+        break;
+
+      case 'vampiric_mist':
+        spawnAoeEffect(c.x, c.y, 35.0, Colors.purpleAccent, durationMs: 800.0);
+        c.vampiricMistDurationRemaining = 10.0;
+        _addFloatingMessage(c, 'VAMPIRIC MIST', Colors.purpleAccent);
+        _addLog('${c.npc.name} activated Vampiric Mist! Elizabeth recovers health equal to 50% of damage dealt by her and her allies.', side: c.side);
+        break;
+
+      case 'bat_swarm':
+        final support = CombatUnitFactory.createElizabethBatSwarmSupport();
+        spawnUnit(support, c.side, x: c.x, y: c.y, bypassCost: true);
+        final bats = CombatUnitFactory.createBats();
+        spawnUnit(bats, c.side, x: c.x, y: c.y, bypassCost: true);
+        spawnAoeEffect(c.x, c.y, 25.0, Colors.purple.withValues(alpha: 0.6), durationMs: 800.0);
+        _addLog('${c.npc.name} summoned a Bat Swarm!', side: c.side);
+        break;
+
+      case 'entangling_roots':
+        final targetHero = _combatants.firstWhereOrNull((other) => other.side != c.side && (other.npc.isPlayer || other.isAiLeader));
+        if (targetHero != null) {
+          targetHero.speedBuffMultiplier = 0.3;
+          targetHero.speedBuffDurationRemaining = 5.0;
+          _addFloatingMessage(targetHero, 'ENTANGLED', Colors.green);
+          spawnAoeEffect(targetHero.x, targetHero.y, 15.0, Colors.green, durationMs: 1000.0);
+          _addLog('${c.npc.name} cast Entangling Roots on ${targetHero.npc.name}!', side: c.side);
+        }
+        break;
+
+      case 'feral_howl':
+        final wolf = CombatUnitFactory.createSpectralWolf();
+        spawnUnit(wolf, c.side, x: c.x, y: c.y, bypassCost: true);
+        final beasts = _combatants.where((other) =>
+            other.side == c.side &&
+            !other.isDead &&
+            (other.npc.specimenType.toLowerCase() == 'beast' ||
+             other.npc.specimenType.toLowerCase() == 'wolf' ||
+             other.npc.role.toLowerCase() == 'beast' ||
+             other.npc.name.toLowerCase().contains('wolf') ||
+             other.npc.name.toLowerCase().contains('bat') ||
+             other.npc.name.toLowerCase().contains('fox') ||
+             other.npc.name.toLowerCase().contains('rat')));
+        for (final other in beasts) {
+          other.speedBuffMultiplier = 1.4;
+          other.speedBuffDurationRemaining = 8.0;
+          _addFloatingMessage(other, '+40% SPEED', Colors.cyanAccent);
+        }
+        _addLog('${c.npc.name} let out a Feral Howl! Summoned Spectral Wolf and speed of all beasts increased +40% for 8 seconds.', side: c.side);
+        break;
     }
   }
 
@@ -4008,7 +4223,14 @@ class CombatManager extends ChangeNotifier {
         return !c.isInvulnerable;
       case 'shield_wall':
       case 'battle_cry':
+      case 'overclock':
+      case 'vampiric_mist':
+      case 'feral_howl':
         return true;
+      case 'tesla_discharge':
+      case 'entangling_roots':
+      case 'bat_swarm':
+        return _combatants.any((other) => other.side != c.side && !other.isDead);
       default:
         return true;
     }
@@ -4104,6 +4326,34 @@ class CombatManager extends ChangeNotifier {
         // Only use self-invuln if health is low
         return healthRatio < 0.4;
 
+      case 'tesla_discharge':
+        return _combatants.any((other) =>
+            other.side != c.side &&
+            !other.isDead &&
+            sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= 25.0);
+
+      case 'entangling_roots':
+      case 'bat_swarm':
+        return _combatants.any((other) =>
+            other.side != c.side &&
+            !other.isDead &&
+            sqrt(pow(other.x - c.x, 2) + pow(other.y - c.y, 2)) <= 45.0);
+
+      case 'overclock':
+        return _combatants.any((other) =>
+            other.side == c.side &&
+            !other.isDead &&
+            (other.npc.combatStats?.distance ?? 1.0) > 2.0);
+
+      case 'feral_howl':
+        return _combatants.any((other) =>
+            other.side == c.side &&
+            !other.isDead &&
+            (other.npc.specimenType.toLowerCase() == 'beast' ||
+             other.npc.specimenType.toLowerCase() == 'wolf' ||
+             other.npc.role.toLowerCase() == 'beast' ||
+             other.npc.name.toLowerCase().contains('wolf')));
+
       default:
         return true;
     }
@@ -4163,7 +4413,17 @@ class CombatManager extends ChangeNotifier {
     final attacker = _combatants.firstWhereOrNull((c) => c.npc.id == attackerId);
     final targetStats = target.npc.combatStats!;
     final double flatBonus = attacker?.flatAttackBuff ?? 0.0;
-    final double dmgVal = (damage + flatBonus) * (attacker?.attackBuffMultiplier ?? 1.0) * (attacker?.damageDebuffMultiplier ?? 1.0);
+    
+    final double darkMatterMult = (attacker != null && attacker.npc.specimenType == 'Construct' &&
+            (globalGameState?.unlockedDiscoveries.contains('dark_matter_weaponization') ?? false))
+        ? 1.4
+        : 1.0;
+
+    final double dmgVal = (damage + flatBonus) * 
+        (attacker?.attackBuffMultiplier ?? 1.0) * 
+        (attacker?.damageDebuffMultiplier ?? 1.0) * 
+        target.damageTakenMultiplier * 
+        darkMatterMult;
     final actualDamage = max(1.0, dmgVal - targetStats.defense);
 
     target.npc = target.npc.copyWith(
@@ -4171,6 +4431,20 @@ class CombatManager extends ChangeNotifier {
         health: max(0.0, targetStats.health - actualDamage),
       ),
     );
+
+    if (attacker != null) {
+      final elizabeth = _combatants.firstWhereOrNull((other) => other.npc.id == 'boss_elizabeth' && other.side == attacker.side && !other.isDead);
+      if (elizabeth != null && elizabeth.vampiricMistDurationRemaining > 0) {
+        final healVal = actualDamage * 0.5;
+        final eStats = elizabeth.npc.combatStats!;
+        elizabeth.npc = elizabeth.npc.copyWith(
+          combatStats: eStats.copyWith(
+            health: min(eStats.maxHealth, eStats.health + healVal),
+          ),
+        );
+        _addFloatingMessage(elizabeth, '+${healVal.toInt()} HP', Colors.greenAccent);
+      }
+    }
 
     target.flashTimer = 0.25;
     target.recentDamage += actualDamage;
@@ -4212,7 +4486,17 @@ class CombatManager extends ChangeNotifier {
     }
     final tStats = target.npc.combatStats!;
     final double flatBonus = attacker.flatAttackBuff;
-    final double dmgVal = (damage + flatBonus) * attacker.attackBuffMultiplier * attacker.damageDebuffMultiplier;
+    
+    final double darkMatterMult = (attacker.npc.specimenType == 'Construct' &&
+            (globalGameState?.unlockedDiscoveries.contains('dark_matter_weaponization') ?? false))
+        ? 1.4
+        : 1.0;
+
+    final double dmgVal = (damage + flatBonus) * 
+        attacker.attackBuffMultiplier * 
+        attacker.damageDebuffMultiplier * 
+        target.damageTakenMultiplier * 
+        darkMatterMult;
     final actualDamage = max(1.0, dmgVal - tStats.defense);
 
     final newHealth = max(0.0, tStats.health - actualDamage);
@@ -4221,6 +4505,18 @@ class CombatManager extends ChangeNotifier {
     );
     target.flashTimer = 0.5; // 500ms flash
     target.recentDamage = actualDamage;
+
+    final elizabeth = _combatants.firstWhereOrNull((other) => other.npc.id == 'boss_elizabeth' && other.side == attacker.side && !other.isDead);
+    if (elizabeth != null && elizabeth.vampiricMistDurationRemaining > 0) {
+      final healVal = actualDamage * 0.5;
+      final eStats = elizabeth.npc.combatStats!;
+      elizabeth.npc = elizabeth.npc.copyWith(
+        combatStats: eStats.copyWith(
+          health: min(eStats.maxHealth, eStats.health + healVal),
+        ),
+      );
+      _addFloatingMessage(elizabeth, '+${healVal.toInt()} HP', Colors.greenAccent);
+    }
 
     _addFloatingMessage(target, '-${actualDamage.toInt()}', Colors.red);
     if (newHealth <= 0) {
@@ -4321,8 +4617,33 @@ class CombatManager extends ChangeNotifier {
     }
     notifyListeners();
   }
+  String _getUnitBaseCardType(NPC npc) {
+    final metadataType = npc.metadata['cardType'];
+    if (metadataType != null) return metadataType;
+
+    String t = npc.id.toLowerCase();
+    if (t.startsWith('squad_')) {
+      t = t.substring(6);
+    }
+    final parts = t.split('_');
+    final validParts = <String>[];
+    for (final p in parts) {
+      if (p.isEmpty) continue;
+      if (p.codeUnitAt(0) >= 48 && p.codeUnitAt(0) <= 57) break;
+      if (p == 'follower' || p == 'horse' || p == 'recruit' || p == 'refill' || p == 'cycle') break;
+      validParts.add(p);
+    }
+    return validParts.join('_');
+  }
+
   void _onCombatantDeath(Combatant target, Combatant? killer) {
     target.isDead = true;
+
+    // Reset leader special attack charge ups to zero on death
+    if (target.npc.isPlayer || target.isAiLeader) {
+      target.npc = target.npc.copyWith(specialCharge: 0.0);
+      target.specialCharge2 = 0.0;
+    }
 
     // On-Death Triggers
     final DeathknellEffect knell = target.npc.combatStats?.deathknell ?? DeathknellEffect.none;

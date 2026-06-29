@@ -19,7 +19,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../state/game_state.dart';
 import '../../main.dart' show globalGameState;
-import '../../models/game_item.dart';
 import '../../models/survival_state.dart';
 import '../widgets/submarine_dock_dialog.dart';
 import '../../models/npc.dart';
@@ -442,9 +441,6 @@ String? _getWeaponCompatibilityError(String cardId, String weaponName) {
 
 String? _getWeaponAdvantageOrDisadvantage(String cardId, String weaponName) {
   final wn = weaponName.toLowerCase();
-  final sampleUnit = CombatUnitService.createUnit(cardId);
-  final baseCost = sampleUnit.combatStats?.cost ?? 3;
-  final baseAtk = sampleUnit.combatStats?.attack ?? 10;
   final baseWep =
       _generalWeaponMarket.where((w) => w.name == weaponName).firstOrNull;
   int tier = 1;
@@ -771,6 +767,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       );
     }
 
+    final bool redHandUnlocked =
+        state.unlockedDiscoveries.contains('red_hand_insignia') ||
+        progress.cardUpgrades['red_hand_insignia_unlocked'] == 1;
+    if (redHandUnlocked &&
+        progress.cardUpgrades['red_hand_insignia_unlocked'] != 1) {
+      progress.cardUpgrades['red_hand_insignia_unlocked'] = 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        service.manualSave();
+      });
+    }
+
     if (!_hasCheckedInitialEvents) {
       _hasCheckedInitialEvents = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -831,7 +838,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         );
         break;
       case 'DECK':
-        centerArea = _buildFullDeckView(progress, service);
+        centerArea = _buildFullDeckView(progress, service, state);
         break;
       case 'LEADER':
         centerArea = _buildFullLeaderView(progress, service);
@@ -1896,7 +1903,13 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       child: DragTarget<String>(
         onWillAcceptWithDetails: (details) {
           final npc = CombatUnitService.createUnit(details.data);
-          return b.assignedUnitIds.length < caps && SurvivalService.isHumanoid(npc);
+          final state = Provider.of<GameState>(context, listen: false);
+          final hasBeastLabor = state.unlockedDiscoveries.contains(
+            'beast_labor',
+          );
+          return b.assignedUnitIds.length < caps &&
+              (SurvivalService.isHumanoid(npc) ||
+                  (SurvivalService.isWildAnimal(npc) && hasBeastLabor));
         },
         onAcceptWithDetails: (details) {
           service.assignWorker(plotKey, details.data);
@@ -2056,9 +2069,38 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     }
 
     final bool isLeader = (t == progress.selectedLeaderId);
+    final bool redHandActive =
+        progress.cardUpgrades['red_hand_insignia_active'] == 1;
+    if (redHandActive && !isLeader) {
+      baseMovement *= 1.10;
+    }
+
     final bool hasRosicrucianCurse = isLeader && (progress.cardUpgrades['rosicrucian_curse_active'] == 1);
     final double healthVal = (npc.combatStats!.health * mult) - (hasRosicrucianCurse ? 100.0 : 0.0);
     final double maxHealthVal = (npc.combatStats!.maxHealth * mult) - (hasRosicrucianCurse ? 100.0 : 0.0);
+
+    double finalAttack;
+    double finalMeleeDamage;
+    double finalRangedDamage;
+
+    if (rawWepIdx > 0) {
+      finalAttack = baseAttack * mult;
+      finalMeleeDamage = baseAttack * mult;
+      finalRangedDamage = hasRanged ? baseAttack * mult : 0.0;
+    } else {
+      finalAttack = npc.combatStats!.attack * mult;
+      finalMeleeDamage = (npc.combatStats!.meleeDamage > 0
+              ? npc.combatStats!.meleeDamage.toDouble()
+              : npc.combatStats!.attack.toDouble()) *
+          mult;
+      finalRangedDamage = npc.combatStats!.rangedDamage * mult;
+    }
+
+    if (redHandActive && !isLeader) {
+      finalAttack *= 1.20;
+      finalMeleeDamage *= 1.20;
+      finalRangedDamage *= 1.20;
+    }
 
     return npc.copyWith(
       metadata: {
@@ -2073,9 +2115,9 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         movement: baseMovement,
         health: max(1.0, healthVal),
         maxHealth: max(1.0, maxHealthVal),
-        attack: baseAttack * mult,
-        meleeDamage: baseAttack * mult,
-        rangedDamage: hasRanged ? baseAttack * mult : 0.0,
+        attack: finalAttack,
+        meleeDamage: finalMeleeDamage,
+        rangedDamage: finalRangedDamage,
         distance: hasRanged ? distance : npc.combatStats!.distance,
         rangedRange: hasRanged ? rangedRange : 0.0,
       ),
@@ -2199,7 +2241,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                         color: isAssigned
                                             ? Colors.white38
                                             : const Color(0xFFE5D5B0),
-                                        fontSize: 10,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         decoration: TextDecoration.underline,
                                         decorationColor: isAssigned
@@ -2211,8 +2253,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   Text(
                                     'Lvl $lvl | Food cost: ${SurvivalService.getFoodCost(npc, level: lvl)}',
                                     style: GoogleFonts.oswald(
-                                      color: Colors.white38,
-                                      fontSize: 8,
+                                      color: isAssigned
+                                          ? Colors.white38
+                                          : Colors.white70,
+                                      fontSize: 11,
                                     ),
                                   ),
                                 ],
@@ -2277,7 +2321,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       service.logs[idx],
                       style: GoogleFonts.oldStandardTt(
                         color: Colors.white54,
-                        fontSize: 8.5,
+                        fontSize: 13.5,
                       ),
                     ),
                   );
@@ -2642,15 +2686,27 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                             0) /
                         100.0;
 
+                    final bool isLeader = (t == progress.selectedLeaderId);
+                    final bool redHandActive =
+                        progress.cardUpgrades['red_hand_insignia_active'] == 1;
+
                     baseMovement = (baseMovement + movementBonus).clamp(
                       0.1,
                       15.0,
                     );
+                    if (redHandActive && !isLeader) {
+                      baseMovement *= 1.10;
+                    }
                     baseSpeed = (baseSpeed + speedBonus).clamp(0.1, 10.0);
 
-                    final bool isLeader = (t == progress.selectedLeaderId);
-                    final bool hasRosicrucianBlessing = isLeader && (progress.cardUpgrades['rosicrucian_blessing_active'] == 1);
-                    final bool hasRosicrucianCurse = isLeader && (progress.cardUpgrades['rosicrucian_curse_active'] == 1);
+                    final bool hasRosicrucianBlessing =
+                        isLeader &&
+                        (progress.cardUpgrades['rosicrucian_blessing_active'] ==
+                            1);
+                    final bool hasRosicrucianCurse =
+                        isLeader &&
+                        (progress.cardUpgrades['rosicrucian_curse_active'] ==
+                            1);
 
                     double finalMaxHealth =
                         (npc.combatStats!.maxHealth * mult + maxHealthBonus)
@@ -2668,22 +2724,25 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                       finalHealth = max(1.0, finalHealth - 100.0);
                     }
 
-                    final double finalAttack =
+                    double finalAttack = (baseAttack * mult + meleeDamageBonus)
+                        .clamp(1.0, 999.0);
+                    double finalMeleeDamage =
                         (baseAttack * mult + meleeDamageBonus).clamp(
                           1.0,
                           999.0,
                         );
-                    final double finalMeleeDamage =
-                        (baseAttack * mult + meleeDamageBonus).clamp(
-                          1.0,
-                          999.0,
-                        );
-                    final double finalRangedDamage = hasRanged
+                    double finalRangedDamage = hasRanged
                         ? (baseAttack * mult + rangedDamageBonus).clamp(
                             0.0,
                             999.0,
                           )
                         : 0.0;
+
+                    if (redHandActive && !isLeader) {
+                      finalAttack = finalAttack * 1.20;
+                      finalMeleeDamage = finalMeleeDamage * 1.20;
+                      finalRangedDamage = finalRangedDamage * 1.20;
+                    }
 
                     final double finalDistance = hasRanged
                         ? (distance + rangedRangeBonus).clamp(1.0, 50.0)
@@ -2786,6 +2845,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               combatExp,
                               activeContext,
                             ) {
+                              state.recordCombatVictory();
                               final levelUps = service.processCombatOutcome(
                                 true,
                                 false,
@@ -4428,64 +4488,171 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left column: Chronological Action Logs
+                // Left column: Chronicles, Covenants, Troop Status (Vertically Scrollable)
                 Expanded(
-                  flex: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF15100B),
-                      border: Border.all(
-                        color: const Color(0xFFC4B89B).withValues(alpha: 0.2),
-                      ),
-                    ),
+                  flex: 1,
+                  child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'CHRONICLES OF COMPLETED ACTIONS',
-                          style: GoogleFonts.playfairDisplay(
-                            color: const Color(0xFFD4AF37),
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.bold,
+                        // Chronicles of Completed Actions
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF15100B),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFC4B89B,
+                              ).withValues(alpha: 0.2),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Divider(color: Colors.white10),
-                        const SizedBox(height: 3),
-                        Expanded(
-                          child: service.logs.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    'The chronicle is empty. Actions are recorded here as turns progress.',
-                                    style: GoogleFonts.oldStandardTt(
-                                      color: Colors.white24,
-                                      fontStyle: FontStyle.italic,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  itemCount: service.logs.length,
-                                  itemBuilder: (context, index) {
-                                    final log = service
-                                        .logs[service.logs.length - 1 - index];
-                                    return Padding(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'CHRONICLES OF COMPLETED ACTIONS',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFD4AF37),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Divider(color: Colors.white10),
+                              const SizedBox(height: 3),
+                              service.logs.isEmpty
+                                  ? Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 2,
+                                        vertical: 20,
                                       ),
-                                      child: Text(
-                                        '• $log',
-                                        style: GoogleFonts.oldStandardTt(
-                                          color: const Color(
-                                            0xFFE5D5B0,
-                                          ).withValues(alpha: 0.8),
-                                          fontSize: 10,
+                                      child: Center(
+                                        child: Text(
+                                          'The chronicle is empty. Actions are recorded here as turns progress.',
+                                          style: GoogleFonts.oldStandardTt(
+                                            color: Colors.white24,
+                                            fontStyle: FontStyle.italic,
+                                            fontSize: 10,
+                                          ),
                                         ),
                                       ),
-                                    );
-                                  },
+                                    )
+                                  : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: service.logs.reversed.map((
+                                        log,
+                                      ) {
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 2,
+                                          ),
+                                          child: Text(
+                                            '• $log',
+                                            style: GoogleFonts.oldStandardTt(
+                                              color: const Color(
+                                                0xFFE5D5B0,
+                                              ).withValues(alpha: 0.8),
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Covenants & Treaties
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF15100B),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFC4B89B,
+                              ).withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'COVENANTS & TREATIES',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFD4AF37),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Divider(color: Colors.white10),
+                              const SizedBox(height: 3),
+                              progress.currentTurn < 4
+                                  ? Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 20,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'The registry of treaties remains vacant. No formal covenants or agreements ratified.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.playfairDisplay(
+                                            color: const Color(
+                                              0xFFE5D5B0,
+                                            ).withValues(alpha: 0.4),
+                                            fontSize: 9,
+                                            fontStyle: FontStyle.italic,
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildCovenantItem(
+                                          'RAT ERADICATION COVENANT',
+                                          'Exterminate undead vermin threat in eastern cellar. Status: Active.',
+                                        ),
+                                      ],
+                                    ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Troop Registry Status
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF15100B),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFC4B89B,
+                              ).withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'TROOP REGISTRY STATUS',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFD4AF37),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Divider(color: Colors.white10),
+                              const SizedBox(height: 3),
+                              _buildTroopRegistryStatusList(progress),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -4494,15 +4661,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
                 const SizedBox(width: 8),
 
-                // Right column: Active Assignments & Land Covenants
+                // Right column: Current Labor & Training, Secret Society Standings (Vertically Scrollable)
                 Expanded(
-                  flex: 5,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        flex: 4,
-                        child: Container(
+                  flex: 1,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Current Labor & Training Assignments
+                        Container(
                           padding: const EdgeInsets.all(6),
+                          width: double.infinity,
                           decoration: BoxDecoration(
                             color: const Color(0xFF15100B),
                             border: Border.all(
@@ -4525,180 +4694,87 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               const SizedBox(height: 4),
                               const Divider(color: Colors.white10),
                               const SizedBox(height: 3),
-                              Expanded(
-                                child: _buildManorAssignmentsList(
-                                  progress,
-                                  service,
+                              _buildManorAssignmentsList(progress, service),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Secret Society Standings
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF15100B),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFC4B89B,
+                              ).withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SECRET SOCIETY STANDINGS',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFD4AF37),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Divider(color: Colors.white10),
+                              const SizedBox(height: 4),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: progress.factionStandings.entries.map(
+                                  (entry) {
+                                    final factionName = entry.key == 'Army'
+                                        ? 'Your Army'
+                                        : entry.key;
+                                    final rating = entry.value;
+                                    Color ratingColor = Colors.white70;
+                                    if (rating > 0)
+                                      ratingColor = Colors.greenAccent;
+                                    if (rating < 0)
+                                      ratingColor = Colors.redAccent;
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 3.0,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            factionName,
+                                            style: GoogleFonts.playfairDisplay(
+                                              color: const Color(0xFFE5D5B0),
+                                              fontSize: 10.5,
+                                            ),
+                                          ),
+                                          Text(
+                                            rating >= 0
+                                                ? '+$rating'
+                                                : '$rating',
+                                            style: GoogleFonts.oswald(
+                                              color: ratingColor,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ).toList(),
                               ),
                             ],
                           ),
                         ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF15100B),
-                                  border: Border.all(
-                                    color: const Color(
-                                      0xFFC4B89B,
-                                    ).withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'COVENANTS & TREATIES',
-                                      style: GoogleFonts.playfairDisplay(
-                                        color: const Color(0xFFD4AF37),
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Divider(color: Colors.white10),
-                                    const SizedBox(height: 3),
-                                    Expanded(
-                                      child: progress.currentTurn < 4
-                                          ? Center(
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                    ),
-                                                child: Text(
-                                                  'The registry of treaties remains vacant. No formal covenants or agreements ratified.',
-                                                  textAlign: TextAlign.center,
-                                                  style:
-                                                      GoogleFonts.playfairDisplay(
-                                                        color:
-                                                            const Color(
-                                                              0xFFE5D5B0,
-                                                            ).withValues(
-                                                              alpha: 0.4,
-                                                            ),
-                                                        fontSize: 9,
-                                                        fontStyle:
-                                                            FontStyle.italic,
-                                                        height: 1.15,
-                                                      ),
-                                                ),
-                                              ),
-                                            )
-                                          : ListView(
-                                              children: [
-                                                _buildCovenantItem(
-                                                  'RAT ERADICATION COVENANT',
-                                                  'Exterminate undead vermin threat in eastern cellar. Status: Active.',
-                                                ),
-                                              ],
-                                            ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF15100B),
-                                  border: Border.all(
-                                    color: const Color(
-                                      0xFFC4B89B,
-                                    ).withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'SECRET SOCIETY STANDINGS',
-                                      style: GoogleFonts.playfairDisplay(
-                                        color: const Color(0xFFD4AF37),
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Divider(color: Colors.white10),
-                                    const SizedBox(height: 3),
-                                    Expanded(
-                                      child: ListView(
-                                        children: progress
-                                            .factionStandings
-                                            .entries
-                                            .map((entry) {
-                                              final factionName = entry.key ==
-                                                      'Army'
-                                                  ? 'Your Army'
-                                                  : entry.key;
-                                              final rating = entry.value;
-                                              Color ratingColor =
-                                                  Colors.white70;
-                                              if (rating > 0) {
-                                                ratingColor =
-                                                    Colors.greenAccent;
-                                              }
-                                              if (rating < 0) {
-                                                ratingColor = Colors.redAccent;
-                                              }
-                                              return Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 3.0,
-                                                    ),
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      factionName,
-                                                      style:
-                                                          GoogleFonts.playfairDisplay(
-                                                            color: const Color(
-                                                              0xFFE5D5B0,
-                                                            ),
-                                                            fontSize: 10.5,
-                                                          ),
-                                                    ),
-                                                    Text(
-                                                      rating >= 0
-                                                          ? '+$rating'
-                                                          : '$rating',
-                                                      style: GoogleFonts.oswald(
-                                                        color: ratingColor,
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            })
-                                            .toList(),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -4706,6 +4782,87 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTroopRegistryStatusList(SurvivalProgress progress) {
+    final List<Widget> items = [];
+    final allCardTypes = <String>{
+      ...progress.starvationInfractions.keys,
+      ...progress.bondageDebuffCount.keys,
+    };
+
+    for (final cardType in allCardTypes) {
+      final starvation = progress.starvationInfractions[cardType] ?? 0;
+      final bondage = progress.bondageDebuffCount[cardType] ?? 0;
+      if (starvation > 0 || bondage > 0) {
+        String name = cardType;
+        try {
+          name = CombatUnitService.createUnit(cardType).name;
+        } catch (_) {
+          name = cardType.replaceAll('_', ' ').toUpperCase();
+        }
+        final List<String> statusStrings = [];
+        if (starvation > 0) {
+          statusStrings.add('Starving ($starvation turns)');
+        }
+        if (bondage > 0) {
+          statusStrings.add('Debuffs: $bondage');
+        }
+        items.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    name.toUpperCase(),
+                    style: GoogleFonts.playfairDisplay(
+                      color: const Color(0xFFE5D5B0),
+                      fontSize: 9.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  statusStrings.join(', '),
+                  style: GoogleFonts.oldStandardTt(
+                    color: starvation >= 2
+                        ? Colors.redAccent
+                        : Colors.orangeAccent,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Text(
+            'All troops in prime condition. No starvation or physical bondage recorded.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFE5D5B0).withValues(alpha: 0.4),
+              fontSize: 9,
+              fontStyle: FontStyle.italic,
+              height: 1.15,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items,
     );
   }
 
@@ -4907,13 +5064,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
       ),
     );
 
-    return ListView(children: children);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
   }
 
   // --- FULL-SCREEN TAB 2: DECK VIEW OVERHAUL ---
   Widget _buildFullDeckView(
     SurvivalProgress progress,
     SurvivalService service,
+    GameState state,
   ) {
     final deck = progress.playerDeckIds;
     double avgCost = 0.0;
@@ -5005,6 +5166,55 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
             ],
           ),
           const SizedBox(height: 16),
+
+          if (state.unlockedDiscoveries.contains('red_hand_insignia') ||
+              progress.cardUpgrades['red_hand_insignia_unlocked'] == 1) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: progress.cardUpgrades['red_hand_insignia_active'] == 1
+                    ? const Color(0xFF3A1212).withAlpha(100)
+                    : Colors.black26,
+                border: Border.all(
+                  color: progress.cardUpgrades['red_hand_insignia_active'] == 1
+                      ? const Color(0xFFC42020).withAlpha(100)
+                      : Colors.white10,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                    value:
+                        progress.cardUpgrades['red_hand_insignia_active'] == 1,
+                    activeColor: const Color(0xFFC42020),
+                    checkColor: const Color(0xFFE5D5B0),
+                    onChanged: (val) {
+                      setState(() {
+                        progress.cardUpgrades['red_hand_insignia_active'] =
+                            val == true ? 1 : 0;
+                      });
+                      service.manualSave();
+                    },
+                  ),
+                  Text(
+                    'ACTIVATE "RED HAND" INSIGNIA (+20% DMG, +10% SPEED SQUAD BUFF | -5 GLARUS & FORESTERS STANDING PER TURN)',
+                    style: GoogleFonts.oldStandardTt(
+                      color:
+                          progress.cardUpgrades['red_hand_insignia_active'] == 1
+                          ? const Color(0xFFFF4D4D)
+                          : const Color(0xFFC4B89B),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           Expanded(
             child: Center(
@@ -5500,6 +5710,101 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     );
   }
 
+
+
+  Widget _buildMonitorCard({
+    required String title,
+    required String value,
+    required String status,
+    required Color statusColor,
+    required IconData icon,
+    required double progress,
+    required Color progressColor,
+  }) {
+    return Container(
+      width: 170,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        border: Border.all(color: Colors.white10),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFC4B89B),
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(icon, color: const Color(0xFFC4B89B), size: 12),
+            ],
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: GoogleFonts.oswald(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                status,
+                style: GoogleFonts.playfairDisplay(
+                  color: statusColor,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(1),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              backgroundColor: Colors.white12,
+              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getFactionIcon(String factionName) {
+    final name = factionName.toLowerCase();
+    if (name.contains('gnome') || name.contains('zurich'))
+      return Icons.account_balance;
+    if (name.contains('carbonari')) return Icons.local_fire_department;
+    if (name.contains('chevaliers')) return Icons.shield;
+    if (name.contains('freemason') || name.contains('cbcs'))
+      return Icons.architecture;
+    if (name.contains('illuminati')) return Icons.visibility;
+    if (name.contains('rosicrucian')) return Icons.filter_vintage;
+    if (name.contains('templar')) return Icons.brightness_5;
+    if (name.contains('forester')) return Icons.forest;
+    if (name.contains('army')) return Icons.military_tech;
+    return Icons.group;
+  }
+
   // --- FULL-SCREEN TAB 3: LEADER COMMANDER PROFILE ---
   Widget _buildFullLeaderView(
     SurvivalProgress progress,
@@ -5600,8 +5905,8 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                 ? 'Passive Bonuses: Clockwork constructs deploy 15% faster and gain +10 armor.'
                                 : leader.id == 'boss_elizabeth'
                                 ? 'Passive Bonuses: Undead swarms gain +15% lifesteal and nocturnal vision.'
-                                : leader.id == 'boss_thorne'
-                                ? 'Passive Bonuses: Beast companions gain +20% movement speed and wilderness camouflage.'
+                                : leader.id == 'boss_thorne' || leader.id == 'chief_ranger_robin'
+                                ? 'Passive Bonuses: All friendly ranged units receive +2 ft attack range.'
                                 : 'Passive Bonuses: Military units gain +10% critical chance, and defensive towers receive +15% armor when under the direct command of Alphonse.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.oldStandardTt(
@@ -5610,12 +5915,96 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               height: 1.4,
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.black38,
+                              border: Border.all(
+                                color: const Color(
+                                  0xFFC4B89B,
+                                ).withValues(alpha: 0.2),
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'MENTAL ACUITY (SANITY)',
+                                      style: GoogleFonts.playfairDisplay(
+                                        color: const Color(0xFFD4AF37),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.psychology,
+                                      color: Color(0xFFD4AF37),
+                                      size: 14,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${progress.sanity}%',
+                                      style: GoogleFonts.oswald(
+                                        color: const Color(0xFFE5D5B0),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      progress.sanity > 75
+                                          ? 'STABLE'
+                                          : progress.sanity > 40
+                                          ? 'STRESSED'
+                                          : 'INSANE',
+                                      style: GoogleFonts.playfairDisplay(
+                                        color: progress.sanity > 75
+                                            ? Colors.green[400]!
+                                            : progress.sanity > 40
+                                            ? Colors.orange[400]!
+                                            : Colors.red[400]!,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(1),
+                                  child: LinearProgressIndicator(
+                                    value: progress.sanity / 100.0,
+                                    minHeight: 4,
+                                    backgroundColor: Colors.white10,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      progress.sanity > 75
+                                          ? const Color(0xFFC4B89B)
+                                          : progress.sanity > 40
+                                          ? Colors.orangeAccent
+                                          : Colors.redAccent,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 12),
 
                 // Middle Panel: Detailed Stats (Scrollable)
@@ -7755,10 +8144,17 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                               builder: (context) {
                                 final drillXp = 3 * lvl;
                                 final drillCost = 15 * lvl;
+                                final hasUndeadTraining =
+                                    Provider.of<GameState>(
+                                      context,
+                                      listen: false,
+                                    ).unlockedDiscoveries.contains(
+                                      'undead_training',
+                                    );
                                 final canAffordDrills =
                                     (progress.cash >= drillCost &&
                                     !_isDrafting &&
-                                    !isUndeadUnit);
+                                    (!isUndeadUnit || hasUndeadTraining));
 
                                 return ElevatedButton(
                                   style: ElevatedButton.styleFrom(
@@ -7800,7 +8196,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
                                   child: Text(
                                     _isDrafting
                                         ? 'LOCKED DURING DRAFT'
-                                        : (isUndeadUnit
+                                        : (isUndeadUnit && !hasUndeadTraining
                                               ? 'UNDEAD CANNOT DRILL'
                                               : 'BUY DRILLS: +$drillXp XP ($drillCost CHF)'),
                                     style: GoogleFonts.playfairDisplay(
@@ -8133,6 +8529,7 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     SurvivalService service,
     GameState state,
   ) {
+    progress.cardUpgrades['last_visitor_turn'] = progress.currentTurn;
     progress.cardUpgrades['encounter_${encounterId}_resolved'] = 1;
 
     final isConditional = encounterId == 'davos_smallpox_vaccine' || encounterId == 'smallpox_outbreak';
@@ -8666,15 +9063,32 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
         });
         options.add({
-          'title': 'C) "Offer shelter."',
+          'title':
+              'C) "Offer shelter (Assign our most experienced unit as a guide)."',
           'subtitle':
-              'Effect: Soldiers assigned to guard duty. (+5 Templar, -10 Rosicrucians)',
+              'Effect: Guided unit gains +150 XP. (+10 Templar, -5 Rosicrucians)',
           'onPress': () {
+            if (progress.playerDeckIds.isNotEmpty) {
+              String? bestCard;
+              double maxExp = -1;
+              for (final t in progress.playerDeckIds) {
+                final xp = progress.unitExp[t] ?? 0.0;
+                if (xp > maxExp) {
+                  maxExp = xp;
+                  bestCard = t;
+                }
+              }
+              if (bestCard != null) {
+                progress.addXpToUnit(bestCard, 150.0);
+                service.addLog(
+                  '$bestCard guided the Templars and gained +150 XP.',
+                );
+              }
+            }
             progress.factionStandings['Knights Templar'] =
-                (progress.factionStandings['Knights Templar'] ?? 0) + 5;
+                (progress.factionStandings['Knights Templar'] ?? 0) + 10;
             progress.factionStandings['Rosicrucians'] =
-                (progress.factionStandings['Rosicrucians'] ?? 0) - 10;
-            service.addLog('Sheltered Knights Templar.');
+                (progress.factionStandings['Rosicrucians'] ?? 0) - 5;
           },
         });
         options.add({
@@ -8737,14 +9151,31 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
         });
         options.add({
-          'title': 'C) "Enforce martial law."',
-          'subtitle': 'Effect: Lock production. (+10 Army, -20 Carbonari)',
+          'title':
+              'C) "Enforce martial law (Crackdown on strikes, but some desert)."',
+          'subtitle':
+              'Effect: A random non-leader unit deserts in protest. Next combat starting AP is increased by 3. (+15 Army, -25 Carbonari)',
           'onPress': () {
-            progress.factionStandings['Carbonari'] =
-                (progress.factionStandings['Carbonari'] ?? 0) - 20;
+            if (progress.playerDeckIds.length > 1) {
+              final eligible = progress.playerDeckIds
+                  .where(
+                    (id) => id != progress.selectedLeaderId && id != 'alphonse',
+                  )
+                  .toList();
+              if (eligible.isNotEmpty) {
+                final departed = eligible[Random().nextInt(eligible.length)];
+                progress.playerDeckIds.remove(departed);
+                service.addLog(
+                  'Crackdown: $departed has deserted your army in protest!',
+                );
+              }
+            }
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) + 3;
             progress.factionStandings['Army'] =
-                (progress.factionStandings['Army'] ?? 0) + 10;
-            service.addLog('Enforced martial law.');
+                (progress.factionStandings['Army'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 25;
           },
         });
         options.add({
@@ -8951,18 +9382,27 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
         });
         options.add({
-          'title': 'C) "Sell them premium horse feed."',
+          'title': 'C) "Perform weapons drill collab."',
           'subtitle':
-              'Cost: 30 Food. Reward: +200 CHF. (+10 Chevaliers, -5 Glarus)',
-          'checkAffordable': () => progress.food >= 30,
+              'Effect: A random card receives a Weapon Upgrade, but training fatigue reduces next combat starting AP by 2. (+15 Chevaliers, -10 Carbonari)',
           'onPress': () {
-            progress.food -= 30;
-            progress.cash += 200;
+            if (progress.playerDeckIds.isNotEmpty) {
+              final target =
+                  progress.playerDeckIds[Random().nextInt(
+                    progress.playerDeckIds.length,
+                  )];
+              final currentIdx =
+                  progress.cardUpgrades['${target}_equipped_weapon_idx'] ?? 0;
+              progress.cardUpgrades['${target}_equipped_weapon_idx'] =
+                  (currentIdx + 1).clamp(0, 3);
+              service.addLog('Collab: $target received a weapon upgrade!');
+            }
+            progress.cardUpgrades['next_combat_ap_modifier'] =
+                (progress.cardUpgrades['next_combat_ap_modifier'] ?? 0) - 2;
             progress.factionStandings['Chevaliers de la foi'] =
-                (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 10;
-            progress.factionStandings['Glarus'] =
-                (progress.factionStandings['Glarus'] ?? 0) - 5;
-            service.addLog('Sold feed to Chevaliers.');
+                (progress.factionStandings['Chevaliers de la foi'] ?? 0) + 15;
+            progress.factionStandings['Carbonari'] =
+                (progress.factionStandings['Carbonari'] ?? 0) - 10;
           },
         });
         options.add({
@@ -9086,16 +9526,19 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
           },
         });
         options.add({
-          'title': 'B) "Lock the estate gates."',
-          'subtitle': 'Cost: 20 Food. (-15 Gnomes, -15 Freemasons)',
-          'checkAffordable': () => progress.food >= 20,
+          'title':
+              'B) "Lock estate gates & hide resources (Guards are exhausted)."',
+          'subtitle':
+              'Effect: Protects resources. However, next combat units suffer a -15% movement speed penalty due to fatigue. (-10 Gnomes, -10 Freemasons)',
           'onPress': () {
-            progress.food -= 20;
+            progress.cardUpgrades['next_combat_speed_reduction'] = 15;
             progress.factionStandings['Gnomes of Zurich'] =
-                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 15;
+                (progress.factionStandings['Gnomes of Zurich'] ?? 0) - 10;
             progress.factionStandings['Freemasons'] =
-                (progress.factionStandings['Freemasons'] ?? 0) - 15;
-            service.addLog('Locked auditors outside.');
+                (progress.factionStandings['Freemasons'] ?? 0) - 10;
+            service.addLog(
+              'Locked gates: units suffer 15% speed penalty in next combat.',
+            );
           },
         });
         options.add({
@@ -11654,6 +12097,10 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
 
     final state = Provider.of<GameState>(context, listen: false);
 
+    // Check last visitor turn spacing (must be at least 2 days/turns apart)
+    final lastVisitorTurn = progress.cardUpgrades['last_visitor_turn'] ?? 0;
+    final bool isCooldownActive = (progress.currentTurn - lastVisitorTurn) < 2;
+
     // 1. Check if a scheduled faction plot event is due on this turn
     int? duePlotEventId;
     String? duePlotKey;
@@ -11670,6 +12117,15 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
     }
 
     if (duePlotEventId != null && duePlotKey != null) {
+      if (isCooldownActive) {
+        // Postpone it to next turn to maintain spacing of at least 2 days
+        progress.cardUpgrades.remove(duePlotKey);
+        progress.cardUpgrades['scheduled_plot_event_${progress.currentTurn + 1}'] =
+            duePlotEventId;
+        service.manualSave();
+        return; // Don't trigger it yet
+      }
+
       // Remove it from the schedule so it doesn't trigger repeatedly
       progress.cardUpgrades.remove(duePlotKey);
       service.manualSave();

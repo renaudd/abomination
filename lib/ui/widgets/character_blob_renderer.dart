@@ -68,8 +68,9 @@ class CharacterBlobRenderer extends StatelessWidget {
               _buildHound(size)
             else if (npc.specimenType == 'Fox')
               _buildFox(size)
-            else if (npc.specimenType == 'Wolf')
-              _buildWolf(size)
+            else if (npc.specimenType == 'Wolf' ||
+                npc.name.toLowerCase().contains('wolf'))
+              _buildWolf(size, isSpectral: npc.name.toLowerCase().contains('spectral'))
             else if (npc.specimenType == 'Bear')
               _buildBear(size)
             else if (npc.specimenType == 'Beast' && npc.name.toLowerCase().contains('werewolf'))
@@ -1007,7 +1008,12 @@ class CharacterBlobRenderer extends StatelessWidget {
     );
   }
 
-  Widget _buildWolf(double size) {
+  Widget _buildWolf(double size, {bool isSpectral = false}) {
+    final bodyColor = isSpectral ? const Color(0xAA77E1E6) : const Color(0xFF4F565E);
+    final darkColor = isSpectral ? const Color(0xAA45B8BD) : const Color(0xFF3D434A);
+    final lightColor = isSpectral ? const Color(0xAAC4FAFB) : const Color(0xFF828B94);
+    final eyeColor = isSpectral ? Colors.white : Colors.amberAccent;
+
     return _BobbingAnimation(
       isWalking: isWalking,
       isIdle: isIdle,
@@ -1025,7 +1031,7 @@ class CharacterBlobRenderer extends StatelessWidget {
                 width: size * 0.45,
                 height: size * 0.18,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3D434A),
+                  color: darkColor,
                   borderRadius: BorderRadius.circular(size * 0.08),
                 ),
               ),
@@ -1036,7 +1042,7 @@ class CharacterBlobRenderer extends StatelessWidget {
             width: size * 0.75,
             height: size * 0.42,
             decoration: BoxDecoration(
-              color: const Color(0xFF4F565E),
+              color: bodyColor,
               borderRadius: BorderRadius.circular(size * 0.12),
             ),
           ),
@@ -1048,7 +1054,7 @@ class CharacterBlobRenderer extends StatelessWidget {
               width: size * 0.35,
               height: size * 0.2,
               decoration: BoxDecoration(
-                color: const Color(0xFF828B94),
+                color: lightColor,
                 borderRadius: BorderRadius.circular(size * 0.1),
               ),
             ),
@@ -1061,7 +1067,7 @@ class CharacterBlobRenderer extends StatelessWidget {
               width: size * 0.4,
               height: size * 0.4,
               decoration: BoxDecoration(
-                color: const Color(0xFF4F565E),
+                color: bodyColor,
                 borderRadius: BorderRadius.circular(size * 0.12),
               ),
             ),
@@ -1074,7 +1080,7 @@ class CharacterBlobRenderer extends StatelessWidget {
               width: size * 0.24,
               height: size * 0.14,
               decoration: BoxDecoration(
-                color: const Color(0xFF3D434A),
+                color: darkColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1088,26 +1094,26 @@ class CharacterBlobRenderer extends StatelessWidget {
                 Container(
                   width: size * 0.08,
                   height: size * 0.2,
-                  color: const Color(0xFF4F565E),
+                  color: bodyColor,
                 ),
                 const SizedBox(width: 8),
                 Container(
                   width: size * 0.08,
                   height: size * 0.2,
-                  color: const Color(0xFF4F565E),
+                  color: bodyColor,
                 ),
               ],
             ),
           ),
-          // Fierce Glowing Yellow Eyes
+          // Fierce Glowing Eyes
           Positioned(
             left: size * 0.02,
             top: size * 0.16,
             child: Container(
               width: 3,
               height: 3,
-              decoration: const BoxDecoration(
-                color: Colors.amberAccent,
+              decoration: BoxDecoration(
+                color: eyeColor,
                 shape: BoxShape.circle,
               ),
             ),

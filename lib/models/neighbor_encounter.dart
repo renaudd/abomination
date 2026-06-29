@@ -214,5 +214,89 @@ class NeighborEncounterCatalog {
       onChoiceA: (state) => state.adjustFactionStanding('Golden Dawn', 0.2),
       onChoiceB: (state) => state.adjustFactionStanding('Golden Dawn', -0.2),
     ),
+    NeighborEncounter(
+      npcName: 'Mary Shelley',
+      faction: 'Glarus',
+      cottageId: 'cottage_mary',
+      introDialog:
+          'My child, I have heard of the tragedy that befell your family, and the dark experiments you conduct to conquer mortality. Is the spark of life ours to command, or are you creating a Modern Prometheus that will destroy you?',
+      choiceAText:
+          'Assure her that your science is a noble pursuit to cure death and ease human suffering.',
+      choiceBText:
+          'Proclaim that your will is absolute and you will conquer mortality at any cost.',
+      outcomeAText:
+          'Mary sighs softly, touching your arm with her pale hand. "Grief makes monsters of us all. Be careful, creator." (+0.20 Glarus Standing)',
+      outcomeBText:
+          'Mary draws back, her eyes filled with cold pity. "A creator who abdicates responsibility invites their own doom." (-0.20 Glarus Standing)',
+      onChoiceA: (state) => state.adjustFactionStanding('Glarus', 0.2),
+      onChoiceB: (state) => state.adjustFactionStanding('Glarus', -0.2),
+    ),
+    NeighborEncounter(
+      npcName: 'Percy Bysshe Shelley',
+      faction: 'Bavarian Illuminati',
+      cottageId: 'cottage_percy',
+      introDialog:
+          'Ah, creator! Your research into vitalism is magnificent. Galvani\'s frog muscles and Erasmus Darwin\'s spontaneous generation prove that electricity is the vital fluid analogous to the human soul. Let us collaborate and build a Leyden Jar grid to capture the lightning!',
+      choiceAText: 'Enthusiastically agree and pledge your laboratory resources to his electrical research.',
+      choiceBText:
+          'Dismiss his theories as romantic poetry; assert your focus is purely empirical chemistry.',
+      outcomeAText:
+          'Percy beams with excitement, gesturing to his sketches of atmospheric conductor grids. (+0.20 Bavarian Illuminati Standing)',
+      outcomeBText:
+          'Percy scowls, calling your science unimaginative and pedantic before pocketing his journals. (-0.20 Bavarian Illuminati Standing)',
+      onChoiceA: (state) =>
+          state.adjustFactionStanding('Bavarian Illuminati', 0.2),
+      onChoiceB: (state) =>
+          state.adjustFactionStanding('Bavarian Illuminati', -0.2),
+    ),
+    NeighborEncounter(
+      npcName: 'Lord Byron',
+      faction: 'Gnomes of Zurich',
+      cottageId: 'cottage_byron',
+      introDialog:
+          'Business at last. I have run from suffocating debt and societal rumors in London to Diodati. Your estate is fine, but lacks capital. I offer massive venture funding for your unholy marvels, but expect full partnership. Do we strike a deal?',
+      choiceAText:
+          'Accept his funding, welcoming his aristocratic patronage to double your resources.',
+      choiceBText:
+          'Refuse his money, stating that Frankenstein Manor is not a toy for bored lords.',
+      outcomeAText:
+          'Byron laughs heartily, signing a draft for gold reserves in his ledger. (+0.20 Gnomes of Zurich Standing)',
+      outcomeBText:
+          'Byron sneers, muttering that your pride matches your poverty, and snaps his ledger shut. (-0.20 Gnomes of Zurich Standing)',
+      onChoiceA: (state) =>
+          state.adjustFactionStanding('Gnomes of Zurich', 0.2),
+      onChoiceB: (state) =>
+          state.adjustFactionStanding('Gnomes of Zurich', -0.2),
+    ),
+    NeighborEncounter(
+      npcName: 'Claire Clairmont',
+      faction: 'Carbonari',
+      cottageId: 'cottage_claire',
+      introDialog:
+          'Greetings. I am Claire. My daughter Allegra is held by Byron\'s cruel command in a remote convent, and local peasants are crushed by local taxes. I coordinate the Carbonari charcoal-burners lodge in the Jura woods. Help me harbor resources, and we will guide your paths through the wild.',
+      choiceAText: 'Agree to assist the Carbonari network and provide cover for her operations.',
+      choiceBText: 'Decline to get involved in local insurgencies and marital disputes.',
+      outcomeAText:
+          'Claire raises a clenched hand in solidarity, sharing a map of secret forest passes. (+0.20 Carbonari Standing)',
+      outcomeBText:
+          'Claire glares at you, warning that those who ignore the Carbonari will find no safety in the woods. (-0.20 Carbonari Standing)',
+      onChoiceA: (state) => state.adjustFactionStanding('Carbonari', 0.2),
+      onChoiceB: (state) => state.adjustFactionStanding('Carbonari', -0.2),
+    ),
+    NeighborEncounter(
+      npcName: 'Dr. John Polidori',
+      faction: 'Rosicrucians',
+      cottageId: 'cottage_polidori',
+      introDialog:
+          'Greetings, colleague. I am Polidori, Byron\'s physician. I study the siphoning of organic tissue—the modern vampire. My medical notebooks contain alchemical and biological repair formulas that can heal your creations. Will you share your research files with me?',
+      choiceAText: 'Open your anatomical research files to the cynical physician.',
+      choiceBText: 'Keep your notes secure, warning him against occult prying.',
+      outcomeAText:
+          'Polidori nods grimly, sharing a treatise on blood-siphoning algorithms. (+0.20 Rosicrucians Standing)',
+      outcomeBText:
+          'Polidori sneers, noting that a plagiarist\'s shadow makes everyone paranoid. (-0.20 Rosicrucians Standing)',
+      onChoiceA: (state) => state.adjustFactionStanding('Rosicrucians', 0.2),
+      onChoiceB: (state) => state.adjustFactionStanding('Rosicrucians', -0.2),
+    ),
   ];
 }

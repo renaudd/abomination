@@ -20,6 +20,7 @@ import '../../models/game_item.dart';
 import '../../models/relationship.dart';
 import '../../models/npc.dart';
 import '../widgets/encounter_dialog.dart';
+import '../widgets/diodati_portrait_widget.dart';
 
 enum GiftType {
   wine,
@@ -303,6 +304,21 @@ class _DestinationScreenState extends State<DestinationScreen> {
     } else if (widget.destinationId == 'cottage_lilith') {
       neighborName = 'Lilith Crowley';
       factionName = 'Golden Dawn';
+    } else if (widget.destinationId == 'cottage_mary') {
+      neighborName = 'Mary Shelley';
+      factionName = 'Glarus';
+    } else if (widget.destinationId == 'cottage_percy') {
+      neighborName = 'Percy Bysshe Shelley';
+      factionName = 'Bavarian Illuminati';
+    } else if (widget.destinationId == 'cottage_byron') {
+      neighborName = 'Lord Byron';
+      factionName = 'Gnomes of Zurich';
+    } else if (widget.destinationId == 'cottage_claire') {
+      neighborName = 'Claire Clairmont';
+      factionName = 'Carbonari';
+    } else if (widget.destinationId == 'cottage_polidori') {
+      neighborName = 'Dr. John Polidori';
+      factionName = 'Rosicrucians';
     }
 
     NPC? neighborNpc;
@@ -332,13 +348,28 @@ class _DestinationScreenState extends State<DestinationScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      neighborName.toUpperCase(),
-                      style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      factionName.toUpperCase(),
-                      style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 10, letterSpacing: 1),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DiodatiPortraitWidget(npcName: neighborName, size: 80.0),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                neighborName.toUpperCase(),
+                                style: GoogleFonts.playfairDisplay(color: const Color(0xFFE5D5B0), fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                factionName.toUpperCase(),
+                                style: GoogleFonts.oldStandardTt(color: const Color(0xFFC4B89B), fontSize: 10, letterSpacing: 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     const Divider(color: Colors.white10, height: 20),
                     const SizedBox(height: 8),

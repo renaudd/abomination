@@ -21,6 +21,11 @@ import 'package:abomination/models/game_item.dart';
 import 'package:abomination/services/audio_service.dart';
 import 'package:abomination/services/task_service.dart';
 import 'package:abomination/models/room.dart';
+import 'package:abomination/models/objective.dart';
+import 'package:abomination/models/survival_state.dart';
+import 'package:abomination/services/combat_manager.dart';
+import 'package:abomination/services/combat_unit_service.dart';
+import 'package:abomination/services/survival_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -73,8 +78,8 @@ void main() {
       expect(gameState.currentDate.day, 3);
       
       final gregor = gameState.npcs.firstWhere(
-        (n) => n.name == 'Father Gregor Zweifel',
-        orElse: () => throw Exception('Father Gregor Zweifel did not spawn on Day 3'),
+        (n) => n.name == 'Mary Shelley',
+        orElse: () => throw Exception('Mary Shelley did not spawn on Day 3'),
       );
 
       expect(gregor.metadata['guestType'], 'neighbor');
@@ -91,8 +96,8 @@ void main() {
       expect(gameState.currentDate.day, 6);
 
       final fritz = gameState.npcs.firstWhere(
-        (n) => n.name == 'Professor Fritz Weishaupt',
-        orElse: () => throw Exception('Professor Fritz Weishaupt did not spawn on Day 6'),
+        (n) => n.name == 'Percy Bysshe Shelley',
+        orElse: () => throw Exception('Percy Bysshe Shelley did not spawn on Day 6'),
       );
 
       expect(fritz.metadata['guestType'], 'neighbor');
@@ -101,10 +106,10 @@ void main() {
     });
 
     test('Dialogue choice execution and relationship consequences', () {
-      // Fetch Professor Fritz Weishaupt (Bavarian Illuminati) encounter
-      final encounter = NeighborEncounterCatalog.getEncounterForNpc('Professor Fritz Weishaupt');
+      // Fetch Percy Bysshe Shelley (Bavarian Illuminati) encounter
+      final encounter = NeighborEncounterCatalog.getEncounterForNpc('Percy Bysshe Shelley');
       expect(encounter, isNotNull);
-      expect(encounter!.cottageId, 'cottage_fritz');
+      expect(encounter!.cottageId, 'cottage_percy');
 
       // Test Choice A (Cooperate)
       final initialStanding = gameState.getFactionStanding('Bavarian Illuminati');
@@ -130,11 +135,11 @@ void main() {
       }
       expect(gameState.currentDate.day, 3);
 
-      // 1. Setup Gregor NPC
-      final gregorIndex = gameState.npcs.indexWhere((n) => n.name == 'Father Gregor Zweifel');
-      expect(gregorIndex, isNot(-1));
-      final gregor = gameState.npcs[gregorIndex];
-      final String gregorId = gregor.id;
+      // 1. Setup Mary NPC
+      final maryIndex = gameState.npcs.indexWhere((n) => n.name == 'Mary Shelley');
+      expect(maryIndex, isNot(-1));
+      final mary = gameState.npcs[maryIndex];
+      final String maryId = mary.id;
 
       // 2. Add some items to a room so they are in the manor's inventory
       final book = GameItem.create(name: 'Ancient Religious Scripture', type: 'book_scripture', category: ItemCategory.knowledge);
@@ -151,8 +156,8 @@ void main() {
       expect(gameState.inventory.any((i) => i.type == 'organ_kidney'), true);
 
       // --- TEST FAVORITE GIFT ---
-      // Father Gregor Zweifel's favorite type is literature (book).
-      var rel = gregor.relationships['player'] ?? Relationship();
+      // Mary Shelley's favorite type is literature (book).
+      var rel = mary.relationships['player'] ?? Relationship();
       final double initialAdmiration = rel.admiration;
       final double initialRespect = rel.respect;
       final double initialAttraction = rel.attraction;
@@ -166,7 +171,7 @@ void main() {
       expect(gameState.inventory.any((i) => i.type == 'book_scripture'), false); // Removed!
 
       gameState.adjustNpcRelationshipWithPlayer(
-        gregorId,
+        maryId,
         admiration: 0.8,
         respect: 0.5,
         attraction: 0.6,
@@ -174,8 +179,8 @@ void main() {
       gameState.adjustFactionStanding('Glarus', 0.05);
 
       // Verify adjustments
-      var updatedGregor = gameState.npcs.firstWhere((n) => n.id == gregorId);
-      var updatedRel = updatedGregor.relationships['player'] ?? Relationship();
+      var updatedMary = gameState.npcs.firstWhere((n) => n.id == maryId);
+      var updatedRel = updatedMary.relationships['player'] ?? Relationship();
       expect(updatedRel.admiration, closeTo(initialAdmiration + 0.8, 0.0001));
       expect(updatedRel.respect, closeTo(initialRespect + 0.5, 0.0001));
       expect(updatedRel.attraction, closeTo(initialAttraction + 0.6, 0.0001));
@@ -186,15 +191,15 @@ void main() {
       expect(consumedChoc, true);
 
       gameState.adjustNpcRelationshipWithPlayer(
-        gregorId,
+        maryId,
         admiration: 0.4,
         respect: 0.2,
         attraction: 0.3,
       );
       gameState.adjustFactionStanding('Glarus', 0.01);
 
-      updatedGregor = gameState.npcs.firstWhere((n) => n.id == gregorId);
-      updatedRel = updatedGregor.relationships['player'] ?? Relationship();
+      updatedMary = gameState.npcs.firstWhere((n) => n.id == maryId);
+      updatedRel = updatedMary.relationships['player'] ?? Relationship();
       expect(updatedRel.admiration, closeTo(initialAdmiration + 1.2, 0.0001)); // 0.8 + 0.4
       expect(updatedRel.respect, closeTo(initialRespect + 0.7, 0.0001));    // 0.5 + 0.2
       expect(updatedRel.attraction, closeTo(initialAttraction + 0.9, 0.0001)); // 0.6 + 0.3
@@ -205,7 +210,7 @@ void main() {
       expect(consumedOrgan, true);
 
       gameState.adjustNpcRelationshipWithPlayer(
-        gregorId,
+        maryId,
         admiration: -1.0,
         respect: -0.5,
         fear: 0.2,
@@ -213,8 +218,8 @@ void main() {
       );
       gameState.adjustFactionStanding('Glarus', -0.05);
 
-      updatedGregor = gameState.npcs.firstWhere((n) => n.id == gregorId);
-      updatedRel = updatedGregor.relationships['player'] ?? Relationship();
+      updatedMary = gameState.npcs.firstWhere((n) => n.id == maryId);
+      updatedRel = updatedMary.relationships['player'] ?? Relationship();
       expect(updatedRel.admiration, closeTo(initialAdmiration + 0.2, 0.0001)); // 1.2 - 1.0
       expect(updatedRel.respect, closeTo(initialRespect + 0.2, 0.0001));    // 0.7 - 0.5
       expect(updatedRel.attraction, closeTo(initialAttraction - 0.1, 0.0001)); // 0.9 - 1.0
@@ -418,6 +423,85 @@ void main() {
         // It should have scaled to 70!
         expect(gameState.resources['funds'], 70);
       });
+    });
+  });
+
+  group('Mary Shelley Starting Questline Tests', () {
+    test('Verify initial quest and progress flow to Red Hand Insignia unlock', () {
+      // Initialize game state objectives
+      gameState.clearObjectivesForTesting();
+      gameState.addObjectiveForTesting(Objective(
+        id: 'winter_dreams_clara_1',
+        title: 'The Winter Dreams of Clara',
+        description: 'Travel to wreckage site and win 1 combat.',
+        type: ObjectiveType.story,
+        requirements: {'combats_won': 1},
+        nextObjectiveId: 'red_hand_covenant_1',
+      ));
+
+      final claraQuest = gameState.objectives.firstWhere((o) => o.id == 'winter_dreams_clara_1');
+      expect(claraQuest.isCompleted, false);
+
+      // Win combat
+      gameState.recordCombatVictory();
+      expect(claraQuest.isCompleted, true);
+
+      // The Red Hand Covenant should be spawned
+      final covenantQuest = gameState.objectives.firstWhere((o) => o.id == 'red_hand_covenant_1');
+      expect(covenantQuest.isCompleted, false);
+
+      // Meet Mary Shelley -> unlock cottage
+      gameState.unlockCottage('cottage_mary');
+      expect(covenantQuest.isCompleted, true);
+      expect(gameState.unlockedDiscoveries.contains('red_hand_insignia'), true);
+    });
+
+    test('Verify Red Hand Insignia combat stats and daily standing penalty', () {
+      final progress = SurvivalProgress(
+        playerDeckIds: ['musketeers'],
+        buildings: [],
+        purchasedPlots: [],
+        towerLevels: {'tower_1': 1, 'tower_2': 1, 'tower_3': 1},
+        towerDamaged: {'tower_1': 0.0, 'tower_2': 0.0, 'tower_3': 0.0},
+        unitExp: {},
+        starvationInfractions: {},
+        bondageDebuffCount: {},
+      );
+
+      // Initially inactive
+      expect(progress.cardUpgrades['red_hand_insignia_active'], null);
+
+      // Activate
+      progress.cardUpgrades['red_hand_insignia_active'] = 1;
+
+      // Spawn in CombatManager
+      final manager = CombatManager()
+        ..upgrades = progress.cardUpgrades;
+      manager.startCombat();
+
+      final musketeers = CombatUnitService.createUnit('musketeers');
+      final baseMeleeDmg = musketeers.combatStats!.meleeDamage;
+      final baseMovement = musketeers.combatStats!.movement;
+
+      final spawnedOk = manager.spawnUnit(musketeers, CombatSide.player, bypassCost: true);
+      expect(spawnedOk, true);
+
+      final spawned = manager.combatants.firstWhere((c) => c.npc.name.contains('Musketeers'));
+      
+      // Spawned stats must be boosted
+      expect(spawned.npc.combatStats!.meleeDamage, baseMeleeDmg * 1.20);
+      expect(spawned.npc.combatStats!.movement, baseMovement * 1.10);
+
+      // Check daily standing penalty in SurvivalService
+      final service = SurvivalService(99, progress);
+
+      final initialGlarus = progress.factionStandings['Glarus'] ?? 0;
+      final initialForesters = progress.factionStandings['Ancient Order of Foresters'] ?? 0;
+
+      service.endTurn();
+
+      expect(progress.factionStandings['Glarus'], initialGlarus - 5);
+      expect(progress.factionStandings['Ancient Order of Foresters'], initialForesters - 5);
     });
   });
 }

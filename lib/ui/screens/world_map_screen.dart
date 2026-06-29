@@ -453,6 +453,71 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           ),
                         ),
 
+                      if (state.unlockedCottages.contains('cottage_mary'))
+                        Positioned(
+                          top: 180,
+                          left: 220,
+                          child: LocationTile(
+                            name: 'MAISON CHAPUIS',
+                            icon: Icons.home,
+                            description: 'Mary Shelley\'s lakeside residence.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_mary' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_mary'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_percy'))
+                        Positioned(
+                          top: 150,
+                          left: 580,
+                          child: LocationTile(
+                            name: 'VITALISM LABORATORY',
+                            icon: Icons.electric_bolt,
+                            description: 'Percy Bysshe Shelley\'s vitalism research station.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_percy' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_percy'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_byron'))
+                        Positioned(
+                          top: 350,
+                          left: 350,
+                          child: LocationTile(
+                            name: 'VILLA DIODATI',
+                            icon: Icons.castle,
+                            description: 'Lord Byron\'s grand neoclassical villa.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_byron' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_byron'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_claire'))
+                        Positioned(
+                          top: 420,
+                          left: 780,
+                          child: LocationTile(
+                            name: 'JURA CARBONARI LODGE',
+                            icon: Icons.forest,
+                            description: 'Claire Clairmont\'s forest Carbonari lodge.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_claire' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_claire'),
+                          ),
+                        ),
+
+                      if (state.unlockedCottages.contains('cottage_polidori'))
+                        Positioned(
+                          top: 520,
+                          left: 900,
+                          child: LocationTile(
+                            name: 'VAMPIRIC SANATORIUM',
+                            icon: Icons.local_hospital,
+                            description: 'Dr. John Polidori\'s anatomical clinic.',
+                            isCurrent: state.npcs.any((n) => n.worldDestinationId == 'cottage_polidori' && n.worldTravelProgress >= 1.0),
+                            onTap: () => _showPrepareJourney(context, 'cottage_polidori'),
+                          ),
+                        ),
+
                       // Carbonari Faction Hideout (Unlocked by Pasta Carbonara)
                       if (context.watch<GameState>().knownRecipes.contains('pasta_carbonara'))
                         Positioned(
