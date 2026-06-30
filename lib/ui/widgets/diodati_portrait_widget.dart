@@ -17,11 +17,13 @@ import 'package:flutter/material.dart';
 class DiodatiPortraitWidget extends StatelessWidget {
   final String npcName;
   final double size;
+  final bool useBox;
 
   const DiodatiPortraitWidget({
     super.key,
     required this.npcName,
     this.size = 120.0,
+    this.useBox = true,
   });
 
   @override
@@ -30,18 +32,37 @@ class DiodatiPortraitWidget extends StatelessWidget {
     
     Widget portraitContent;
     if (name.contains('mary')) {
-      portraitContent = _buildMaryShelley();
+      portraitContent = _buildMaryShelley(useBox);
     } else if (name.contains('percy')) {
-      portraitContent = _buildPercyShelley();
+      portraitContent = _buildPercyShelley(useBox);
     } else if (name.contains('byron')) {
-      portraitContent = _buildLordByron();
+      portraitContent = _buildLordByron(useBox);
     } else if (name.contains('claire')) {
-      portraitContent = _buildClaireClairmont();
+      portraitContent = _buildClaireClairmont(useBox);
     } else if (name.contains('polidori')) {
-      portraitContent = _buildJohnPolidori();
+      portraitContent = _buildJohnPolidori(useBox);
     } else {
       // Default placeholder silhouette
-      portraitContent = _buildDefaultSilhouette();
+      portraitContent = _buildDefaultSilhouette(useBox);
+    }
+
+    final Widget scaledPortrait = FittedBox(
+      fit: BoxFit.contain,
+      child: SizedBox(
+        width: 120,
+        height: 120,
+        child: portraitContent,
+      ),
+    );
+
+    if (!useBox) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: ClipRect(
+          child: scaledPortrait,
+        ),
+      );
     }
 
     return Container(
@@ -55,19 +76,20 @@ class DiodatiPortraitWidget extends StatelessWidget {
         ),
       ),
       child: ClipRect(
-        child: portraitContent,
+        child: scaledPortrait,
       ),
     );
   }
 
-  Widget _buildMaryShelley() {
+  Widget _buildMaryShelley(bool useBox) {
     return Stack(
       alignment: Alignment.center,
       children: [
         // Background Subdued Parchment Color
-        Positioned.fill(
-          child: Container(color: const Color(0xFF382C22)),
-        ),
+        if (useBox)
+          Positioned.fill(
+            child: Container(color: const Color(0xFF382C22)),
+          ),
         // Hair Buns (Left and Right)
         Positioned(
           left: 20,
@@ -108,6 +130,18 @@ class DiodatiPortraitWidget extends StatelessWidget {
             ),
           ),
         ),
+        // White collar (under the chin)
+        Positioned(
+          bottom: 30,
+          child: Container(
+            width: 24,
+            height: 12,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+          ),
+        ),
         // Pale Skin Face (Oval)
         Positioned(
           top: 25,
@@ -138,28 +172,19 @@ class DiodatiPortraitWidget extends StatelessWidget {
             ),
           ),
         ),
-        // High black collar front tips (Minimal V-shape cutout)
-        Positioned(
-          bottom: 25,
-          child: Container(
-            width: 20,
-            height: 12,
-            decoration: const BoxDecoration(
-              color: Color(0xFF121212),
-            ),
-          ),
-        ),
+        ..._buildFaceFeatures(faceTop: 25, faceHeight: 64, faceWidth: 50, isFemale: true),
       ],
     );
   }
 
-  Widget _buildPercyShelley() {
+  Widget _buildPercyShelley(bool useBox) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Positioned.fill(
-          child: Container(color: const Color(0xFF3B2E24)),
-        ),
+        if (useBox)
+          Positioned.fill(
+            child: Container(color: const Color(0xFF3B2E24)),
+          ),
         // Disheveled hair brown curls background
         Positioned(
           top: 15,
@@ -229,31 +254,6 @@ class DiodatiPortraitWidget extends StatelessWidget {
             ),
           ),
         ),
-        // Wide green eyes
-        Positioned(
-          top: 44,
-          left: 45,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFF556B2F),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        Positioned(
-          top: 44,
-          right: 45,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFF556B2F),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
         // Flowing white cravat front tie
         Positioned(
           bottom: 0,
@@ -263,17 +263,19 @@ class DiodatiPortraitWidget extends StatelessWidget {
             color: const Color(0xFFEDEDED),
           ),
         ),
+        ..._buildFaceFeatures(faceTop: 25, faceHeight: 56, faceWidth: 44, isFemale: false),
       ],
     );
   }
 
-  Widget _buildLordByron() {
+  Widget _buildLordByron(bool useBox) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Positioned.fill(
-          child: Container(color: const Color(0xFF362B21)),
-        ),
+        if (useBox)
+          Positioned.fill(
+            child: Container(color: const Color(0xFF362B21)),
+          ),
         // Asymmetric prominent sweeping curl block (Left side curl)
         Positioned(
           top: 16,
@@ -359,17 +361,19 @@ class DiodatiPortraitWidget extends StatelessWidget {
             ),
           ),
         ),
+        ..._buildFaceFeatures(faceTop: 26, faceHeight: 58, faceWidth: 44, isFemale: false),
       ],
     );
   }
 
-  Widget _buildClaireClairmont() {
+  Widget _buildClaireClairmont(bool useBox) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Positioned.fill(
-          child: Container(color: const Color(0xFF3D2F25)),
-        ),
+        if (useBox)
+          Positioned.fill(
+            child: Container(color: const Color(0xFF3D2F25)),
+          ),
         // Dark braids background circles
         Positioned(
           top: 22,
@@ -434,18 +438,20 @@ class DiodatiPortraitWidget extends StatelessWidget {
             ),
           ),
         ),
+        ..._buildFaceFeatures(faceTop: 24, faceHeight: 58, faceWidth: 46, isFemale: true),
       ],
     );
   }
 
-  Widget _buildJohnPolidori() {
+  Widget _buildJohnPolidori(bool useBox) {
     return Stack(
       alignment: Alignment.center,
       children: [
         // Background
-        Positioned.fill(
-          child: Container(color: const Color(0xFF342A22)),
-        ),
+        if (useBox)
+          Positioned.fill(
+            child: Container(color: const Color(0xFF342A22)),
+          ),
         // Coat
         Positioned(
           bottom: 0,
@@ -546,17 +552,19 @@ class DiodatiPortraitWidget extends StatelessWidget {
             }),
           ),
         ),
+        ..._buildFaceFeatures(faceTop: 24, faceHeight: 56, faceWidth: 44, isFemale: false),
       ],
     );
   }
 
-  Widget _buildDefaultSilhouette() {
+  Widget _buildDefaultSilhouette(bool useBox) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Positioned.fill(
-          child: Container(color: const Color(0xFF2D231B)),
-        ),
+        if (useBox)
+          Positioned.fill(
+            child: Container(color: const Color(0xFF2D231B)),
+          ),
         // Silhouette Head
         Positioned(
           top: 26,
@@ -586,5 +594,88 @@ class DiodatiPortraitWidget extends StatelessWidget {
         ),
       ],
     );
+  }
+  List<Widget> _buildFaceFeatures({
+    required double faceTop,
+    required double faceHeight,
+    required double faceWidth,
+    bool isFemale = false,
+  }) {
+    final double centerX = 60.0; // Canvas is 120 wide, so center is 60
+    final double eyesY = faceTop + faceHeight * 0.38;
+    final double noseY = faceTop + faceHeight * 0.52;
+    final double mouthY = faceTop + faceHeight * 0.72;
+    final Color featureColor = const Color(0xFF4A3B32);
+    final Color lipColor = isFemale ? const Color(0xFFC88276) : const Color(0xFFB59385);
+
+    return [
+      // Eyebrows
+      Positioned(
+        left: centerX - 12,
+        top: eyesY - 5,
+        child: Container(
+          width: 8,
+          height: 1.5,
+          color: featureColor.withOpacity(0.8),
+        ),
+      ),
+      Positioned(
+        left: centerX + 4,
+        top: eyesY - 5,
+        child: Container(
+          width: 8,
+          height: 1.5,
+          color: featureColor.withOpacity(0.8),
+        ),
+      ),
+      // Eyes
+      Positioned(
+        left: centerX - 9,
+        top: eyesY,
+        child: Container(
+          width: 3,
+          height: 3,
+          decoration: BoxDecoration(
+            color: featureColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+      Positioned(
+        left: centerX + 6,
+        top: eyesY,
+        child: Container(
+          width: 3,
+          height: 3,
+          decoration: BoxDecoration(
+            color: featureColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+      // Nose (Subtle vertical line)
+      Positioned(
+        left: centerX - 0.5,
+        top: noseY,
+        child: Container(
+          width: 1.5,
+          height: 6,
+          color: featureColor.withOpacity(0.4),
+        ),
+      ),
+      // Mouth
+      Positioned(
+        left: centerX - 5,
+        top: mouthY,
+        child: Container(
+          width: 10,
+          height: 2,
+          decoration: BoxDecoration(
+            color: lipColor,
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+      ),
+    ];
   }
 }

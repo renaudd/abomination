@@ -66,7 +66,7 @@ class ManorScreen extends StatefulWidget {
 class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin {
   bool _hudExpanded = true;
   bool _isNavigatingToCombat = false;
-  bool _isShowingGuestConversation = false;
+  
   bool _timeControlsExpanded = false;
   bool _isFirstVisit = true;
   Room? _selectedRoomForDetails;
@@ -102,24 +102,7 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
     }
   }
 
-  void _checkGuestConversation(GameState state) {
-    if (state.pendingGuestConversation && !_isShowingGuestConversation && ModalRoute.of(context)?.isCurrent == true) {
-      _isShowingGuestConversation = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const GuestConversationDialog(),
-        ).then((_) {
-          if (mounted) {
-            setState(() {
-              _isShowingGuestConversation = false;
-            });
-          }
-        });
-      });
-    }
-  }
+  
 
   bool _isShowingFlaubertEvent = false;
 
@@ -487,7 +470,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     final state = Provider.of<GameState>(context);
     _checkCombatEncounter(state);
-    _checkGuestConversation(state);
     _checkFlaubertEvent(state);
     _checkDentalSetup(state);
     _checkDentalEvent(state);
@@ -510,13 +492,22 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
       });
     }
 
+    final bool isAndroid = Theme.of(context).platform == TargetPlatform.android;
+    final bool useSqueeze =
+        isAndroid && MediaQuery.of(context).size.width > 800;
+    final double appBarHeight = useSqueeze ? 32.0 : 36.0;
+
     return Scaffold(
-        backgroundColor: const Color(0xFF1A1612),
+      backgroundColor: const Color(0xFF1A1612),
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
+        primary: false,
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.black.withValues(alpha: 0.7),
+        backgroundColor: useSqueeze
+            ? const Color(0xFF1F1813)
+            : Colors.black.withValues(alpha: 0.7),
         elevation: 0,
-        toolbarHeight: 36,
+        toolbarHeight: appBarHeight,
         titleSpacing: 16,
         title: Row(
           children: [
@@ -732,10 +723,6 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                   firstChild: Column(
                     children: [
                       _buildAnnouncementBanner(context),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Divider(color: Colors.white10),
-                      ),
                     ],
                   ),
                   secondChild: const SizedBox.shrink(),
@@ -820,6 +807,18 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
               ),
             ),
           ),
+          if (state.pendingGuestConversation)
+            Positioned.fill(
+              child: SafeArea(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: const GuestConversationDialog(),
+                  ),
+                ),
+              ),
+            ),
           if (_timeControlsExpanded)
             Positioned(
               top: 0,
@@ -2461,6 +2460,9 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
   }
 
   Widget _buildClockWidget(BuildContext context) {
+    final bool isAndroid = Theme.of(context).platform == TargetPlatform.android;
+    final bool useSqueeze =
+        isAndroid && MediaQuery.of(context).size.width > 800;
     return Consumer<GameState>(
       builder: (context, state, child) {
         final isStep5 = state.gilesTutorialStep == GilesTutorialStep.playClock;
@@ -2478,8 +2480,14 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                 });
               },
               child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                margin: EdgeInsets.symmetric(
+                  vertical: useSqueeze ? 2.0 : 4.0,
+                  horizontal: 8.0,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: useSqueeze ? 2.0 : 4.0,
+                ),
                 decoration: BoxDecoration(
                   color: isStep5
                       ? const Color(0xFFD4AF37).withValues(alpha: flashAlpha * 0.4)
@@ -2501,32 +2509,69 @@ class _ManorScreenState extends State<ManorScreen> with TickerProviderStateMixin
                         ]
                       : null,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      state.currentDate.formattedDate.toUpperCase(),
-                      style: GoogleFonts.playfairDisplay(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.2,
-                        color: isStep5 ? const Color(0xFFFFF099) : const Color(0xFFE5D5B0),
+                child: useSqueeze
+                    ? Builder(
+                        builder: (context) {
+                          final months = [
+                            'Jan',
+                            'Feb',
+                            'Mar',
+                            'Apr',
+                            'May',
+                            'Jun',
+                            'Jul',
+                            'Aug',
+                            'Sep',
+                            'Oct',
+                            'Nov',
+                            'Dec',
+                          ];
+                          final shortDate =
+                              "${months[state.currentDate.month - 1]} ${state.currentDate.day.toString().padLeft(2, '0')}"
+                                  .toUpperCase();
+                          return Text(
+                            "$shortDate ${state.currentDate.formattedTime} - ${state.speed.name.toUpperCase()}",
+                            style: GoogleFonts.playfairDisplay(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                              letterSpacing: 1.0,
+                              color: isStep5
+                                  ? const Color(0xFFFFF099)
+                                  : const Color(0xFFE5D5B0),
+                            ),
+                          );
+                        },
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            state.currentDate.formattedDate.toUpperCase(),
+                            style: GoogleFonts.playfairDisplay(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 1.2,
+                              color: isStep5
+                                  ? const Color(0xFFFFF099)
+                                  : const Color(0xFFE5D5B0),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "${state.currentDate.formattedTime} - ${state.speed.name.toUpperCase()}",
+                            style: GoogleFonts.oswald(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.5,
+                              color: isStep5
+                                  ? Colors.white
+                                  : const Color(0xFFC4B89B),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "${state.currentDate.formattedTime} - ${state.speed.name.toUpperCase()}",
-                      style: GoogleFonts.oswald(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.5,
-                        color: isStep5 ? Colors.white : const Color(0xFFC4B89B),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             );
           },
@@ -2971,7 +3016,7 @@ class _AnnouncementBannerState extends State<_AnnouncementBanner> {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 44,
+      height: 55,
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
@@ -3022,7 +3067,7 @@ class _AnnouncementBannerState extends State<_AnnouncementBanner> {
             final displayText = contentStr;
 
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              padding: const EdgeInsets.symmetric(vertical: 0.5),
               child: Row(
                 children: [
                   Container(

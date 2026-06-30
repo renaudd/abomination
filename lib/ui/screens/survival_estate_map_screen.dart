@@ -904,83 +904,86 @@ class _SurvivalEstateMapScreenState extends State<SurvivalEstateMapScreen> {
         color: Colors.black.withValues(alpha: 0.6),
         border: const Border(bottom: BorderSide(color: Colors.white10)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.terrain, color: Color(0xFFC4B89B), size: 18),
-              const SizedBox(width: 6),
-              Text(
-                'TURN ${progress.currentTurn} - ESTATE',
-                style: GoogleFonts.playfairDisplay(
-                  color: const Color(0xFFE5D5B0),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  letterSpacing: 1.0,
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.terrain, color: Color(0xFFC4B89B), size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  'TURN ${progress.currentTurn} - ESTATE',
+                  style: GoogleFonts.playfairDisplay(
+                    color: const Color(0xFFE5D5B0),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    letterSpacing: 1.0,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildNavButton(
-                'ESTATE',
-                () => setState(() => _activeTab = 'ESTATE'),
-              ),
-              _buildNavButton(
-                'DECK',
-                () => setState(() => _activeTab = 'DECK'),
-              ),
-              _buildNavButton(
-                'LEADER',
-                () => setState(() => _activeTab = 'LEADER'),
-              ),
-              _buildNavButton(
-                'TOWERS',
-                () => setState(() => _activeTab = 'TOWERS'),
-              ),
-              _buildNavButton(
-                'MARKET',
-                () => setState(() => _activeTab = 'MARKET'),
-              ),
-              _buildNavButton(
-                'MENU',
-                () => _showMenuOverlay(progress, service, state),
-              ),
-            ],
-          ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildNavButton(
+                  'ESTATE',
+                  () => setState(() => _activeTab = 'ESTATE'),
+                ),
+                _buildNavButton(
+                  'DECK',
+                  () => setState(() => _activeTab = 'DECK'),
+                ),
+                _buildNavButton(
+                  'LEADER',
+                  () => setState(() => _activeTab = 'LEADER'),
+                ),
+                _buildNavButton(
+                  'TOWERS',
+                  () => setState(() => _activeTab = 'TOWERS'),
+                ),
+                _buildNavButton(
+                  'MARKET',
+                  () => setState(() => _activeTab = 'MARKET'),
+                ),
+                _buildNavButton(
+                  'MENU',
+                  () => _showMenuOverlay(progress, service, state),
+                ),
+              ],
+            ),
 
-          Row(
-            children: [
-              _buildResourceChip(
-                Icons.monetization_on,
-                '${progress.cash} CHF',
-                Colors.amber.shade700,
-              ),
-              const SizedBox(width: 8),
-              _buildResourceChip(
-                Icons.restaurant,
-                '${progress.food} FOOD',
-                Colors.green.shade700,
-              ),
-              const SizedBox(width: 8),
-              _buildResourceChip(
-                Icons.forest,
-                '${progress.wood} WOOD',
-                Colors.brown.shade700,
-              ),
-              const SizedBox(width: 8),
-              _buildResourceChip(
-                Icons.construction,
-                '${progress.iron} IRON',
-                Colors.blueGrey.shade600,
-              ),
-            ],
-          ),
-        ],
+            Row(
+              children: [
+                _buildResourceChip(
+                  Icons.monetization_on,
+                  '${progress.cash} CHF',
+                  Colors.amber.shade700,
+                ),
+                const SizedBox(width: 8),
+                _buildResourceChip(
+                  Icons.restaurant,
+                  '${progress.food} FOOD',
+                  Colors.green.shade700,
+                ),
+                const SizedBox(width: 8),
+                _buildResourceChip(
+                  Icons.forest,
+                  '${progress.wood} WOOD',
+                  Colors.brown.shade700,
+                ),
+                const SizedBox(width: 8),
+                _buildResourceChip(
+                  Icons.construction,
+                  '${progress.iron} IRON',
+                  Colors.blueGrey.shade600,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -865,10 +865,17 @@ class _CombatScreenState extends State<CombatScreen>
 
               // Circular Menu Button in top-right
               Positioned(
-                top: 16,
-                right: 20,
-                child: _CombatMenuButton(
-                  showMenuDialog: () => _showCombatMenuDialog(context),
+                top: 0,
+                right: 0,
+                child: SafeArea(
+                  left: false,
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16, right: 20),
+                    child: _CombatMenuButton(
+                      showMenuDialog: () => _showCombatMenuDialog(context),
+                    ),
+                  ),
                 ),
               ),
               
@@ -2797,6 +2804,20 @@ class _UnitCardState extends State<_UnitCard> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  // Transparent centered portrait in the background
+                  Positioned.fill(
+                    child: Center(
+                      child: Opacity(
+                        opacity: 0.15,
+                        child: CharacterBlobRenderer(
+                          npc: widget.npc,
+                          size: 44,
+                          showSpeechBubble: false,
+                          isCombat: true,
+                        ),
+                      ),
+                    ),
+                  ),
                   SizedBox.expand(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2806,7 +2827,7 @@ class _UnitCardState extends State<_UnitCard> {
                           padding: const EdgeInsets.fromLTRB(4.0, 1.5, 4.0, 0.0),
                           child: SizedBox(
                             width: double.infinity,
-                            height: 10,
+                            height: 12,
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
@@ -2814,7 +2835,7 @@ class _UnitCardState extends State<_UnitCard> {
                                 widget.npc.name.toUpperCase(),
                                 style: GoogleFonts.oldStandardTt(
                                   color: const Color(0xFF2E1A0A), // Dark Ink
-                                  fontSize: 8.5,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.1,
                                 ),
@@ -6903,6 +6924,77 @@ class _AoeEffectPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (effect.id.startsWith('whirlwind_')) {
+      final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
+      if (pct >= 1.0) return;
+
+      final center = projection.project(effect.x, effect.y);
+      final double maxRadius = effect.maxRadius;
+      final double currentRadius = maxRadius * pct;
+
+      // Draw 3 spinning spiral blades
+      final int numBlades = 3;
+      final double rotation = pct * 4 * pi; // Spin multiple full rotations
+
+      for (int b = 0; b < numBlades; b++) {
+        final double baseAngle = b * (2 * pi / numBlades) + rotation;
+
+        final path = Path();
+        for (int i = 0; i <= 20; i++) {
+          final double segmentPct = i / 20.0;
+          final double r = currentRadius * segmentPct;
+          final double angle = baseAngle + segmentPct * pi * 1.2; // Spiral curl
+
+          final double wx = effect.x + cos(angle) * r;
+          final double wy = effect.y + sin(angle) * r;
+          final p = projection.project(wx, wy);
+
+          if (i == 0) {
+            path.moveTo(p.dx, p.dy);
+          } else {
+            path.lineTo(p.dx, p.dy);
+          }
+        }
+
+        final glowPaint = Paint()
+          ..color = Colors.deepOrange.withValues(alpha: 0.5 * (1.0 - pct))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5.0
+          ..strokeCap = StrokeCap.round;
+
+        final corePaint = Paint()
+          ..color = Colors.white.withValues(alpha: 0.8 * (1.0 - pct))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8
+          ..strokeCap = StrokeCap.round;
+
+        canvas.drawPath(path, glowPaint);
+        canvas.drawPath(path, corePaint);
+      }
+
+      // Draw some spinning embers/particles
+      final rand = Random(effect.id.hashCode);
+      final particlePaint = Paint()
+        ..color = Colors.amberAccent.withValues(alpha: 0.8 * (1.0 - pct))
+        ..style = PaintingStyle.fill;
+
+      for (int i = 0; i < 15; i++) {
+        final double pDelay = rand.nextDouble() * 0.2;
+        final double pPct = ((pct - pDelay) / 0.8).clamp(0.0, 1.0);
+        if (pPct <= 0.0) continue;
+
+        final double pRadius = maxRadius * pPct;
+        final double angle = rand.nextDouble() * 2 * pi + pct * 6.0;
+
+        final double wx = effect.x + cos(angle) * pRadius;
+        final double wy = effect.y + sin(angle) * pRadius;
+        final p = projection.project(wx, wy);
+
+        canvas.drawCircle(p, 2.0 + rand.nextDouble() * 2.0, particlePaint);
+      }
+      return;
+    }
+
     if (effect.id.startsWith('arrows_')) {
       final double pct = (effect.elapsedSeconds / (effect.duration.inMilliseconds / 1000.0)).clamp(0.0, 1.0);
       if (pct >= 1.0) return;

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Scale the icon up to 120% so it exceeds the circular mask -->
+    <item
+        android:width="130dp"
+        android:height="130dp"
+        android:drawable="@mipmap/launcher_icon_foreground"
+        android:gravity="center" />
+</layer-list>

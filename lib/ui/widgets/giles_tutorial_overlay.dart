@@ -137,6 +137,7 @@ class GilesTutorialOverlay extends StatelessWidget {
                             npc: gilesNpc,
                             size: 40,
                             isIdle: true,
+                            showSpeechBubble: false,
                           ),
                         ),
                       ),
@@ -211,7 +212,7 @@ class GilesTutorialOverlay extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Padding(
-                padding: const EdgeInsets.only(right: 24.0, bottom: 4.0),
+                padding: const EdgeInsets.only(right: 310.0, bottom: 4.0),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -392,7 +392,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                           const SizedBox(height: 6),
 
                           _buildHubButton('RETURN TO MAIN MENU', () {
-                            Navigator.pop(context);
+                            Navigator.popUntil(context, (route) => route.isFirst);
                           }, isAccent: true),
                         ],
                       ),
@@ -985,7 +985,7 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
               ),
               content: SizedBox(
                 width: 420,
-                height: 310, // Optimized compact height ensures excellent legibility on iPhone screens
+                height: 335, // Optimized compact height ensures excellent legibility on iPhone screens
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1100,24 +1100,52 @@ class _ArenaMenuScreenState extends State<ArenaMenuScreen> {
                                   TableRow(
                                     children: [
                                       _buildStatRow(
-                                        'HP / Max HP',
+                                        'HP / MAX HP',
                                         '${stats.health.toInt()} / ${stats.maxHealth.toInt()}',
                                       ),
                                       _buildStatRow(
-                                        'Attack Power',
-                                        '${stats.attack.toInt()}',
+                                        'DEFENSE / ACCURACY',
+                                        '${stats.defense.toInt()} / ${(stats.accuracy * 100).toInt()}%',
                                       ),
                                     ],
                                   ),
                                   TableRow(
                                     children: [
                                       _buildStatRow(
-                                        'Attack Range',
+                                        'MELEE POWER / SPEED',
+                                        stats.meleeDamage > 0
+                                            ? '${stats.meleeDamage.toInt()} dmg / ${stats.meleeAttackSpeed.toStringAsFixed(1)}s'
+                                            : 'N/A',
+                                      ),
+                                      _buildStatRow(
+                                        'RANGED POWER / SPEED',
+                                        stats.rangedDamage > 0
+                                            ? '${stats.rangedDamage.toInt()} dmg / ${stats.rangedAttackSpeed.toStringAsFixed(1)}s'
+                                            : 'N/A',
+                                      ),
+                                    ],
+                                  ),
+                                  TableRow(
+                                    children: [
+                                      _buildStatRow(
+                                        'ATTACK RANGE',
                                         '${stats.distance.toStringAsFixed(1)} ft',
                                       ),
                                       _buildStatRow(
-                                        'Speed Factor',
-                                        '${stats.speed.toStringAsFixed(1)}x',
+                                        'MOVEMENT VELOCITY',
+                                        '${stats.movement.toStringAsFixed(1)} m/s',
+                                      ),
+                                    ],
+                                  ),
+                                  TableRow(
+                                    children: [
+                                      _buildStatRow(
+                                        'TARGETING RULE',
+                                        stats.targetingRule.name.toUpperCase(),
+                                      ),
+                                      _buildStatRow(
+                                        'FACTION TRAIT',
+                                        stats.trait.name.toUpperCase(),
                                       ),
                                     ],
                                   ),

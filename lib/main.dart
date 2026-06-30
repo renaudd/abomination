@@ -44,6 +44,7 @@ void main() async {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   } catch (e) {
     debugPrint("SystemChrome error: $e");
   }
@@ -207,6 +208,20 @@ class _AbominationAppState extends State<AbominationApp> {
                   brightness: Brightness.dark,
                   surface: const Color.fromARGB(255, 250, 238, 226),
                   primary: const Color(0xFFC4B89B), // Brass/Parchment
+                ),
+                snackBarTheme: SnackBarThemeData(
+                  backgroundColor: const Color(0xFF1E1A15),
+                  contentTextStyle: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    side: const BorderSide(color: Color(0xFFC4B89B), width: 1.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  behavior: SnackBarBehavior.floating,
                 ),
                 useMaterial3: true,
               )

@@ -58,7 +58,7 @@ class FoxGenerator {
       isResident: false,
       status: NPCStatus.idle,
       disposition: NPCDisposition.voluntary,
-      currentRoomId: 'grounds',
+      currentRoomId: null,
       stats: {
         'strength': 15,
         'endurance': 25,

@@ -219,15 +219,15 @@ class NeighborEncounterCatalog {
       faction: 'Glarus',
       cottageId: 'cottage_mary',
       introDialog:
-          'My child, I have heard of the tragedy that befell your family, and the dark experiments you conduct to conquer mortality. Is the spark of life ours to command, or are you creating a Modern Prometheus that will destroy you?',
+          'My child, I have heard of the tragedy that befell your family. In times of such deep sorrow, the mind can wander to very dark places. Please tell me you are not letting your grief lead you down a path of obsession.',
       choiceAText:
-          'Assure her that your science is a noble pursuit to cure death and ease human suffering.',
+          'Assure her that your studies are a noble pursuit to understand nature and ease human suffering.',
       choiceBText:
-          'Proclaim that your will is absolute and you will conquer mortality at any cost.',
+          'Proclaim that you will find a way to conquer mortality and bring back what was lost, at any cost.',
       outcomeAText:
           'Mary sighs softly, touching your arm with her pale hand. "Grief makes monsters of us all. Be careful, creator." (+0.20 Glarus Standing)',
       outcomeBText:
-          'Mary draws back, her eyes filled with cold pity. "A creator who abdicates responsibility invites their own doom." (-0.20 Glarus Standing)',
+          'Mary draws back, her eyes filled with concern and fear. "To defy the natural order is to invite your own destruction." (-0.20 Glarus Standing)',
       onChoiceA: (state) => state.adjustFactionStanding('Glarus', 0.2),
       onChoiceB: (state) => state.adjustFactionStanding('Glarus', -0.2),
     ),

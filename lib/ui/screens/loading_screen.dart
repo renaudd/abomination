@@ -109,6 +109,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
           Image.asset(
             'assets/images/survey_estate_rolle.jpeg',
             fit: BoxFit.cover,
+            alignment: const Alignment(0.0, -0.25),
           ),
           // Dark Overlay for legibility
           Container(

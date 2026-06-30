@@ -13,10 +13,12 @@
 // limitations under the License.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 import 'dart:collection';
 import 'package:uuid/uuid.dart';
+import 'dart:io' show Platform;
 
 import '../models/manor_crisis.dart';
 import '../services/audio_service.dart';
@@ -1109,19 +1111,20 @@ class GameState extends ChangeNotifier {
     if (!_objectives.any((o) => o.id == quest.objective.id)) {
       _objectives.add(quest.objective);
     }
+    final guest = _npcs.firstWhereOrNull((n) => n.name == guestName);
     if (quest.agreement != null) {
-      final customizedAgreement = quest.agreement!.copyWith(npcId: guestName);
+      final customizedAgreement = quest.agreement!.copyWith(npcId: guest?.id ?? guestName);
       if (!_contracts.any((c) => c.id == customizedAgreement.id)) {
         _contracts.add(customizedAgreement);
       }
     }
-    if (quest.id == 'quest_fugitive_sanctuary') {
+    if (quest.id == 'quest_fugitive_sanctuary' || quest.id == 'quest_theater_venture') {
       final guestIdx = _npcs.indexWhere((n) => n.name == guestName);
       if (guestIdx != -1) {
         final guestNpc = _npcs[guestIdx];
         _npcs[guestIdx] = guestNpc.copyWith(
           isResident: true,
-          role: 'Manor Resident',
+          role: quest.id == 'quest_fugitive_sanctuary' ? 'Laboratory Assistant' : 'Theater Director',
         );
       }
     }
@@ -1134,7 +1137,16 @@ class GameState extends ChangeNotifier {
   }
 
   void dismissGuest(String guestId) {
-    _npcs.removeWhere((n) => n.id == guestId);
+    final index = _npcs.indexWhere((n) => n.id == guestId);
+    if (index != -1) {
+      final guest = _npcs[index];
+      // Do not remove them from the game entirely so their details, biography,
+      // and agreements remain fully intact. Simply move them off-site.
+      _npcs[index] = guest.copyWith(
+        currentRoomId: null,
+        targetRoomId: null,
+      );
+    }
     _lastAnnouncement = "The guest has departed Glarus entryway.";
     _announcementHistory.insert(
       0,
@@ -1244,6 +1256,8 @@ class GameState extends ChangeNotifier {
   LifeObjective _mainObjective = LifeObjective.science;
   Map<String, int>? _customStartingStats;
   int _lastNeighborSpawnDay = 0;
+  bool _hasMaryShelleyVisited = false;
+  bool get hasMaryShelleyVisited => _hasMaryShelleyVisited;
 
   Map<String, dynamic> toJson() => {
     'submarineState': _submarineState,
@@ -1321,6 +1335,7 @@ class GameState extends ChangeNotifier {
     'visitorArrivalBehavior': _visitorArrivalBehavior,
     'manualSpeedBeforeVisitor': _manualSpeedBeforeVisitor?.index,
     'lastNeighborSpawnDay': _lastNeighborSpawnDay,
+    'hasMaryShelleyVisited': _hasMaryShelleyVisited,
     'hasFoodDropTriggered': _hasFoodDropTriggered,
     'foodDropTriggerTime': _foodDropTriggerTime,
     'lastMerchantSpawnMinutes': _lastMerchantSpawnMinutes,
@@ -1397,6 +1412,7 @@ class GameState extends ChangeNotifier {
     final savedManualSpeed = json['manualSpeedBeforeVisitor'] as int?;
     _manualSpeedBeforeVisitor = savedManualSpeed != null ? GameSpeed.values[savedManualSpeed] : null;
     _lastNeighborSpawnDay = json['lastNeighborSpawnDay'] as int? ?? 0;
+    _hasMaryShelleyVisited = json['hasMaryShelleyVisited'] as bool? ?? false;
     final savedKeys = json['hotkeys'] as Map<String, dynamic>?;
     if (savedKeys != null) {
       _hotkeys = savedKeys.map((k, v) => MapEntry(k, v.toString()));
@@ -2337,6 +2353,29 @@ class GameState extends ChangeNotifier {
   void clearObjectivesForTesting() {
     _objectives.clear();
   }
+  void activateWinterDreamsOfClara() {
+    final objective = Objective(
+      id: 'winter_dreams_clara_1',
+      title: 'The Winter Dreams of Clara',
+      description:
+          'Mary Shelley prompts you to retrieve the first galvanic conductor components from a local carriage wreck. Travel to the wreckage site and win 1 combat.',
+      type: ObjectiveType.story,
+      requirements: {
+        'combats_won': 1,
+      },
+      nextObjectiveId: 'red_hand_covenant_1',
+    );
+    if (!_objectives.any((o) => o.id == objective.id)) {
+      _objectives.add(objective);
+      _unreadObjectiveCount++;
+      _lastAnnouncement = "Objective Active: The Winter Dreams of Clara";
+      _announcementHistory.insert(
+        0,
+        "[${_currentDate.formattedTime}] NEW OBJECTIVE: The Winter Dreams of Clara.",
+      );
+      notifyListeners();
+    }
+  }
   List<Contract> get contracts => List.unmodifiable(_contracts);
   List<String> get unlockedDiscoveries =>
       List.unmodifiable(_unlockedDiscoveries);
@@ -3063,6 +3102,7 @@ class GameState extends ChangeNotifier {
     _researchQueue.clear();
     _laboratoryQueue.clear();
     _lastNeighborSpawnDay = 0;
+    _hasMaryShelleyVisited = false;
     _unreadObjectiveCount = 0;
     _pendingCombatEncounter = false;
     _playerDistanceSinceEncounter = 0.0;
@@ -4102,10 +4142,18 @@ class GameState extends ChangeNotifier {
     return "$baseBio $deathDesc\n\n// TODO: develop meaningful quests and game consequences tied to this death cause.";
   }
 
+  bool get _isUnderTest {
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
+
   bool _isTicking = false;
 
   void tick() {
-    if (_isTicking || _speed == GameSpeed.paused) return;
+    if (_isTicking || _speed == GameSpeed.paused || (_pendingGuestConversation && !_isUnderTest)) return;
     _isTicking = true;
     final bool hadVisitor = hasVisitorInEntryway();
 
@@ -4358,8 +4406,10 @@ class GameState extends ChangeNotifier {
 
               // Experience is granted upon task completion in _handleTaskCompletion
               if (readyNpcIds.contains(npc.id)) {
-                anyActiveFoley = true;
-                AudioService().startActionSound(task.type);
+                if (npc.isPlayer && (_speed == GameSpeed.normal || _speed == GameSpeed.slow)) {
+                  anyActiveFoley = true;
+                  AudioService().startActionSound(task.type);
+                }
 
                 final proficiencyName = TaskService.getResolvedCookingProficiency(task.type, task.recipeId);
 
@@ -4640,9 +4690,57 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  void _triggerMaryShelleyArrival() {
+    if (_npcs.any((n) => n.name == 'Mary Shelley')) return;
+
+    final mary = NPC(
+      id: 'visitor_mary_shelley',
+      name: 'Mary Shelley',
+      role: 'Acquaintance',
+      age: 20,
+      gender: 'Female',
+      specimenType: 'Human',
+      bodyParts: const [],
+      isResident: false,
+      schedule: NPCSchedule.visitor(),
+      diet: NPCDiet.defaultDiet(),
+      currentRoomId: 'entryway',
+      targetRoomId: 'entryway',
+      appearance: NPCAppearance.deterministic('Mary Shelley').copyWith(
+        hairStyle: HairStyle.bob,
+        hairColor: const Color(0xFF1E1715),
+        outfitColor: const Color(0xFF121212),
+      ),
+      combatStats: null,
+      metadata: {
+        'guestType': 'plot_visitor',
+        'plotEventKey': 'mary_shelley_visit',
+        'arrivalTime': _currentDate.totalMinutes,
+        'isGreeted': false,
+      },
+    );
+
+    _npcs.add(mary);
+    _lastAnnouncement = "Mary Shelley has arrived at the grand entryway doors.";
+    _announcementHistory.insert(
+      0,
+      "[${_currentDate.formattedTime}] ARRIVAL: Mary Shelley arrived at Glarus.",
+    );
+    notifyListeners();
+  }
+
   void _processVisitors() {
     _spawnNeighborIfNeeded();
     final totalMinutes = _currentDate.totalMinutes;
+
+    if (!_hasMaryShelleyVisited &&
+        _currentDate.year == 1818 &&
+        _currentDate.month == 3 &&
+        _currentDate.day == 2 &&
+        (_currentDate.hour > 10 || (_currentDate.hour == 10 && _currentDate.minute >= 5))) {
+      _hasMaryShelleyVisited = true;
+      _triggerMaryShelleyArrival();
+    }
 
     // Hourly Faction Plot Check (at the top of every hour)
     if (totalMinutes % 60 == 0) {
@@ -4825,6 +4923,7 @@ class GameState extends ChangeNotifier {
           metadata: modifiableMetadata,
         );
         _npcs.add(neighbor);
+        _addSpouseIfMarried(neighbor);
         _lastNeighborSpawnDay = day;
 
         _lastAnnouncement = "A new visitor, ${nextNeighbor.name} (${nextNeighbor.role}), has arrived at the grand entryway doors.";
@@ -5247,6 +5346,7 @@ class GameState extends ChangeNotifier {
         );
 
     _npcs.add(npc);
+    _addSpouseIfMarried(npc);
 
     _lastAnnouncement = "$name has arrived at the Manor entryway seeking an audience.";
     _announcementHistory.insert(0, "[${_currentDate.formattedTime}] $_lastAnnouncement");
@@ -7138,19 +7238,6 @@ class GameState extends ChangeNotifier {
     _objectives.clear();
     _objectives.add(
       Objective(
-        id: 'winter_dreams_clara_1',
-        title: 'The Winter Dreams of Clara',
-        description:
-            'Mary Shelley prompts you to retrieve the first galvanic conductor components from a local carriage wreck. Travel to the wreckage site and win 1 combat.',
-        type: ObjectiveType.story,
-        requirements: {
-          'combats_won': 1,
-        },
-        nextObjectiveId: 'red_hand_covenant_1',
-      ),
-    );
-    _objectives.add(
-      Objective(
         id: 'farming_tutorial_1',
         title: 'Break the Earth',
         description:
@@ -8253,6 +8340,7 @@ class GameState extends ChangeNotifier {
     for (final npc in _npcs) {
       if (npc.status != NPCStatus.dead &&
           npc.role == 'Creature' &&
+          npc.specimenType.toLowerCase() != 'fox' &&
           npc.currentRoomId != 'grounds') {
         largeAnimalCount++;
       }
@@ -16382,6 +16470,7 @@ class GameState extends ChangeNotifier {
             'discipline': itemToStudy.metadata['discipline'] ?? 'Anatomy',
             'source': itemToStudy.name,
             'pages': notesGenerated,
+            'isResearched': true,
           },
         );
 

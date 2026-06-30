@@ -563,13 +563,43 @@ class NPC {
 
   Map<String, int> get effectiveStats {
     final result = Map<String, int>.from(stats);
+    
+    // Apply status effects
     for (var effect in statusEffects) {
       for (var mod in effect.attributeModifiers.entries) {
-        if (result.containsKey(mod.key)) {
-          result[mod.key] = (result[mod.key]! + mod.value).clamp(0, 100);
+        if (mod.key == 'willpower') {
+          // Buffs/debuffs to Willpower affect Confidence, Endurance, and Morality
+          for (var subKey in ['confidence', 'endurance', 'morality']) {
+            if (result.containsKey(subKey)) {
+              final maxVal = result[subKey]! > 10 ? 100 : 10;
+              result[subKey] = (result[subKey]! + mod.value).clamp(0, maxVal);
+            }
+          }
+        } else {
+          if (result.containsKey(mod.key)) {
+            final maxVal = result[mod.key]! > 10 ? 100 : 10;
+            result[mod.key] = (result[mod.key]! + mod.value).clamp(0, maxVal);
+          }
         }
       }
     }
+
+    // Willpower is a composite of Confidence, Endurance, and Morality for humans
+    if (specimenType == 'Human' || !stats.containsKey('willpower')) {
+      final conf = result['confidence'] ?? 5;
+      final end = result['endurance'] ?? 5;
+      final mor = result['morality'] ?? 5;
+      result['willpower'] = ((conf + end + mor) / 3).round().clamp(0, 10);
+    } else {
+      // For non-humans/monsters, apply willpower modifier directly if present
+      for (var effect in statusEffects) {
+        final wpMod = effect.attributeModifiers['willpower'];
+        if (wpMod != null) {
+          result['willpower'] = (result['willpower']! + wpMod).clamp(0, 100);
+        }
+      }
+    }
+
     return result;
   }
 

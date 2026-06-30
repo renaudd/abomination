@@ -26,6 +26,7 @@ import '../../models/neighbor_encounter.dart';
 import '../../models/room.dart';
 import '../../services/npc_generator.dart';
 import 'diodati_portrait_widget.dart';
+import '../../models/game_item.dart';
 
 class GuestConversationDialog extends StatelessWidget {
   const GuestConversationDialog({super.key});
@@ -48,201 +49,278 @@ class GuestConversationDialog extends StatelessWidget {
 
         final encounter = state.activeLanguageEncounter;
         if (encounter != null) {
-          return _buildLanguageEncounterDialog(context, state, greeter, guest, encounter);
+          return _buildFloatingDialogueRow(
+            guest: guest,
+            titleText: encounter.id >= 11 && encounter.id <= 16
+                ? "FOREIGN CUSTOMER INQUIRY"
+                : "VISITOR LANGUAGE TEST",
+            content: _buildLanguageEncounterContent(
+              context,
+              state,
+              greeter,
+              guest,
+              encounter,
+            ),
+            onClose: () => state.clearGuestConversation(),
+          );
         }
 
-        return Dialog(
-          backgroundColor: const Color(0xFF1E1A15),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-          ),
-          child: Container(
-            width: 600,
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
-                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                     children: [
-                      Text(
-                        "AUDIENCE IN THE ENTRYWAY",
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFE5D5B0),
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.5,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 20),
-                        onPressed: () {
-                          state.clearGuestConversation();
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.white10, height: 24),
+        final String titleText = guest.name.toUpperCase();
 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      DiodatiPortraitWidget(npcName: guest.name, size: 120.0),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Narrator Description
-                            Text(
-                              "${greeter.name.toUpperCase()} has met ${guest.name.toUpperCase()} (${guest.role.toUpperCase()}) at the grand entryway doors.",
-                              style: GoogleFonts.oldStandardTt(
-                                color: const Color(0xFFC4B89B),
-                                fontSize: 13,
-                                height: 1.4,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
+        final List<Widget> content = guestType == 'plot_visitor'
+            ? _buildPlotVisitorContent(context, state, greeter, guest)
+            : (guestType == 'neighbor'
+                  ? _buildNeighborOptions(context, state, greeter, guest)
+                  : _buildStandardVisitorContent(
+                      context,
+                      state,
+                      greeter,
+                      guest,
+                      isMerchant,
+                      isProposer,
+                      hasSpirits,
+                    ));
 
-                            if (guestType == 'plot_visitor') ...[
-                              ..._buildPlotVisitorContent(context, state, greeter, guest),
-                            ] else if (guestType == 'neighbor') ...[
-                              ..._buildNeighborOptions(context, state, greeter, guest),
-                            ] else ...[
-                              Text(
-                                "The visitor looks up, a question hovering over their countenance. How shall Glarus respond to their presence?",
-                                style: GoogleFonts.oldStandardTt(
-                                  color: const Color(0xFFE5D5B0).withValues(alpha: 0.8),
-                                  fontSize: 12,
-                                  height: 1.4,
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-                              // Business Venture Proposal Option
-                              if (isProposer) ...[
-                                _dialogOption(
-                                  context: context,
-                                  title: "DISCUSS COMMERCIAL PROPOSAL",
-                                  description: "Hear ${guest.name.toUpperCase()}'s venture proposal. Set up a specialty business at the manor.",
-                                  icon: Icons.business_center,
-                                  onTap: () {
-                                    _showVentureProposalDetails(context, state, guest);
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-
-                              // Option 1: Welcome and Trade
-                              _dialogOption(
-                                context: context,
-                                title: isMerchant ? "DISCUSS MERCHANDISE" : "WELCOME & OFFER COMMERCE",
-                                description: isMerchant 
-                                    ? "Offer the merchant hospitality and inspect their wagon wares." 
-                                    : "Welcome the visitor and ask if they carry any trade stock.",
-                                icon: Icons.storefront,
-                                onTap: () {
-                                  guest.metadata['isGreeted'] = true;
-                                  state.clearGuestConversation();
-                                  Navigator.pop(context);
-
-                                  if (isMerchant) {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => VisitingMerchantTradeDialog(merchant: guest),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text("${guest.name} is not a merchant and has no goods to sell."),
-                                        backgroundColor: const Color(0xFF241F1A),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Option 2: Custom Quest / Venture Opportunity (Request 4)
-                              (() {
-                                final quest = state.getVisitorQuestForNpc(guest);
-                                return _dialogOption(
-                                  context: context,
-                                  title: quest.title,
-                                  description: '"${quest.teaserQuote}"',
-                                  icon: Icons.assignment,
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _showVisitorQuestProposalDetailsDialog(context, state, quest, guest);
-                                  },
-                                );
-                              })(),
-                              const SizedBox(height: 12),
-
-                              // Option 3: Social Debate / Spirits
-                              _dialogOption(
-                                context: context,
-                                title: hasSpirits ? "SHARE REFINED SPIRITS & DEBATE" : "DISCUSS PHILOSOPHY & SCIENCE",
-                                description: hasSpirits 
-                                    ? "Crack open Glarus spirits (-1 Spirits). Engage in a high-morale, deeply engaging debate (+20 Greeter Satisfaction)." 
-                                    : "Engage in standard intellectual discourse. Greeter satisfaction slightly increases (+10).",
-                                icon: Icons.local_bar,
-                                onTap: () {
-                                  if (hasSpirits) {
-                                    state.updateResource('spirits', -1);
-                                    state.adjustNpcSatisfaction(greeter.id, 20);
-                                  } else {
-                                    state.adjustNpcSatisfaction(greeter.id, 10);
-                                  }
-
-                                  state.clearGuestConversation();
-                                  Navigator.pop(context);
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(hasSpirits 
-                                          ? "Refined spirits shared! ${greeter.name} gained +20 Satisfaction."
-                                          : "Engaged in philosophical discourse. ${greeter.name} gained +10 Satisfaction."),
-                                      backgroundColor: const Color(0xFF241F1A),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Option 4: Polite Dismissal
-                              _dialogOption(
-                                context: context,
-                                title: "POLITELY DISMISS GUEST",
-                                description: "Tell them that Glarus cannot host travelers today. They will immediately pack up and depart.",
-                                icon: Icons.exit_to_app,
-                                isRed: true,
-                                onTap: () {
-                                  state.dismissGuest(guest.id);
-                                  state.clearGuestConversation();
-                                  Navigator.pop(context);
-                                },
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+        return _buildFloatingDialogueRow(
+          guest: guest,
+          titleText: titleText,
+          content: content,
+          onClose: () => state.clearGuestConversation(),
         );
       },
     );
+  }
+
+  Widget _buildFloatingDialogueRow({
+    required NPC guest,
+    required String titleText,
+    required List<Widget> content,
+    required VoidCallback onClose,
+  }) {
+    // 1. Portrait Widget (Free floating, boxless)
+    final Widget portraitWidget = DiodatiPortraitWidget(
+      npcName: guest.name,
+      size: 80.0,
+      useBox: false,
+    );
+
+    // 2. Dialogue Card Widget
+    final Widget dialogueCard = Container(
+      constraints: const BoxConstraints(maxWidth: 450),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1A15).withOpacity(0.95),
+        border: Border.all(
+          color: const Color(0xFFD4AF37),
+          width: 2,
+        ), // Muted Gold
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.8),
+            blurRadius: 15,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                titleText,
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFFE5D5B0),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2.0,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.close,
+                  color: Color(0xFFE5D5B0),
+                  size: 16,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onClose,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: content,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [portraitWidget, const SizedBox(width: 16), dialogueCard],
+    );
+  }
+
+  List<Widget> _buildStandardVisitorContent(
+    BuildContext context,
+    GameState state,
+    NPC greeter,
+    NPC guest,
+    bool isMerchant,
+    bool isProposer,
+    bool hasSpirits,
+  ) {
+    final List<Widget> optionWidgets = [];
+
+    // Business Venture Proposal Option
+    if (isProposer) {
+      optionWidgets.add(
+        _dialogOption(
+          context: context,
+          title: "DISCUSS COMMERCIAL PROPOSAL",
+          description:
+              "Hear ${guest.name.toUpperCase()}'s venture proposal. Set up a specialty business at the manor.",
+          icon: Icons.business_center,
+          onTap: () {
+            _showVentureProposalDetails(context, state, guest);
+          },
+        ),
+      );
+    }
+
+    // Option 1: Welcome and Trade
+    optionWidgets.add(
+      _dialogOption(
+        context: context,
+        title: isMerchant ? "DISCUSS MERCHANDISE" : "WELCOME & OFFER COMMERCE",
+        description: isMerchant
+            ? "Offer the merchant hospitality and inspect their wagon wares."
+            : "Welcome the visitor and ask if they carry any trade stock.",
+        icon: Icons.storefront,
+        onTap: () {
+          guest.metadata['isGreeted'] = true;
+          state.clearGuestConversation();
+
+          if (isMerchant) {
+            showDialog(
+              context: context,
+              builder: (context) =>
+                  VisitingMerchantTradeDialog(merchant: guest),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  "${guest.name} is not a merchant and has no goods to sell.",
+                ),
+                backgroundColor: const Color(0xFF241F1A),
+              ),
+            );
+          }
+        },
+      ),
+    );
+
+    // Option 2: Custom Quest / Venture Opportunity
+    final quest = state.getVisitorQuestForNpc(guest);
+    optionWidgets.add(
+      _dialogOption(
+        context: context,
+        title: quest.title,
+        description: '"${quest.teaserQuote}"',
+        icon: Icons.assignment,
+        onTap: () {
+          _showVisitorQuestProposalDetailsDialog(context, state, quest, guest);
+        },
+      ),
+    );
+
+    // Option 3: Social Debate / Spirits
+    optionWidgets.add(
+      _dialogOption(
+        context: context,
+        title: hasSpirits
+            ? "SHARE REFINED SPIRITS & DEBATE"
+            : "DISCUSS PHILOSOPHY & SCIENCE",
+        description: hasSpirits
+            ? "Crack open Glarus spirits (-1 Spirits). Engage in a high-morale, deeply engaging debate (+20 Greeter Satisfaction)."
+            : "Engage in standard intellectual discourse. Greeter satisfaction slightly increases (+10).",
+        icon: Icons.local_bar,
+        onTap: () {
+          if (hasSpirits) {
+            state.updateResource('spirits', -1);
+            state.adjustNpcSatisfaction(greeter.id, 20);
+          } else {
+            state.adjustNpcSatisfaction(greeter.id, 10);
+          }
+
+          state.clearGuestConversation();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                hasSpirits
+                    ? "Refined spirits shared! ${greeter.name} gained +20 Satisfaction."
+                    : "Engaged in philosophical discourse. ${greeter.name} gained +10 Satisfaction.",
+              ),
+              backgroundColor: const Color(0xFF241F1A),
+            ),
+          );
+        },
+      ),
+    );
+
+    // Option 4: Polite Dismissal
+    optionWidgets.add(
+      _dialogOption(
+        context: context,
+        title: "POLITELY DISMISS GUEST",
+        description:
+            "Tell them that Glarus cannot host travelers today. They will immediately pack up and depart.",
+        icon: Icons.exit_to_app,
+        isRed: true,
+        onTap: () {
+          state.dismissGuest(guest.id);
+          state.clearGuestConversation();
+        },
+      ),
+    );
+
+    return [
+      Text(
+        "${greeter.name.toUpperCase()} has met ${guest.name.toUpperCase()} (${guest.role.toUpperCase()}) at the grand entryway doors.",
+        style: GoogleFonts.oldStandardTt(
+          color: const Color(0xFFC4B89B),
+          fontSize: 11.5,
+          height: 1.4,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        "The visitor looks up, a question hovering over their countenance. How shall Glarus respond to their presence?",
+        style: GoogleFonts.oldStandardTt(
+          color: const Color(0xFFE5D5B0).withOpacity(0.8),
+          fontSize: 12.5,
+          height: 1.4,
+        ),
+      ),
+      const SizedBox(height: 16),
+      ...optionWidgets.map(
+        (opt) =>
+            Padding(padding: const EdgeInsets.only(bottom: 8.0), child: opt),
+      ),
+    ];
   }
 
   Widget _dialogOption({
@@ -565,7 +643,6 @@ class GuestConversationDialog extends StatelessWidget {
                               
                               state.clearGuestConversation();
                               Navigator.pop(context); // Pop selection
-                              Navigator.pop(context); // Pop conversation
 
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -585,7 +662,7 @@ class GuestConversationDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildLanguageEncounterDialog(
+  List<Widget> _buildLanguageEncounterContent(
     BuildContext context,
     GameState state,
     NPC greeter,
@@ -595,188 +672,126 @@ class GuestConversationDialog extends StatelessWidget {
     final hasTranslator = state.anyResidentSpeaksLanguage(encounter.languageCode);
     final isTranslated = state.isLanguageEncounterTranslated;
 
-    return Dialog(
-      backgroundColor: const Color(0xFF1E1A15),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
-      ),
-      child: Container(
-        width: 600,
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFC4B89B), width: 1.5),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    encounter.id >= 11 && encounter.id <= 16
-                        ? "FOREIGN CUSTOMER INQUIRY"
-                        : "VISITOR LANGUAGE TEST",
-                    style: GoogleFonts.playfairDisplay(
-                      color: const Color(0xFFE5D5B0),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.5,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFE5D5B0), size: 20),
-                    onPressed: () {
-                      state.clearGuestConversation();
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
-              ),
-              const Divider(color: Colors.white10, height: 24),
+    final List<Widget> optionWidgets = [];
 
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DiodatiPortraitWidget(npcName: guest.name, size: 120.0),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Description
-                        Text(
-                          encounter.id >= 11 && encounter.id <= 16
-                              ? "A foreign customer has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}."
-                              : "A foreign traveler has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}.",
-                          style: GoogleFonts.oldStandardTt(
-                            color: const Color(0xFFC4B89B),
-                            fontSize: 13,
-                            height: 1.4,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Prompt Bubble (Foreign or English depending on Translate flag)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.black26,
-                            border: Border.all(color: const Color(0xFFC4B89B).withOpacity(0.3)),
-                          ),
-                          child: Text(
-                            isTranslated
-                                ? 'Translated:\n"${encounter.promptEnglish}"'
-                                : '"${encounter.promptForeign}"',
-                            style: GoogleFonts.oldStandardTt(
-                              color: const Color(0xFFE5D5B0),
-                              fontSize: 14,
-                              height: 1.5,
-                              fontWeight: isTranslated ? FontWeight.normal : FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Translate Option (if not yet translated)
-                        if (!isTranslated) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  hasTranslator
-                                      ? "A resident speaks ${encounter.languageName} and can translate."
-                                      : "No resident at the Manor speaks ${encounter.languageName}.",
-                                  style: GoogleFonts.oldStandardTt(
-                                    color: hasTranslator ? Colors.green[300] : Colors.red[300],
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF382F24),
-                                  foregroundColor: const Color(0xFFE5D5B0),
-                                  shape: const RoundedRectangleBorder(),
-                                  side: const BorderSide(color: Color(0xFFC4B89B)),
-                                ),
-                                icon: const Icon(Icons.translate, size: 14),
-                                label: Text(
-                                  "TRANSLATE (+10 mins)",
-                                  style: GoogleFonts.playfairDisplay(fontSize: 11, fontWeight: FontWeight.bold),
-                                ),
-                                onPressed: hasTranslator
-                                    ? () {
-                                        state.translateActiveEncounter();
-                                      }
-                                    : null,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // Response Options Headers
-                        Text(
-                          "SELECT RESPONSE:",
-                          style: GoogleFonts.playfairDisplay(
-                            color: const Color(0xFFC4B89B),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Shuffled Options A-D
-                        ...List.generate(encounter.options.length, (idx) {
-                          final option = encounter.options[idx];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _dialogOption(
-                              context: context,
-                              title: '',
-                              description: option.text,
-                              icon: Icons.chat_bubble_outline,
-                              onTap: () {
-                                state.resolveLanguageEncounter(option);
-                                Navigator.pop(context);
-                              },
-                            ),
-                          );
-                        }),
-
-                        // Option E (Hostile Rebuff) anchored at bottom
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: _dialogOption(
-                            context: context,
-                            title: '',
-                            description: encounter.hostileOption.text,
-                            icon: Icons.gavel,
-                            isRed: true,
-                            onTap: () {
-                              state.resolveLanguageEncounter(encounter.hostileOption);
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+    // Shuffled Options A-D
+    optionWidgets.addAll(
+      List.generate(encounter.options.length, (idx) {
+        final option = encounter.options[idx];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _dialogOption(
+            context: context,
+            title: '',
+            description: option.text,
+            icon: Icons.chat_bubble_outline,
+            onTap: () {
+              state.resolveLanguageEncounter(option);
+            },
           ),
+        );
+      }),
+    );
+
+    // Option E (Hostile Rebuff) anchored at bottom
+    optionWidgets.add(
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: _dialogOption(
+          context: context,
+          title: '',
+          description: encounter.hostileOption.text,
+          icon: Icons.gavel,
+          isRed: true,
+          onTap: () {
+            state.resolveLanguageEncounter(encounter.hostileOption);
+          },
         ),
       ),
     );
+
+    final rightContent = [
+      Text(
+        encounter.id >= 11 && encounter.id <= 16
+            ? "A foreign customer has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}."
+            : "A foreign traveler has approached greeter ${greeter.name}. They do not speak our language fluently, addressing us in ${encounter.languageName}.",
+        style: GoogleFonts.oldStandardTt(
+          color: const Color(0xFFC4B89B),
+          fontSize: 11.5,
+          height: 1.4,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          border: Border.all(color: const Color(0xFFC4B89B).withOpacity(0.3)),
+        ),
+        child: Text(
+          isTranslated
+              ? 'Translated:\n"${encounter.promptEnglish}"'
+              : '"${encounter.promptForeign}"',
+          style: GoogleFonts.oldStandardTt(
+            color: const Color(0xFFE5D5B0),
+            fontSize: 13,
+            height: 1.4,
+            fontWeight: isTranslated ? FontWeight.normal : FontWeight.bold,
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      if (!isTranslated) ...[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                hasTranslator
+                    ? "A resident speaks ${encounter.languageName} and can translate."
+                    : "No resident at the Manor speaks ${encounter.languageName}.",
+                style: GoogleFonts.oldStandardTt(
+                  color: hasTranslator ? Colors.green[300] : Colors.red[300],
+                  fontSize: 10,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF382F24),
+                foregroundColor: const Color(0xFFE5D5B0),
+                shape: const RoundedRectangleBorder(),
+                side: const BorderSide(color: Color(0xFFC4B89B)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              ),
+              icon: const Icon(Icons.translate, size: 12),
+              label: Text(
+                "TRANSLATE (+10 mins)",
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: hasTranslator
+                  ? () {
+                      state.translateActiveEncounter();
+                    }
+                  : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+      ],
+      ...optionWidgets,
+    ];
+
+    return rightContent;
   }
 
   List<Widget> _buildNeighborOptions(BuildContext context, GameState state, NPC greeter, NPC guest) {
@@ -805,7 +820,6 @@ class GuestConversationDialog extends StatelessWidget {
           icon: Icons.check_circle_outline,
           onTap: () {
             state.clearGuestConversation();
-            Navigator.pop(context);
           },
         ),
       ];
@@ -830,7 +844,6 @@ class GuestConversationDialog extends StatelessWidget {
           state.unlockCottage(encounter.cottageId);
           
           state.clearGuestConversation();
-          Navigator.pop(context);
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -858,7 +871,6 @@ class GuestConversationDialog extends StatelessWidget {
           state.unlockCottage(encounter.cottageId);
 
           state.clearGuestConversation();
-          Navigator.pop(context);
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -908,7 +920,6 @@ class GuestConversationDialog extends StatelessWidget {
     void dismissVisitor() {
       state.removeNpc(guest.id);
       state.clearGuestConversation();
-      Navigator.pop(context);
     }
 
     final double standingGlarus = state.getFactionStanding('Glarus');
@@ -1861,6 +1872,717 @@ class GuestConversationDialog extends StatelessWidget {
             },
           ),
         );
+        break;
+
+      case 'mary_shelley_visit':
+        final int step = guest.metadata['plotDialogueStep'] as int? ?? 0;
+
+        // Specific condolences based on deathCause
+        String deathCondolence = "";
+        switch (state.deathCause) {
+          case DeathCause.trainCrash:
+            deathCondolence =
+                "To have them torn away by that mechanical iron beast... progress has a cruel cost.";
+            break;
+          case DeathCause.disease:
+            deathCondolence =
+                "To watch them wither under the slow grip of pestilence... it is a harsh reminder of our fragility.";
+            break;
+          case DeathCause.murderSuicide:
+            deathCondolence =
+                "To perish by such sudden, tragic violence... the mind recoils at such desperation.";
+            break;
+          case DeathCause.misunderstanding:
+            deathCondolence =
+                "To lose them to such a bizarre misunderstanding... fate can be incredibly cruel.";
+            break;
+          default:
+            deathCondolence = "To lose them so suddenly is a cruel blow.";
+            break;
+        }
+
+        final bool isFrankenstein =
+            state.playerLastName.toLowerCase() == 'frenstein' ||
+            state.playerLastName.toLowerCase() == 'frankenstein';
+
+        final player = state.npcs.firstWhere(
+          (n) => n.id == 'player',
+          orElse: () => state.npcs.first,
+        );
+        final int beauty = player.stats['beauty'] ?? 5;
+        final int temperament = player.stats['temperament'] ?? 5;
+        final int intellect = player.stats['intellect'] ?? 5;
+
+        String attributeFlavour = "";
+        if (temperament <= 2) {
+          attributeFlavour = "\n\nI can see the restless, volatile anger burning within you. Grief is a fire, but we must not let it consume our reason.";
+        } else if (intellect >= 7) {
+          attributeFlavour = "\n\nFor a mind as sharp and inquisitive as yours, I know the hardest part of tragedy is the search for a logic where none exists.";
+        } else if (beauty >= 7) {
+          attributeFlavour = "\n\nIt is tragic to see such grief cast a shadow over a face so finely favored by nature.";
+        } else if (intellect <= 3) {
+          attributeFlavour = "\n\nIn times of such heavy sorrow, we must keep our feet firmly on the earth and not get lost in confusing thoughts.";
+        }
+
+        if (step == 0) {
+          String dialogue =
+              "Monsieur ${state.playerLastName}. Please, accept my deepest condolences for your loss. $deathCondolence$attributeFlavour";
+          if (isFrankenstein) {
+            dialogue +=
+                "\n\nAnd I must apologize. I had no idea my fictional Victor Frankenstein would share your name when I published my book. I hope it has not caused you distress.";
+          }
+
+          storyText = '"$dialogue"';
+
+          optionWidgets.add(
+            _dialogOption(
+              context: context,
+              title: "Thank you, Mary. Your condolences are appreciated.",
+              description: "",
+              icon: Icons.chat_bubble_outline,
+              onTap: () {
+                guest.metadata['plotDialogueStep'] = 1;
+                guest.metadata['chosenPath'] = 'polite';
+                state.notifyListeners();
+              },
+            ),
+          );
+
+          optionWidgets.add(
+            _dialogOption(
+              context: context,
+              title: "My family is gone, Mary. Condolences won't bring them back. Nothing will.",
+              description: "",
+              icon: Icons.sentiment_very_dissatisfied,
+              onTap: () {
+                guest.metadata['plotDialogueStep'] = 1;
+                guest.metadata['chosenPath'] = 'upset';
+                state.notifyListeners();
+              },
+            ),
+          );
+
+          final String pressingText = isFrankenstein
+              ? "If your fictional Victor can conquer death, why can't I?"
+              : "Your book... you wrote of reanimation. Tell me how it is done.";
+
+          optionWidgets.add(
+            _dialogOption(
+              context: context,
+              title: pressingText,
+              description: "",
+              icon: Icons.psychology,
+              onTap: () {
+                guest.metadata['plotDialogueStep'] = 1;
+                guest.metadata['chosenPath'] = 'curious';
+                state.notifyListeners();
+              },
+            ),
+          );
+        } else if (step == 1) {
+          final String path =
+              guest.metadata['chosenPath'] as String? ?? 'polite';
+
+          if (path == 'polite') {
+            storyText =
+                '"We must all find a way to carry on. I brought these alpine wildflowers for your Study. But please, tell me you are not harboring any morbid obsessions."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title:
+                    "Actually, Mary... your book. You wrote of galvanism. Can the dead truly be reanimated?",
+                description: "",
+                icon: Icons.bolt,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 2;
+                  guest.metadata['chosenPath'] = 'curious';
+                  state.notifyListeners();
+                },
+              ),
+            );
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "Of course not. I am only interested in keeping these flowers.",
+                description: "",
+                icon: Icons.done,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 2;
+                  guest.metadata['chosenPath'] = 'flowers_wreckage_hint';
+                  state.notifyListeners();
+                },
+              ),
+            );
+          } else if (path == 'upset') {
+            String upsetResponse = "";
+            if (temperament <= 2) {
+              upsetResponse = "I see you are eager to lash out at the world, Monsieur. Grief is a storm, but raging against the inevitable will only break you. We must find anchor in what is real.";
+            } else if (intellect >= 7) {
+              upsetResponse = "Grief is a storm that tempers or shatters us, Monsieur. A mind like yours must know that wishing cannot rewrite the laws of nature. We must find anchor in what is real.";
+            } else if (beauty >= 7) {
+              upsetResponse = "Grief is a storm that tempers or shatters us, Monsieur. It pains me to see you so utterly consumed by this bitterness. We must find anchor in what is real.";
+            } else if (intellect <= 3) {
+              upsetResponse = "Grief is a storm that tempers or shatters us, Monsieur. Do not let your sorrow lead you into dark, confusing places. We must find anchor in what is real.";
+            } else {
+              upsetResponse = "Grief is a storm that tempers or shatters us, Monsieur. I too have known the quiet agony of loss. But we must find anchor in what is real, not in desperate fantasies.";
+            }
+
+            storyText = '"$upsetResponse"';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "Is it truly a fantasy? Your novel speaks of galvanism—reanimation. Is there no scientific plausibility to it?",
+                description: "",
+                icon: Icons.bolt,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 2;
+                  guest.metadata['chosenPath'] = 'curious';
+                  state.notifyListeners();
+                },
+              ),
+            );
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "I heard of a carriage carrying galvanic conductors that wrecked in the valley. If it is all fantasy, why was such equipment sent here?",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 2;
+                  guest.metadata['chosenPath'] = 'wreckage';
+                  state.notifyListeners();
+                },
+              ),
+            );
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "Perhaps you are right. I must accept the reality of my loss.",
+                description: "",
+                icon: Icons.close,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 2;
+                  guest.metadata['chosenPath'] = 'upset_reject_once';
+                  state.notifyListeners();
+                },
+              ),
+            );
+          } else {
+            // Disbelief (is he joking? Is he just grieving?)
+            storyText =
+                '"Are you jesting, Monsieur? Or has grief temporarily unseated your reason? It was a gothic romance, a ghost story written to pass a rainy summer by the lake. The boundary between life and death is absolute."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title:
+                    "You lost your infant Clara. You wrote of dreaming she was rubbed before the fire. You want to believe it too. There must be a way.",
+                description: "",
+                icon: Icons.fireplace,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 2;
+                  guest.metadata['chosenPath'] = 'persist';
+                  state.notifyListeners();
+                },
+              ),
+            );
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "Perhaps you are right. It was a foolish thought.",
+                description: "",
+                icon: Icons.close,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 2;
+                  guest.metadata['chosenPath'] = 'curious_reject_once';
+                  state.notifyListeners();
+                },
+              ),
+            );
+          }
+        } else if (step == 2) {
+          final String path =
+              guest.metadata['chosenPath'] as String? ?? 'curious';
+
+          if (path == 'curious' || path == 'wreckage') {
+            // Disbelief (is he joking? Is he just grieving?)
+            storyText =
+                '"Are you jesting, Monsieur? Or has grief temporarily unseated your reason? It was a gothic romance, a ghost story written to pass a rainy summer by the lake. The boundary between life and death is absolute."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title:
+                    "You lost your infant Clara. You wrote of dreaming she was rubbed before the fire. You want to believe it too. There must be a way.",
+                description: "",
+                icon: Icons.fireplace,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 3;
+                  guest.metadata['chosenPath'] = 'persist';
+                  state.notifyListeners();
+                },
+              ),
+            );
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "Perhaps you are right. It was a foolish thought.",
+                description: "",
+                icon: Icons.close,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 3;
+                  guest.metadata['chosenPath'] = 'curious_reject_once';
+                  state.notifyListeners();
+                },
+              ),
+            );
+          } else if (path == 'persist') {
+            // Condescension (is he dumb enough to think these things are possible?)
+            storyText =
+                '"You cannot be serious, Monsieur. Do you truly possess so little scientific literacy as to mistake a literary amusement for a textbook on anatomy? Galvanism may twitch a frog\'s leg, but it will not recall a soul from the ether."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title:
+                    "I do not care about the soul. I care about the machinery. There are rumors of a carriage carrying galvanic conductors that wrecked in the valley. Tell me where it is.",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 3;
+                  guest.metadata['chosenPath'] = 'wreckage_persist';
+                  state.notifyListeners();
+                },
+              ),
+            );
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "On second thought, this is madness. I will stick to my flowers.",
+                description: "",
+                icon: Icons.close,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 3;
+                  guest.metadata['chosenPath'] = 'flowers_only_warned';
+                  state.notifyListeners();
+                },
+              ),
+            );
+          } else if (path == 'flowers_wreckage_hint') {
+            storyText =
+                '"I am relieved to hear it, Monsieur. But... I must confess, I saw the shattered carriage wreckage in the valley on my way here. It was carrying some sort of galvanic machinery. I feared a mind like yours might be tempted by such ruins."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "If there is galvanic equipment in that wreckage, I must examine it.",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  state.activateWinterDreamsOfClara();
+                  dismissVisitor();
+                },
+              ),
+            );
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "No, Mary. I promise I will not go near the wreckage.",
+                description: "",
+                icon: Icons.done,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  dismissVisitor();
+                },
+              ),
+            );
+          } else if (path == 'upset_reject_once') {
+            storyText =
+                '"I am glad you see reason, Monsieur. Though, I did pass the wreckage of that carriage on my way here. The shattered iron and broken conductors... it looked like a tomb for those foolish scientific dreams. I am glad you have no interest in such things."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "Actually, if the equipment is there, I must retrieve it. Tell me more.",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  state.activateWinterDreamsOfClara();
+                  dismissVisitor();
+                },
+              ),
+            );
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "I agree. I will stay here and mourn in peace.",
+                description: "",
+                icon: Icons.done,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  dismissVisitor();
+                },
+              ),
+            );
+          } else if (path == 'curious_reject_once') {
+            storyText =
+                '"It is a comforting fiction, nothing more. Though... the locals say a carriage carrying massive galvanic conductors crashed in the valley. They whispered of it as if it were a sign. But it is just twisted metal. You must not seek it."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "No, I cannot let it go. I must find those conductors.",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  state.activateWinterDreamsOfClara();
+                  dismissVisitor();
+                },
+              ),
+            );
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "You are right. I will let it rust.",
+                description: "",
+                icon: Icons.done,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  dismissVisitor();
+                },
+              ),
+            );
+          }
+        } else if (step == 3) {
+          final String path =
+              guest.metadata['chosenPath'] as String? ?? 'persist';
+
+          if (path == 'wreckage_persist') {
+            // Frightened but polite acquiescence (I think this guy is going to start conducting experiments on corpses)
+            storyText =
+                '"I... see. Well, if you are determined to pursue this... eccentricity... I suppose I cannot stop you. There was, in fact, a carriage carrying certain galvanic apparatuses that met with a disaster in the valley. The wreckage lies there still. Perhaps if you see the shattered iron, you will return to your senses. Now, if you will excuse me, I must take my leave... Please, take these wildflowers as well."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "I will retrieve those conductors. Thank you, Mary.",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  state.activateWinterDreamsOfClara();
+                  dismissVisitor();
+                },
+              ),
+            );
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title:
+                    "Perhaps it is indeed madness. I will leave it alone.",
+                description: "",
+                icon: Icons.done_all,
+                onTap: () {
+                  guest.metadata['plotDialogueStep'] = 4;
+                  guest.metadata['chosenPath'] = 'final_refusal';
+                  state.notifyListeners();
+                },
+              ),
+            );
+          } else if (path == 'hesitant_wreckage') {
+            storyText =
+                '"I can\'t believe you would even consider it! There is that wreckage up the road. But, oh, it would be so vile to search it for those conductors! Promise me you will stay away."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "I cannot promise that. I must go to the wreckage.",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  state.activateWinterDreamsOfClara();
+                  dismissVisitor();
+                },
+              ),
+            );
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "I promise, Mary. I will stay away.",
+                description: "",
+                icon: Icons.done,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  dismissVisitor();
+                },
+              ),
+            );
+          } else if (path == 'flowers_only_warned') {
+            storyText =
+                '"I... I forgive you. It is the grief speaking. But please, promise me you won\'t go near the valley wreckage. They say the galvanic equipment is still intact, but it is a cursed thing."';
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "I cannot make that promise. I must see the wreckage.",
+                description: "",
+                icon: Icons.explore,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  state.activateWinterDreamsOfClara();
+                  dismissVisitor();
+                },
+              ),
+            );
+
+            optionWidgets.add(
+              _dialogOption(
+                context: context,
+                title: "I promise. I will not go.",
+                description: "",
+                icon: Icons.done,
+                onTap: () {
+                  state.addItemToRoom(
+                    'study',
+                    GameItem.create(
+                      name: 'Alpine Wildflowers',
+                      type: 'wildflowers',
+                      category: ItemCategory.specimen,
+                      creationDate: state.currentDate.copy(),
+                      metadata: const {
+                        'discipline': 'botany',
+                        'pages': 8,
+                      },
+                    ),
+                  );
+                  state.addAnnouncement(
+                    "Received Alpine Wildflowers! They have been placed in the Study.",
+                  );
+                  dismissVisitor();
+                },
+              ),
+            );
+          }
+        } else if (step == 4) {
+          storyText =
+              '"Indeed, peace is the only cure. I shall leave you to your flowers."';
+
+          optionWidgets.add(
+            _dialogOption(
+              context: context,
+              title: "Wait... no. I must have those conductors. I will go.",
+              description: "",
+              icon: Icons.explore,
+              onTap: () {
+                state.addItemToRoom(
+                  'study',
+                  GameItem.create(
+                    name: 'Alpine Wildflowers',
+                    type: 'wildflowers',
+                    category: ItemCategory.specimen,
+                    creationDate: state.currentDate.copy(),
+                    metadata: const {
+                      'discipline': 'botany',
+                      'pages': 8,
+                    },
+                  ),
+                );
+                state.addAnnouncement(
+                  "Received Alpine Wildflowers! They have been placed in the Study.",
+                );
+                state.activateWinterDreamsOfClara();
+                dismissVisitor();
+              },
+            ),
+          );
+          optionWidgets.add(
+            _dialogOption(
+              context: context,
+              title: "Goodbye, Mary.",
+              description: "",
+              icon: Icons.done_all,
+              onTap: () {
+                state.addItemToRoom(
+                  'study',
+                  GameItem.create(
+                    name: 'Alpine Wildflowers',
+                    type: 'wildflowers',
+                    category: ItemCategory.specimen,
+                    creationDate: state.currentDate.copy(),
+                    metadata: const {
+                      'discipline': 'botany',
+                      'pages': 8,
+                    },
+                  ),
+                );
+                state.addAnnouncement(
+                  "Received Alpine Wildflowers! They have been placed in the Study.",
+                );
+                dismissVisitor();
+              },
+            ),
+          );
+        }
         break;
 
       default:

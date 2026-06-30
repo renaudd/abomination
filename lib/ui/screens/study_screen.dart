@@ -72,6 +72,7 @@ class _StudyScreenState extends State<StudyScreen> {
                 (item) =>
                     item.category == ItemCategory.knowledge ||
                     item.type == 'unreviewed_document' ||
+                    item.type == 'wildflowers' ||
                     item.name == 'Old Notes',
               )
               .toList();

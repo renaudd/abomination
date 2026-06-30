@@ -3351,7 +3351,11 @@ class CombatManager extends ChangeNotifier {
       damage = minDmg + Random().nextDouble() * (maxDmg - minDmg);
       damage = max(1.0, (damage * buffMult) - targetStats.defense);
     } else {
-      damage = max(1.0, ((stats.attack * buffMult) - targetStats.defense) * 1.5);
+      final bool isRanged = stats.distance > 2.0 && stats.rangedDamage > 0;
+      final double baseDmg = isRanged
+          ? stats.rangedDamage
+          : (stats.meleeDamage > 0 ? stats.meleeDamage : stats.attack);
+      damage = max(1.0, (baseDmg * buffMult) - targetStats.defense);
     }
 
     final strFactor = attacker.strengthFactor;
@@ -3868,7 +3872,7 @@ class CombatManager extends ChangeNotifier {
         break;
 
       case 'whirlwind_melee': // 4) a whirlwind melee attack that hits all enemies in a tight circle around the player with high damage.
-        spawnAoeEffect(c.x, c.y, 15.0, Colors.deepOrangeAccent, durationMs: 500.0);
+        spawnAoeEffect(c.x, c.y, 15.0, Colors.deepOrangeAccent, durationMs: 500.0, id: 'whirlwind_${DateTime.now().millisecondsSinceEpoch}');
         final enemies = _combatants.where((other) => other.side != c.side && !other.isDead);
         for (final t in enemies) {
           final dist = sqrt(pow(t.x - c.x, 2) + pow(t.y - c.y, 2));
